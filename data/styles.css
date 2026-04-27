@@ -1,0 +1,192 @@
+/* BioSimulator Pro - Tema Claro Estilo Plotter Científico */
+:root {
+    --bg-main: #f5f7fa;
+    --bg-panel: #ffffff;
+    --bg-plot: #fefefe;
+    --border: #d0d7de;
+    --border-light: #e8ecf0;
+    --text: #1f2937;
+    --text-dim: #6b7280;
+    --text-label: #374151;
+    --accent: #0066cc;
+    --accent-light: #e6f0ff;
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --grid-line: #c8e0c8;
+    --grid-major: #90c090;
+    --ch1-color: #0066cc;
+    --ch2-color: #dc2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { 
+    height: 100%; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-main);
+    color: var(--text);
+}
+.app {
+    display: grid;
+    height: 100vh;
+    padding: 12px;
+    gap: 12px;
+    grid-template-columns: 220px 1fr 220px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "header header header"
+        "left plotter right"
+        "footer footer footer";
+}
+.header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.1rem; color: var(--accent); }
+.logo-icon { font-size: 1.3rem; }
+.conn-status {
+    display: flex; align-items: center; gap: 8px; font-size: 0.85rem;
+    padding: 6px 14px; background: var(--bg-main); border-radius: 20px; border: 1px solid var(--border);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); transition: all 0.3s; }
+.dot.on { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.main { display: contents; }
+.panel-left { grid-area: left; }
+.panel-right { grid-area: right; }
+.panel-left, .panel-right {
+    display: flex; flex-direction: column; gap: 12px;
+    overflow-y: auto; max-height: calc(100vh - 120px);
+}
+.panel-section {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+}
+.panel-section h3 {
+    font-size: 0.9rem;
+    color: var(--text-label);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+}
+.info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; font-size: 0.85rem;
+}
+.label { color: var(--text-dim); }
+.value { font-weight: 600; color: var(--text); font-family: 'Consolas', monospace; }
+.value.hl { color: var(--accent); font-size: 1rem; }
+.badge {
+    padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+    background: var(--bg-main); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.run { background: var(--success); color: white; border-color: var(--success); }
+.badge.pause { background: var(--warning); color: white; border-color: var(--warning); }
+.badge.done { background: var(--accent); color: white; border-color: var(--accent); }
+.ctrl-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ctrl-row label { font-size: 0.8rem; color: var(--text-dim); }
+.ctrl-row input[type="number"] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.9rem; background: var(--bg-main);
+}
+.ctrl-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.ctrl-row span { font-size: 0.8rem; color: var(--accent); font-weight: 600; text-align: right; }
+.btn-grid { display: flex; flex-direction: column; gap: 8px; }
+.btn {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-main); color: var(--text); font-size: 0.85rem; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn:hover { background: var(--border-light); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-start { background: var(--success); color: white; border-color: var(--success); }
+.btn-start:hover { background: #047857; }
+.btn-stop { background: var(--danger); color: white; border-color: var(--danger); }
+.btn-stop:hover { background: #b91c1c; }
+.plotter {
+    grid-area: plotter;
+    display: flex; flex-direction: column;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.plotter-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; background: var(--accent-light); border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+.plotter-header span:first-child { font-weight: 600; color: var(--accent); }
+.plotter-header span:last-child { color: var(--text-dim); font-family: 'Consolas', monospace; font-size: 0.8rem; }
+.plotter-body { flex: 1; display: flex; position: relative; background: var(--bg-plot); min-height: 300px; }
+.y-axis {
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 10px 6px; font-size: 0.75rem; color: var(--text-dim);
+    text-align: right; min-width: 50px; background: var(--accent-light);
+    border-right: 1px solid var(--border); font-family: 'Consolas', monospace;
+}
+#plotCanvas { flex: 1; display: block; cursor: crosshair; }
+.x-axis {
+    display: flex; justify-content: space-between;
+    padding: 6px 60px 6px 60px; font-size: 0.75rem; color: var(--text-dim);
+    background: var(--accent-light); border-top: 1px solid var(--border);
+    font-family: 'Consolas', monospace;
+}
+.legend {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 14px; padding: 6px 12px;
+    background: rgba(255,255,255,0.95); border-radius: 6px;
+    border: 1px solid var(--border); font-size: 0.8rem; box-shadow: var(--shadow);
+}
+.leg-item { display: flex; align-items: center; gap: 6px; }
+.leg-c { width: 20px; height: 3px; border-radius: 2px; }
+.leg-c.ch1 { background: var(--ch1-color); }
+.leg-c.ch2 { background: var(--ch2-color); }
+.metrics-panel h3 { color: var(--accent); }
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px; background: var(--bg-main); border-radius: 6px; border: 1px solid var(--border-light);
+}
+.m-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.m-val { font-size: 1.1rem; font-weight: 700; color: var(--accent); font-family: 'Consolas', monospace; }
+.m-unit { font-size: 0.65rem; color: var(--text-dim); }
+.footer {
+    grid-area: footer;
+    display: flex; justify-content: center; align-items: center; gap: 16px;
+    padding: 8px 16px; font-size: 0.8rem; color: var(--text-dim);
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+@media (max-width: 1024px) {
+    .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto auto;
+        grid-template-areas: "header" "left" "plotter" "right" "footer";
+    }
+    .panel-left, .panel-right { max-height: none; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+    .panel-section { flex: 1; min-width: 200px; }
+    .metric-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+    .app { padding: 8px; gap: 8px; }
+    .panel-section { padding: 10px; }
+    .panel-section h3 { font-size: 0.85rem; }
+    .metric-grid { grid-template-columns: 1fr 1fr; }
+    .btn { padding: 8px 10px; font-size: 0.8rem; }
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }

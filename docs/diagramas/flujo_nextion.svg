@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <defs>
+    <style>
+      .box { fill: #e3f2fd; stroke: #1976d2; stroke-width: 2; }
+      .title { fill: #0d47a1; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; }
+      .text { fill: #424242; font-family: Arial, sans-serif; font-size: 12px; }
+      .arrow { stroke: #1976d2; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { fill: #1976d2; font-family: Arial, sans-serif; font-size: 11px; font-style: italic; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1976d2" />
+    </marker>
+  </defs>
+  
+  <!-- Título -->
+  <text x="400" y="30" text-anchor="middle" style="font-size: 18px; font-weight: bold; fill: #0d47a1;">
+    Flujo de Programación - Nextion Display
+  </text>
+  
+  <!-- ESP32 Core 0 -->
+  <rect x="50" y="60" width="180" height="100" class="box" rx="5"/>
+  <text x="140" y="85" text-anchor="middle" class="title">ESP32 Core 0</text>
+  <text x="140" y="105" text-anchor="middle" class="text">NextionDriver</text>
+  <text x="140" y="125" text-anchor="middle" class="text">• Procesar eventos UI</text>
+  <text x="140" y="145" text-anchor="middle" class="text">• Enviar comandos</text>
+  
+  <!-- UART Communication -->
+  <rect x="280" y="60" width="240" height="100" class="box" rx="5"/>
+  <text x="400" y="85" text-anchor="middle" class="title">UART2 (GPIO16/17)</text>
+  <text x="400" y="105" text-anchor="middle" class="text">115200 baudios</text>
+  <text x="400" y="125" text-anchor="middle" class="text">ESP32 → Nextion: ASCII + 0xFF×3</text>
+  <text x="400" y="145" text-anchor="middle" class="text">Nextion → ESP32: Binario 7 bytes</text>
+  
+  <!-- Nextion Display -->
+  <rect x="570" y="60" width="180" height="100" class="box" rx="5"/>
+  <text x="660" y="85" text-anchor="middle" class="title">Nextion NX8048T070</text>
+  <text x="660" y="105" text-anchor="middle" class="text">800×480 px, Táctil</text>
+  <text x="660" y="125" text-anchor="middle" class="text">• Waveform 399×211</text>
+  <text x="660" y="145" text-anchor="middle" class="text">• Refresh 30 fps</text>
+  
+  <!-- Arrows -->
+  <path d="M 230 110 L 280 110" class="arrow"/>
+  <text x="255" y="105" text-anchor="middle" class="label">Eventos</text>
+  
+  <path d="M 520 110 L 570 110" class="arrow"/>
+  <text x="545" y="105" text-anchor="middle" class="label">Comandos</text>
+  
+  <!-- State Machine -->
+  <rect x="50" y="200" width="180" height="80" class="box" rx="5"/>
+  <text x="140" y="225" text-anchor="middle" class="title">State Machine</text>
+  <text x="140" y="245" text-anchor="middle" class="text">• PORTADA → MENU</text>
+  <text x="140" y="265" text-anchor="middle" class="text">• SELECT_CONDITION</text>
+  
+  <!-- Signal Engine -->
+  <rect x="280" y="200" width="240" height="80" class="box" rx="5"/>
+  <text x="400" y="225" text-anchor="middle" class="title">Signal Engine (Core 1)</text>
+  <text x="400" y="245" text-anchor="middle" class="text">Timer ISR @ 2000 Hz</text>
+  <text x="400" y="265" text-anchor="middle" class="text">Generación ECG/EMG/PPG</text>
+  
+  <!-- Downsampling -->
+  <rect x="570" y="200" width="180" height="80" class="box" rx="5"/>
+  <text x="660" y="225" text-anchor="middle" class="title">Downsampling</text>
+  <text x="660" y="245" text-anchor="middle" class="text">ECG: 10:1 → 200 Hz</text>
+  <text x="660" y="265" text-anchor="middle" class="text">EMG/PPG: 20:1 → 100 Hz</text>
+  
+  <!-- Vertical arrows -->
+  <path d="M 140 160 L 140 200" class="arrow"/>
+  <path d="M 400 160 L 400 200" class="arrow"/>
+  <path d="M 660 160 L 660 200" class="arrow"/>
+  
+  <!-- Horizontal arrows -->
+  <path d="M 230 240 L 280 240" class="arrow"/>
+  <text x="255" y="235" text-anchor="middle" class="label">Control</text>
+  
+  <path d="M 520 240 L 570 240" class="arrow"/>
+  <text x="545" y="235" text-anchor="middle" class="label">Muestras</text>
+  
+  <!-- Pages Navigation -->
+  <rect x="50" y="320" width="700" height="240" class="box" rx="5"/>
+  <text x="400" y="345" text-anchor="middle" class="title">Páginas Nextion (8 páginas)</text>
+  
+  <!-- Page boxes -->
+  <rect x="70" y="360" width="150" height="50" style="fill: #fff3e0; stroke: #f57c00; stroke-width: 1.5;" rx="3"/>
+  <text x="145" y="380" text-anchor="middle" style="font-size: 11px; font-weight: bold; fill: #e65100;">0: Portada</text>
+  <text x="145" y="395" text-anchor="middle" style="font-size: 10px; fill: #424242;">Bienvenida</text>
+  
+  <rect x="240" y="360" width="150" height="50" style="fill: #fff3e0; stroke: #f57c00; stroke-width: 1.5;" rx="3"/>
+  <text x="315" y="380" text-anchor="middle" style="font-size: 11px; font-weight: bold; fill: #e65100;">1: Menú</text>
+  <text x="315" y="395" text-anchor="middle" style="font-size: 10px; fill: #424242;">ECG/EMG/PPG</text>
+  
+  <rect x="410" y="360" width="150" height="50" style="fill: #fff3e0; stroke: #f57c00; stroke-width: 1.5;" rx="3"/>
+  <text x="485" y="380" text-anchor="middle" style="font-size: 11px; font-weight: bold; fill: #e65100;">2-4: Condiciones</text>
+  <text x="485" y="395" text-anchor="middle" style="font-size: 10px; fill: #424242;">Patologías</text>
+  
+  <rect x="580" y="360" width="150" height="50" style="fill: #e8f5e9; stroke: #388e3c; stroke-width: 1.5;" rx="3"/>
+  <text x="655" y="380" text-anchor="middle" style="font-size: 11px; font-weight: bold; fill: #1b5e20;">5-7: Waveforms</text>
+  <text x="655" y="395" text-anchor="middle" style="font-size: 10px; fill: #424242;">Visualización RT</text>
+  
+  <!-- Waveform details -->
+  <rect x="70" y="430" width="660" height="110" style="fill: #f1f8e9; stroke: #689f38; stroke-width: 1.5;" rx="3"/>
+  <text x="400" y="450" text-anchor="middle" style="font-size: 12px; font-weight: bold; fill: #33691e;">Componentes Waveform</text>
+  
+  <text x="90" y="475" style="font-size: 11px; fill: #424242;">• Waveform (ID 1): 399×211 px, 1-2 canales</text>
+  <text x="90" y="495" style="font-size: 11px; fill: #424242;">• Controles: PLAY (ID 2), PAUSE (ID 3), STOP (ID 4)</text>
+  <text x="90" y="515" style="font-size: 11px; fill: #424242;">• Métricas: HR, RR, amplitudes (actualización 4 Hz)</text>
+  <text x="90" y="535" style="font-size: 11px; fill: #424242;">• Popup parámetros: Sliders ajustables en tiempo real</text>
+  
+  <!-- Footer -->
+  <text x="400" y="590" text-anchor="middle" style="font-size: 10px; fill: #757575;">
+    Comunicación bidireccional: Eventos UI → ESP32 | Comandos visualización → Nextion
+  </text>
+</svg>

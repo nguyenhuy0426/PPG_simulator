@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="1120" viewBox="0 0 650 1120">
+  <style>
+    .title { font: bold 18px Arial; }
+    .subtitle { font: 13px Arial; fill: #666; }
+    .box-text { font: 10px Arial; }
+    .box-bold { font: bold 10px Arial; }
+    .box-code { font: 9px Courier New; }
+    .label { font: bold 9px Arial; fill: #c00; }
+    .note { font: 8px Arial; fill: #666; }
+  </style>
+  
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Header -->
+  <text x="325" y="30" text-anchor="middle" class="title">EMG – Modelo estocástico Fuglevand 1993</text>
+  <text x="325" y="48" text-anchor="middle" class="subtitle">Flujo de generación de señal electromiográfica</text>
+  
+  <!-- Frecuencia de muestreo -->
+  <rect x="195" y="60" width="260" height="22" rx="3" fill="#e3f2fd" stroke="#1976d2" stroke-width="1"/>
+  <text x="325" y="76" text-anchor="middle" class="box-text">Fs_modelo = 1000 Hz  •  Upsampling 2:1 → 2 kHz DAC</text>
+  
+  <!-- deltaTime -->
+  <rect x="250" y="95" width="150" height="28" rx="4" fill="#d5d5d5" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="114" text-anchor="middle" class="box-bold">deltaTime = 1.0 ms</text>
+  <path d="M325 123 L325 138 L321 133 M325 138 L329 133" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- tick -->
+  <rect x="225" y="143" width="200" height="28" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="162" text-anchor="middle" class="box-bold">tick(deltaTime)</text>
+  <path d="M325 171 L325 186 L321 181 M325 186 L329 181" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Condición -->
+  <rect x="165" y="191" width="320" height="28" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="210" text-anchor="middle" class="box-text">Condición EMG: REST, LOW, MODERATE, HIGH, TREMOR, FATIGUE</text>
+  <path d="M325 219 L325 234 L321 229 M325 234 L329 229" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Decision secuencia -->
+  <rect x="185" y="239" width="280" height="26" rx="3" fill="#fff3cd" stroke="#b8860b" stroke-width="1.5"/>
+  <text x="325" y="257" text-anchor="middle" class="box-text">¿Secuencia dinámica activa?</text>
+  
+  <text x="190" y="280" class="label">SÍ</text>
+  <text x="440" y="280" class="label">NO</text>
+  <line x1="235" y1="265" x2="200" y2="288" stroke="#333" stroke-width="1.5"/>
+  <line x1="415" y1="265" x2="450" y2="288" stroke="#333" stroke-width="1.5"/>
+  
+  <rect x="105" y="293" width="190" height="40" rx="3" fill="#fce4ec" stroke="#c2185b" stroke-width="1.5"/>
+  <text x="200" y="310" text-anchor="middle" class="box-text">updateSequence()</text>
+  <text x="200" y="325" text-anchor="middle" class="note">LOW→MODERATE→HIGH→REST</text>
+  
+  <rect x="355" y="293" width="190" height="40" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="450" y="310" text-anchor="middle" class="box-text">accumulatedTime += deltaTime</text>
+  <text x="450" y="325" text-anchor="middle" class="note">(control manual excitación)</text>
+  
+  <line x1="200" y1="333" x2="325" y2="360" stroke="#333" stroke-width="1.5"/>
+  <line x1="450" y1="333" x2="325" y2="360" stroke="#333" stroke-width="1.5"/>
+  <polygon points="325,365 321,358 329,358" fill="#333"/>
+  
+  <!-- Decision rampa -->
+  <rect x="185" y="370" width="280" height="26" rx="3" fill="#fff3cd" stroke="#b8860b" stroke-width="1.5"/>
+  <text x="325" y="388" text-anchor="middle" class="box-text">¿Rampa de excitación activa?</text>
+  <text x="340" y="412" class="label">SÍ</text>
+  <path d="M325 396 L325 416 L321 411 M325 416 L329 411" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- lerp -->
+  <rect x="200" y="421" width="250" height="26" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="439" text-anchor="middle" class="box-code">E = lerp(base, target, t/T)</text>
+  <path d="M325 447 L325 462 L321 457 M325 462 L329 457" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Variabilidad natural -->
+  <rect x="180" y="467" width="290" height="26" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="485" text-anchor="middle" class="box-text">E += variabilityFactor × noise (±2-5% fluctuación)</text>
+  <path d="M325 493 L325 508 L321 503 M325 508 L329 503" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- updateMotorUnit -->
+  <rect x="135" y="513" width="380" height="68" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="531" text-anchor="middle" class="box-bold">updateMotorUnitRecruitment()</text>
+  <text x="325" y="551" text-anchor="middle" class="box-code">FRᵢ = FR_min + (FR_max − FR_min) × (E − thresholdᵢ)</text>
+  <text x="325" y="571" text-anchor="middle" class="note">Principio de Henneman: recluta primero MUs pequeñas (tipo I), luego grandes (tipo II)</text>
+  <path d="M325 581 L325 596 L321 591 M325 596 L329 591" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- generateMUAP -->
+  <rect x="170" y="601" width="310" height="42" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="619" text-anchor="middle" class="box-bold">generateMUAP()</text>
+  <text x="325" y="636" text-anchor="middle" class="box-text">Forma trifásica: Σ MUAPᵢ × FRᵢ (superposición 100 MUs)</text>
+  <path d="M325 643 L325 658 L321 653 M325 658 L329 653" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Modificadores completos -->
+  <rect x="130" y="663" width="390" height="58" rx="3" fill="#fce4ec" stroke="#c2185b" stroke-width="1.5"/>
+  <text x="325" y="681" text-anchor="middle" class="box-bold">Modificadores Dinámicos</text>
+  <text x="325" y="698" text-anchor="middle" class="box-text">Temblor: modulación sinusoidal 4-8 Hz (profundidad configurable)</text>
+  <text x="325" y="713" text-anchor="middle" class="box-text">Fatiga: decay FR, decay RMS, aumento MDF, sincronización MUs</text>
+  <path d="M325 721 L325 736 L321 731 M325 736 L329 731" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Normalización RMS -->
+  <rect x="180" y="741" width="290" height="26" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="759" text-anchor="middle" class="box-text">Normalización RMS con target dinámico por condición</text>
+  <path d="M325 767 L325 782 L321 777 M325 782 L329 777" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Noise -->
+  <rect x="200" y="787" width="250" height="26" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="805" text-anchor="middle" class="box-text">sample += noise × gaussian()</text>
+  <path d="M325 813 L325 828 L321 823 M325 828 L329 823" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Output range -->
+  <rect x="200" y="833" width="250" height="32" rx="3" fill="#d4edda" stroke="#198754" stroke-width="1.5"/>
+  <text x="325" y="850" text-anchor="middle" class="box-bold">Rango fisiológico: −5.0 a +5.0 mV</text>
+  <text x="325" y="861" text-anchor="middle" class="note">10 mV span → resolución 39.2 µV/bit</text>
+  <path d="M325 865 L325 880 L321 875 M325 880 L329 875" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Envolvente -->
+  <rect x="145" y="885" width="360" height="48" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1.5"/>
+  <text x="325" y="903" text-anchor="middle" class="box-bold">Procesamiento canal envolvente (Ch1):</text>
+  <text x="325" y="923" text-anchor="middle" class="box-text">|Rectificación| → RMS ventana 30ms → EMA suavizado</text>
+  
+  <line x1="235" y1="933" x2="160" y2="963" stroke="#333" stroke-width="1.5"/>
+  <line x1="415" y1="933" x2="490" y2="963" stroke="#333" stroke-width="1.5"/>
+  
+  <!-- getDACValue RAW y ENVELOPE -->
+  <rect x="55" y="968" width="210" height="100" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="160" y="986" text-anchor="middle" class="box-bold">DAC Output</text>
+  <text x="160" y="1003" text-anchor="middle" class="box-text">RAW: ±5mV → 0-255</text>
+  <text x="160" y="1020" text-anchor="middle" class="box-code">DAC = 128 + (mV/5)×127</text>
+  <text x="160" y="1040" text-anchor="middle" class="box-text">ENV: 0-2mV → 0-255</text>
+  <text x="160" y="1057" text-anchor="middle" class="box-code">DAC = (env/2)×255</text>
+  
+  <!-- getWaveformValue RAW y ENVELOPE -->
+  <rect x="385" y="968" width="210" height="100" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="490" y="986" text-anchor="middle" class="box-bold">Nextion Waveform (0-255)</text>
+  <text x="490" y="1003" text-anchor="middle" class="box-text">Ch0 (RAW): ±5mV → 0-255</text>
+  <text x="490" y="1020" text-anchor="middle" class="box-code">val = 128 + (mV/5)×127</text>
+  <text x="490" y="1040" text-anchor="middle" class="box-text">Ch1 (ENV): misma escala</text>
+  <text x="490" y="1057" text-anchor="middle" class="note">Timer @ 2 kHz → Display @ 100 Hz (downsample 20:1)</text>
+  
+  <text x="325" y="1095" text-anchor="middle" style="font:9px Arial;fill:#999">BioSimulator Pro v1.0.0 – EMG Fuglevand Motor Unit Model</text>
+</svg>

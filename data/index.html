@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioSimulator Pro - Signal Plotter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo"><span class="logo-icon">📈</span><span class="logo-text">BioSimulator Pro</span></div>
+            <div class="conn-status"><span id="dot" class="dot"></span><span id="connText">Conectando...</span></div>
+        </header>
+        <main class="main">
+            <aside class="panel-left">
+                <div class="panel-section"><h3>📊 Señal Activa</h3>
+                    <div class="info-row"><span class="label">Tipo:</span><span id="sigType" class="value hl">--</span></div>
+                    <div class="info-row"><span class="label">Condición:</span><span id="sigCond" class="value">--</span></div>
+                    <div class="info-row"><span class="label">Estado:</span><span id="sigState" class="badge">IDLE</span></div>
+                </div>
+                <div class="panel-section"><h3>🔍 Visualización</h3>
+                    <div class="ctrl-row"><label for="zoomSlider">Zoom vertical:</label><input type="range" id="zoomSlider" min="25" max="400" value="100"><span id="zoomVal">100%</span></div>
+                    <div class="ctrl-row"><label for="hzoomSlider">Zoom horizontal:</label><input type="range" id="hzoomSlider" min="25" max="400" value="100"><span id="hzoomVal">100%</span></div>
+                </div>
+                <div class="panel-section"><h3>🎮 Controles</h3>
+                    <div class="btn-grid">
+                        <button id="btnStart" class="btn btn-start">▶ Iniciar</button>
+                        <button id="btnStop" class="btn btn-stop" disabled>⏹ Detener</button>
+                        <button id="btnReset" class="btn">🔄 Limpiar</button>
+                        <button id="btnCapture" class="btn">📷 Captura</button>
+                        <button id="btnSave" class="btn">💾 Guardar CSV</button>
+                    </div>
+                </div>
+            </aside>
+            <section class="plotter">
+                <div class="plotter-header">
+                    <span id="plotTitle">Esperando señal...</span>
+                    <span id="plotScale">-- mV/div | -- ms/div</span>
+                </div>
+                <div class="plotter-body">
+                    <div class="y-axis"><span id="yMax">+2.0</span><span id="yMid">0</span><span id="yMin">-1.0</span></div>
+                    <canvas id="plotCanvas"></canvas>
+                </div>
+                <div class="x-axis"><span>0s</span><span id="xMid">1.75s</span><span id="xMax">3.5s</span></div>
+                <div class="legend">
+                    <span class="leg-item"><i class="leg-c ch1"></i><span id="leg1">Señal</span></span>
+                    <span class="leg-item" id="leg2wrap" style="display:none"><i class="leg-c ch2"></i><span id="leg2">Envolvente</span></span>
+                </div>
+            </section>
+            <aside class="panel-right">
+                <div id="metricsECG" class="panel-section metrics-panel" style="display:none">
+                    <h3>❤️ Métricas ECG</h3>
+                    <div class="metric-grid">
+                        <div class="metric"><span class="m-label">HR</span><span class="m-val" id="ecgHR">--</span><span class="m-unit">bpm</span></div>
+                        <div class="metric"><span class="m-label">RR</span><span class="m-val" id="ecgRR">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">PR</span><span class="m-val" id="ecgPR">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">QRS</span><span class="m-val" id="ecgQRS">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">QTc</span><span class="m-val" id="ecgQTc">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">ST</span><span class="m-val" id="ecgST">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">P</span><span class="m-val" id="ecgP">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">R</span><span class="m-val" id="ecgR">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">T</span><span class="m-val" id="ecgT">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">HRV</span><span class="m-val" id="ecgHRV">--</span><span class="m-unit">σ</span></div>
+                    </div>
+                </div>
+                <div id="metricsEMG" class="panel-section metrics-panel" style="display:none">
+                    <h3>💪 Métricas EMG</h3>
+                    <div class="metric-grid">
+                        <div class="metric"><span class="m-label">RMS</span><span class="m-val" id="emgRMS">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">Excit</span><span class="m-val" id="emgEXC">--</span><span class="m-unit">%</span></div>
+                        <div class="metric"><span class="m-label">MUs</span><span class="m-val" id="emgMU">--</span><span class="m-unit">act</span></div>
+                        <div class="metric"><span class="m-label">MDF</span><span class="m-val" id="emgMDF">--</span><span class="m-unit">Hz</span></div>
+                        <div class="metric"><span class="m-label">MVC</span><span class="m-val" id="emgMVC">--</span><span class="m-unit">%</span></div>
+                        <div class="metric"><span class="m-label">RAW</span><span class="m-val" id="emgRAW">--</span><span class="m-unit">mV</span></div>
+                    </div>
+                </div>
+                <div id="metricsPPG" class="panel-section metrics-panel" style="display:none">
+                    <h3>🫀 Métricas PPG</h3>
+                    <div class="metric-grid">
+                        <div class="metric"><span class="m-label">HR</span><span class="m-val" id="ppgHR">--</span><span class="m-unit">bpm</span></div>
+                        <div class="metric"><span class="m-label">RR</span><span class="m-val" id="ppgRR">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">PI</span><span class="m-val" id="ppgPI">--</span><span class="m-unit">%</span></div>
+                        <div class="metric"><span class="m-label">AC</span><span class="m-val" id="ppgAC">--</span><span class="m-unit">mV</span></div>
+                        <div class="metric"><span class="m-label">Sys</span><span class="m-val" id="ppgSys">--</span><span class="m-unit">ms</span></div>
+                        <div class="metric"><span class="m-label">Dia</span><span class="m-val" id="ppgDia">--</span><span class="m-unit">ms</span></div>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>📊 Estadísticas</h3>
+                    <div class="info-row"><span class="label">Puntos:</span><span id="statPts" class="value">0</span></div>
+                    <div class="info-row"><span class="label">Tasa:</span><span id="statRate" class="value">0 pts/s</span></div>
+                    <div class="info-row"><span class="label">Tiempo:</span><span id="statTime" class="value">0.0s</span></div>
+                    <div class="info-row"><span class="label">ESP32:</span><span id="statProg" class="value">--</span></div>
+                </div>
+            </aside>
+        </main>
+        <footer class="footer">
+            <span>BioSimulator Pro v1.0</span><span>•</span><span id="footerScale">Escala: --</span><span>•</span><span>ESP32 @ 192.168.4.1</span>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

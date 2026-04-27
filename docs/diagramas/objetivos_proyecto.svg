@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- Sombras elegantes -->
+    <filter id="cardShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.12"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Fondo blanco limpio -->
+  <rect width="1920" height="1080" fill="#FFFFFF"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- OBJETIVO GENERAL - Tarjeta principal centrada arriba -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="objetivoGeneral" transform="translate(160, 60)">
+    <!-- Tarjeta -->
+    <rect width="1600" height="280" rx="24" fill="#FFFFFF" filter="url(#cardShadow)" stroke="#E0E0E0" stroke-width="1"/>
+    
+    <!-- Borde izquierdo decorativo azul -->
+    <rect x="0" y="0" width="12" height="280" rx="24" fill="#0D47A1"/>
+    
+    <!-- Icono grande de diana/objetivo -->
+    <g transform="translate(120, 140)">
+      <!-- Círculos concéntricos -->
+      <circle cx="0" cy="0" r="80" fill="#E3F2FD" opacity="0.5"/>
+      <circle cx="0" cy="0" r="65" fill="none" stroke="#1565C0" stroke-width="6"/>
+      <circle cx="0" cy="0" r="45" fill="none" stroke="#1976D2" stroke-width="5"/>
+      <circle cx="0" cy="0" r="25" fill="none" stroke="#1E88E5" stroke-width="4"/>
+      <circle cx="0" cy="0" r="10" fill="#0D47A1"/>
+      <!-- Flecha en el centro -->
+      <path d="M 60 -60 L 8 -8 M 8 -8 L 8 -25 M 8 -8 L 25 -8" stroke="#0D47A1" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+    
+    <!-- Título -->
+    <text x="260" y="80" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="50" font-weight="700" fill="#0D47A1">
+      OBJETIVO GENERAL
+    </text>
+    
+    <!-- Texto del objetivo -->
+    <text x="260" y="145" font-family="Arial, sans-serif" font-size="26" font-weight="400" fill="#212121">
+      <tspan x="260" dy="0">Implementar un simulador de señales fisiológicas basado en modelos computacionales,</tspan>
+      <tspan x="260" dy="40">mediante la programación de un microcontrolador que reproduzca formas de onda en</tspan>
+      <tspan x="260" dy="40">pantalla y emita salidas analógicas acondicionadas para uso didáctico.</tspan>
+    </text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- OBJETIVOS ESPECÍFICOS - 3 tarjetas en fila -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <!-- Título de sección -->
+  <text x="960" y="400" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="44" font-weight="700" fill="#0D47A1" text-anchor="middle">
+    OBJETIVOS ESPECÍFICOS
+  </text>
+  
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <!-- OBJETIVO 1: Sistema de Generación -->
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <g id="objetivo1" transform="translate(80, 450)">
+    <!-- Tarjeta -->
+    <rect width="560" height="560" rx="20" fill="#FFFFFF" filter="url(#cardShadow)" stroke="#E0E0E0" stroke-width="1"/>
+    
+    <!-- Badge número -->
+    <circle cx="60" cy="60" r="40" fill="#C62828"/>
+    <text x="60" y="75" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="40" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+    
+    <!-- Icono ECG grande -->
+    <g transform="translate(280, 180)">
+      <circle cx="0" cy="0" r="90" fill="#FFEBEE" opacity="0.6"/>
+      <!-- Onda ECG realista -->
+      <path d="M -80 10 L -55 10 L -45 -10 L -35 30 L -20 -60 L -5 70 L 10 -40 L 25 10 L 40 25 L 55 -5 L 80 10" 
+            stroke="#C62828" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Línea base punteada -->
+      <line x1="-90" y1="10" x2="90" y2="10" stroke="#EF5350" stroke-width="2" stroke-dasharray="5,5" opacity="0.4"/>
+    </g>
+    
+    <!-- Título -->
+    <text x="280" y="320" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#C62828" text-anchor="middle">
+      Sistema de Generación
+    </text>
+    <text x="280" y="360" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#C62828" text-anchor="middle">
+      de Señales
+    </text>
+    
+    <!-- Texto objetivo -->
+    <text x="280" y="420" font-family="Arial, sans-serif" font-size="22" font-weight="400" fill="#212121" text-anchor="middle">
+      <tspan x="280" dy="0">Diseñar el sistema de generación</tspan>
+      <tspan x="280" dy="32">de señales ECG, EMG y PPG</tspan>
+      <tspan x="280" dy="32">mediante modelos matemáticos</tspan>
+      <tspan x="280" dy="32">ajustados, con interfaz de usuario</tspan>
+      <tspan x="280" dy="32">para ajuste de parámetros.</tspan>
+    </text>
+  </g>
+  
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <!-- OBJETIVO 2: Construcción del Prototipo -->
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <g id="objetivo2" transform="translate(680, 450)">
+    <!-- Tarjeta -->
+    <rect width="560" height="560" rx="20" fill="#FFFFFF" filter="url(#cardShadow)" stroke="#E0E0E0" stroke-width="1"/>
+    
+    <!-- Badge número -->
+    <circle cx="60" cy="60" r="40" fill="#2E7D32"/>
+    <text x="60" y="75" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="40" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+    
+    <!-- Icono Prototipo/Hardware -->
+    <g transform="translate(280, 180)">
+      <circle cx="0" cy="0" r="90" fill="#E8F5E9" opacity="0.6"/>
+      <!-- Carcasa 3D estilizada -->
+      <rect x="-55" y="-45" width="110" height="90" rx="10" fill="none" stroke="#2E7D32" stroke-width="5"/>
+      <!-- Pantalla interna -->
+      <rect x="-40" y="-30" width="50" height="40" rx="4" fill="#C8E6C9" stroke="#43A047" stroke-width="2"/>
+      <!-- Componentes -->
+      <circle cx="30" cy="-15" r="12" fill="none" stroke="#66BB6A" stroke-width="3"/>
+      <rect x="20" y="5" width="25" height="20" rx="3" fill="none" stroke="#66BB6A" stroke-width="3"/>
+      <!-- Líneas de ventilación -->
+      <line x1="-45" y1="55" x2="-20" y2="55" stroke="#81C784" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-10" y1="55" x2="15" y2="55" stroke="#81C784" stroke-width="3" stroke-linecap="round"/>
+      <line x1="25" y1="55" x2="50" y2="55" stroke="#81C784" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <!-- Título -->
+    <text x="280" y="320" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#2E7D32" text-anchor="middle">
+      Construcción de
+    </text>
+    <text x="280" y="360" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#2E7D32" text-anchor="middle">
+      Prototipo Funcional
+    </text>
+    
+    <!-- Texto objetivo -->
+    <text x="280" y="420" font-family="Arial, sans-serif" font-size="22" font-weight="400" fill="#212121" text-anchor="middle">
+      <tspan x="280" dy="0">Construir un prototipo funcional</tspan>
+      <tspan x="280" dy="32">mediante manufactura aditiva,</tspan>
+      <tspan x="280" dy="32">que integre componentes de</tspan>
+      <tspan x="280" dy="32">conversión, acondicionamiento</tspan>
+      <tspan x="280" dy="32">y visualización para laboratorio.</tspan>
+    </text>
+  </g>
+  
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <!-- OBJETIVO 3: Desarrollo de Aplicación -->
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <g id="objetivo3" transform="translate(1280, 450)">
+    <!-- Tarjeta -->
+    <rect width="560" height="560" rx="20" fill="#FFFFFF" filter="url(#cardShadow)" stroke="#E0E0E0" stroke-width="1"/>
+    
+    <!-- Badge número -->
+    <circle cx="60" cy="60" r="40" fill="#6A1B9A"/>
+    <text x="60" y="75" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="40" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+    
+    <!-- Icono App/Monitor -->
+    <g transform="translate(280, 180)">
+      <circle cx="0" cy="0" r="90" fill="#F3E5F5" opacity="0.6"/>
+      <!-- Monitor -->
+      <rect x="-60" y="-50" width="120" height="80" rx="8" fill="none" stroke="#6A1B9A" stroke-width="5"/>
+      <!-- Pantalla -->
+      <rect x="-50" y="-40" width="100" height="60" rx="4" fill="#EDE7F6"/>
+      <!-- Gráfica en pantalla -->
+      <path d="M -35 0 Q -20 -20, -5 0 T 25 0 Q 35 10, 40 -10" 
+            stroke="#9C27B0" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- Puntos de datos -->
+      <circle cx="-35" cy="0" r="4" fill="#7B1FA2"/>
+      <circle cx="40" cy="-10" r="4" fill="#7B1FA2"/>
+      <!-- Base del monitor -->
+      <rect x="-20" y="35" width="40" height="10" rx="3" fill="#6A1B9A"/>
+      <rect x="-30" y="45" width="60" height="6" rx="3" fill="#8E24AA"/>
+    </g>
+    
+    <!-- Título -->
+    <text x="280" y="320" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#6A1B9A" text-anchor="middle">
+      Desarrollo de
+    </text>
+    <text x="280" y="360" font-family="'Comic Neue', 'Comic Sans MS', cursive" font-size="32" font-weight="700" fill="#6A1B9A" text-anchor="middle">
+      Aplicación Gráfica
+    </text>
+    
+    <!-- Texto objetivo -->
+    <text x="280" y="420" font-family="Arial, sans-serif" font-size="22" font-weight="400" fill="#212121" text-anchor="middle">
+      <tspan x="280" dy="0">Desarrollar una aplicación con</tspan>
+      <tspan x="280" dy="32">interfaz gráfica que permita el</tspan>
+      <tspan x="280" dy="32">control de la simulación y la</tspan>
+      <tspan x="280" dy="32">visualización de señales en</tspan>
+      <tspan x="280" dy="32">tiempo real con exportación.</tspan>
+    </text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g id="footer">
+    <text x="80" y="1050" font-family="Arial, sans-serif" font-size="20" font-weight="600" fill="#424242">
+      Grupo #22: Scarlet Sánchez • Rafael Mata
+    </text>
+    
+    <text x="1840" y="1050" font-family="Arial, sans-serif" font-size="20" font-weight="400" fill="#757575" text-anchor="end">
+      ESPOL - Ingeniería Mecatrónica • 2026
+    </text>
+  </g>
+</svg>
