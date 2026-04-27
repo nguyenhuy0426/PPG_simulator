@@ -1,7 +1,4 @@
-Here is the English version of the `README.md` file, fully aligned with your PPG‑only simulator (ESP32‑S3, 1.8″ TFT ST7735, dual MCP4725 DACs, 3 buttons, 6 clinical conditions, full respiratory modulations: BW, AM, FM, and auto‑scaling on display).
-
-```markdown
-# 🫀 PPG Signal Simulator
+# PPG Signal Simulator
 
 **Portable photoplethysmography (PPG) signal generator for clinical training and biomedical equipment validation**
 
