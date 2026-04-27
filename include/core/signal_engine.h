@@ -1,132 +1,121 @@
 /**
  * @file signal_engine.h
- * @brief Motor de generación de señales en tiempo real
- * @version 1.0.0
- * @date 18 Diciembre 2025
- * 
- * Gestiona la generación de señales con buffer circular y timer ISR.
+ * @brief PPG signal generation engine with real-time output
+ * @version 2.0.0
+ * @date 25 April 2026
+ *
+ * Architecture:
+ * - PPG model generates samples at 100 Hz on Core 1
+ * - Linear interpolation upsamples to 1 kHz for DAC output
+ * - Ring buffer connects generation task to DAC output loop
+ * - MCP4725 DAC writes 12-bit values via I2C
  */
 
 #ifndef SIGNAL_ENGINE_H
 #define SIGNAL_ENGINE_H
 
 #include <Arduino.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/semphr.h>
 #include "config.h"
 #include "data/signal_types.h"
-#include "models/ecg_model.h"
-#include "models/emg_model.h"
 #include "models/ppg_model.h"
+#include "hw/dac_manager.h"
 
-// ============================================================================
-// ESTADÍSTICAS DE PERFORMANCE
-// ============================================================================
-struct PerformanceStats {
-    uint32_t isrCount;
-    uint32_t isrMaxTime;
-    uint32_t bufferUnderruns;
-    uint16_t bufferLevel;
-    uint32_t freeHeap;
-};
-
-// ============================================================================
-// BUFFER PARA WEBSOCKET (muestras sincronizadas a 100 Hz)
-// ============================================================================
-#define WS_SAMPLE_BUFFER_SIZE 128  // Buffer circular para WebSocket (128 muestras = ~640ms @ 200Hz ECG)
-
-struct WSSampleData {
-    float value;      // Valor en mV
-    float envelope;   // Envelope (solo EMG)
-    uint32_t timestamp;
-    bool valid;
-};
-
-// ============================================================================
-// CLASE SignalEngine (Singleton)
-// ============================================================================
 class SignalEngine {
-public:
-    // Enum para selección de salida DAC EMG (debe estar antes de usarse)
-    enum class EMGDACOutput : uint8_t {
-        RAW = 0,      // Señal cruda (por defecto)
-        ENVELOPE = 1  // Señal envolvente
-    };
-
 private:
+    // Singleton
     static SignalEngine* instance;
-    SignalEngine();
-    
-    // Modelos de señales
-    ECGModel ecgModel;
-    EMGModel emgModel;
+
+    // Signal state
+    SignalInfo currentSignal;
+
+    // PPG model
     PPGModel ppgModel;
-    
-    // Estado actual
-    SignalData currentSignal;
-    
-    // Configuración salida DAC EMG (RAW por defecto)
-    EMGDACOutput emgDacOutput;
-    
-    // FreeRTOS handles
-    TaskHandle_t generationTaskHandle;
+
+    // FreeRTOS
     SemaphoreHandle_t signalMutex;
-    
-    // Timer de hardware
-    hw_timer_t* signalTimer;
-    
-    // Métodos privados
-    void setupTimer();
-    void stopTimer();
-    void prefillBuffer();
-    uint8_t generateSample();
-    
-    // Tareas FreeRTOS
+    TaskHandle_t generationTaskHandle;
+
+    // Private methods
     static void generationTask(void* parameter);
-    static void IRAM_ATTR timerISR();
-    
+    void prefillBuffer();
+    void generateBothSamples();
+
+    // Constructor (private — singleton)
+    SignalEngine();
+
 public:
     static SignalEngine* getInstance();
-    
-    // Inicialización
+
+    /**
+     * @brief Initialize the signal engine (creates generation task on Core 1)
+     * @return true if successful
+     */
     bool begin();
-    
-    // Control de señales
-    bool startSignal(SignalType type, uint8_t condition);
-    bool stopSignal();
-    bool pauseSignal();
-    bool resumeSignal();
-    
-    // Actualizar parámetros (Tipo A - inmediatos)
+
+    /**
+     * @brief Start PPG simulation with given condition
+     * @param condition PPG condition index (0–5)
+     * @return true if started successfully
+     */
+    bool startSimulation(uint8_t condition);
+
+    /**
+     * @brief Stop the current simulation
+     */
+    bool stopSimulation();
+
+    /**
+     * @brief Pause the current simulation
+     */
+    bool pauseSimulation();
+
+    /**
+     * @brief Resume a paused simulation
+     */
+    bool resumeSimulation();
+
+    // =========================================================================
+    // PARAMETER UPDATES
+    // =========================================================================
+
+    /** @brief Update noise level (Type A: immediate) */
     void updateNoiseLevel(float noise);
-    void updateAmplitude(float amplitude);
-    
-    // Actualizar parámetros (Tipo B - diferidos)
-    void setECGParameters(const ECGParameters& params);
-    void setEMGParameters(const EMGParameters& params);
+
+    /** @brief Update heart rate */
+    void updateHeartRate(float hr);
+
+    /** @brief Update perfusion index */
+    void updatePerfusionIndex(float pi);
+
+    /** @brief Update SpO2 */
+    void updateSpO2(float spo2);
+
+    /** @brief Update respiratory rate */
+    void updateRespRate(float rr);
+
+    /** @brief Set pending PPG parameters (Type B: deferred to next beat) */
     void setPPGParameters(const PPGParameters& params);
-    
-    // Configuración de salida DAC para EMG
-    void setEMGDACOutput(EMGDACOutput output);
-    EMGDACOutput getEMGDACOutput() const { return emgDacOutput; }
-    
-    // Getters
+
+    /** @brief Change condition (restarts signal) */
+    void changeCondition(uint8_t condition);
+
+    // =========================================================================
+    // GETTERS
+    // =========================================================================
+
     SignalState getState() const { return currentSignal.state; }
-    SignalType getCurrentType() const { return currentSignal.type; }
-    uint8_t getLastDACValue() const;
-    SignalData getSignalData() const { return currentSignal; }
-    PerformanceStats getStats() const;
-    bool getDisplaySample(uint32_t sampleIndex, float& outValue) const;
-    
-    // Acceso a modelos para métricas
-    ECGModel& getECGModel() { return ecgModel; }
-    EMGModel& getEMGModel() { return emgModel; }
+    SignalType getType() const { return currentSignal.type; }
+    const PPGParameters& getPPGParams() const { return currentSignal.ppg; }
     PPGModel& getPPGModel() { return ppgModel; }
-    
-    // Buffer WebSocket sincronizado (100 Hz)
-    bool getNextWSSample(WSSampleData& outSample);
-    uint8_t getWSBufferCount() const;
+
+    /** @brief Get last DAC value written */
+    uint16_t getLastDACValue() const;
+
+    /** @brief Get current AC value in mV (for TFT display) */
+    float getCurrentACValue() const;
+
+    /** @brief Get performance statistics */
+    PerformanceStats getStats() const;
 };
 
 #endif // SIGNAL_ENGINE_H
