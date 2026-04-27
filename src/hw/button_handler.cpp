@@ -16,16 +16,12 @@ ButtonHandler buttons;
 // STATIC MEMBER INITIALIZATION
 // ============================================================================
 volatile bool ButtonHandler::_modePressed = false;
-volatile bool ButtonHandler::_upPressed = false;
-volatile bool ButtonHandler::_downPressed = false;
 volatile uint32_t ButtonHandler::_lastModeTime = 0;
-volatile uint32_t ButtonHandler::_lastUpTime = 0;
-volatile uint32_t ButtonHandler::_lastDownTime = 0;
 
 // ============================================================================
 // CONSTRUCTOR
 // ============================================================================
-ButtonHandler::ButtonHandler() {}
+ButtonHandler::ButtonHandler() : _potSmoothedValue(0.0f) {}
 
 // ============================================================================
 // INITIALIZATION
@@ -33,17 +29,19 @@ ButtonHandler::ButtonHandler() {}
 bool ButtonHandler::begin() {
   // Configure pins as input with internal pull-up (active LOW)
   pinMode(BTN_MODE_PIN, INPUT_PULLUP);
-  pinMode(BTN_UP_PIN, INPUT_PULLUP);
-  pinMode(BTN_DOWN_PIN, INPUT_PULLUP);
+  
+  // Configure ADC for potentiometer
+  // ESP32-S3 default ADC resolution is 12 bits (0-4095)
+  analogReadResolution(12);
+  
+  // Initialize smoothed value
+  _potSmoothedValue = analogRead(POT_PIN);
 
   // Attach falling-edge interrupts (button press = HIGH → LOW)
   attachInterrupt(digitalPinToInterrupt(BTN_MODE_PIN), isrMode, FALLING);
-  attachInterrupt(digitalPinToInterrupt(BTN_UP_PIN), isrUp, FALLING);
-  attachInterrupt(digitalPinToInterrupt(BTN_DOWN_PIN), isrDown, FALLING);
 
   Serial.println("[Buttons] Initialized: Mode=GPIO" + String(BTN_MODE_PIN) +
-                 " Up=GPIO" + String(BTN_UP_PIN) + " Down=GPIO" +
-                 String(BTN_DOWN_PIN));
+                 " POT=GPIO" + String(POT_PIN));
   return true;
 }
 
@@ -58,22 +56,6 @@ void IRAM_ATTR ButtonHandler::isrMode() {
   }
 }
 
-void IRAM_ATTR ButtonHandler::isrUp() {
-  uint32_t now = millis();
-  if (now - _lastUpTime > BTN_DEBOUNCE_MS) {
-    _upPressed = true;
-    _lastUpTime = now;
-  }
-}
-
-void IRAM_ATTR ButtonHandler::isrDown() {
-  uint32_t now = millis();
-  if (now - _lastDownTime > BTN_DEBOUNCE_MS) {
-    _downPressed = true;
-    _lastDownTime = now;
-  }
-}
-
 // ============================================================================
 // POLLING METHODS (consume event flags)
 // ============================================================================
@@ -85,18 +67,9 @@ bool ButtonHandler::wasModePressed() {
   return false;
 }
 
-bool ButtonHandler::wasUpPressed() {
-  if (_upPressed) {
-    _upPressed = false;
-    return true;
-  }
-  return false;
-}
-
-bool ButtonHandler::wasDownPressed() {
-  if (_downPressed) {
-    _downPressed = false;
-    return true;
-  }
-  return false;
+uint16_t ButtonHandler::getPotValue() {
+    uint16_t raw = analogRead(POT_PIN);
+    // Exponential Moving Average filter (alpha = 0.2)
+    _potSmoothedValue = 0.8f * _potSmoothedValue + 0.2f * (float)raw;
+    return (uint16_t)_potSmoothedValue;
 }

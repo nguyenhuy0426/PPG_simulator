@@ -7,7 +7,7 @@
 
 ## 1. Project Overview
 
-**PPG Signal Simulator** is an ESP32-S3 firmware that generates realistic photoplethysmography (PPG) signals. It synthesizes analog PPG waveforms with physiologically accurate morphology across 6 clinical conditions and outputs them via a 12-bit DAC for connection to external monitoring equipment.
+**PPG Signal Simulator** is an ESP32-S3 firmware that generates realistic photoplethysmography (PPG) signals. It synthesizes analog PPG waveforms with physiologically accurate morphology across 6 clinical conditions and outputs them via dual 12-bit DACs for connection to external monitoring equipment.
 
 ### Key Specifications
 
@@ -16,7 +16,7 @@
 | MCU | ESP32-S3-DevKitC-1 (Dual-core, 240 MHz) |
 | Display | 1.8" TFT ST7735 (160×128, SPI) |
 | DAC Output | Dual MCP4725 (12-bit, I2C, 0–3.3V) |
-| Controls | 3 push buttons (Mode, Up, Down) |
+| Controls | 1 MODE button + 1 potentiometer (5 kΩ) |
 | Signal | PPG (Dual-channel Red/IR, 6 conditions) |
 | Model Rate | 100 Hz |
 | DAC Rate | 1 kHz |
@@ -44,10 +44,11 @@ MCP4725 DACs (I2C):
   Address: 0x60 (IR Channel)
   Address: 0x61 (Red Channel)
 
-Push Buttons (Active LOW, internal pull-up):
-  GPIO14 → BTN_MODE  (cycle edit modes)
-  GPIO15 → BTN_UP    (increment/next)
-  GPIO16 → BTN_DOWN  (decrement/prev)
+Push Button (Active LOW, internal pull-up):
+  GPIO7  → BTN_MODE  (cycle edit modes)
+
+Potentiometer (5 kΩ, analog input):
+  GPIO15 → POT_PIN   (parameter adjustment via 12-bit ADC)
 
 Status LED:
   GPIO2  → Onboard LED
@@ -65,9 +66,8 @@ Status LED:
     Dual MCP4725 ◄─┤ I2C (SDA=8,    │──► Dual Analog Out (Red/IR)
     (12-bit)       │      SCL=9)    │    0–3.3V PPG Signals
                    │                 │
-    BTN_MODE ──────┤ GPIO14         │
-    BTN_UP ────────┤ GPIO15         │
-    BTN_DOWN ──────┤ GPIO16         │
+    BTN_MODE ──────┤ GPIO7          │
+    POT (5 kΩ) ────┤ GPIO15 (ADC)   │
                    │                 │
                    │ GPIO2 → LED     │
                    └─────────────────┘
@@ -83,10 +83,12 @@ Status LED:
 Core 0 (UI + Control)              Core 1 (Real-time Generation)
 ═══════════════════                ═══════════════════════════
 loop() @ ~100 Hz                   generationTask() - continuous
-├── handleButtons()                ├── PPGModel.generateSample() @ 100 Hz
-├── updateDisplay()                ├── Linear Interpolation → 1 kHz
-│   ├── TFT waveform @ 50 Hz      ├── Ring Buffer fill
-│   └── Metrics text @ 4 Hz       └── MCP4725 DAC write @ 1 kHz
+├── handleInputs()                 ├── PPGModel.generateBothSamples() @ 100 Hz
+│   ├── MODE button (ISR)          ├── Linear Interpolation → 1 kHz
+│   └── POT analogRead + EMA      ├── Ring Buffer fill
+├── updateDisplay()                └── MCP4725 DAC write @ 1 kHz
+│   ├── TFT waveform @ 50 Hz
+│   └── Metrics text @ 4 Hz
 └── serialHandler.process()
 ```
 
@@ -130,8 +132,8 @@ BioSignalSimulatorPro/
 │   │   └── ppg_model.h             # PPG waveform synthesis model
 │   ├── hw/
 │   │   ├── tft_display.h           # TFT ST7735 display driver
-│   │   ├── mcp4725_dac.h           # MCP4725 DAC wrapper
-│   │   └── button_handler.h        # ISR-based button handler
+│   │   ├── dac_manager.h           # Dual MCP4725 DAC manager
+│   │   └── button_handler.h        # MODE button ISR + POT handler
 │   └── comm/
 │       └── serial_handler.h        # Serial debug interface
 ├── src/
@@ -142,10 +144,10 @@ BioSignalSimulatorPro/
 │   │   ├── param_controller.cpp
 │   │   └── digital_filters.cpp
 │   ├── models/
-│   │   └── ppg_model.cpp           # PPG physiological model (732 lines)
+│   │   └── ppg_model.cpp           # PPG physiological model (700+ lines)
 │   ├── hw/
 │   │   ├── tft_display.cpp
-│   │   ├── mcp4725_dac.cpp
+│   │   ├── dac_manager.cpp
 │   │   └── button_handler.cpp
 │   └── comm/
 │       └── serial_handler.cpp
@@ -161,8 +163,8 @@ BioSignalSimulatorPro/
 The PPG model generates physiologically accurate waveforms using a **3-component Gaussian decomposition**:
 
 1. **Systolic peak** — Primary blood volume pulse (position: 15% of RR cycle)
-2. **Dicrotic notch** — Aortic valve closure artifact (position: 30%)
-3. **Diastolic peak** — Reflected arterial wave (position: 40%)
+2. **Dicrotic notch** — Aortic valve closure artifact (position: 28%)
+3. **Diastolic peak** — Reflected arterial wave (position: 35%)
 
 ```
 PPG Waveform Components:
@@ -185,9 +187,9 @@ PPG Waveform Components:
 - **Systole duration is ~constant** (~300ms), diastole absorbs HR changes
 - **Dual-Channel (SpO2)**: Generates synchronized Red and IR signals. SpO2 determines the physiological R-ratio (`R = (110 - SpO2) / 25`), which controls the relative AC/DC amplitude between channels.
 - **Respiratory Rate (RR)**: Breathing artifacts are dynamically modeled with:
-  - **BW (Baseline Wander)**: Low-frequency (~0.15-0.4Hz) DC oscillation.
+  - **BW (Baseline Wander)**: `4 mV × sin(respPhase)` — subtle DC oscillation.
   - **AM (Amplitude Modulation)**: 25% peak-to-peak modulation of AC amplitude.
-  - **FM (Frequency Modulation)**: Respiratory Sinus Arrhythmia (RSA) varying RR-interval.
+  - **FM (Frequency Modulation)**: Respiratory Sinus Arrhythmia (RSA) varying RR-interval by ±5%.
 - Each condition modifies waveform shape parameters (notch depth, diastolic ratio, etc.)
 - **HR and PI have beat-to-beat variability** via Gaussian random (CV% configurable)
 
@@ -221,7 +223,7 @@ returns Red/IR values                                               (0–4095, 1
 
 ```
 ┌──────────────────────────────────────────┐
-│ HR:75 PI:3.0% O2:98 RR:16               │ ← Header (auto-formatting length)
+│ HR:75 PI:3.0% O2:98 RR:16               │ ← Header (auto-formatting)
 ├──────────────────────────────────────────┤
 │                                          │
 │  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  │ Grid lines
@@ -235,23 +237,27 @@ returns Red/IR values                                               (0–4095, 1
 └──────────────────────────────────────────┘
 ```
 
-### Button Control Flow
+### Control Flow
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    MODE BUTTON                           │
+│                    MODE BUTTON (GPIO7)                    │
 │  ┌──────────┐    ┌──────────┐    ┌─────────┐    ┌─────┐│
-│  │ Condition│───►│  Edit HR │───►│ Edit PI │───►│Noise││
+│  │ Condition│───►│  Edit HR │───►│ Edit PI │───►│SpO2 ││
 │  │  Select  │    │  (BPM)   │    │   (%)   │    │ (%) ││
 │  └────┬─────┘    └──────────┘    └─────────┘    └──┬──┘│
-│       │                                             │    │
-│       └─────────────────────────────────────────────┘    │
+│       │              ┌──────────┐    ┌──────────┐  │    │
+│       │              │  Edit RR │◄───│  Edit    │──┘    │
+│       │              │  (BPM)   │    │  Noise   │       │
+│       │              └────┬─────┘    └──────────┘       │
+│       └───────────────────┘                              │
 │                      (cycles)                            │
 ├──────────────────────────────────────────────────────────┤
-│ UP/DOWN buttons: adjust the selected parameter           │
-│ In Condition mode: cycles through 6 conditions           │
-│ In Edit mode: increments/decrements by step              │
-│   HR: ±5 BPM, PI: ±0.5%, Noise: ±1%                    │
+│ POTENTIOMETER (GPIO15, 5 kΩ):                            │
+│   Continuously maps ADC (0–4095) to the active           │
+│   parameter's full range.                                │
+│   In Condition Select: selects one of 6 conditions       │
+│   In Edit mode: smoothly adjusts the parameter           │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -282,16 +288,20 @@ struct PPGParameters {
     float noiseLevel;           // 0.0–0.10 (0–10%)
     float dicroticNotch;        // Notch depth (0.0–1.0)
     float amplification;        // Waveform gain (0.5–2.0)
+    float spO2;                 // SpO2 % (80–100)
+    float respRate;             // Respiratory rate (0–60 BPM)
 };
 ```
 
 ### UIEditMode
 ```cpp
 enum class UIEditMode {
-    CONDITION_SELECT,   // Up/Down selects PPG condition
-    EDIT_HR,            // Up/Down adjusts heart rate
-    EDIT_PI,            // Up/Down adjusts perfusion index
-    EDIT_NOISE          // Up/Down adjusts noise level
+    CONDITION_SELECT,   // POT selects PPG condition
+    EDIT_HR,            // POT adjusts heart rate
+    EDIT_PI,            // POT adjusts perfusion index
+    EDIT_SPO2,          // POT adjusts SpO2
+    EDIT_RR,            // POT adjusts respiratory rate
+    EDIT_NOISE          // POT adjusts noise level
 };
 ```
 
@@ -330,7 +340,8 @@ pio device monitor
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| `bodmer/TFT_eSPI` | ^2.5.43 | TFT display driver (ST7735) |
+| `adafruit/Adafruit ST7735` | ^1.11.0 | TFT display driver (ST7735) |
+| `adafruit/Adafruit GFX` | ^1.12.6 | Graphics primitives |
 | `adafruit/Adafruit MCP4725` | ^2.0.2 | I2C DAC driver |
 | Arduino Framework | - | Core HAL for ESP32-S3 |
 
@@ -344,9 +355,11 @@ pio device monitor
 
 3. **Sweep-line waveform rendering** — The TFT display uses a sweep approach (like an oscilloscope) rather than scrolling. New data overwrites old data left-to-right, with an erase cursor 2 pixels ahead.
 
-4. **Button debouncing in ISR** — Uses `millis()` comparison within the ISR for 200ms debounce. This avoids the need for a separate debounce task while keeping the main loop clean.
+4. **Potentiometer with EMA filter** — The 5 kΩ potentiometer is read via `analogRead()` on GPIO15 and filtered with an Exponential Moving Average (alpha=0.2) to suppress analog noise and prevent UI flickering. The ADC value (0–4095) is mapped to the active parameter's full range using `mapf()`.
 
-5. **PPG AC-only output** — The DAC outputs only the pulsatile (AC) component of the PPG signal (0–150 mV → 0–3.3V). The DC baseline is not included because it carries no diagnostic information.
+5. **Button debouncing in ISR** — The single MODE button uses `millis()` comparison within the ISR for 200ms debounce. This avoids the need for a separate debounce task while keeping the main loop clean.
+
+6. **Condition mapping uses 0..COUNT range** — To ensure all 6 conditions are accessible, the pot maps to `[0, COUNT)` and clamps at `COUNT-1`, giving each condition an equal ~682-value zone.
 
 ---
 
@@ -363,6 +376,6 @@ pio device monitor
 ### Adding a new adjustable parameter
 1. Add field to `PPGParameters` struct
 2. Add `UIEditMode::EDIT_NEW_PARAM` enum value
-3. Add step constant (`NEW_PARAM_STEP`) in `param_limits.h`
-4. Handle in `handleButtons()` Up/Down cases in `main.cpp`
+3. Add limits to `PPGLimits` struct in `param_limits.h`
+4. Add potentiometer mapping case in `handleInputs()` in `main.cpp`
 5. Add display rendering in `updateDisplay()` in `main.cpp`

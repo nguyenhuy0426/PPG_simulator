@@ -67,7 +67,7 @@ static uint32_t lastWaveformUpdate = 0;
 // FORWARD DECLARATIONS
 // ============================================================================
 void onStateChange(SystemState oldState, SystemState newState);
-void handleButtons();
+void handleInputs();
 void updateDisplay();
 void startSimulationWithCondition(uint8_t condition);
 
@@ -101,7 +101,7 @@ void setup() {
     tftDisplay.begin();
     tftDisplay.updateMetrics(0, 0, 0, 0, "Initializing...");
 
-    // --- Buttons ---
+    // --- Inputs (Mode Button + Potentiometer) ---
     Serial.println("[INIT] Starting button handler...");
     buttons.begin();
 
@@ -140,7 +140,7 @@ void setup() {
 // ============================================================================
 void loop() {
     // --- Handle button presses ---
-    handleButtons();
+    handleInputs();
 
     // --- Update TFT display ---
     updateDisplay();
@@ -153,9 +153,16 @@ void loop() {
 }
 
 // ============================================================================
-// BUTTON HANDLING
+// HELPER FOR FLOAT MAPPING
 // ============================================================================
-void handleButtons() {
+float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+// ============================================================================
+// INPUT HANDLING (Button + Potentiometer)
+// ============================================================================
+void handleInputs() {
     SystemState state = stateMachine.getState();
     UIEditMode editMode = stateMachine.getEditMode();
 
@@ -188,133 +195,72 @@ void handleButtons() {
         }
     }
 
-    // --- UP BUTTON ---
-    if (buttons.wasUpPressed()) {
-        Serial.println("[BTN] Up pressed");
-
-        if (state == SystemState::SELECT_CONDITION) {
-            stateMachine.processEvent(SystemEvent::BTN_UP_PRESS);
-            uint8_t cond = stateMachine.getSelectedCondition();
-            Serial.printf("[BTN] Condition: %d (%s)\n", cond, conditionNames[cond]);
-
-        } else if (state == SystemState::SIMULATING) {
-            switch (editMode) {
-                case UIEditMode::CONDITION_SELECT: {
-                    // Next condition (live change)
-                    uint8_t cond = stateMachine.getSelectedCondition();
-                    cond = (cond + 1) % (uint8_t)PPGCondition::COUNT;
-                    stateMachine.setSelectedCondition(cond);
-                    engine->changeCondition(cond);
-                    tftDisplay.clearWaveform();
-                    Serial.printf("[BTN] Condition → %s\n", conditionNames[cond]);
-                    break;
-                }
-                case UIEditMode::EDIT_HR: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newHR = min(p.heartRate + HR_STEP, lim.heartRate.max);
-                    engine->updateHeartRate(newHR);
-                    Serial.printf("[BTN] HR → %.0f BPM\n", newHR);
-                    break;
-                }
-                case UIEditMode::EDIT_PI: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newPI = min(p.perfusionIndex + PI_STEP, lim.perfusionIndex.max);
-                    engine->updatePerfusionIndex(newPI);
-                    Serial.printf("[BTN] PI → %.1f%%\n", newPI);
-                    break;
-                }
-                case UIEditMode::EDIT_SPO2: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newSpO2 = min(p.spO2 + SPO2_STEP, lim.spO2.max);
-                    engine->updateSpO2(newSpO2);
-                    Serial.printf("[BTN] SpO2 → %.0f%%\n", newSpO2);
-                    break;
-                }
-                case UIEditMode::EDIT_RR: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newRR = min(p.respRate + RR_STEP, lim.respRate.max);
-                    engine->updateRespRate(newRR);
-                    Serial.printf("[BTN] RR → %.0f BPM\n", newRR);
-                    break;
-                }
-                case UIEditMode::EDIT_NOISE: {
-                    PPGParameters p = engine->getPPGParams();
-                    float newNoise = min(p.noiseLevel + NOISE_STEP, 0.10f);
-                    engine->updateNoiseLevel(newNoise);
-                    Serial.printf("[BTN] Noise → %.0f%%\n", newNoise * 100.0f);
-                    break;
-                }
-                default: break;
-            }
+    // --- POTENTIOMETER POLLING ---
+    uint16_t potRaw = buttons.getPotValue();
+    
+    // In SELECT_CONDITION state: map to condition index
+    if (state == SystemState::SELECT_CONDITION) {
+        uint8_t cond = (uint8_t)mapf(potRaw, 0, 4095, 0, (float)(uint8_t)PPGCondition::COUNT);
+        if (cond >= (uint8_t)PPGCondition::COUNT) cond = (uint8_t)PPGCondition::COUNT - 1;
+        if (cond != stateMachine.getSelectedCondition()) {
+            stateMachine.setSelectedCondition(cond);
+            tftDisplay.showConditionSelect(conditionNames[cond], cond);
+            Serial.printf("[POT] Condition: %d (%s)\n", cond, conditionNames[cond]);
         }
-    }
-
-    // --- DOWN BUTTON ---
-    if (buttons.wasDownPressed()) {
-        Serial.println("[BTN] Down pressed");
-
-        if (state == SystemState::SELECT_CONDITION) {
-            stateMachine.processEvent(SystemEvent::BTN_DOWN_PRESS);
-            uint8_t cond = stateMachine.getSelectedCondition();
-            Serial.printf("[BTN] Condition: %d (%s)\n", cond, conditionNames[cond]);
-
-        } else if (state == SystemState::SIMULATING) {
-            switch (editMode) {
-                case UIEditMode::CONDITION_SELECT: {
-                    uint8_t cond = stateMachine.getSelectedCondition();
-                    if (cond == 0) cond = (uint8_t)PPGCondition::COUNT - 1;
-                    else cond--;
+    } 
+    // In SIMULATING state: map to current edit mode parameter
+    else if (state == SystemState::SIMULATING) {
+        PPGParameters p = engine->getPPGParams();
+        PPGLimits lim = getPPGLimits(p.condition);
+        
+        switch (editMode) {
+            case UIEditMode::CONDITION_SELECT: {
+                uint8_t cond = (uint8_t)mapf(potRaw, 0, 4095, 0, (float)(uint8_t)PPGCondition::COUNT);
+                if (cond >= (uint8_t)PPGCondition::COUNT) cond = (uint8_t)PPGCondition::COUNT - 1;
+                if (cond != stateMachine.getSelectedCondition()) {
                     stateMachine.setSelectedCondition(cond);
                     engine->changeCondition(cond);
                     tftDisplay.clearWaveform();
-                    Serial.printf("[BTN] Condition → %s\n", conditionNames[cond]);
-                    break;
+                    Serial.printf("[POT] Condition → %s\n", conditionNames[cond]);
                 }
-                case UIEditMode::EDIT_HR: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newHR = max(p.heartRate - HR_STEP, lim.heartRate.min);
-                    engine->updateHeartRate(newHR);
-                    Serial.printf("[BTN] HR → %.0f BPM\n", newHR);
-                    break;
-                }
-                case UIEditMode::EDIT_PI: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newPI = max(p.perfusionIndex - PI_STEP, lim.perfusionIndex.min);
-                    engine->updatePerfusionIndex(newPI);
-                    Serial.printf("[BTN] PI → %.1f%%\n", newPI);
-                    break;
-                }
-                case UIEditMode::EDIT_SPO2: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newSpO2 = max(p.spO2 - SPO2_STEP, lim.spO2.min);
-                    engine->updateSpO2(newSpO2);
-                    Serial.printf("[BTN] SpO2 → %.0f%%\n", newSpO2);
-                    break;
-                }
-                case UIEditMode::EDIT_RR: {
-                    PPGParameters p = engine->getPPGParams();
-                    PPGLimits lim = getPPGLimits(p.condition);
-                    float newRR = max(p.respRate - RR_STEP, lim.respRate.min);
-                    engine->updateRespRate(newRR);
-                    Serial.printf("[BTN] RR → %.0f BPM\n", newRR);
-                    break;
-                }
-                case UIEditMode::EDIT_NOISE: {
-                    PPGParameters p = engine->getPPGParams();
-                    float newNoise = max(p.noiseLevel - NOISE_STEP, 0.0f);
-                    engine->updateNoiseLevel(newNoise);
-                    Serial.printf("[BTN] Noise → %.0f%%\n", newNoise * 100.0f);
-                    break;
-                }
-                default: break;
+                break;
             }
+            case UIEditMode::EDIT_HR: {
+                float newHR = round(mapf(potRaw, 0, 4095, lim.heartRate.min, lim.heartRate.max));
+                if (abs(newHR - p.heartRate) > 0.5f) {
+                    engine->updateHeartRate(newHR);
+                }
+                break;
+            }
+            case UIEditMode::EDIT_PI: {
+                float newPI = round(mapf(potRaw, 0, 4095, lim.perfusionIndex.min, lim.perfusionIndex.max) * 10.0f) / 10.0f;
+                if (abs(newPI - p.perfusionIndex) > 0.05f) {
+                    engine->updatePerfusionIndex(newPI);
+                }
+                break;
+            }
+            case UIEditMode::EDIT_SPO2: {
+                float newSpO2 = round(mapf(potRaw, 0, 4095, lim.spO2.min, lim.spO2.max));
+                if (abs(newSpO2 - p.spO2) > 0.5f) {
+                    engine->updateSpO2(newSpO2);
+                }
+                break;
+            }
+            case UIEditMode::EDIT_RR: {
+                float newRR = round(mapf(potRaw, 0, 4095, lim.respRate.min, lim.respRate.max));
+                if (abs(newRR - p.respRate) > 0.5f) {
+                    engine->updateRespRate(newRR);
+                }
+                break;
+            }
+            case UIEditMode::EDIT_NOISE: {
+                float newNoise = round(mapf(potRaw, 0, 4095, 0.0f, 0.10f) * 100.0f) / 100.0f;
+                if (abs(newNoise - p.noiseLevel) > 0.005f) {
+                    engine->updateNoiseLevel(newNoise);
+                }
+                break;
+            }
+            default: break;
         }
     }
 }

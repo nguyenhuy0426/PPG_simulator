@@ -31,32 +31,23 @@ public:
     bool wasModePressed();
 
     /**
-     * @brief Check if Up button was pressed (consumes the event)
-     * @return true if pressed since last check
+     * @brief Get the smoothed analog value from the potentiometer
+     * @return 12-bit ADC value (0-4095)
      */
-    bool wasUpPressed();
-
-    /**
-     * @brief Check if Down button was pressed (consumes the event)
-     * @return true if pressed since last check
-     */
-    bool wasDownPressed();
+    uint16_t getPotValue();
 
 private:
-    // ISR handlers (must be static for attachInterrupt)
+    // ISR handler (must be static for attachInterrupt)
     static void IRAM_ATTR isrMode();
-    static void IRAM_ATTR isrUp();
-    static void IRAM_ATTR isrDown();
 
-    // Volatile flags set by ISRs, consumed by main loop
+    // Volatile flag set by ISR, consumed by main loop
     static volatile bool _modePressed;
-    static volatile bool _upPressed;
-    static volatile bool _downPressed;
 
-    // Debounce timestamps
+    // Debounce timestamp
     static volatile uint32_t _lastModeTime;
-    static volatile uint32_t _lastUpTime;
-    static volatile uint32_t _lastDownTime;
+    
+    // Potentiometer smoothing filter
+    float _potSmoothedValue;
 };
 
 // Global instance

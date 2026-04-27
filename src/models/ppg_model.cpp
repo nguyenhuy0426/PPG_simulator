@@ -570,7 +570,7 @@ void PPGModel::generateBothSamples(float deltaTime, float &outIR, float &outRed)
     // RIIV (baseline wander)
     baselineWander = fmodf(baselineWander + deltaTime * 0.3f, 2.0f * PI);
     float wanderAmplitude = (dcBaseline > 0) ? 0.002f * dcBaseline : 2.0f;
-    float wander = wanderAmplitude * sinf(baselineWander) + 15.0f * sinf(respPhase); // added resp wander
+    float wander = wanderAmplitude * sinf(baselineWander) + 4.0f * sinf(respPhase); // reduced resp wander
     
     // RIAV (amplitude modulation)
     float amFactor = 1.0f + 0.25f * sinf(respPhase); // 25% modulation
