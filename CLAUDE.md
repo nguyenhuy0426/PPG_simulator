@@ -15,11 +15,11 @@
 |---------|-------|
 | MCU | ESP32-S3-DevKitC-1 (Dual-core, 240 MHz) |
 | Display | 1.8" TFT ST7735 (160×128, SPI) |
-| DAC Output | MCP4725 (12-bit, I2C, 0–3.3V) |
+| DAC Output | Dual MCP4725 (12-bit, I2C, 0–3.3V) |
 | Controls | 3 push buttons (Mode, Up, Down) |
-| Signal | PPG only (6 clinical conditions) |
-| Model Rate | 100 Hz (Nyquist: 20 Hz for 10 Hz BW) |
-| DAC Rate | 1 kHz (10× oversampling) |
+| Signal | PPG (Dual-channel Red/IR, 6 conditions) |
+| Model Rate | 100 Hz |
+| DAC Rate | 1 kHz |
 | Architecture | Dual-core FreeRTOS |
 
 ---
@@ -38,10 +38,11 @@ TFT Display (SPI — ST7735 1.8"):
   GPIO4  → TFT_DC   (data/command)
   GPIO5  → TFT_RST  (reset)
 
-MCP4725 DAC (I2C):
+MCP4725 DACs (I2C):
   GPIO8  → I2C_SDA
   GPIO9  → I2C_SCL
-  Address: 0x60
+  Address: 0x60 (IR Channel)
+  Address: 0x61 (Red Channel)
 
 Push Buttons (Active LOW, internal pull-up):
   GPIO14 → BTN_MODE  (cycle edit modes)
@@ -61,8 +62,8 @@ Status LED:
     TFT ST7735 ◄───┤ SPI (11,12,10) │
     (160×128)      │     DC=4,RST=5 │
                    │                 │
-    MCP4725 DAC ◄──┤ I2C (SDA=8,    │──► Analog Out (BNC)
-    (12-bit)       │      SCL=9)    │    0–3.3V PPG Signal
+    Dual MCP4725 ◄─┤ I2C (SDA=8,    │──► Dual Analog Out (Red/IR)
+    (12-bit)       │      SCL=9)    │    0–3.3V PPG Signals
                    │                 │
     BTN_MODE ──────┤ GPIO14         │
     BTN_UP ────────┤ GPIO15         │
@@ -101,7 +102,7 @@ graph TD
     MAIN --> SH["SerialHandler"]
 
     SE --> PPG["PPGModel"]
-    SE --> DAC["MCP4725DAC"]
+    SE --> DAC["DACManager"]
     PPG --> DF["DigitalFilters"]
     PPG --> ST["signal_types.h"]
     PC --> PL["param_limits.h"]
@@ -171,29 +172,32 @@ PPG Waveform Components:
        / \        Diastolic Peak
       /   \         ∧
      /     \       / \
-    /       \_____/   \___________
-              ^
-          Dicrotic
-           Notch
-
-    |←systole→|←──diastole──────→|
-    |←────── RR interval ───────→|
+    /       \_____/   \
+   /           ^       \
+  /        Dicrotic     \
+            Notch
+|←systole→|←──diastole──────→|
+|←────── RR interval ───────→|
 ```
 
 ### Key Physiological Rules
 
 - **Systole duration is ~constant** (~300ms), diastole absorbs HR changes
-- **PI (Perfusion Index)** controls AC amplitude: `AC = PI × 15 mV`
+- **Dual-Channel (SpO2)**: Generates synchronized Red and IR signals. SpO2 determines the physiological R-ratio (`R = (110 - SpO2) / 25`), which controls the relative AC/DC amplitude between channels.
+- **Respiratory Rate (RR)**: Breathing artifacts are dynamically modeled with:
+  - **BW (Baseline Wander)**: Low-frequency (~0.15-0.4Hz) DC oscillation.
+  - **AM (Amplitude Modulation)**: 25% peak-to-peak modulation of AC amplitude.
+  - **FM (Frequency Modulation)**: Respiratory Sinus Arrhythmia (RSA) varying RR-interval.
 - Each condition modifies waveform shape parameters (notch depth, diastolic ratio, etc.)
 - **HR and PI have beat-to-beat variability** via Gaussian random (CV% configurable)
 
 ### Sampling Pipeline
 
 ```
-PPGModel (100 Hz) → Linear Interpolation (10×) → Ring Buffer (1 kHz) → MCP4725 DAC
+PPGModel (100 Hz) → Linear Interpolation (10×) → Dual Ring Buffers (1 kHz) → DACManager (2× MCP4725)
     ↑                                                                      ↓
-generateSample()                                                    3.3V analog out
-returns AC value                                                    (0–4095, 12-bit)
+generateBothSamples()                                               3.3V analog out
+returns Red/IR values                                               (0–4095, 12-bit)
 ```
 
 ---
@@ -217,13 +221,13 @@ returns AC value                                                    (0–4095, 1
 
 ```
 ┌──────────────────────────────────────────┐
-│ HR:75 BPM  PI:3.0%         Normal       │ ← Header (20px)
+│ HR:75 PI:3.0% O2:98 RR:16               │ ← Header (auto-formatting length)
 ├──────────────────────────────────────────┤
 │                                          │
 │  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  │ Grid lines
 │          ∧         ∧                     │
-│         / \       / \                    │ Waveform
-│        /   \_____/   \_____              │ (98px)
+│         / \       / \                    │ Auto-scaled Waveform
+│        /   \_____/   \_____              │ (Dynamic 1-sweep min/max mapping)
 │  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  │
 │                                          │
 ├──────────────────────────────────────────┤

@@ -1,245 +1,370 @@
-# 🫀 BioSignalSimulator Pro
+Here is the English version of the `README.md` file, fully aligned with your PPG‑only simulator (ESP32‑S3, 1.8″ TFT ST7735, dual MCP4725 DACs, 3 buttons, 6 clinical conditions, full respiratory modulations: BW, AM, FM, and auto‑scaling on display).
 
-**Simulador portátil de señales fisiológicas sintéticas para entrenamiento clínico y validación de equipos biomédicos**
+```markdown
+# 🫀 PPG Signal Simulator
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Platform](https://img.shields.io/badge/platform-ESP32-green)
+**Portable photoplethysmography (PPG) signal generator for clinical training and biomedical equipment validation**
+
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-**Grupo #22:** Scarlet Sánchez y Rafael Mata  
-**Institución:** Escuela Superior Politécnica del Litoral (ESPOL)  
-**Trabajo de Titulación - Ingeniería en Mecatrónica**
+**Group #2:** HuyNN, VyPT  
+**Institution:** Industrial University of Ho Chi Minh City (IUH) – Faculty of Electronic Technology  
+**Version:** 2.0.0 – PPG‑specialized with full respiratory modulation
 
 ---
 
-## 📋 Descripción
+## 📋 Overview
 
-BioSignalSimulator Pro es un dispositivo portátil que genera señales biomédicas sintéticas con morfología clínicamente representativa. Diseñado para:
+The PPG Signal Simulator is a portable device that generates synthetic PPG (photoplethysmography) waveforms with physiologically accurate morphology. It outputs the signal via a 12‑bit DAC for connection to patient monitors, oscilloscopes, or data acquisition systems.
 
-- 🎓 **Entrenamiento clínico**: Estudiantes de medicina e ingeniería biomédica
-- 🔧 **Validación de equipos**: Prueba de monitores y dispositivos médicos
-- 📚 **Investigación**: Desarrollo de algoritmos de procesamiento de señales
+The embedded firmware runs on an ESP32‑S3 and synthesises PPG signals using a **3‑component Gaussian sum model**. It simulates 6 clinical conditions and allows real‑time adjustment of key parameters using three push buttons.
 
-### Señales Generadas
+### Key Features
 
-| Señal | Modelo | Condiciones | Rango |
-|-------|--------|-------------|-------|
-| **ECG** | McSharry ECGSYN | 9 (Normal, Taquicardia, Bradicardia, FA, FV, PVC, Bloqueo, ST↑, ST↓) | -0.5 a +1.5 mV |
-| **EMG** | Fuglevand MU | 6 (Reposo, Leve, Moderada, Fuerte, Temblor, Fatiga) | -5.0 a +5.0 mV |
-| **PPG** | Suma de Gaussianas | 6 (Normal, Arritmia, Baja perfusión, Alta perfusión, Vasoconstricción, SpO2 bajo) | 800-1200 mV |
+- ✅ **Real‑time PPG waveform** – Physiological shape: systolic peak, shallow dicrotic notch, diastolic peak
+- ✅ **6 clinical conditions** – Normal, Arrhythmia, Weak perfusion, Vasoconstriction, Strong perfusion, Vasodilation
+- ✅ **Full respiratory modulations** – BW (baseline wander), AM (amplitude modulation), FM (frequency modulation / RSA) according to user‑set respiratory rate
+- ✅ **1.8″ TFT display** – Sweep‑line waveform plotting with auto‑scaling and numeric readout (HR, PI, SpO₂, RR, condition name)
+- ✅ **Dual 12‑bit DAC outputs** – Independent IR and Red channels via two MCP4725 (I2C)
+- ✅ **3‑button control** – Mode (cycle edit fields), Up (increase / next), Down (decrease / previous)
+- ✅ **Auto‑scaling** – Waveform always fits the 160×128 pixel screen; bounds update every sweep cycle (~3.2 s)
 
----
+### Key Specifications
 
-## 🚀 Características
-
-- ✅ **Pantalla táctil 7"** - Visualización en tiempo real con waveforms
-- ✅ **Salida analógica BNC** - 0-3.3V para conexión a osciloscopios/equipos
-- ✅ **Batería recargable** - ~4 horas de autonomía
-- ✅ **Parámetros ajustables** - HR, amplitud, ruido, HRV en tiempo real
-- ✅ **Múltiples condiciones** - Patologías pre-configuradas por señal
-- ✅ **Portátil** - Diseño compacto con carcasa impresa 3D
-
----
-
-## 🛠️ Hardware
-
-### Componentes Principales
-
-| Componente | Función |
-|------------|---------|
-| ESP32 WROOM-32 | Microcontrolador dual-core @ 240 MHz |
-| Nextion NX8048T070 | Display táctil 7" 800×480 |
-| 2× 18650 Li-ion | Alimentación (5200 mAh en paralelo) |
-| LM358 | Buffer salida analógica (seguidor de voltaje) |
-| CD4051 | Multiplexor analógico para filtros RC selectivos |
-| XL6009 | Regulador Step-Up 5V (η≈92%) |
-| IP5306 + BMS 1S 3A | Carga USB-C y protección batería |
-| Fusible 1.5A | Protección sobrecorriente a salida 5V |
-| Filtro LC | 22µH + 1µF + 470nF (reduce ruido switching) |
-
-### Diagrama de Conexiones
-
-```
-USB-C → IP5306 → BMS 1S 3A → Baterías 2×18650 → Switch → XL6009 → [Fusible 1.5A] → [Filtro LC] → ESP32 + Nextion
-                 (paralelo)                                          22µH+1µF+470nF
-                                                                            ↓
-                                         ESP32 DAC (GPIO25) → CD4051 → RC Filter → BNC
-                                                                ↑
-                                                     GPIO32/33 (S0/S1)
-```
-
-### Cadena de Acondicionamiento de Señal
-
-```
-DAC 8-bit → LM358 Buffer → CD4051 Multiplexor → Filtro RC Selectivo → BNC
-  (2 kHz)    (ganancia ×1)   CH0: 6.8kΩ (ECG, Fc=23.4Hz)    C=1µF
-                             CH1: 1.0kΩ (EMG, Fc=159Hz)     compartido
-                             CH2: 25kΩ  (PPG, Fc=6.37Hz)
-```
-
-> **Nota:** Se usa LM358 por disponibilidad local en Ecuador. El MCP6002 (rail-to-rail) sería ideal para aprovechar el rango completo 0-3.3V del DAC.
+| Parameter               | Value                                      |
+|------------------------|---------------------------------------------|
+| MCU                    | ESP32‑S3‑DevKitC‑1 (dual‑core, 240 MHz)     |
+| Display                | TFT ST7735 1.8″ (160×128, SPI)              |
+| DAC                    | MCP4725 (12‑bit, I2C, 0–3.3 V) – IR & Red   |
+| PPG model rate         | 100 Hz                                      |
+| DAC output rate        | 1 kHz (10× linear interpolation)            |
+| Push buttons           | 3 (Mode, Up, Down)                          |
+| Signal type            | PPG only (6 clinical conditions)            |
 
 ---
 
-## 📱 Interfaz de Usuario
+## 🛠️ Hardware Architecture
 
-### Flujo de Navegación
+### Pin Mapping (ESP32‑S3)
 
 ```
-PORTADA → MENÚ → Selección Señal (ECG/EMG/PPG)
-                        ↓
-              Selección Condición
-                        ↓
-              WAVEFORM (visualización)
-                   ↓         ↓
-              [Valores]  [Parámetros]
+ESP32-S3 – PPG Signal Simulator
+═══════════════════════════════════════════════════════════════
+TFT ST7735 (SPI):
+  GPIO11 → TFT_MOSI   (data)
+  GPIO12 → TFT_SCLK   (clock)
+  GPIO10 → TFT_CS     (chip select)
+  GPIO4  → TFT_DC     (data/command)
+  GPIO5  → TFT_RST    (reset)
+
+MCP4725 DACs (I2C):
+  GPIO8  → I2C_SDA
+  GPIO9  → I2C_SCL
+  Addresses: 0x60 (IR channel), 0x61 (Red channel)
+
+Push buttons (active LOW, internal pull‑up):
+  GPIO14 → BTN_MODE   (cycle edit mode)
+  GPIO15 → BTN_UP     (increment / next)
+  GPIO16 → BTN_DOWN   (decrement / previous)
+
+Status LED:
+  GPIO2  → onboard LED
 ```
 
-### Controles
+### System Block Diagram
 
-- **Play/Pause/Stop**: Control de simulación
-- **Valores**: Métricas en tiempo real (HR, RR, amplitudes)
-- **Parámetros**: Ajuste de sliders (HR, amplitud, ruido)
+```
+                    ┌─────────────────────┐
+                    │      ESP32-S3       │
+                    │                     │
+   TFT ST7735 ◄─────┤ SPI (11,12,10)      │
+   (160×128)        │ DC=4, RST=5         │
+                    │                     │
+   MCP4725 (IR) ◄───┤ I2C (SDA=8, SCL=9) │──► IR Channel (BNC)
+   MCP4725 (Red) ◄──┘                     └──► Red Channel (BNC)
+                    │                     │
+   BTN_MODE ────────┤ GPIO14              │
+   BTN_UP ──────────┤ GPIO15              │
+   BTN_DOWN ────────┤ GPIO16              │
+                    │                     │
+                    │ GPIO2 → LED         │
+                    └─────────────────────┘
+```
 
 ---
 
-## 💻 Software
+## 💻 Software Architecture
 
-### Estructura del Proyecto
+### Dual‑core FreeRTOS Task Distribution
 
 ```
-BioSignalSimulator Pro/
+       Core 0 (UI + Control)                Core 1 (Real‑time Generation)
+       ════════════════════════             ═════════════════════════════════════════
+       loop() @ ~100 Hz                     generationTask() – continuous
+       ├── handleButtons()                  ├── PPGModel.generateBothSamples() @ 100 Hz
+       ├── updateDisplay()                  ├── Linear interpolation (10×) → 1 kHz
+       │   ├── drawWaveform @ 50 Hz         ├── Write to ring buffer (size 1024)
+       │   └── updateMetrics @ 4 Hz         └── Write MCP4725 DACs @ 1 kHz
+       └── serialHandler.process()
+```
+
+### Module Dependency Graph
+
+```
+main.cpp
+   ├── SignalEngine (signal generation orchestrator)
+   │    └── PPGModel (physiological PPG model)
+   │         └── DigitalFilters (optional IIR Butterworth filters)
+   ├── StateMachine (state management)
+   ├── ParamController (parameter validation & clamping)
+   ├── TFTDisplay (ST7735 driver)
+   ├── ButtonHandler (interrupt‑based button handling)
+   └── SerialHandler (debug serial interface)
+```
+
+### Folder Structure
+
+```
+PPG_Signal_Simulator/
+├── include/
+│   ├── config.h                    # System configuration, pins, sampling rates
+│   ├── data/
+│   │   ├── signal_types.h          # Enums, PPGParameters struct
+│   │   └── param_limits.h          # Per‑condition parameter ranges
+│   ├── core/
+│   │   ├── signal_engine.h         # Signal generation engine
+│   │   ├── state_machine.h         # System state machine
+│   │   ├── param_controller.h      # Parameter validation & clamping
+│   │   └── digital_filters.h       # IIR biquad filters
+│   ├── models/
+│   │   └── ppg_model.h             # PPG waveform synthesis model
+│   ├── hw/
+│   │   ├── tft_display.h           # ST7735 display driver
+│   │   ├── dac_manager.h           # Dual MCP4725 manager
+│   │   └── button_handler.h        # ISR‑based button handler
+│   └── comm/
+│       └── serial_handler.h        # Serial debug interface
 ├── src/
-│   ├── main.cpp              # Programa principal
-│   ├── models/               # Modelos de señales
-│   │   ├── ecg_model.cpp     # Modelo ECG McSharry
-│   │   ├── emg_model.cpp     # Modelo EMG Fuglevand
-│   │   └── ppg_model.cpp     # Modelo PPG Suma Gaussianas
-│   ├── core/                 # Núcleo del sistema
-│   │   ├── signal_engine.cpp # Motor de generación
-│   │   └── state_machine.cpp # Máquina de estados
-│   └── comm/                 # Comunicaciones
-│       └── nextion_driver.cpp
-├── include/                  # Headers
-├── docs/                     # Documentación
-└── nextion/                  # Proyecto HMI Nextion
+│   ├── main.cpp                    # Application entry point
+│   ├── core/                       # signal_engine.cpp, state_machine.cpp, ...
+│   ├── models/ppg_model.cpp        # PPG physiological model (700+ lines)
+│   ├── hw/                         # tft_display.cpp, dac_manager.cpp, button_handler.cpp
+│   └── comm/serial_handler.cpp
+└── platformio.ini                  # PlatformIO build configuration
 ```
 
-### Compilación
+---
+
+## 📈 PPG Signal Model
+
+### 3‑Component Gaussian Sum (Allen 2007)
+
+The PPG waveform is synthesised as a sum of three Gaussian components:
+
+1. **Systolic peak** – Main blood volume pulse (position: 15% of RR cycle)
+2. **Dicrotic notch** – Aortic valve closure artifact (position: 28%)
+3. **Diastolic peak** – Reflected arterial wave (position: 35%)
+
+```
+Ideal PPG morphology (Class 1 – young healthy subject)
+
+      Systolic peak
+          ∧
+         / \            Diastolic peak
+        /   \              ∧
+       /     \            / \
+      /       \__________/   \________
+                ^
+           Dicrotic notch
+           (very shallow)
+
+      |← systole →|←─ diastole ─→|
+      |←───────── RR interval ─────────→|
+```
+
+### Physiological Rules
+
+- **Systolic duration is nearly constant** (~300 ms), diastolic duration absorbs HR changes.
+- **PI (Perfusion Index)** controls AC amplitude: `AC = PI × 15 mV` (pure AC, 0–150 mV).
+- Each condition modifies waveform shape (notch depth, diastolic ratio, etc.) according to clinical tables.
+
+### Respiratory Modulations (BW, AM, FM)
+
+The system implements all three respiratory‑induced variations described by Charlton et al. (2018):
+
+| Modulation | Description | Implementation in code |
+|------------|-------------|------------------------|
+| **BW (Baseline Wander)** | Baseline slowly oscillates with breathing | `wander = 10 mV × sin(2π×f_resp×t)` added to total signal |
+| **AM (Amplitude Modulation)** | Peak‑to‑peak amplitude changes with respiration | `amFactor = 1 + 0.15×sin(2π×f_resp×t)` multiplied with AC amplitude |
+| **FM (Frequency Modulation / RSA)** | Instantaneous heart rate varies (increase during inspiration) | RR modified instantaneously: `rrMean × (1 + 0.05×sin(respPhase))` |
+
+User can set **Respiratory Rate (RR)** from 0 to 60 breaths/min via the buttons. The displayed waveform shows clear baseline wander, amplitude fluctuation, and slight peak‑interval variations synced with the chosen RR.
+
+### Signal Processing Pipeline
+
+```
+PPGModel (100 Hz) → Linear interpolation (10×) → Ring Buffer (1 kHz) → MCP4725 DACs
+       ↑                                                                        ↓
+generateBothSamples()                                                      Analog voltages
+returns IR & Red                                                          (0–3.3 V each)
+```
+
+---
+
+## 📊 Clinical Conditions
+
+| # | Condition          | HR range (BPM) | PI range (%) | Notch depth             | Description                      |
+|---|--------------------|----------------|--------------|---------------------    |----------------------------------|
+| 0 | Normal             | 60–100         | 2.9–6.1      | Very shallow (0.18)     | Healthy adult waveform           |
+| 1 | Arrhythmia         | 60–180         | 1.0–5.0      | Shallow (0.20)          | Irregular RR intervals (CV 15%)  |
+| 2 | Weak perfusion     | 70–120         | 0.5–2.1      | Very shallow (0.05)     | Low AC amplitude, poor perfusion |
+| 3 | Vasoconstriction   | 65–110         | 0.7–0.8      | Very shallow (0.05)     | Very low PI, flat waveform       |
+| 5 | Vasodilation       | 60–90          | 5.0–10       | Shallow–moderate (0.20) | High PI, strong diastolic peak   |
+
+---
+
+## 🖥️ User Interface
+
+### TFT Display Layout (160×128 landscape)
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ HR:75 BPM  PI:3.0%  SpO2:98%  RR:16        Normal        │ ← Header (20px)
+├────────────────────────────────────────────────────────────┤
+│                     ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·     │
+│      ∧         ∧                                           │
+│     / \       / \                                          │ ← Waveform area (98px)
+│    /   \_____/   \_____                                    │
+│                     ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·     │
+├────────────────────────────────────────────────────────────┤
+│               < 1: Normal >                                │ ← Footer (10px)
+└────────────────────────────────────────────────────────────┘
+```
+
+### Button Control Flow
+
+```
+MODE (GPIO14)
+    ┌───────────┐    ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐
+    │ Condition │───►│  Edit   │───►│  Edit    │───►│  Edit   │───►│  Edit    │
+    │  Select   │    │   HR    │    │   PI     │    │  SpO2   │    │   RR     │
+    └─────┬─────┘    └─────────┘    └──────────┘    └─────────┘    └────┬─────┘
+          │                                                             │
+          └─────────────────────────┬───────────────────────────────────┘
+                                    ▼
+                            ┌──────────────┐
+                            │   Edit       │
+                            │   Noise      │
+                            └──────────────┘
+                         (cycles back to Condition Select)
+
+UP / DOWN (GPIO15, GPIO16):
+  - In Condition Select: cycle through 6 conditions (1 → 2 → ... → 6 → 1)
+  - In Edit mode: increment/decrement parameter (HR: ±5 BPM, PI: ±0.1%, SpO₂: ±1%, RR: ±1, Noise: ±1%)
+```
+
+### State Machine
+
+```
+INIT → SELECT_CONDITION → SIMULATING ↔ PAUSED
+                              ↓
+                        (MODE from CONDITION_SELECT)
+                              ↓
+                        stop simulation, back to SELECT_CONDITION
+```
+
+---
+
+## 🔧 Build & Flash
+
+### Prerequisites
+
+- PlatformIO CLI or IDE
+- ESP32‑S3 connected via USB (port `/dev/ttyACM0` or `COMx`)
+
+### Build
 
 ```bash
-# Requiere PlatformIO
-pio run                    # Compilar
-pio run -t upload          # Cargar al ESP32
-pio device monitor         # Monitor serial
+pio run -e esp32_s3
 ```
 
----
+### Upload
 
-## 📊 Especificaciones Técnicas
+```bash
+pio run -e esp32_s3 --target upload
+```
 
-| Parámetro | Valor | Justificación |
-|-----------|-------|---------------|
-| Fs Timer (DAC) | 2000 Hz | Nyquist ×2 sobre EMG 1000 Hz |
-| Fs Modelo ECG | 300 Hz | F99% energía = 21.6 Hz |
-| Fs Modelo EMG | 1000 Hz | F99% energía = 146.3 Hz |
-| Fs Modelo PPG | 100 Hz | F99% energía = 4.9 Hz |
-| Resolución DAC | 8 bits (0-255) | Suficiente para aplicación educativa |
-| Voltaje salida | 0-3.3V | Rango DAC ESP32 |
-| Refresh Nextion | 100-200 Hz | Downsampling desde 2 kHz |
-| Autonomía | ~3.8 horas | 5200 mAh @ 1.26 A promedio |
-| Costo total | ~$154 USD | Componentes disponibles localmente |
+### Serial Monitor
 
----
+```bash
+pio device monitor
+```
 
-## 📡 Visualización WiFi (Próximamente)
+### Serial Commands (Debug)
 
-El dispositivo puede actuar como **Access Point WiFi**, permitiendo que múltiples estudiantes visualicen las señales en tiempo real desde sus celulares o laptops.
-
-| Característica | Descripción |
-|----------------|-------------|
-| **Conexión** | WiFi AP (192.168.4.1) |
-| **Clientes** | Hasta 6 simultáneos |
-| **Funciones** | Streaming, zoom local, pausa, descarga CSV, screenshots |
-| **Control** | Solo desde dispositivo físico |
-
-Ver metodología completa: [`docs/APP_WEB_METODOLOGIA.md`](docs/APP_WEB_METODOLOGIA.md)
+| Key | Action                         |
+|-----|--------------------------------|
+| `h` | Show help                      |
+| `i` | System info (heap, CPU, DAC, display) |
 
 ---
 
-## 📚 Documentación
+## 📦 Dependencies
 
-- [`docs/METODOLOGIA_COMPUTACIONAL.md`](docs/METODOLOGIA_COMPUTACIONAL.md) - Metodología y modelos matemáticos
-- [`docs/metodos/metodos/METODOLOGIA_ELECTRONICA.md`](docs/metodos/metodos/METODOLOGIA_ELECTRONICA.md) - Diseño electrónico detallado
-- [`docs/metodos/metodos/METODOLOGIA_MECANICA.md`](docs/metodos/metodos/METODOLOGIA_MECANICA.md) - Diseño mecánico y carcasa
-- [`docs/info/README_NEXTION_UI.md`](docs/info/README_NEXTION_UI.md) - Interfaz Nextion
-- [`docs/APP_WEB_METODOLOGIA.md`](docs/APP_WEB_METODOLOGIA.md) - Aplicación web WiFi
-
----
-
-## 🎯 Uso Rápido
-
-1. **Encender** el dispositivo con el switch lateral
-2. **Tocar "Comenzar"** en la pantalla de portada
-3. **Seleccionar tipo de señal**: ECG, EMG o PPG
-4. **Elegir condición** (Normal, Taquicardia, etc.)
-5. **Presionar Play** para iniciar simulación
-6. **Conectar BNC** a osciloscopio o equipo de medición
-7. **Ajustar parámetros** según necesidad
+| Library                    | Version    | Purpose                     |
+|----------------------------|------------|-----------------------------|
+| `bodmer/TFT_eSPI`          | ^2.5.43    | ST7735 display driver       |
+| `adafruit/Adafruit MCP4725`| ^2.0.2     | MCP4725 I2C DAC driver      |
+| Arduino Framework          | –          | Core HAL for ESP32‑S3       |
 
 ---
 
-## 👨‍💻 Autores
+## 🎯 Quick Start Guide
 
-**Grupo #22 - Trabajo de Titulación ESPOL**
-
-- **Scarlet Gabriela Sánchez Aguirre**
-- **Rafael David Mata Puente**
-
-**Institución:** Escuela Superior Politécnica del Litoral (ESPOL)  
-**Facultad:** Ingeniería en Mecánica y Ciencias de la Producción  
-**Carrera:** Ingeniería en Mecatrónica  
-**Versión:** 1.0.0
-
----
-
-## 🔌 Salida Analógica BNC
-
-### Utilidad Actual
-
-La salida analógica permite conectar el dispositivo a equipos externos mediante conector BNC:
-
-| Aplicación | Descripción |
-|------------|-------------|
-| **Validación de monitores** | Verificar detección de arritmias y condiciones en monitores de paciente |
-| **Calibración de osciloscopios** | Señal conocida para verificar escalas mV/div y ms/div |
-| **Testing de algoritmos** | Entrada para sistemas DAQ, Arduino u otros microcontroladores |
-| **Prácticas de laboratorio** | Entrenamiento en instrumentación biomédica |
-| **Desarrollo de filtros** | Probar filtros analógicos con señales patológicas conocidas |
-
-### Especificaciones
-
-| Parámetro | Valor |
-|-----------|-------|
-| Rango de voltaje | 0 - 3.3V |
-| Resolución | 8 bits (256 niveles) |
-| Impedancia de salida | < 100Ω (buffer LM358) |
-| Canales | 1 (señal activa) |
-
-### Limitaciones
-
-- **Rango limitado**: 0-3.3V unipolar (algunos equipos requieren ±5V o ±10V)
-- **Resolución 8 bits**: Puede ser insuficiente para aplicaciones de alta precisión
-- **Canal único**: Solo una señal simultánea
-
-### Posibles Mejoras Futuras
-
-- Amplificador con ganancia ajustable para expandir rango a ±5V
-- DAC externo de 12/16 bits para mayor resolución
-- Múltiples salidas BNC para señales simultáneas (ECG + PPG)
+1. **Power** the ESP32‑S3 (USB‑C or external 5 V).
+2. The TFT shows the condition selection screen.
+3. Use **UP/DOWN** to choose a condition (1–6), then press **MODE** to start simulation.
+4. While simulating:
+   - **MODE** cycles edit mode: HR → PI → SpO₂ → RR → Noise → Condition Select.
+   - **UP/DOWN** changes the selected parameter.
+   - When you cycle back to Condition Select, the simulation stops and returns to the selection screen.
+5. **Connect BNC cables** from the IR and Red DAC outputs to an oscilloscope or measurement device to view the live analog PPG signals.
 
 ---
 
-## 📄 Licencia
+## 🧪 Verification Plan
 
-Este proyecto está bajo la Licencia MIT - ver [LICENSE](LICENSE) para detalles.
+### Automated Test
+
+- Compile successfully with `pio run -e esp32_s3`.
+
+### Manual Verification
+
+1. **Waveform morphology** – On the TFT, the waveform should show a smooth “systolic peak → very shallow notch → diastolic peak”, without a deep cleft.
+2. **Respiratory modulations** – Increase the RR (Respiratory Rate) to 20–30 bpm:
+   - **BW:** baseline visibly moves up and down.
+   - **AM:** peak heights increase and decrease in a breathing rhythm.
+   - **FM:** peak intervals expand and contract slightly.
+3. **Auto‑scaling** – Suddenly change PI (e.g., from 3% to 10%). The waveform may clip for at most 3 seconds, then automatically rescales to fit the screen.
+4. **Analog output quality** – On an oscilloscope: 0–3.3 V, clean PPG pulses, proper timing, no distortion.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👨‍💻 Authors
+
+**Original thesis group #22 – ESPOL (Ecuador)**  
+**Port to specialised PPG simulator – IUH group #2**
+
+- **HuyNN** – Hardware design, PCB design, embedded firmware
+- **VyPT** – Software design, application development, UI/UX design
+
+**Institution:** Industrial University of Ho Chi Minh City (IUH) – Faculty of Electronic Technology  
+**Version:** 2.0.0 – PPG‑dedicated with full respiratory modulation modelling

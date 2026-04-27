@@ -203,7 +203,7 @@ void SignalEngine::generationTask(void* parameter) {
                 currentModelSampleIR = dacManager.ppgSampleToDACValue(sampleIR_mV, dcBaseline, MAX_AC_AMPLITUDE);
                 currentModelSampleRed = dacManager.ppgSampleToDACValue(sampleRed_mV, dcBaseline, MAX_AC_AMPLITUDE);
                 
-                currentModelValueIR_MV = engine->ppgModel.getLastAC_IR();
+                currentModelValueIR_MV = engine->ppgModel.getLastDisplay_IR();
 
                 // Reset interpolation counter
                 interpolationCounter = 0;

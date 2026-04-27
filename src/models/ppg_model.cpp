@@ -332,6 +332,11 @@ float PPGModel::generateNextRR() {
         }
     }
     
+    // FM (Frequency Modulation) / Respiratory Sinus Arrhythmia (RSA)
+    // Breathing affects the RR interval. Faster HR during inspiration, slower during expiration.
+    float rsaModulation = 0.05f * sinf(respPhase); // +/- 5% RR modulation
+    rrMean *= (1.0f + rsaModulation);
+    
     float rr = rrMean + gaussianRandom(0.0f, rrStd);
     rr = constrain(rr, 0.3f, 2.0f);  //30-200BPM
     
@@ -559,7 +564,7 @@ void PPGModel::generateBothSamples(float deltaTime, float &outIR, float &outRed)
     lastAC_Red = acValueRed;
     
     // Respiratory modulations (AM and Baseline Wander)
-    respPhase += deltaTime / (60.0f / params.respRate);
+    respPhase += deltaTime * (2.0f * PI * params.respRate / 60.0f);
     respPhase = fmodf(respPhase, 2.0f * PI);
     
     // RIIV (baseline wander)
@@ -572,6 +577,9 @@ void PPGModel::generateBothSamples(float deltaTime, float &outIR, float &outRed)
     
     acValueIR *= amFactor;
     acValueRed *= amFactor;
+    
+    // Track for display (AC + Wander, without massive DC baseline)
+    lastDisplay_IR = acValueIR + wander;
     
     float signalIR = dcBaseline + acValueIR + wander;
     float signalRed = dcBaseline + acValueRed + wander;

@@ -24,6 +24,10 @@ TFTDisplay::TFTDisplay()
     , _cachedPI_x10(-1)
     , _cachedSpO2(-1)
     , _cachedRR(-1)
+    , _currentSweepMin(9999.0f)
+    , _currentSweepMax(-9999.0f)
+    , _displayMin(-20.0f)
+    , _displayMax(150.0f)
 {
     memset(_cachedCondition, 0, sizeof(_cachedCondition));
 }
@@ -121,7 +125,11 @@ void TFTDisplay::drawFooter() {
 // DRAW WAVEFORM POINT (sweep-line approach)
 // ============================================================================
 void TFTDisplay::drawWaveformPoint(float acValue_mV, float acMax_mV) {
-    uint8_t y = mapToY(acValue_mV, acMax_mV);
+    // Track min/max for the current sweep to auto-scale the next sweep
+    if (acValue_mV < _currentSweepMin) _currentSweepMin = acValue_mV;
+    if (acValue_mV > _currentSweepMax) _currentSweepMax = acValue_mV;
+
+    uint8_t y = mapToY(acValue_mV);
 
     // Erase column ahead (2px wide for visibility)
     uint16_t eraseX = (_sweepX + 2) % TFT_SCREEN_WIDTH;
@@ -148,6 +156,15 @@ void TFTDisplay::drawWaveformPoint(float acValue_mV, float acMax_mV) {
     if (_sweepX >= TFT_SCREEN_WIDTH) {
         _sweepX = 0;
         _firstPoint = true;
+        
+        // Auto-scaling: Apply tracked min/max bounds to the next sweep
+        _displayMin = _currentSweepMin;
+        _displayMax = _currentSweepMax;
+        
+        // Reset tracking for the new sweep
+        _currentSweepMin = 9999.0f;
+        _currentSweepMax = -9999.0f;
+        
         // Redraw grid when wrapping
         drawGrid();
     }
@@ -156,15 +173,20 @@ void TFTDisplay::drawWaveformPoint(float acValue_mV, float acMax_mV) {
 // ============================================================================
 // MAP AC VALUE TO Y COORDINATE
 // ============================================================================
-uint8_t TFTDisplay::mapToY(float acValue_mV, float acMax_mV) {
+uint8_t TFTDisplay::mapToY(float acValue_mV) {
     // We want the waveform to fit completely in the waveform area
-    // The peak is positive, the valley is 0 or negative
-    // Give a 10% margin at top and bottom to prevent clipping
-    float margin = acMax_mV * 0.1f;
-    float rangeMax = acMax_mV + margin;
-    float rangeMin = -margin;
+    float rangeMax = _displayMax;
+    float rangeMin = _displayMin;
     
-    if (rangeMax <= rangeMin) rangeMax = rangeMin + 1.0f;
+    // Safety check to avoid division by zero or zooming into tiny noise
+    if (rangeMax - rangeMin < 10.0f) {
+        rangeMax = rangeMin + 10.0f;
+    }
+    
+    // Give a 10% margin at top and bottom to prevent clipping
+    float padding = (rangeMax - rangeMin) * 0.1f;
+    rangeMax += padding;
+    rangeMin -= padding;
 
     float normalized = (acValue_mV - rangeMin) / (rangeMax - rangeMin);
     if (normalized < 0.0f) normalized = 0.0f;
@@ -254,4 +276,10 @@ void TFTDisplay::clearWaveform() {
     _sweepX = 0;
     _firstPoint = true;
     _prevY = TFT_WAVEFORM_Y_START + TFT_WAVEFORM_HEIGHT / 2;
+    
+    // Reset auto-scaling bounds
+    _currentSweepMin = 9999.0f;
+    _currentSweepMax = -9999.0f;
+    _displayMin = -20.0f;
+    _displayMax = 150.0f;
 }

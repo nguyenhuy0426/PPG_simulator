@@ -35,8 +35,8 @@
 
 // --- Temporal positions (fraction of RR cycle) ---
 #define PPG_SYSTOLIC_POS    0.15f   // Systolic peak: ~15% of cycle
-#define PPG_NOTCH_POS       0.30f   // Dicrotic notch: ~30% (aortic valve closure)
-#define PPG_DIASTOLIC_POS   0.40f   // Diastolic peak: ~40% (reflected wave)
+#define PPG_NOTCH_POS       0.28f   // Dicrotic notch: shifted closer
+#define PPG_DIASTOLIC_POS   0.35f   // Diastolic peak: shifted closer
 
 // --- Gaussian widths (normalized standard deviation) ---
 #define PPG_SYSTOLIC_WIDTH  0.055f  // Systolic σ
@@ -45,8 +45,8 @@
 
 // --- Normalized BASE amplitudes (empirically adjusted) ---
 #define PPG_BASE_SYSTOLIC_AMPL   1.0f    // Systolic base amplitude (reference)
-#define PPG_BASE_DIASTOLIC_RATIO 0.4f    // Diastolic/systolic ratio
-#define PPG_BASE_DICROTIC_DEPTH  0.25f   // Base notch depth
+#define PPG_BASE_DIASTOLIC_RATIO 0.3f    // Diastolic/systolic ratio
+#define PPG_BASE_DICROTIC_DEPTH  0.18f   // Base notch depth
 
 // --- AC scaling ---
 // Clinical formula: PI = (AC / DC) × 100%
@@ -119,6 +119,7 @@ private:
     float lastRedValue;
     float lastAC_IR;
     float lastAC_Red;
+    float lastDisplay_IR;       // Display signal (AC + Wander)
     float respPhase;
 
     // Dynamic HR and PI (current value within pathology range)
@@ -253,6 +254,7 @@ public:
     float getLastACValue() const { return lastACValue; }
     float getLastAC_IR() const { return lastAC_IR; }
     float getLastAC_Red() const { return lastAC_Red; }
+    float getLastDisplay_IR() const { return lastDisplay_IR; }
 
     // === REAL-TIME MEASURED METRICS ===
     // (measured from signal, not from model variables)

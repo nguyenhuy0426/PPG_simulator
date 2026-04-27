@@ -110,7 +110,13 @@ private:
     void drawHeader();
     void drawGrid();
     void drawFooter();
-    uint8_t mapToY(float acValue_mV, float acMax_mV);
+    uint8_t mapToY(float acValue_mV);
+    
+    // Auto-scaling trackers
+    float _currentSweepMin;
+    float _currentSweepMax;
+    float _displayMin;
+    float _displayMax;
 };
 
 // Global instance
