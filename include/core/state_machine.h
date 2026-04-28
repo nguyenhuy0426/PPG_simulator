@@ -1,80 +1,53 @@
 /**
  * @file state_machine.h
- * @brief Máquina de estados del sistema
- * @version 1.0.0
- * @date 18 Diciembre 2025
- * 
- * Gestiona las transiciones de estado de la aplicación.
+ * @brief System state machine for PPG Signal Simulator
+ * @version 2.0.0
+ * @date 25 April 2026
+ *
+ * Simplified state flow: INIT → SELECT_CONDITION → SIMULATING ↔ PAUSED
  */
 
 #ifndef STATE_MACHINE_H
 #define STATE_MACHINE_H
 
 #include <Arduino.h>
-#include "../data/signal_types.h"
+#include "data/signal_types.h"
 
-// ============================================================================
-// ESTADOS DEL SISTEMA
-// ============================================================================
-enum class SystemState : uint8_t {
-    INIT,               // Inicializando
-    PORTADA,            // En pantalla de bienvenida
-    MENU,               // En menú de selección de señal
-    SELECT_CONDITION,   // Seleccionando condición (ecg_sim/emg_sim/ppg_sim)
-    SIMULATING,         // Generando señal (en ecg_wave/emg_wave/ppg_wave)
-    PAUSED,             // Señal pausada
-    ERROR               // Error del sistema
-};
-
-// ============================================================================
-// EVENTOS DEL SISTEMA
-// ============================================================================
-enum class SystemEvent : uint8_t {
-    INIT_COMPLETE,
-    GO_TO_MENU,         // bt_comenzar en portada
-    SELECT_ECG,
-    SELECT_EMG,
-    SELECT_PPG,
-    GO_TO_CONDITION,    // bt_ir en menu → ir a ecg_sim/emg_sim/ppg_sim
-    SELECT_CONDITION,   // Seleccionar condición (param = 0-8 para ECG)
-    GO_TO_WAVEFORM,     // bt_ir en ecg_sim → ir a ecg_wave
-    START_SIMULATION,
-    PAUSE,
-    RESUME,
-    STOP,
-    ERROR_OCCURRED,
-    BACK
-};
-
-// ============================================================================
-// CLASE StateMachine
-// ============================================================================
 class StateMachine {
 private:
     SystemState currentState;
-    SignalType selectedSignal;
-    uint8_t selectedCondition;
-    
-    // Callback para notificar cambios
+    uint8_t selectedCondition;          // 0–5 (PPGCondition)
+    UIEditMode currentEditMode;         // What parameter buttons control
+
+    // State change callback
     void (*onStateChange)(SystemState oldState, SystemState newState);
-    
+
 public:
     StateMachine();
-    
-    // Procesar eventos
+
+    /**
+     * @brief Process a system event
+     * @param event The event to process
+     * @param param Optional event parameter
+     */
     void processEvent(SystemEvent event, uint8_t param = 0);
-    
+
     // Getters
     SystemState getState() const { return currentState; }
-    SignalType getSelectedSignal() const { return selectedSignal; }
     uint8_t getSelectedCondition() const { return selectedCondition; }
-    
+    UIEditMode getEditMode() const { return currentEditMode; }
+
+    // Setters
+    void setSelectedCondition(uint8_t cond) { selectedCondition = cond; }
+    void setEditMode(UIEditMode mode) { currentEditMode = mode; }
+
     // Callback
     void setStateChangeCallback(void (*callback)(SystemState, SystemState));
-    
-    // Debug
-    const char* stateToString(SystemState state);
-    const char* eventToString(SystemEvent event);
+
+    // Utility
+    static const char* stateToString(SystemState state);
+    static const char* eventToString(SystemEvent event);
+    static const char* editModeToString(UIEditMode mode);
 };
 
 #endif // STATE_MACHINE_H

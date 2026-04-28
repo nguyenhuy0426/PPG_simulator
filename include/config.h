@@ -1,13 +1,11 @@
 /**
  * @file config.h
- * @brief Configuración global del sistema BioSignalSimulator Pro
- * @version 1.0.0
- * @date 18 Diciembre 2025
+ * @brief Global system configuration for PPG Signal Simulator
+ * @version 2.0.0
+ * @date 25 April 2026
  * 
- * Configuración de hardware, pines, frecuencias y constantes del sistema.
- * 
- * Hardware: ESP32-WROOM-32 + Nextion NX8048T070 (7" 800x480)
- * Alimentación: 2S 18650 (7.4V) + Buck 5V
+ * Hardware: ESP32-S3-DevKitC-1 + 1.8" TFT ST7735 (SPI) + MCP4725 DAC (I2C)
+ * Control: 3 push buttons with interrupts
  */
 
 #ifndef CONFIG_H
@@ -16,195 +14,115 @@
 #include <Arduino.h>
 
 // ============================================================================
-// IDENTIFICACIÓN DEL SISTEMA
+// SYSTEM IDENTIFICATION
 // ============================================================================
-#define DEVICE_NAME             "BioSignalSimulator Pro"
-#define FIRMWARE_VERSION        "1.0.0"
-#define FIRMWARE_DATE           "18 Diciembre 2025"
-#define HARDWARE_MODEL          "ESP32-WROOM-32"
-#define HAS_PSRAM               false
-#define SRAM_SIZE_KB            520
-#define FLASH_SIZE_MB           4
+#define DEVICE_NAME             "PPG Signal Simulator"
+#define FIRMWARE_VERSION        "2.0.0"
+#define FIRMWARE_DATE           "25 April 2026"
+#ifndef HARDWARE_MODEL
+#define HARDWARE_MODEL          "ESP32-S3"
+#endif
 
 // ============================================================================
-// CONFIGURACIÓN DE PINES - DAC Y MULTIPLEXOR
+// PIN CONFIGURATION — OLED DISPLAY (I2C)
 // ============================================================================
-#define DAC_SIGNAL_PIN          25      // GPIO25 - DAC1 (Salida a LM358 buffer)
-
-// Multiplexor CD4051 (selección de atenuación)
-// CHA (S0) → GPIO32, CHB (S1) → GPIO33
-#define MUX_SELECT_S0           32      // GPIO32 - CD4051 pin 11 (Selector A)
-#define MUX_SELECT_S1           33      // GPIO33 - CD4051 pin 10 (Selector B)
-// CD4051 S2 (pin 9) conectado a GND
+// Using shared I2C bus with MCP4725 (SDA=GPIO8, SCL=GPIO9)
 
 // ============================================================================
-// CONFIGURACIÓN DE PINES - NEXTION
+// PIN CONFIGURATION — MCP4725 DAC (I2C)
 // ============================================================================
-#define NEXTION_SERIAL          Serial2
-#define NEXTION_RX_PIN          16      // RX2
-#define NEXTION_TX_PIN          17      // TX2
-#define NEXTION_BAUD            115200  // Mismo baud que Nextion Editor
+#define I2C_SDA_PIN             8       // GPIO8  — I2C SDA
+#define I2C_SCL_PIN             9       // GPIO9  — I2C SCL
+#define MCP4725_I2C_ADDR        0x60    // MCP4725 default address
 
 // ============================================================================
-// CONFIGURACIÓN DE PINES - LED RGB
+// PIN CONFIGURATION — PUSH BUTTONS (Active LOW, internal pull-up)
 // ============================================================================
-// Nota: se restablece LED RGB a GPIO21/22/23 (bus I2C/VSPI se mantiene libre por ahora)
-#define LED_RGB_ENABLED         true
-#define LED_RGB_RED             21      // GPIO21 - I2C SDA (no usado)
-#define LED_RGB_GREEN           22      // GPIO22 - I2C SCL (no usado)
-#define LED_RGB_BLUE            23      // GPIO23 - VSPI MOSI (no usado)
-#define LED_RGB_COMMON_ANODE    false   // false = cátodo común
+#define BTN_MODE_PIN            14      // GPIO14 — Mode button
+#define BTN_UP_PIN              15      // GPIO15 — Up / Next button
+#define BTN_DOWN_PIN            16      // GPIO16 — Down / Prev button
+#define BTN_DEBOUNCE_MS         200     // Debounce interval in ms
 
 // ============================================================================
-// CONFIGURACIÓN DE PINES - LED STATUS
+// PIN CONFIGURATION — STATUS LED
 // ============================================================================
-#define LED_STATUS              2       // GPIO2 (LED interno)
+#define LED_STATUS_PIN          2       // GPIO2 (onboard LED)
 
 // ============================================================================
-// CONFIGURACIÓN DE PINES - ADC LOOPBACK (DEBUG)
-// ============================================================================
-#define DEBUG_ADC_LOOPBACK      true   // true = leer GPIO34 y enviar a Serial
-#define ADC_LOOPBACK_PIN        34      // GPIO34 - ADC1_CH6
-
-// ============================================================================
-// CONFIGURACIÓN DE SEÑALES
+// SIGNAL SAMPLING CONFIGURATION
 // ============================================================================
 
-// ============================================================================
-// FRECUENCIAS DE MUESTREO - METODOLOGÍA DE SÍNTESIS DIGITAL
-// ============================================================================
-// NOTA: Este sistema GENERA señales sintéticas, NO digitaliza señales analógicas.
-// Por lo tanto, Nyquist (para ADC) NO aplica directamente aquí.
-//
-// TÉCNICA: Oversampling + Decimación
-// 1. Modelo genera muestras a Fs_modelo (según criterios de síntesis)
-// 2. Interpolación lineal sube a Fs_timer (oversampling)
-// 3. Decimación baja a Fds para salidas (DAC y Nextion)
-// 4. Filtro RC completa la reconstrucción analógica
-//
-// Criterios para Fs_timer:
-// 1. Fs_timer > Fs_modelo_máximo (EMG @ 1000 Hz)
-// 2. Factor de seguridad 2× → 2000 Hz
-// 3. Divisible por Fds (200, 100) para decimación entera
-// Conclusión: Fs_timer = 2000 Hz
+// Timer master frequency (internal buffer rate)
+// MCP4725 I2C can sustain ~1 kHz writes in fast mode
+const uint16_t FS_TIMER_HZ = 1000;             // Hz — DAC output rate
+const uint16_t SAMPLE_RATE_HZ = FS_TIMER_HZ;   // Alias
 
-// Timer maestro (frecuencia de buffer interno)
-const uint16_t FS_TIMER_HZ = 2000;             // Hz - Timer ISR @ 2 kHz
-const uint16_t SAMPLE_RATE_HZ = FS_TIMER_HZ;   // Alias legacy
+// PPG model generation rate
+// PPG bandwidth: 0.5–10 Hz → Nyquist = 20 Hz
+// Using 100 Hz for smooth waveform display
+const uint16_t MODEL_SAMPLE_RATE_PPG = 100;     // Hz
 
-// ============================================================================
-// FRECUENCIAS DE MUESTREO DEL MODELO (Fs_modelo)
-// ============================================================================
-// Basadas en Nyquist de estándares clínicos: Fs = 2 × Fmax_clínico
-//
-// | Señal | BW clínico | Fmax  | Fs_Nyquist | Fs_modelo |
-// |-------|------------|-------|------------|-----------|
-// | ECG   | 0.05-150Hz | 150Hz | 300 Hz     | 300 Hz    |
-// | EMG   | 20-500Hz   | 500Hz | 1000 Hz    | 1000 Hz   |
-// | PPG   | 0.5-10Hz   | 10Hz  | 20 Hz      | 100 Hz*   |
-//
-// *NOTA PPG: Aunque Nyquist solo requiere 20 Hz para BW de 10 Hz, se usa
-// 100 Hz para evitar escalones visibles en el display Nextion. Con 20 Hz
-// y upsampling 100:1 a 2 kHz, la interpolación lineal genera "escalones"
-// perceptibles. Al usar 100 Hz (igual a la tasa de refresco del display),
-// cada punto enviado es una muestra real del modelo, no una interpolación.
-// Esto no afecta el contenido frecuencial ya que 100 Hz >> 2×10 Hz de BW.
-//
-// Luego se interpola a FS_TIMER_HZ (2000 Hz) para salida al DAC.
-// ============================================================================
+// deltaTime for model (seconds)
+const float MODEL_DT_PPG = 1.0f / MODEL_SAMPLE_RATE_PPG;   // 10 ms
 
-const uint16_t MODEL_SAMPLE_RATE_ECG = 300;    // Hz - 2×150Hz (BW clínico ECG)
-const uint16_t MODEL_SAMPLE_RATE_EMG = 1000;   // Hz - 2×500Hz (BW clínico EMG)
-const uint16_t MODEL_SAMPLE_RATE_PPG = 100;    // Hz - 5×Nyquist (evita escalones display)
+// Model tick interval in microseconds
+const uint32_t MODEL_TICK_US_PPG = 1000000 / MODEL_SAMPLE_RATE_PPG; // 10000 us
 
-// deltaTime para cada modelo (segundos)
-const float MODEL_DT_ECG = 1.0f / MODEL_SAMPLE_RATE_ECG;  // 3.333 ms
-const float MODEL_DT_EMG = 1.0f / MODEL_SAMPLE_RATE_EMG;  // 1.0 ms
-const float MODEL_DT_PPG = 1.0f / MODEL_SAMPLE_RATE_PPG;  // 10 ms
+// Upsample ratio: interpolation from model rate to timer rate
+// Ratio = FS_TIMER_HZ / MODEL_SAMPLE_RATE_PPG = 1000/100 = 10
+const uint8_t UPSAMPLE_RATIO_PPG = FS_TIMER_HZ / MODEL_SAMPLE_RATE_PPG;
 
-// Intervalo de tick en microsegundos (para timing real)
-const uint32_t MODEL_TICK_US_ECG = 1000000 / MODEL_SAMPLE_RATE_ECG;  // 3333 us
-const uint32_t MODEL_TICK_US_EMG = 1000000 / MODEL_SAMPLE_RATE_EMG;  // 1000 us
-const uint32_t MODEL_TICK_US_PPG = 1000000 / MODEL_SAMPLE_RATE_PPG;  // 10000 us
-
-// Ratios de upsampling: interpolación de Fs_modelo a Fs_timer
-// Ratio = Fs_timer / Fs_modelo
-const uint8_t UPSAMPLE_RATIO_ECG = FS_TIMER_HZ / MODEL_SAMPLE_RATE_ECG;  // 2000/300 ≈ 6
-const uint8_t UPSAMPLE_RATIO_EMG = FS_TIMER_HZ / MODEL_SAMPLE_RATE_EMG;  // 2000/1000 = 2
-const uint8_t UPSAMPLE_RATIO_PPG = FS_TIMER_HZ / MODEL_SAMPLE_RATE_PPG;  // 2000/100 = 20
-
-// Frecuencias de salida a displays
-const uint16_t FDS_ECG = 200;                  // Hz - display ECG
-const uint16_t FDS_EMG = 100;                  // Hz - display EMG
-const uint16_t FDS_PPG = 100;                  // Hz - display PPG
-
-// Ratios de downsampling para display (respecto a Fs_timer)
-// Ratio = Fs_timer / Fds
-const uint8_t NEXTION_DOWNSAMPLE_ECG = FS_TIMER_HZ / FDS_ECG;   // 2000/200 = 10
-const uint8_t NEXTION_DOWNSAMPLE_PPG = FS_TIMER_HZ / FDS_PPG;   // 2000/100 = 20
-const uint8_t NEXTION_DOWNSAMPLE_EMG = FS_TIMER_HZ / FDS_EMG;   // 2000/100 = 20
-
-// Alias para compatibilidad
-const uint16_t NEXTION_SEND_RATE = 200;
-const uint16_t SERIAL_PLOTTER_RATE_ECG = FDS_ECG;
-const uint16_t SERIAL_PLOTTER_RATE_PPG = FDS_PPG;
-const uint16_t SERIAL_PLOTTER_RATE_EMG = FDS_EMG;
+// Display output rate for TFT waveform
+const uint16_t TFT_DISPLAY_RATE_HZ = 50;       // Hz — waveform update rate
 
 // ============================================================================
-// CONFIGURACIÓN DAC
+// MCP4725 DAC CONFIGURATION (12-bit)
 // ============================================================================
-#define DAC_RESOLUTION          8       // 8 bits (0-255)
-#define DAC_MAX_VALUE           255
-#define DAC_CENTER_VALUE        128
-#define DAC_VOLTAGE_MAX         3.3f    // Voltios
-#define DAC_MV_PER_STEP         (DAC_VOLTAGE_MAX * 1000.0f / 256.0f)  // ~12.9 mV
+#define DAC_RESOLUTION_BITS     12
+#define DAC_MAX_VALUE           4095
+#define DAC_CENTER_VALUE        2048
+#define DAC_VOLTAGE_MAX         3.3f    // Volts
+#define DAC_MV_PER_STEP         (DAC_VOLTAGE_MAX * 1000.0f / 4096.0f)  // ~0.806 mV
 
 // ============================================================================
-// CONFIGURACIÓN DE BUFFERS
+// OLED DISPLAY CONFIGURATION (1.3" I2C, 128x64)
 // ============================================================================
-#define SIGNAL_BUFFER_SIZE      2048    // Muestras (~2 segundos)
-#define PRECALC_BUFFER_SIZE     512     // Bloques de pre-cálculo
+#define TFT_SCREEN_WIDTH        128     // Pixels
+#define TFT_SCREEN_HEIGHT       64      // Pixels
+#define TFT_ROTATION            0       // Rotation (U8g2 handles this contextually)
+
+// Layout zones
+#define TFT_HEADER_HEIGHT       12      // Top metrics bar height
+#define TFT_FOOTER_HEIGHT       10      // Bottom status bar height
+#define TFT_WAVEFORM_Y_START    TFT_HEADER_HEIGHT
+#define TFT_WAVEFORM_HEIGHT     (TFT_SCREEN_HEIGHT - TFT_HEADER_HEIGHT - TFT_FOOTER_HEIGHT)
+#define TFT_WAVEFORM_WIDTH      TFT_SCREEN_WIDTH
 
 // ============================================================================
-// CONFIGURACIÓN DE TAREAS FREERTOS
+// BUFFER CONFIGURATION
 // ============================================================================
-#define CORE_SIGNAL_GENERATION  1       // Core 1: Generación tiempo real
-#define CORE_UI_COMMUNICATION   0       // Core 0: UI y comunicación
+#define SIGNAL_BUFFER_SIZE      1024    // Samples (~1 second at 1 kHz)
+
+// ============================================================================
+// FREERTOS TASK CONFIGURATION
+// ============================================================================
+#define CORE_SIGNAL_GENERATION  1       // Core 1: Real-time signal generation
+#define CORE_UI_COMMUNICATION   0       // Core 0: UI and communication
 
 #define STACK_SIZE_SIGNAL       4096
 #define STACK_SIZE_UI           4096
-#define STACK_SIZE_MONITOR      2048
 
-#define TASK_PRIORITY_SIGNAL    5       // Alta prioridad
-#define TASK_PRIORITY_UI        2       // Media prioridad
-#define TASK_PRIORITY_MONITOR   1       // Baja prioridad
+#define TASK_PRIORITY_SIGNAL    5       // High priority
+#define TASK_PRIORITY_UI        2       // Medium priority
 
 // ============================================================================
-// CONFIGURACIÓN DE TIEMPOS (UI - basado en millis(), NO en timer)
+// UI TIMING (millis-based, not timer-based)
 // ============================================================================
-// Las métricas de TEXTO (HR, RR, PI, etc.) se actualizan a baja frecuencia
-// porque los humanos no perciben cambios de texto >5 Hz y ahorrar serial.
-// Esto NO tiene relación con Fs_timer ni downsampling de waveform.
-#define METRICS_UPDATE_MS       250     // 4 Hz actualización métricas texto
-
-// NOTA: El WAVEFORM usa contador de ticks del timer @ 2kHz
-// con los ratios NEXTION_DOWNSAMPLE_* (ECG 10:1, EMG/PPG 20:1)
+#define METRICS_UPDATE_MS       250     // 4 Hz text metrics update
+#define WAVEFORM_UPDATE_MS      20      // 50 Hz waveform drawing
 
 // ============================================================================
-// CONFIGURACION NEXTION WAVEFORM (7" Basic)
-// ============================================================================
-#define NEXTION_WAVEFORM_WIDTH  700     // Ancho del waveform en pixeles
-#define NEXTION_WAVEFORM_HEIGHT 380     // Altura del waveform en pixeles
-#define WAVEFORM_COMPONENT_ID   1       // ID del componente waveform
-#define WAVEFORM_CHANNEL        0       // Canal del waveform (solo usamos 1)
-
-// Tiempo visible en Nextion (depende de Fds):
-// - ECG @ 200 Hz: 700px / 200Hz = 3.5 segundos (~4 latidos @ 75 BPM)
-// - EMG @ 100 Hz: 700px / 100Hz = 7.0 segundos
-// - PPG @ 100 Hz: 700px / 100Hz = 7.0 segundos (~9 latidos @ 75 BPM)
-
-// ============================================================================
-// CONFIGURACIÓN DE DEBUG
+// DEBUG CONFIGURATION
 // ============================================================================
 #ifdef DEBUG_ENABLED
     #define DEBUG_PRINT(x)      Serial.print(x)
@@ -216,7 +134,7 @@ const uint16_t SERIAL_PLOTTER_RATE_EMG = FDS_EMG;
     #define DEBUG_PRINTF(...)
 #endif
 
-// Macro para verificar memoria
+// Memory check macro
 #define CHECK_HEAP(min_kb) (ESP.getFreeHeap() >= ((min_kb) * 1024))
 
 #endif // CONFIG_H

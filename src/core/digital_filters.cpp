@@ -1,17 +1,17 @@
 /**
  * @file digital_filters.cpp
- * @brief Implementación de filtros digitales para señales biomédicas
+ * @brief Implementation of digital filters for biomedical signals
  * @version 1.0.0
- * @date 09 Enero 2026
+ * @date 09 January 2026
  * 
- * COEFICIENTES PRECALCULADOS:
- * Los coeficientes Butterworth se calculan usando la transformación bilineal.
- * Para frecuencias de corte no estándar, se calculan en runtime usando
- * las fórmulas de diseño de filtros IIR.
+ * PRE-CALCULATED COEFFICIENTS:
+ * Butterworth coefficients are calculated using the bilinear transformation.
+ * For non-standard cutoff frequencies, they are calculated in runtime using
+ * the IIR filter design formulas.
  * 
- * REFERENCIAS:
+ * REFERENCES:
  * [1] Oppenheim AV, Schafer RW. "Discrete-Time Signal Processing." 3rd ed.
- * [2] scipy.signal.butter() para verificación de coeficientes
+ * [2] scipy.signal.butter() for coefficient checking 
  */
 
 #include "core/digital_filters.h"
@@ -22,7 +22,7 @@
 #endif
 
 // ============================================================================
-// DIGITALFILTER - IMPLEMENTACIÓN
+//DIGITALFILTER - IMPLEMENTATION
 // ============================================================================
 
 DigitalFilter::DigitalFilter() : numSections(1), enabled(true) {
@@ -64,7 +64,7 @@ void DigitalFilter::reset() {
 }
 
 // ============================================================================
-// NOTCHFILTER - IMPLEMENTACIÓN
+//NOTCHFILTER - IMPLEMENTATION
 // ============================================================================
 
 NotchFilter::NotchFilter() 
@@ -80,20 +80,20 @@ void NotchFilter::configure(float fc, float fs, float Q) {
 }
 
 /**
- * @brief Calcula coeficientes del filtro notch IIR
+ * @brief Calculates IIR notch filter coefficients
  * 
- * Diseño: Notch de 2º orden usando transformación bilineal
+ * Design: 2nd order notch using bilinear transformation
  * 
  * H(s) = (s² + ω₀²) / (s² + (ω₀/Q)s + ω₀²)
  * 
- * Transformada a dominio Z con prewarp.
+ * Transformed to Z domain with prewarp. 
  */
 void NotchFilter::calculateCoefficients() {
-    // Frecuencia normalizada con prewarp
+    //Normalized frequency with prewarp
     float omega0 = 2.0f * M_PI * centerFreq / sampleRate;
     float alpha = sinf(omega0) / (2.0f * qFactor);
     
-    // Coeficientes del notch
+    //Notch coefficients
     float b0 = 1.0f;
     float b1 = -2.0f * cosf(omega0);
     float b2 = 1.0f;
@@ -101,7 +101,7 @@ void NotchFilter::calculateCoefficients() {
     float a1 = -2.0f * cosf(omega0);
     float a2 = 1.0f - alpha;
     
-    // Normalizar por a0
+    //Normalize by a0
     biquad.b0 = b0 / a0;
     biquad.b1 = b1 / a0;
     biquad.b2 = b2 / a0;
@@ -119,7 +119,7 @@ void NotchFilter::reset() {
 }
 
 // ============================================================================
-// LOWPASSFILTER - IMPLEMENTACIÓN
+//LOWPASSFILTER - IMPLEMENTATION
 // ============================================================================
 
 LowpassFilter::LowpassFilter() 
@@ -134,32 +134,32 @@ void LowpassFilter::configure(float fc, float fs) {
 }
 
 /**
- * @brief Calcula coeficientes Butterworth paso bajo de 2º orden
+ * @brief Calculates 2nd order low pass Butterworth coefficients
  * 
- * Diseño usando transformación bilineal con prewarp:
+ * Design using bilinear transformation with prewarp:
  * ωa = 2*fs*tan(π*fc/fs)
  * 
- * H(s) = ωa² / (s² + √2*ωa*s + ωa²)  [Butterworth 2º orden]
+ * H(s) = ωa² / (s² + √2*ωa*s + ωa²) [Butterworth 2nd order] 
  */
 void LowpassFilter::calculateCoefficients() {
-    // Prewarp de la frecuencia de corte
+    //Cutoff frequency prewarp
     float wd = 2.0f * M_PI * cutoffFreq / sampleRate;
     float T = 1.0f / sampleRate;
     float wa = (2.0f / T) * tanf(wd * T / 2.0f);
     
-    // Coeficientes del prototipo Butterworth normalizado
-    // H(s) = 1 / (s² + √2*s + 1) escalado a ωa
+    //Normalized Butterworth prototype coefficients
+    //H(s) = 1 / (s² + √2*s + 1) scaled to ωa
     float wa2 = wa * wa;
-    float sqrt2_wa = 1.41421356f * wa;  // √2 * ωa
+    float sqrt2_wa = 1.41421356f * wa;  //√2 * ωa
     
-    // Transformación bilineal: s = (2/T) * (z-1)/(z+1)
+    //Bilinear transformation: s = (2/T) * (z-1)/(z+1)
     float K = 2.0f * sampleRate;
     float K2 = K * K;
     
-    // Denominador común
+    //Common denominator
     float denom = K2 + sqrt2_wa * K + wa2;
     
-    // Coeficientes normalizados
+    //Normalized coefficients
     biquad.b0 = wa2 / denom;
     biquad.b1 = 2.0f * wa2 / denom;
     biquad.b2 = wa2 / denom;
@@ -177,7 +177,7 @@ void LowpassFilter::reset() {
 }
 
 // ============================================================================
-// HIGHPASSFILTER - IMPLEMENTACIÓN
+//HIGHPASSFILTER - IMPLEMENTATION
 // ============================================================================
 
 HighpassFilter::HighpassFilter() 
@@ -192,29 +192,29 @@ void HighpassFilter::configure(float fc, float fs) {
 }
 
 /**
- * @brief Calcula coeficientes Butterworth paso alto de 2º orden
+ * @brief Calculates 2nd order high pass Butterworth coefficients
  * 
- * Se obtiene del paso bajo mediante sustitución: s → ωa²/s
+ * Obtained from the low pass by substitution: s → ωa²/s
  * 
- * H(s) = s² / (s² + √2*ωa*s + ωa²)
+ * H(s) = s² / (s² + √2*ωa*s + ωa²) 
  */
 void HighpassFilter::calculateCoefficients() {
-    // Prewarp de la frecuencia de corte
+    //Cutoff frequency prewarp
     float wd = 2.0f * M_PI * cutoffFreq / sampleRate;
     float T = 1.0f / sampleRate;
     float wa = (2.0f / T) * tanf(wd * T / 2.0f);
     
-    // Coeficientes Butterworth paso alto
+    //High-pass Butterworth coefficients
     float wa2 = wa * wa;
     float sqrt2_wa = 1.41421356f * wa;
     
     float K = 2.0f * sampleRate;
     float K2 = K * K;
     
-    // Denominador común
+    //Common denominator
     float denom = K2 + sqrt2_wa * K + wa2;
     
-    // Numerador para paso alto: s² → K²*(z-1)²/(z+1)²
+    //Numerator for high pass: s² → K²*(z-1)²/(z+1)²
     biquad.b0 = K2 / denom;
     biquad.b1 = -2.0f * K2 / denom;
     biquad.b2 = K2 / denom;
@@ -232,7 +232,7 @@ void HighpassFilter::reset() {
 }
 
 // ============================================================================
-// BANDPASSFILTER - IMPLEMENTACIÓN
+//BANDPASSFILTER - IMPLEMENTATION
 // ============================================================================
 
 BandpassFilter::BandpassFilter() 
@@ -248,13 +248,13 @@ void BandpassFilter::configure(float fcLow, float fcHigh, float fs) {
 }
 
 /**
- * @brief Calcula coeficientes para pasa-banda (HP + LP en cascada)
+ * @brief Calculates coefficients for band-pass (HP + LP in cascade)
  * 
- * Implementación simple: cascada de paso alto y paso bajo.
- * Cada uno es Butterworth 2º orden → total 4º orden.
+ * Simple implementation: high-pass and low-pass cascade.
+ * Each one is Butterworth 2nd order → total 4th order. 
  */
 void BandpassFilter::calculateCoefficients() {
-    // Paso alto (elimina frecuencias bajas)
+    //High Pass (removes low frequencies)
     float wdHP = 2.0f * M_PI * lowCutoff / sampleRate;
     float T = 1.0f / sampleRate;
     float waHP = (2.0f / T) * tanf(wdHP * T / 2.0f);
@@ -272,7 +272,7 @@ void BandpassFilter::calculateCoefficients() {
     biquadHP.a1 = (2.0f * waHP2 - 2.0f * K2) / denomHP;
     biquadHP.a2 = (K2 - sqrt2_waHP * K + waHP2) / denomHP;
     
-    // Paso bajo (elimina frecuencias altas)
+    //Low pass (removes high frequencies)
     float wdLP = 2.0f * M_PI * highCutoff / sampleRate;
     float waLP = (2.0f / T) * tanf(wdLP * T / 2.0f);
     
@@ -291,7 +291,7 @@ void BandpassFilter::calculateCoefficients() {
 float BandpassFilter::process(float input) {
     if (!enabled) return input;
     
-    // Cascada: HP primero, luego LP
+    //Cascade: HP first, then LP
     float hp_out = biquadHP.process(input);
     return biquadLP.process(hp_out);
 }
@@ -302,7 +302,7 @@ void BandpassFilter::reset() {
 }
 
 // ============================================================================
-// SIGNALFILTERCHAIN - IMPLEMENTACIÓN
+//SIGNALFILTERCHAIN ​​- IMPLEMENTATION
 // ============================================================================
 
 SignalFilterChain::SignalFilterChain() 
@@ -311,12 +311,12 @@ SignalFilterChain::SignalFilterChain()
 }
 
 /**
- * @brief Configura la cadena para señales ECG
+ * @brief Configures the chain for ECG signals
  * 
- * Configuración basada en Pan-Tompkins (1985):
- * - Paso alto: 0.5 Hz (elimina baseline wander)
- * - Paso bajo: 40 Hz (elimina ruido muscular y HF)
- * - Notch: 50/60 Hz (interferencia de red)
+ * Configuration based on Pan-Tompkins (1985):
+ * - High pass: 0.5 Hz (removes baseline wander)
+ * - Low pass: 40 Hz (removes muscle and HF noise)
+ * - Notch: 50/60 Hz (network interference) 
  */
 void SignalFilterChain::configureForECG(float fs, float notchFreq) {
     signalType = SignalType::ECG;
@@ -326,18 +326,18 @@ void SignalFilterChain::configureForECG(float fs, float notchFreq) {
     lowpass.configure(ECG_LOWPASS_FC, fs);
     notch.configure(notchFreq, fs, 30.0f);
     
-    // Habilitar todos por defecto
+    //Enable all by default
     highpass.setEnabled(true);
     lowpass.setEnabled(true);
     notch.setEnabled(true);
 }
 
 /**
- * @brief Configura la cadena para señales PPG
+ * @brief Configures the chain for PPG signals
  * 
- * PPG tiene contenido útil en 0.5-8 Hz:
+ * PPG has useful content in 0.5-8 Hz:
  * - Fundamental: 0.5-3 Hz (HR 30-180 BPM)
- * - Armónicos: hasta 4ª armónica (~8 Hz)
+ * - Harmonics: up to 4th harmonic (~8 Hz) 
  */
 void SignalFilterChain::configureForPPG(float fs, float notchFreq) {
     signalType = SignalType::PPG;
@@ -353,12 +353,12 @@ void SignalFilterChain::configureForPPG(float fs, float notchFreq) {
 }
 
 /**
- * @brief Configura la cadena para señales EMG
+ * @brief Configures the chain for EMG signals
  * 
- * Basado en recomendaciones SENIAM:
- * - Paso alto: 20 Hz (artefactos de movimiento)
- * - Paso bajo: 450 Hz (contenido EMG útil)
- * - Notch: 50/60 Hz (interferencia de red)
+ * Based on SENIAM recommendations:
+ * - High Pass: 20 Hz (motion artifacts)
+ * - Low Pass: 450 Hz (useful EMG content)
+ * - Notch: 50/60 Hz (network interference) 
  */
 void SignalFilterChain::configureForEMG(float fs, float notchFreq) {
     signalType = SignalType::EMG;
@@ -387,7 +387,7 @@ void SignalFilterChain::setNotchFreq(float fc, float Q) {
 
 void SignalFilterChain::setSampleRate(float fs) {
     sampleRate = fs;
-    // Reconfigurar filtros con nueva frecuencia de muestreo
+    //Reconfigure filters with new sample rate
     highpass.configure(highpass.getCutoffFreq(), fs);
     lowpass.configure(lowpass.getCutoffFreq(), fs);
     notch.configure(notch.getCenterFreq(), fs, notch.getQFactor());
@@ -412,16 +412,16 @@ void SignalFilterChain::enableAll(bool en) {
 }
 
 /**
- * @brief Procesa una muestra a través de la cadena completa
+ * @brief Processes a sample through the entire chain
  * 
- * Pipeline: Input → Highpass → Lowpass → Notch → Output
+ * Pipeline: Input → Highpass → Lowpass → Notch → Output 
  */
 float SignalFilterChain::process(float input) {
     if (!filteringEnabled) return input;
     
     float output = input;
     
-    // Pipeline de filtrado
+    //Filtering Pipeline
     output = highpass.process(output);
     output = lowpass.process(output);
     output = notch.process(output);
