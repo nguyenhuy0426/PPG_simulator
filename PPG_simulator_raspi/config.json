@@ -1,0 +1,11 @@
+{
+  "amplification": 1.0,
+  "condition": 5,
+  "dicrotic_notch": 0.25,
+  "edit_mode": 0,
+  "heart_rate": 90,
+  "noise_level": 0.09,
+  "perfusion_index": 9.5,
+  "resp_rate": 19,
+  "spo2": 99
+}

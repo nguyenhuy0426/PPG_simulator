@@ -1,0 +1,27 @@
+# PPG Simulator for Raspberry Pi 4 — Python dependencies
+# Install in a virtual environment:
+#   python3 -m venv venv
+#   source venv/bin/activate
+#   pip install -r requirements.txt
+
+# ─── GUI ───
+pygame>=2.5.0
+
+# ─── Hardware (Raspberry Pi GPIO + I2C) ───
+# RPi.GPIO is pre-installed on most Raspberry Pi OS images.
+# If missing, install it:
+RPi.GPIO>=0.7.0
+
+# Adafruit MCP4725 DAC driver (I2C)
+adafruit-circuitpython-mcp4725>=1.4.0
+
+# Adafruit Blinka — CircuitPython compatibility layer for Linux SBCs
+adafruit-blinka>=8.0.0
+
+# Grove Base Hat ADC (Seeed Studio)
+# Installed separately via:
+#   curl -sL https://github.com/Seeed-Studio/grove.py/raw/master/install.sh | sudo bash -s -
+# grove.py  (system-wide install, not pip)
+
+# ─── Utilities ───
+numpy>=1.24.0
