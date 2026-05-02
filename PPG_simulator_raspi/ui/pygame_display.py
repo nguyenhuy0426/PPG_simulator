@@ -1,14 +1,16 @@
 """
 pygame_display.py — Full-screen Pygame GUI for PPG Signal Simulator.
 
-Replaces the 160×128 TFT ST7735 with a premium 1024×600 HDMI display.
+Responsive display that auto-adapts to any screen resolution.
 Features:
-  - Dual waveform: IR (green, top) and Red (red, bottom)
-  - Sweep-line rendering with auto-scaling
-  - Header: HR, PI, SpO2, RR, condition name
+  - Overlaid dual waveform: IR (green) and Red (red-orange) on single panel
+  - Sweep-line rendering with combined auto-scaling
+  - Time axis with second markers (0s, 1s, 2s, 3s, 4s, 5s)
+  - Header: HR, PI, SpO2, RR, condition name (proportionally spaced)
   - Footer: edit mode / condition selector
-  - Mouse/keyboard parameter control
+  - Channel amplitude legend (IR: xx.x mV, Red: xx.x mV)
   - Grid lines, smooth rendering, dark theme
+  - Proportional font scaling for all screen sizes
 """
 
 import pygame
@@ -19,27 +21,33 @@ import math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_FULLSCREEN, DISPLAY_FPS,
-    HEADER_HEIGHT, FOOTER_HEIGHT,
-    WAVEFORM_Y_START, WAVEFORM_HEIGHT, WAVEFORM_WIDTH,
-    WAVEFORM_IR_HEIGHT, WAVEFORM_RED_Y_START, WAVEFORM_RED_HEIGHT,
+    WAVEFORM_DISPLAY_DURATION, WAVEFORM_UPDATE_MS,
     COLOR_BG, COLOR_WAVEFORM_IR, COLOR_WAVEFORM_RED, COLOR_GRID,
     COLOR_HEADER_BG, COLOR_FOOTER_BG, COLOR_TEXT, COLOR_TEXT_VALUE,
     COLOR_TEXT_LABEL, COLOR_HIGHLIGHT, COLOR_ACCENT, COLOR_SEPARATOR,
-    COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_BUTTON_ACTIVE,
-    FONT_SIZE_HEADER, FONT_SIZE_VALUE, FONT_SIZE_FOOTER,
-    FONT_SIZE_LABEL, FONT_SIZE_SMALL,
+    COLOR_TIME_AXIS,
     DEVICE_NAME, FIRMWARE_VERSION,
+    compute_layout,
 )
 from comm.logger import log
 
 
 class PygameDisplay:
-    """Full-screen Pygame GUI for the PPG Signal Simulator."""
+    """Full-screen Pygame GUI for the PPG Signal Simulator.
+
+    Auto-detects screen resolution and adapts layout proportionally.
+    Supports any screen size from 7" (1024×600) to 27" (2560×1440+).
+    """
 
     def __init__(self):
         self.screen = None
         self.clock = None
         self.running = False
+
+        # Layout (computed at runtime)
+        self._layout = None
+        self._screen_w = 0
+        self._screen_h = 0
 
         # Fonts
         self.font_header = None
@@ -48,26 +56,27 @@ class PygameDisplay:
         self.font_label = None
         self.font_small = None
 
-        # Sweep state (IR channel)
-        self._sweep_x_ir = 0
-        self._prev_y_ir = WAVEFORM_Y_START + WAVEFORM_IR_HEIGHT // 2
-        self._first_point_ir = True
+        # Sweep state (unified for both channels)
+        self._sweep_x = 0
+        self._prev_y_ir = 0
+        self._prev_y_red = 0
+        self._first_point = True
+        self._last_draw_time = 0       # Wall-clock time of last draw call
+        self._last_ir = 0.0            # Previous IR sample for interpolation
+        self._last_red = 0.0           # Previous Red sample for interpolation
 
-        # Sweep state (Red channel)
-        self._sweep_x_red = 0
-        self._prev_y_red = WAVEFORM_RED_Y_START + WAVEFORM_RED_HEIGHT // 2
-        self._first_point_red = True
+        # Auto-scaling (combined range for both channels)
+        self._sweep_min = 9999.0
+        self._sweep_max = -9999.0
+        self._disp_min = -20.0
+        self._disp_max = 150.0
 
-        # Auto-scaling
-        self._sweep_min_ir = 9999.0
-        self._sweep_max_ir = -9999.0
-        self._disp_min_ir = -20.0
-        self._disp_max_ir = 150.0
-
-        self._sweep_min_red = 9999.0
-        self._sweep_max_red = -9999.0
-        self._disp_min_red = -20.0
-        self._disp_max_red = 150.0
+        # Amplitude tracking for legend
+        self._peak_ir = 0.0
+        self._peak_red = 0.0
+        self._cycle_peak_ir = 0.0
+        self._cycle_peak_red = 0.0
+        self._last_beat_count = 0
 
         # Cached metrics
         self._cached_hr = -1
@@ -76,188 +85,308 @@ class PygameDisplay:
         self._cached_rr = -1
         self._cached_condition = ""
 
-        # Waveform surfaces (for efficient erasing)
-        self._waveform_surface_ir = None
-        self._waveform_surface_red = None
+        # Waveform surface (single combined panel)
+        self._waveform_surface = None
 
     def begin(self) -> bool:
-        """Initialize Pygame and create the display window."""
+        """Initialize Pygame, auto-detect resolution, and create the display."""
         pygame.init()
         pygame.display.set_caption(f"{DEVICE_NAME} v{FIRMWARE_VERSION}")
 
+        # Auto-detect screen resolution
+        if DISPLAY_WIDTH > 0 and DISPLAY_HEIGHT > 0:
+            screen_w, screen_h = DISPLAY_WIDTH, DISPLAY_HEIGHT
+        else:
+            info = pygame.display.Info()
+            screen_w = info.current_w
+            screen_h = info.current_h
+
+        self._screen_w = screen_w
+        self._screen_h = screen_h
+
+        # Compute layout
+        self._layout = compute_layout(screen_w, screen_h)
+        L = self._layout
+
+        # Create display
         flags = 0
         if DISPLAY_FULLSCREEN:
             flags = pygame.FULLSCREEN
 
         try:
-            self.screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT), flags)
+            self.screen = pygame.display.set_mode((screen_w, screen_h), flags)
         except pygame.error:
             log.warning("Fullscreen failed, using windowed mode")
-            self.screen = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+            self.screen = pygame.display.set_mode((screen_w, screen_h))
 
         self.clock = pygame.time.Clock()
 
-        # Load fonts
+        # Load fonts (scaled proportionally)
         try:
-            self.font_header = pygame.font.SysFont("dejavusans", FONT_SIZE_HEADER, bold=True)
-            self.font_value = pygame.font.SysFont("dejavusans", FONT_SIZE_VALUE, bold=True)
-            self.font_footer = pygame.font.SysFont("dejavusans", FONT_SIZE_FOOTER)
-            self.font_label = pygame.font.SysFont("dejavusans", FONT_SIZE_LABEL)
-            self.font_small = pygame.font.SysFont("dejavusans", FONT_SIZE_SMALL)
+            self.font_header = pygame.font.SysFont("dejavusans", L["font_header"], bold=True)
+            self.font_value = pygame.font.SysFont("dejavusans", L["font_value"], bold=True)
+            self.font_footer = pygame.font.SysFont("dejavusans", L["font_footer"])
+            self.font_label = pygame.font.SysFont("dejavusans", L["font_label"])
+            self.font_small = pygame.font.SysFont("dejavusans", L["font_small"])
         except Exception:
-            self.font_header = pygame.font.Font(None, FONT_SIZE_HEADER)
-            self.font_value = pygame.font.Font(None, FONT_SIZE_VALUE)
-            self.font_footer = pygame.font.Font(None, FONT_SIZE_FOOTER)
-            self.font_label = pygame.font.Font(None, FONT_SIZE_LABEL)
-            self.font_small = pygame.font.Font(None, FONT_SIZE_SMALL)
+            self.font_header = pygame.font.Font(None, L["font_header"])
+            self.font_value = pygame.font.Font(None, L["font_value"])
+            self.font_footer = pygame.font.Font(None, L["font_footer"])
+            self.font_label = pygame.font.Font(None, L["font_label"])
+            self.font_small = pygame.font.Font(None, L["font_small"])
 
-        # Create waveform surfaces
-        self._waveform_surface_ir = pygame.Surface((WAVEFORM_WIDTH, WAVEFORM_IR_HEIGHT))
-        self._waveform_surface_ir.fill(COLOR_BG)
-        self._waveform_surface_red = pygame.Surface((WAVEFORM_WIDTH, WAVEFORM_RED_HEIGHT))
-        self._waveform_surface_red.fill(COLOR_BG)
+        # Create waveform surface (single panel for both IR + Red)
+        self._waveform_surface = pygame.Surface((L["waveform_w"], L["waveform_h"]))
+        self._waveform_surface.fill(COLOR_BG)
 
+        # Initialize sweep state
+        self._sweep_x = 0
+        self._prev_y_ir = L["waveform_h"] // 2
+        self._prev_y_red = L["waveform_h"] // 2
+        self._first_point = True
+
+        # Draw initial layout
         self.screen.fill(COLOR_BG)
         self._draw_layout()
         pygame.display.flip()
 
         self.running = True
-        log.info(f"[Display] Pygame initialized: {DISPLAY_WIDTH}x{DISPLAY_HEIGHT}")
+        log.info(f"[Display] Pygame initialized: {screen_w}×{screen_h} "
+                 f"(header={L['header_h']}px, waveform={L['waveform_h']}px, "
+                 f"footer={L['footer_h']}px, font_scale={L['font_scale']:.2f})")
         return True
 
     # ─────────────────────── LAYOUT ───────────────────────
     def _draw_layout(self):
         """Draw the initial screen layout."""
+        L = self._layout
         self._draw_header_bg()
         self._draw_footer_bg()
-        self._draw_grid(self._waveform_surface_ir, WAVEFORM_IR_HEIGHT)
-        self._draw_grid(self._waveform_surface_red, WAVEFORM_RED_HEIGHT)
-        self.screen.blit(self._waveform_surface_ir, (0, WAVEFORM_Y_START))
-        self.screen.blit(self._waveform_surface_red, (0, WAVEFORM_RED_Y_START))
-        # Separator between IR and Red
-        pygame.draw.line(self.screen, COLOR_SEPARATOR,
-                         (0, WAVEFORM_RED_Y_START), (DISPLAY_WIDTH, WAVEFORM_RED_Y_START), 2)
+        self._draw_grid(self._waveform_surface, L["waveform_h"], L["waveform_w"])
+        self.screen.blit(self._waveform_surface, (0, L["waveform_y"]))
+        self._draw_time_axis_overlay()
         # Channel labels
-        lbl_ir = self.font_small.render("IR", True, COLOR_WAVEFORM_IR)
-        lbl_red = self.font_small.render("RED", True, COLOR_WAVEFORM_RED)
-        self.screen.blit(lbl_ir, (DISPLAY_WIDTH - 40, WAVEFORM_Y_START + 5))
-        self.screen.blit(lbl_red, (DISPLAY_WIDTH - 40, WAVEFORM_RED_Y_START + 5))
+        self._draw_channel_labels()
 
     def _draw_header_bg(self):
-        pygame.draw.rect(self.screen, COLOR_HEADER_BG, (0, 0, DISPLAY_WIDTH, HEADER_HEIGHT))
+        L = self._layout
+        pygame.draw.rect(self.screen, COLOR_HEADER_BG,
+                         (0, 0, L["screen_w"], L["header_h"]))
         pygame.draw.line(self.screen, COLOR_SEPARATOR,
-                         (0, HEADER_HEIGHT - 1), (DISPLAY_WIDTH, HEADER_HEIGHT - 1), 1)
+                         (0, L["header_h"] - 1), (L["screen_w"], L["header_h"] - 1), 1)
 
     def _draw_footer_bg(self):
-        y = DISPLAY_HEIGHT - FOOTER_HEIGHT
-        pygame.draw.rect(self.screen, COLOR_FOOTER_BG, (0, y, DISPLAY_WIDTH, FOOTER_HEIGHT))
-        pygame.draw.line(self.screen, COLOR_SEPARATOR, (0, y), (DISPLAY_WIDTH, y), 1)
+        L = self._layout
+        y = L["screen_h"] - L["footer_h"]
+        pygame.draw.rect(self.screen, COLOR_FOOTER_BG,
+                         (0, y, L["screen_w"], L["footer_h"]))
+        pygame.draw.line(self.screen, COLOR_SEPARATOR,
+                         (0, y), (L["screen_w"], y), 1)
 
-    def _draw_grid(self, surface, height):
-        """Draw grid lines on a waveform surface."""
-        w = WAVEFORM_WIDTH
+    def _draw_grid(self, surface, height, width):
+        """Draw grid lines on the waveform surface."""
         mid_y = height // 2
-        # Center line
-        pygame.draw.line(surface, COLOR_GRID, (0, mid_y), (w, mid_y), 1)
+        # Center line (baseline)
+        pygame.draw.line(surface, COLOR_GRID, (0, mid_y), (width, mid_y), 1)
         # Quarter lines (dotted)
         q1 = height // 4
         q3 = 3 * height // 4
-        for x in range(0, w, 6):
+        for x in range(0, width, 6):
             surface.set_at((x, q1), COLOR_GRID)
             surface.set_at((x, q3), COLOR_GRID)
-        # Vertical lines
-        for x in range(80, w, 80):
-            for y in range(0, height, 6):
-                surface.set_at((x, y), COLOR_GRID)
+        # Vertical grid lines — one per second (based on display duration)
+        px_per_sec = width / WAVEFORM_DISPLAY_DURATION
+        for i in range(1, int(WAVEFORM_DISPLAY_DURATION) + 1):
+            gx = int(i * px_per_sec)
+            if gx < width:
+                for y in range(0, height, 4):
+                    if gx < width:
+                        surface.set_at((gx, y), COLOR_GRID)
+
+    def _draw_time_axis_overlay(self):
+        """Draw time axis labels dynamically over the waveform area so they aren't erased."""
+        L = self._layout
+        width = L["waveform_w"]
+        height = L["waveform_h"]
+        offset_y = L["waveform_y"]
+        
+        px_per_sec = width / WAVEFORM_DISPLAY_DURATION
+        # Small font for time labels
+        try:
+            time_font = pygame.font.SysFont("dejavusans", max(10, L["font_small"] - 2))
+        except Exception:
+            time_font = pygame.font.Font(None, max(10, L["font_small"] - 2))
+
+        for i in range(int(WAVEFORM_DISPLAY_DURATION) + 1):
+            gx = int(i * px_per_sec)
+            if gx >= width:
+                gx = width - 1
+            # Tick mark
+            pygame.draw.line(self.screen, COLOR_TIME_AXIS, 
+                             (gx, offset_y + height - 10), (gx, offset_y + height - 1), 1)
+            # Label
+            lbl = time_font.render(f"{i}s", True, COLOR_TIME_AXIS)
+            lx = gx - lbl.get_width() // 2
+            lx = max(2, min(width - lbl.get_width() - 2, lx))
+            self.screen.blit(lbl, (lx, offset_y + height - 10 - lbl.get_height()))
+
+    def _draw_channel_labels(self):
+        """Draw IR/Red channel labels on the waveform area."""
+        L = self._layout
+        lbl_ir = self.font_small.render("IR", True, COLOR_WAVEFORM_IR)
+        lbl_red = self.font_small.render("RED", True, COLOR_WAVEFORM_RED)
+        x = L["waveform_w"] - max(lbl_ir.get_width(), lbl_red.get_width()) - 10
+        self.screen.blit(lbl_ir, (x, L["waveform_y"] + 5))
+        self.screen.blit(lbl_red, (x, L["waveform_y"] + 5 + lbl_ir.get_height() + 2))
 
     # ─────────────────────── WAVEFORM DRAWING ───────────────────────
-    def draw_waveform_point_ir(self, ac_value: float):
-        """Draw a single IR waveform point using sweep-line approach."""
-        self._draw_point_on_surface(
-            self._waveform_surface_ir, ac_value,
-            WAVEFORM_IR_HEIGHT, COLOR_WAVEFORM_IR,
-            "ir"
-        )
-        self.screen.blit(self._waveform_surface_ir, (0, WAVEFORM_Y_START))
+    def draw_waveform_point(self, ac_ir: float, ac_red: float, current_beat_count: int = 0):
+        """Draw waveform sample for both IR and Red on the overlaid display.
 
-    def draw_waveform_point_red(self, ac_value: float):
-        """Draw a single Red waveform point using sweep-line approach."""
-        self._draw_point_on_surface(
-            self._waveform_surface_red, ac_value,
-            WAVEFORM_RED_HEIGHT, COLOR_WAVEFORM_RED,
-            "red"
-        )
-        self.screen.blit(self._waveform_surface_red, (0, WAVEFORM_RED_Y_START))
+        Uses wall-clock time to compute how many pixels to advance,
+        matching the HTML reference's approach.
+        
+        Updates the displayed peak amplitudes (mV) for each cycle based
+        on current_beat_count from the PPG model.
+        """
+        import time as _time
 
-    def _draw_point_on_surface(self, surface, ac_value, height, color, channel):
-        """Generic sweep-line waveform drawing on a surface."""
-        if channel == "ir":
-            sweep_x = self._sweep_x_ir
-            prev_y = self._prev_y_ir
-            first = self._first_point_ir
-            s_min, s_max = self._sweep_min_ir, self._sweep_max_ir
-            d_min, d_max = self._disp_min_ir, self._disp_max_ir
-        else:
-            sweep_x = self._sweep_x_red
-            prev_y = self._prev_y_red
-            first = self._first_point_red
-            s_min, s_max = self._sweep_min_red, self._sweep_max_red
-            d_min, d_max = self._disp_min_red, self._disp_max_red
+        L = self._layout
+        wh = L["waveform_h"]
+        ww = L["waveform_w"]
+        surface = self._waveform_surface
 
-        # Track min/max for auto-scaling
-        if ac_value < s_min: s_min = ac_value
-        if ac_value > s_max: s_max = ac_value
+        # Calculate how many pixels to advance based on wall-clock time
+        now = _time.time()
+        if self._last_draw_time == 0:
+            self._last_draw_time = now
+            self._last_ir = ac_ir
+            self._last_red = ac_red
+            return
 
-        # Map to Y
-        y = self._map_to_y(ac_value, d_min, d_max, height)
+        wall_dt = min(now - self._last_draw_time, 0.05)  # Cap at 50ms like HTML
+        self._last_draw_time = now
 
-        # Erase ahead
-        erase_x1 = (sweep_x + 2) % WAVEFORM_WIDTH
-        erase_x2 = (sweep_x + 3) % WAVEFORM_WIDTH
-        pygame.draw.line(surface, COLOR_BG, (erase_x1, 0), (erase_x1, height - 1), 1)
-        pygame.draw.line(surface, COLOR_BG, (erase_x2, 0), (erase_x2, height - 1), 1)
+        # Update cycle peaks at the start of a new beat
+        if current_beat_count != self._last_beat_count:
+            # We have finished a beat, update the legend with the previous beat's peak
+            if self._cycle_peak_ir > 0:
+                self._peak_ir = self._cycle_peak_ir
+                self._peak_red = self._cycle_peak_red
+            # Reset for the new beat
+            self._cycle_peak_ir = 0.0
+            self._cycle_peak_red = 0.0
+            self._last_beat_count = current_beat_count
 
-        # Sweep cursor
-        cursor_x = (sweep_x + 1) % WAVEFORM_WIDTH
-        pygame.draw.line(surface, COLOR_GRID, (cursor_x, 0), (cursor_x, height - 1), 1)
+        px_per_sec = ww / WAVEFORM_DISPLAY_DURATION  # e.g., 1920 / 15 = 128 px/s
+        px_target = wall_dt * px_per_sec
+        steps = max(1, round(px_target))
 
-        # Draw waveform
-        if first:
-            surface.set_at((sweep_x, y), color)
-            first = False
-        else:
-            pygame.draw.line(surface, color, (sweep_x - 1, prev_y), (sweep_x, y), 2)
+        # Interpolate between previous sample and current for smooth rendering
+        prev_ir = self._last_ir
+        prev_red = self._last_red
 
-        prev_y = y
-        sweep_x += 1
+        for s in range(steps):
+            t = (s + 1) / steps
+            ir_val = prev_ir + (ac_ir - prev_ir) * t
+            red_val = prev_red + (ac_red - prev_red) * t
 
-        if sweep_x >= WAVEFORM_WIDTH:
-            sweep_x = 0
-            first = True
-            d_min = s_min
-            d_max = s_max
-            s_min = 9999.0
-            s_max = -9999.0
-            surface.fill(COLOR_BG)
-            self._draw_grid(surface, height)
+            # Track combined min/max for auto-scaling
+            if ir_val < self._sweep_min:
+                self._sweep_min = ir_val
+            if ir_val > self._sweep_max:
+                self._sweep_max = ir_val
 
-        # Write back state
-        if channel == "ir":
-            self._sweep_x_ir = sweep_x
-            self._prev_y_ir = prev_y
-            self._first_point_ir = first
-            self._sweep_min_ir = s_min
-            self._sweep_max_ir = s_max
-            self._disp_min_ir = d_min
-            self._disp_max_ir = d_max
-        else:
-            self._sweep_x_red = sweep_x
-            self._prev_y_red = prev_y
-            self._first_point_red = first
-            self._sweep_min_red = s_min
-            self._sweep_max_red = s_max
-            self._disp_min_red = d_min
-            self._disp_max_red = d_max
+            # Track peak amplitudes for legend
+            if abs(ir_val) > self._cycle_peak_ir:
+                self._cycle_peak_ir = abs(ir_val)
+            if abs(red_val) > self._cycle_peak_red:
+                self._cycle_peak_red = abs(red_val)
+
+            # Smoothly expand display scale if signal exceeds bounds during sweep
+            # This prevents prolonged clipping when time axis is long (15s)
+            val_max = max(ir_val, red_val)
+            val_min = min(ir_val, red_val)
+            if val_max > self._disp_max:
+                self._disp_max += (val_max - self._disp_max) * 0.05
+            if val_min < self._disp_min:
+                self._disp_min -= (self._disp_min - val_min) * 0.05
+
+            # Map to Y coordinates (shared scale)
+            y_ir = self._map_to_y(ir_val, self._disp_min, self._disp_max, wh)
+            y_red = self._map_to_y(red_val, self._disp_min, self._disp_max, wh)
+
+            # Erase ahead (cursor effect) — matches HTML eraseW=4
+            erase_w = 4
+            ex = (self._sweep_x + 2) % ww
+            if ex + erase_w <= ww:
+                pygame.draw.rect(surface, COLOR_BG, (ex, 0, erase_w, wh))
+            else:
+                pygame.draw.rect(surface, COLOR_BG, (ex, 0, ww - ex, wh))
+                pygame.draw.rect(surface, COLOR_BG, (0, 0, erase_w - (ww - ex), wh))
+
+            # Sweep cursor line
+            cx = (self._sweep_x + 1) % ww
+            pygame.draw.line(surface, COLOR_GRID, (cx, 0), (cx, wh - 1), 1)
+
+            # Draw waveform lines
+            if self._first_point:
+                surface.set_at((self._sweep_x % ww, y_ir), COLOR_WAVEFORM_IR)
+                surface.set_at((self._sweep_x % ww, y_red), COLOR_WAVEFORM_RED)
+                self._first_point = False
+            else:
+                px = (self._sweep_x - 1) % ww
+                sx = self._sweep_x % ww
+                # Draw Red first (behind, thinner), then IR on top (thicker)
+                pygame.draw.line(surface, COLOR_WAVEFORM_RED,
+                                 (px, self._prev_y_red), (sx, y_red), 1)
+                pygame.draw.line(surface, COLOR_WAVEFORM_IR,
+                                 (px, self._prev_y_ir), (sx, y_ir), 2)
+
+            self._prev_y_ir = y_ir
+            self._prev_y_red = y_red
+            self._sweep_x += 1
+
+            # End of sweep — reset, rescale smoothly, redraw grid
+            if self._sweep_x >= ww:
+                self._sweep_x = 0
+                self._first_point = True
+
+                # Smooth auto-scale (lerp factor 0.4) — matches HTML reference
+                margin = (self._sweep_max - self._sweep_min) * 0.12 + 5
+                self._disp_min += ((self._sweep_min - margin) - self._disp_min) * 0.4
+                self._disp_max += ((self._sweep_max + margin) - self._disp_max) * 0.4
+
+                # Reset tracking
+                self._sweep_min = 9999.0
+                self._sweep_max = -9999.0
+
+                # Redraw grid
+                surface.fill(COLOR_BG)
+                self._draw_grid(surface, wh, ww)
+
+        self._last_ir = ac_ir
+        self._last_red = ac_red
+
+        # Blit to screen
+        self.screen.blit(surface, (0, L["waveform_y"]))
+
+        # Redraw timeline overlay, channel labels, and amplitude legend
+        self._draw_time_axis_overlay()
+        self._draw_channel_labels()
+        self._draw_amplitude_legend()
+
+    def _draw_amplitude_legend(self):
+        """Draw current amplitude values for each channel."""
+        L = self._layout
+        x = 10
+        y = L["waveform_y"] + 5
+        # IR amplitude
+        txt_ir = self.font_small.render(f"IR: {self._peak_ir:.1f}mV", True, COLOR_WAVEFORM_IR)
+        self.screen.blit(txt_ir, (x, y))
+        # Red amplitude
+        txt_red = self.font_small.render(f"Red: {self._peak_red:.1f}mV", True, COLOR_WAVEFORM_RED)
+        self.screen.blit(txt_red, (x, y + txt_ir.get_height() + 2))
 
     @staticmethod
     def _map_to_y(value, d_min, d_max, height):
@@ -275,7 +404,7 @@ class PygameDisplay:
 
     # ─────────────────────── METRICS HEADER ───────────────────────
     def update_metrics(self, hr, pi, spo2, rr, condition_name):
-        """Update the header metrics display."""
+        """Update the header metrics display (proportionally spaced)."""
         hr_int = int(hr + 0.5)
         pi_x10 = int(pi * 10 + 0.5)
         spo2_int = int(spo2 + 0.5)
@@ -294,100 +423,131 @@ class PygameDisplay:
 
         self._draw_header_bg()
 
+        L = self._layout
+        sw = L["screen_w"]
+
+        # Proportionally space 5 metrics across screen width
+        # Sections: HR | PI | SpO2 | RR | Condition
+        section_w = sw // 5
+
         # HR
-        x = 20
+        x = int(section_w * 0) + 20
         lbl = self.font_label.render("HR", True, COLOR_TEXT_LABEL)
-        self.screen.blit(lbl, (x, 8))
+        self.screen.blit(lbl, (x, 6))
         val = self.font_value.render(f"{hr_int}", True, COLOR_WAVEFORM_IR)
-        self.screen.blit(val, (x, 26))
+        self.screen.blit(val, (x, L["header_h"] // 2))
         unit = self.font_small.render("BPM", True, COLOR_TEXT_LABEL)
-        self.screen.blit(unit, (x + val.get_width() + 4, 34))
+        self.screen.blit(unit, (x + val.get_width() + 4, L["header_h"] // 2 + 8))
 
         # PI
-        x = 200
+        x = int(section_w * 1) + 10
         lbl = self.font_label.render("PI", True, COLOR_TEXT_LABEL)
-        self.screen.blit(lbl, (x, 8))
+        self.screen.blit(lbl, (x, 6))
         val = self.font_value.render(f"{pi_x10 // 10}.{pi_x10 % 10}", True, COLOR_TEXT_VALUE)
-        self.screen.blit(val, (x, 26))
+        self.screen.blit(val, (x, L["header_h"] // 2))
         unit = self.font_small.render("%", True, COLOR_TEXT_LABEL)
-        self.screen.blit(unit, (x + val.get_width() + 4, 34))
+        self.screen.blit(unit, (x + val.get_width() + 4, L["header_h"] // 2 + 8))
 
         # SpO2
-        x = 370
-        lbl = self.font_label.render("SpO₂", True, COLOR_TEXT_LABEL)
-        self.screen.blit(lbl, (x, 8))
+        x = int(section_w * 2) + 10
+        lbl = self.font_label.render("SpO\u2082", True, COLOR_TEXT_LABEL)
+        self.screen.blit(lbl, (x, 6))
         val = self.font_value.render(f"{spo2_int}", True, COLOR_ACCENT)
-        self.screen.blit(val, (x, 26))
+        self.screen.blit(val, (x, L["header_h"] // 2))
         unit = self.font_small.render("%", True, COLOR_TEXT_LABEL)
-        self.screen.blit(unit, (x + val.get_width() + 4, 34))
+        self.screen.blit(unit, (x + val.get_width() + 4, L["header_h"] // 2 + 8))
 
         # RR
-        x = 530
+        x = int(section_w * 3) + 10
         lbl = self.font_label.render("RR", True, COLOR_TEXT_LABEL)
-        self.screen.blit(lbl, (x, 8))
+        self.screen.blit(lbl, (x, 6))
         val = self.font_value.render(f"{rr_int}", True, COLOR_TEXT_VALUE)
-        self.screen.blit(val, (x, 26))
+        self.screen.blit(val, (x, L["header_h"] // 2))
         unit = self.font_small.render("BPM", True, COLOR_TEXT_LABEL)
-        self.screen.blit(unit, (x + val.get_width() + 4, 34))
+        self.screen.blit(unit, (x + val.get_width() + 4, L["header_h"] // 2 + 8))
 
         # Condition name
-        x = 720
+        x = int(section_w * 4) + 10
         lbl = self.font_label.render("Condition", True, COLOR_TEXT_LABEL)
-        self.screen.blit(lbl, (x, 8))
+        self.screen.blit(lbl, (x, 6))
         val = self.font_header.render(condition_name, True, COLOR_HIGHLIGHT)
-        self.screen.blit(val, (x, 28))
+        self.screen.blit(val, (x, L["header_h"] // 2))
 
     # ─────────────────────── FOOTER ───────────────────────
     def show_param_edit(self, param_name, value, min_val, max_val):
         """Show parameter editing info in footer."""
-        y = DISPLAY_HEIGHT - FOOTER_HEIGHT
+        L = self._layout
         self._draw_footer_bg()
-        txt = f"◀  {param_name}: {value:.1f}  ({min_val:.0f}–{max_val:.0f})  ▶"
+        y = L["screen_h"] - L["footer_h"]
+        txt = f"\u25c0  {param_name}: {value:.1f}  ({min_val:.0f}\u2013{max_val:.0f})  \u25b6"
         rendered = self.font_footer.render(txt, True, COLOR_HIGHLIGHT)
-        self.screen.blit(rendered, (DISPLAY_WIDTH // 2 - rendered.get_width() // 2, y + 10))
+        self.screen.blit(rendered,
+                         (L["screen_w"] // 2 - rendered.get_width() // 2,
+                          y + (L["footer_h"] - rendered.get_height()) // 2))
 
     def show_condition_select(self, condition_name, condition_index):
         """Show condition selection in footer."""
-        y = DISPLAY_HEIGHT - FOOTER_HEIGHT
+        L = self._layout
         self._draw_footer_bg()
-        txt = f"◀  {condition_index + 1}: {condition_name}  ▶    [SPACE] = Start"
+        y = L["screen_h"] - L["footer_h"]
+        txt = f"\u25c0  {condition_index + 1}: {condition_name}  \u25b6    [SPACE] = Start"
         rendered = self.font_footer.render(txt, True, COLOR_HIGHLIGHT)
-        self.screen.blit(rendered, (DISPLAY_WIDTH // 2 - rendered.get_width() // 2, y + 10))
+        self.screen.blit(rendered,
+                         (L["screen_w"] // 2 - rendered.get_width() // 2,
+                          y + (L["footer_h"] - rendered.get_height()) // 2))
 
     def show_status(self, text):
         """Show status text in footer."""
-        y = DISPLAY_HEIGHT - FOOTER_HEIGHT
+        L = self._layout
         self._draw_footer_bg()
+        y = L["screen_h"] - L["footer_h"]
         rendered = self.font_footer.render(text, True, COLOR_TEXT)
-        self.screen.blit(rendered, (DISPLAY_WIDTH // 2 - rendered.get_width() // 2, y + 10))
+        self.screen.blit(rendered,
+                         (L["screen_w"] // 2 - rendered.get_width() // 2,
+                          y + (L["footer_h"] - rendered.get_height()) // 2))
 
     # ─────────────────────── CLEAR ───────────────────────
     def clear_waveform(self):
-        """Clear both waveform areas and reset sweep state."""
-        self._waveform_surface_ir.fill(COLOR_BG)
-        self._waveform_surface_red.fill(COLOR_BG)
-        self._draw_grid(self._waveform_surface_ir, WAVEFORM_IR_HEIGHT)
-        self._draw_grid(self._waveform_surface_red, WAVEFORM_RED_HEIGHT)
-        self.screen.blit(self._waveform_surface_ir, (0, WAVEFORM_Y_START))
-        self.screen.blit(self._waveform_surface_red, (0, WAVEFORM_RED_Y_START))
+        """Clear the waveform area and reset sweep state."""
+        L = self._layout
+        self._waveform_surface.fill(COLOR_BG)
+        self._draw_grid(self._waveform_surface, L["waveform_h"], L["waveform_w"])
+        self.screen.blit(self._waveform_surface, (0, L["waveform_y"]))
+        self._draw_time_axis_overlay()
 
-        self._sweep_x_ir = 0; self._first_point_ir = True
-        self._prev_y_ir = WAVEFORM_IR_HEIGHT // 2
-        self._sweep_x_red = 0; self._first_point_red = True
-        self._prev_y_red = WAVEFORM_RED_HEIGHT // 2
+        self._sweep_x = 0
+        self._first_point = True
+        self._prev_y_ir = L["waveform_h"] // 2
+        self._prev_y_red = L["waveform_h"] // 2
+        self._last_draw_time = 0
+        self._last_ir = 0.0
+        self._last_red = 0.0
 
-        self._sweep_min_ir = 9999.0; self._sweep_max_ir = -9999.0
-        self._disp_min_ir = -20.0; self._disp_max_ir = 150.0
-        self._sweep_min_red = 9999.0; self._sweep_max_red = -9999.0
-        self._disp_min_red = -20.0; self._disp_max_red = 150.0
+        self._sweep_min = 9999.0
+        self._sweep_max = -9999.0
+        self._disp_min = -20.0
+        self._disp_max = 150.0
+
+        self._peak_ir = 0.0
+        self._peak_red = 0.0
+        self._cycle_peak_ir = 0.0
+        self._cycle_peak_red = 0.0
+        self._last_beat_count = 0
 
         # Redraw channel labels
-        lbl_ir = self.font_small.render("IR", True, COLOR_WAVEFORM_IR) if self.font_small else None
-        lbl_red = self.font_small.render("RED", True, COLOR_WAVEFORM_RED) if self.font_small else None
-        if lbl_ir:
-            self.screen.blit(lbl_ir, (DISPLAY_WIDTH - 40, WAVEFORM_Y_START + 5))
-        if lbl_red:
-            self.screen.blit(lbl_red, (DISPLAY_WIDTH - 40, WAVEFORM_RED_Y_START + 5))
+        self._draw_channel_labels()
+
+    # ─────────────────────── COMPATIBILITY STUBS ───────────────────────
+    def draw_waveform_point_ir(self, ac_value: float):
+        """Legacy stub — use draw_waveform_point() instead.
+        Stores value; actual drawing happens in draw_waveform_point_red().
+        """
+        self._pending_ir = ac_value
+
+    def draw_waveform_point_red(self, ac_value: float):
+        """Legacy stub — draws both channels using stored IR + this Red value."""
+        ir_val = getattr(self, '_pending_ir', 0.0)
+        self.draw_waveform_point(ir_val, ac_value)
 
     def flip(self):
         """Update the display."""

@@ -145,6 +145,18 @@ class SignalEngine:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
 
+    # ─── DAC Conversion ───
+    @staticmethod
+    def _mv_to_dac(signal_mv: float) -> int:
+        """Convert signal in mV to 12-bit DAC value.
+
+        Linear mapping: 0 mV → 0, 3300 mV → 4095.
+        PPG signals typically center around dc_baseline (~1500 mV)
+        with AC components of ±100 mV and wander of ±30 mV.
+        """
+        dac_val = int((signal_mv / 3300.0) * 4095.0)
+        return max(0, min(4095, dac_val))
+
     # ─── Generation Loop (background thread) ───
     def _generation_loop(self):
         """Main generation loop — runs at ~1 kHz, generates model samples at 100 Hz."""
@@ -169,14 +181,14 @@ class SignalEngine:
                 self._prev_disp_ir = self._curr_disp_ir
                 self._prev_disp_red = self._curr_disp_red
 
-                ir_mv, red_mv, disp_ir = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
+                ir_mv, red_mv, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
 
                 dc = self.ppg_model.dc_baseline
-                self._curr_ir = DACManager.ppg_sample_to_dac_value(ir_mv, dc, 150.0)
-                self._curr_red = DACManager.ppg_sample_to_dac_value(red_mv, dc, 150.0)
+                # DAC voltage mapping: 0 mV → 0, 3300 mV → 4095 (12-bit)
+                self._curr_ir = self._mv_to_dac(ir_mv)
+                self._curr_red = self._mv_to_dac(red_mv)
                 self._curr_disp_ir = disp_ir
-                # Red display: use AC_Red value
-                self._curr_disp_red = self.ppg_model.last_ac_red
+                self._curr_disp_red = disp_red
 
                 self._interp_counter = 0
 
@@ -257,5 +269,16 @@ class SignalEngine:
         idx = (self._read_idx - 1 + SIGNAL_BUFFER_SIZE) % SIGNAL_BUFFER_SIZE
         return self._buf_display_red[idx]
 
+    def get_current_raw_ir(self) -> int:
+        idx = (self._read_idx - 1 + SIGNAL_BUFFER_SIZE) % SIGNAL_BUFFER_SIZE
+        return self._buf_ir[idx]
+
+    def get_current_raw_red(self) -> int:
+        idx = (self._read_idx - 1 + SIGNAL_BUFFER_SIZE) % SIGNAL_BUFFER_SIZE
+        return self._buf_red[idx]
+
     def get_ppg_params(self) -> PPGParameters:
         return self.ppg_params
+
+    def get_beat_count(self) -> int:
+        return self.ppg_model.beat_count

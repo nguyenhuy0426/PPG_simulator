@@ -20,9 +20,9 @@ PPG_SYSTOLIC_POS    = 0.15
 PPG_NOTCH_POS       = 0.28
 PPG_DIASTOLIC_POS   = 0.35
 
-PPG_SYSTOLIC_WIDTH  = 0.055
-PPG_DIASTOLIC_WIDTH = 0.10
-PPG_NOTCH_WIDTH     = 0.02
+PPG_SYSTOLIC_WIDTH  = 0.08
+PPG_DIASTOLIC_WIDTH = 0.12
+PPG_NOTCH_WIDTH     = 0.04
 
 PPG_BASE_SYSTOLIC_AMPL   = 1.0
 PPG_BASE_DIASTOLIC_RATIO = 0.3
@@ -185,8 +185,10 @@ class PPGModel:
         self.last_red_value = self.dc_baseline
         self.last_ac_ir = 0.0
         self.last_ac_red = 0.0
+        self.last_display_red = 0.0
         self.last_display_ir = 0.0
-        self.resp_phase = 0.0
+        self.resp_phase_cycles = 0.0  # Respiratory phase in cycles (like HTML)
+        self.simulated_time_s = 0.0   # Total simulated time in seconds (for slow BW)
 
         # Waveform shape
         self.systolic_amplitude = PPG_BASE_SYSTOLIC_AMPL
@@ -288,11 +290,16 @@ class PPGModel:
         return _clamp(hr, cr.hr_min, cr.hr_max)
 
     def _generate_dynamic_pi(self) -> float:
+        """Generate beat-to-beat PI variability centered on user's set value.
+
+        Matches HTML reference: piNow = PI * (1 + piCV * (rand - 0.5) * 1.2)
+        This varies PI around the user's slider value, NOT uniformly across range.
+        """
         cr = self.cond_ranges
-        pi_base = cr.pi_min + random.random() * (cr.pi_max - cr.pi_min)
-        sigma = pi_base * cr.pi_cv
-        pi = pi_base + self._gaussian_random(0.0, sigma)
-        return _clamp(pi, cr.pi_min, cr.pi_max)
+        # Seeded random variation centered on user's PI value
+        seed_val = self._seeded_rand(self.beat_count * 11 + int(self.phase_in_cycle * 17))
+        pi_now = self.params.perfusion_index * (1.0 + cr.pi_cv * (seed_val - 0.5) * 1.2)
+        return _clamp(pi_now, cr.pi_min * 0.8, cr.pi_max * 1.2)
 
     # ─────────────────────── SYSTOLE FRACTION ───────────────────────
     @staticmethod
@@ -305,21 +312,36 @@ class PPGModel:
 
     # ─────────────────────── NEXT RR ───────────────────────
     def _generate_next_rr(self) -> float:
+        """Generate next RR interval. Matches HTML reference logic:
+        - Base from user HR
+        - Arrhythmia: 15% ectopic (×0.7), 10% compensatory (×1.3)
+        - HRV: hrCV-based variation
+        - FM/RSA: 5% modulation by respiratory phase
+        """
         self.current_hr = self.params.heart_rate
         rr_mean = 60.0 / self.current_hr
-        rr_std = rr_mean * self.cond_ranges.hr_cv
 
-        # Arrhythmia: occasional ectopic beats
+        # Arrhythmia: ectopic beats and compensatory pauses
         if self.params.condition == COND_ARRHYTHMIA:
-            if random.randint(0, 99) < 15:
-                rr_mean *= 0.7
+            r1 = self._seeded_rand(self.beat_count * 7 + 13)
+            r2 = self._seeded_rand(self.beat_count * 3 + 7)
+            if r1 < 0.15:
+                rr_mean *= 0.70   # Ectopic (early beat)
+            elif r1 < 0.25:
+                rr_mean *= 1.30   # Compensatory pause
+            rr_mean *= (1.0 + self.cond_ranges.hr_cv * (r2 - 0.5) * 2.0)
+            rr_mean = _clamp(rr_mean, 0.30, 1.50)
+        else:
+            # Normal HRV
+            rr_std = rr_mean * self.cond_ranges.hr_cv
+            rr_mean += self._gaussian_random(0.0, rr_std)
 
-        # FM (RSA)
-        rsa = 0.05 * math.sin(self.resp_phase)
+        # FM (RSA) — 5% modulation by respiratory phase
+        resp_rad = self.resp_phase_cycles * 2.0 * math.pi
+        rsa = 0.05 * math.sin(resp_rad)
         rr_mean *= (1.0 + rsa)
 
-        rr = rr_mean + self._gaussian_random(0.0, rr_std)
-        rr = _clamp(rr, 0.3, 2.0)
+        rr = _clamp(rr_mean, 0.3, 2.0)
 
         self.systole_fraction = self._calculate_systole_fraction(self.current_hr)
         self.systole_time = rr * 1000.0 * self.systole_fraction
@@ -364,14 +386,24 @@ class PPGModel:
         """
         Generate dual-channel PPG samples (IR and Red).
 
+        Uses Beer-Lambert law for Red/IR ratio:
+            R = (110 - SpO2) / 25  → SpO2=98% gives R=0.48, SpO2=88% gives R=0.88
+            AC_red = AC_ir × R
+
+        Respiratory modulations:
+            BW: Baseline wander = 2% of DC baseline × sin(resp_phase)
+            AM: Amplitude modulation = 1 + 0.25 × sin(resp_phase)
+            FM: RSA applied in _generate_next_rr()
+
         Args:
             delta_time: Time step in seconds (typically MODEL_DT_PPG = 0.01s).
 
         Returns:
-            Tuple (signal_ir_mv, signal_red_mv, display_ir_mv).
+            Tuple (signal_ir_mv, signal_red_mv, display_ir_mv, display_red_mv).
         """
         # Advance phase
         self.phase_in_cycle += delta_time / self.current_rr
+        self.simulated_time_s += delta_time
         if self.phase_in_cycle >= 1.0:
             self.phase_in_cycle = self.phase_in_cycle % 1.0
             self._detect_beat_and_apply_pending()
@@ -379,8 +411,9 @@ class PPGModel:
         # Pulse shape
         pulse = self._compute_pulse_shape(self.phase_in_cycle)
 
-        # Dual channel: SpO2 → R → AC_red
-        r_value = (110.0 - self.params.spo2) / 25.0
+        # Dual channel: Beer-Lambert law
+        # R = (110 - SpO2) / 25, clamped to physiological range [0.4, 1.6]
+        r_value = _clamp((110.0 - self.params.spo2) / 25.0, 0.4, 1.6)
         ac_ir = self.current_pi * PPG_AC_SCALE_PER_PI
         ac_red = ac_ir * r_value
 
@@ -390,32 +423,42 @@ class PPGModel:
         self.last_ac_ir = ac_val_ir
         self.last_ac_red = ac_val_red
 
-        # Respiratory modulations
-        self.resp_phase += delta_time * (2.0 * math.pi * self.params.resp_rate / 60.0)
-        self.resp_phase = self.resp_phase % (2.0 * math.pi)
+        # Respiratory modulations — matches HTML reference exactly:
+        # simRespPh += dt * (RR / 60)  → phase in cycles
+        # respRad = simRespPh * 2π     → convert to radians when needed
+        self.resp_phase_cycles += delta_time * (self.params.resp_rate / 60.0)
+        resp_rad = self.resp_phase_cycles * 2.0 * math.pi
 
-        # Baseline wander (BW)
-        self.baseline_wander_phase += delta_time * 0.3
-        self.baseline_wander_phase = self.baseline_wander_phase % (2.0 * math.pi)
-        wander_amp = 0.002 * self.dc_baseline if self.dc_baseline > 0 else 2.0
-        wander = wander_amp * math.sin(self.baseline_wander_phase) + 4.0 * math.sin(self.resp_phase)
+        # Baseline wander (BW) — modified for a "slight ripple" per user request:
+        # Reduced from 3.0 and 15.0 to 1.0 and 2.0
+        wander = 1.0 * math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi) \
+               + 2.0 * math.sin(resp_rad)
 
-        # AM (amplitude modulation)
-        am_factor = 1.0 + 0.25 * math.sin(self.resp_phase)
+        # AM (amplitude modulation by respiration)
+        # Matches HTML: amFactor = 1 + 0.25 * sin(respRad)
+        am_factor = 1.0 + 0.25 * math.sin(resp_rad)
         ac_val_ir *= am_factor
         ac_val_red *= am_factor
 
-        # Display signal (AC + wander, no DC)
-        self.last_display_ir = ac_val_ir + wander
+        # Noise — matches HTML: (rand-0.5) * 2.5 * (NOISE/100) * pi * AC
+        # In Python, noise_level is already 0-0.10 (equivalent to NOISE/100)
+        noise_ir = 0.0
+        noise_red = 0.0
+        if self.params.noise_level > 0:
+            noise_seed_ir = self._seeded_rand(
+                self.beat_count * 31 + int(self.simulated_time_ms) % 997)
+            noise_seed_red = self._seeded_rand(
+                self.beat_count * 53 + int(self.simulated_time_ms) % 991)
+            noise_ir = (noise_seed_ir - 0.5) * 2.5 * self.params.noise_level * ac_ir
+            noise_red = (noise_seed_red - 0.5) * 2.5 * self.params.noise_level * ac_red
 
-        signal_ir = self.dc_baseline + ac_val_ir + wander
-        signal_red = self.dc_baseline + ac_val_red + wander
+        # Display signals (AC + wander + noise, no DC) — for GUI rendering
+        self.last_display_ir = ac_val_ir + wander + noise_ir
+        self.last_display_red = ac_val_red + wander + noise_red
 
-        # Noise
-        noise_ir = self.params.noise_level * ac_ir
-        noise_red = self.params.noise_level * ac_red
-        signal_ir += self._gaussian_random(0.0, noise_ir)
-        signal_red += self._gaussian_random(0.0, noise_red)
+        # Raw signals for DAC
+        signal_ir = self.dc_baseline + self.last_display_ir
+        signal_red = self.dc_baseline + self.last_display_red
 
         if self.dc_baseline > 0:
             signal_ir = max(signal_ir, 0.0)
@@ -430,7 +473,7 @@ class PPGModel:
         self.last_red_value = signal_red
         self.last_ac_value = ac_val_ir
 
-        return signal_ir, signal_red, self.last_display_ir
+        return signal_ir, signal_red, self.last_display_ir, self.last_display_red
 
     # ─────────────────────── MEASUREMENT TRACKING ───────────────────────
     def _update_measurements(self, signal_val: float):
@@ -460,6 +503,17 @@ class PPGModel:
             self.current_cycle_valley = 99999.0
             self.current_cycle_notch = 99999.0
         self.previous_phase = p
+
+    # ─────────────────────── SEEDED RANDOM (matches HTML reference) ───────────────────────
+    @staticmethod
+    def _seeded_rand(i: int) -> float:
+        """Deterministic pseudo-random in [0, 1), matching HTML seededRand().
+
+        Uses the same hash function as the HTML reference:
+            ((sin(i*127.1 + 33.7) * 43758.5453) % 1 + 1) % 1
+        This ensures reproducible beat-to-beat variation patterns.
+        """
+        return ((math.sin(i * 127.1 + 33.7) * 43758.5453) % 1.0 + 1.0) % 1.0
 
     # ─────────────────────── GAUSSIAN RNG (Box-Muller) ───────────────────────
     def _gaussian_random(self, mean: float, std: float) -> float:

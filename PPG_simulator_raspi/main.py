@@ -15,6 +15,7 @@ Controls:
         SPACE / M      — MODE button (cycle edit mode / start simulation)
         LEFT / RIGHT   — Adjust potentiometer (or use mouse scroll)
         1-6            — Quick-select condition
+        C              — Toggle calibration mode (sine wave output)
         Q / ESC        — Quit
     Potentiometer:
         Analog input via Grove Base Hat ADC (A0)
@@ -25,6 +26,7 @@ Controls:
 import sys
 import os
 import time
+import math
 import argparse
 
 # Parse --dry-run before importing config
@@ -56,6 +58,7 @@ from core.signal_engine import SignalEngine, SIG_RUNNING
 from hw.adc_reader import ADCReader
 from hw.button_handler import ButtonHandler
 from ui.pygame_display import PygameDisplay
+from core.csv_logger import CSVLogger
 
 import pygame
 
@@ -76,6 +79,7 @@ class PPGSimulatorApp:
         self.adc = ADCReader()
         self.buttons = ButtonHandler()
         self.display = PygameDisplay()
+        self.csv_logger = CSVLogger()
 
         # Simulated pot value (for keyboard/mouse control)
         self._sim_pot = 2048
@@ -83,6 +87,14 @@ class PPGSimulatorApp:
         # Timing
         self._last_metrics = 0
         self._last_waveform = 0
+
+        # Calibration mode
+        self._calibration_mode = False
+        self._cal_freq_idx = 0  # Index into [1, 2, 5] Hz
+        self._cal_freqs = [1.0, 2.0, 5.0]
+        self._cal_amplitude = 50.0  # mV
+        self._cal_phase = 0.0
+        self._cal_last_time = 0.0
 
     def setup(self):
         """Initialize all subsystems."""
@@ -139,6 +151,7 @@ class PPGSimulatorApp:
         except KeyboardInterrupt:
             log.info("Interrupted by user")
         finally:
+            self.csv_logger.stop()
             self._shutdown()
 
     # ─── Event Handling ───
@@ -161,29 +174,58 @@ class PPGSimulatorApp:
         if key in (pygame.K_q, pygame.K_ESCAPE):
             self.display.running = False
 
+        elif key == pygame.K_c:
+            # Toggle calibration mode
+            self._calibration_mode = not self._calibration_mode
+            if self._calibration_mode:
+                self._cal_phase = 0.0
+                self._cal_last_time = time.time()
+                self.display.clear_waveform()
+                log.info(f"[CAL] Calibration ON: {self._cal_freqs[self._cal_freq_idx]} Hz sine")
+                self.display.show_status(
+                    f"CAL: {self._cal_freqs[self._cal_freq_idx]:.0f} Hz / "
+                    f"{self._cal_amplitude:.0f} mV  [LEFT/RIGHT=freq] [C=exit]")
+            else:
+                log.info("[CAL] Calibration OFF")
+                self.display.clear_waveform()
+
         elif key in (pygame.K_SPACE, pygame.K_m):
-            # MODE button
-            self.buttons.simulate_mode_press()
+            # MODE button (disabled in calibration mode)
+            if not self._calibration_mode:
+                self.buttons.simulate_mode_press()
 
         elif key == pygame.K_LEFT:
-            self._sim_pot = max(0, self._sim_pot - 200)
-            self.adc.set_simulated_value(self._sim_pot)
+            if self._calibration_mode:
+                self._cal_freq_idx = (self._cal_freq_idx - 1) % len(self._cal_freqs)
+                self.display.show_status(
+                    f"CAL: {self._cal_freqs[self._cal_freq_idx]:.0f} Hz / "
+                    f"{self._cal_amplitude:.0f} mV  [LEFT/RIGHT=freq] [C=exit]")
+            else:
+                self._sim_pot = max(0, self._sim_pot - 200)
+                self.adc.set_simulated_value(self._sim_pot)
 
         elif key == pygame.K_RIGHT:
-            self._sim_pot = min(ADC_MAX_VALUE, self._sim_pot + 200)
-            self.adc.set_simulated_value(self._sim_pot)
+            if self._calibration_mode:
+                self._cal_freq_idx = (self._cal_freq_idx + 1) % len(self._cal_freqs)
+                self.display.show_status(
+                    f"CAL: {self._cal_freqs[self._cal_freq_idx]:.0f} Hz / "
+                    f"{self._cal_amplitude:.0f} mV  [LEFT/RIGHT=freq] [C=exit]")
+            else:
+                self._sim_pot = min(ADC_MAX_VALUE, self._sim_pot + 200)
+                self.adc.set_simulated_value(self._sim_pot)
 
         elif key in (pygame.K_1, pygame.K_2, pygame.K_3,
                      pygame.K_4, pygame.K_5, pygame.K_6):
             # Quick-select condition
-            cond = key - pygame.K_1
-            if 0 <= cond < COND_COUNT:
-                self.state_machine.selected_condition = cond
-                if self.state_machine.state == STATE_SIMULATING:
-                    self.engine.change_condition(cond)
-                    self.display.clear_waveform()
-                elif self.state_machine.state == STATE_SELECT_CONDITION:
-                    self.display.show_condition_select(CONDITION_NAMES[cond], cond)
+            if not self._calibration_mode:
+                cond = key - pygame.K_1
+                if 0 <= cond < COND_COUNT:
+                    self.state_machine.selected_condition = cond
+                    if self.state_machine.state == STATE_SIMULATING:
+                        self.engine.change_condition(cond)
+                        self.display.clear_waveform()
+                    elif self.state_machine.state == STATE_SELECT_CONDITION:
+                        self.display.show_condition_select(CONDITION_NAMES[cond], cond)
 
     # ─── Input Handling ───
     def _handle_inputs(self):
@@ -207,6 +249,7 @@ class PPGSimulatorApp:
 
                 if new_mode == EDIT_CONDITION_SELECT:
                     self.engine.stop_simulation()
+                    self.csv_logger.stop()
                     self.state_machine.process_event(EVT_STOP)
                     self.display.clear_waveform()
 
@@ -268,14 +311,37 @@ class PPGSimulatorApp:
         now_ms = time.time() * 1000
         state = self.state_machine.state
 
+        # Calibration mode: generate sine wave for oscilloscope verification
+        if self._calibration_mode:
+            if now_ms - self._last_waveform >= WAVEFORM_UPDATE_MS:
+                self._last_waveform = now_ms
+                now = time.time()
+                dt = now - self._cal_last_time
+                self._cal_last_time = now
+                freq = self._cal_freqs[self._cal_freq_idx]
+                self._cal_phase += dt * 2.0 * math.pi * freq
+                self._cal_phase %= (2.0 * math.pi)
+                val = self._cal_amplitude * math.sin(self._cal_phase)
+                # Both channels show identical sine for calibration
+                self.display.draw_waveform_point(val, val)
+            return
+
         # Waveform update (50 Hz)
         if now_ms - self._last_waveform >= WAVEFORM_UPDATE_MS:
             self._last_waveform = now_ms
             if state == STATE_SIMULATING and self.engine.state == SIG_RUNNING:
                 ac_ir = self.engine.get_current_display_ir()
                 ac_red = self.engine.get_current_display_red()
-                self.display.draw_waveform_point_ir(ac_ir)
-                self.display.draw_waveform_point_red(ac_red)
+                self.display.draw_waveform_point(ac_ir, ac_red, self.engine.get_beat_count())
+                
+                # Log numerical data
+                p = self.engine.get_ppg_params()
+                cond = self.state_machine.selected_condition
+                cond_name = CONDITION_NAMES[cond] if cond < len(CONDITION_NAMES) else "Unknown"
+                raw_ir = self.engine.get_current_raw_ir()
+                raw_red = self.engine.get_current_raw_red()
+                self.csv_logger.log_data(raw_ir, raw_red, p.heart_rate, p.spo2, 
+                                         p.resp_rate, p.perfusion_index, cond_name)
 
         # Metrics update (4 Hz)
         if now_ms - self._last_metrics >= METRICS_UPDATE_MS:
@@ -315,9 +381,11 @@ class PPGSimulatorApp:
                 self.display.show_condition_select(cond_name, cond)
 
     # ─── Helpers ───
-    def _start_simulation(self, condition):
+    def _start_simulation(self, condition: int):
+        """Start the PPG simulation."""
         log.info(f"[SIM] Starting PPG: {CONDITION_NAMES[condition]}")
         self.engine.start_simulation(condition)
+        self.csv_logger.start()
         self.state_machine.selected_condition = condition
         self.state_machine.edit_mode = EDIT_CONDITION_SELECT
         self.display.clear_waveform()

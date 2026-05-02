@@ -204,3 +204,12 @@ PPG_LOG_ENABLED=0 python main.py
 5. **Config persistence** — JSON file saves parameters on shutdown and restores on startup, preventing loss of calibration between reboots.
 
 6. **Virtual environment with --system-site-packages** — Required because `grove.py` is installed system-wide and needs to be accessible from within the venv.
+
+---
+
+## 6. Data Logging Architecture
+
+The `core/csv_logger.py` module continuously captures the simulated physiological state to a `data.csv` file for external analysis.
+- **Trigger**: The logger is initialized when the simulation starts (`STATE_SIMULATING`) and stopped upon pause/exit.
+- **Frequency**: Data is logged at 50 Hz, perfectly synced with the Pygame waveform rendering loop.
+- **Fields saved**: `IR_Raw`, `RED_Raw`, `HR_BPM`, `SpO2_%`, `RR_BPM`, `PI_%`, `Condition`.

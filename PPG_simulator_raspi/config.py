@@ -2,7 +2,7 @@
 config.py — Global system configuration for PPG Signal Simulator (Raspberry Pi 4)
 
 Hardware: Raspberry Pi 4 + Grove Base Hat (ADC) + Dual MCP4725 DAC (I2C)
-         + 7-inch HDMI display (1024×600) + 1 push button + 1 potentiometer (5 kΩ)
+         + HDMI display (auto-detect resolution) + 1 push button + 1 potentiometer (5 kΩ)
 
 Port of the ESP32-S3 config.h to Python.
 """
@@ -13,8 +13,8 @@ import os
 # SYSTEM IDENTIFICATION
 # ============================================================================
 DEVICE_NAME = "PPG Signal Simulator"
-FIRMWARE_VERSION = "3.0.0"
-FIRMWARE_DATE = "30 April 2026"
+FIRMWARE_VERSION = "3.1.0"
+FIRMWARE_DATE = "01 May 2026"
 HARDWARE_MODEL = "Raspberry Pi 4"
 
 # ============================================================================
@@ -89,24 +89,21 @@ DAC_VOLTAGE_MAX = 3.3           # Volts
 DAC_MV_PER_STEP = DAC_VOLTAGE_MAX * 1000.0 / 4096.0  # ~0.806 mV
 
 # ============================================================================
-# DISPLAY CONFIGURATION (7-inch HDMI, 1024×600)
+# DISPLAY CONFIGURATION — Auto-detect resolution
 # ============================================================================
-DISPLAY_WIDTH = 1024            # Pixels
-DISPLAY_HEIGHT = 600            # Pixels
+# Set to 0 for auto-detection at runtime via pygame.display.Info()
+# Override with fixed values for specific screens (e.g., headless testing)
+DISPLAY_WIDTH = 0               # 0 = auto-detect
+DISPLAY_HEIGHT = 0              # 0 = auto-detect
 DISPLAY_FULLSCREEN = True
 DISPLAY_FPS = 60                # Target frame rate
 
-# Layout zones (proportional to screen)
-HEADER_HEIGHT = 60              # Top metrics bar
-FOOTER_HEIGHT = 40              # Bottom status bar
-WAVEFORM_Y_START = HEADER_HEIGHT
-WAVEFORM_HEIGHT = DISPLAY_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT  # 500 px
-WAVEFORM_WIDTH = DISPLAY_WIDTH
-
-# Dual waveform layout (IR on top, Red on bottom)
-WAVEFORM_IR_HEIGHT = WAVEFORM_HEIGHT // 2       # 250 px
-WAVEFORM_RED_HEIGHT = WAVEFORM_HEIGHT // 2      # 250 px
-WAVEFORM_RED_Y_START = WAVEFORM_Y_START + WAVEFORM_IR_HEIGHT
+# ============================================================================
+# WAVEFORM DISPLAY CONFIGURATION
+# ============================================================================
+# Duration of waveform visible on screen (seconds)
+# At 50 Hz GUI update rate, 5s = 250 points across the screen width
+WAVEFORM_DISPLAY_DURATION = 15.0    # seconds — extended for better observation
 
 # ============================================================================
 # BUFFER CONFIGURATION
@@ -130,7 +127,7 @@ ADC_VOLTAGE_REF = 3.3           # Volts
 # ============================================================================
 COLOR_BG            = (10, 10, 15)          # Near-black background
 COLOR_WAVEFORM_IR   = (0, 255, 100)         # Bright green (PPG IR)
-COLOR_WAVEFORM_RED  = (255, 60, 60)         # Red (PPG Red channel)
+COLOR_WAVEFORM_RED  = (255, 80, 60)         # Red-orange (PPG Red channel)
 COLOR_WAVEFORM_DIM  = (0, 100, 40)          # Dim green for trailing
 COLOR_GRID          = (30, 35, 45)          # Dark gray grid lines
 COLOR_HEADER_BG     = (15, 15, 25)          # Dark header
@@ -144,13 +141,65 @@ COLOR_SEPARATOR     = (40, 45, 60)          # Separator lines
 COLOR_BUTTON_BG     = (30, 35, 55)          # Button background
 COLOR_BUTTON_HOVER  = (50, 60, 90)          # Button hover
 COLOR_BUTTON_ACTIVE = (70, 90, 140)         # Button active/pressed
+COLOR_TIME_AXIS     = (80, 85, 100)         # Time axis text/ticks
 
 # ============================================================================
-# FONT CONFIGURATION
+# FONT CONFIGURATION (base sizes — will be scaled proportionally at runtime)
 # ============================================================================
 FONT_FAMILY = None  # Will use pygame default; set to a .ttf path for custom
+
+# Base sizes at 600px screen height (scale proportionally)
+FONT_SIZE_BASE_HEIGHT = 600     # Reference height for font sizes
 FONT_SIZE_HEADER = 22
 FONT_SIZE_VALUE = 28
 FONT_SIZE_FOOTER = 18
 FONT_SIZE_LABEL = 16
 FONT_SIZE_SMALL = 14
+
+# Maximum font scale factor (cap for very large screens)
+FONT_SCALE_MAX = 2.5
+
+
+# ============================================================================
+# LAYOUT PROPORTIONS (percentage of screen dimensions)
+# ============================================================================
+# These ratios are used to compute actual pixel values at runtime
+LAYOUT_HEADER_RATIO = 0.08     # 8% of screen height for header
+LAYOUT_FOOTER_RATIO = 0.06     # 6% of screen height for footer
+# Waveform gets the remaining: 1 - header - footer = 86%
+
+# Minimum dimensions (for tiny screens)
+LAYOUT_MIN_HEADER_PX = 40
+LAYOUT_MIN_FOOTER_PX = 30
+LAYOUT_MIN_WAVEFORM_PX = 200
+
+
+def compute_layout(screen_w: int, screen_h: int) -> dict:
+    """Compute all layout dimensions from actual screen size.
+
+    Returns a dict with all computed pixel values for header, footer,
+    waveform area, and font sizes.
+    """
+    header_h = max(LAYOUT_MIN_HEADER_PX, int(screen_h * LAYOUT_HEADER_RATIO))
+    footer_h = max(LAYOUT_MIN_FOOTER_PX, int(screen_h * LAYOUT_FOOTER_RATIO))
+    waveform_h = max(LAYOUT_MIN_WAVEFORM_PX, screen_h - header_h - footer_h)
+    waveform_w = screen_w
+
+    # Font scaling: proportional to screen height, capped
+    font_scale = min(screen_h / FONT_SIZE_BASE_HEIGHT, FONT_SCALE_MAX)
+
+    return {
+        "screen_w": screen_w,
+        "screen_h": screen_h,
+        "header_h": header_h,
+        "footer_h": footer_h,
+        "waveform_y": header_h,
+        "waveform_w": waveform_w,
+        "waveform_h": waveform_h,
+        "font_scale": font_scale,
+        "font_header": max(14, int(FONT_SIZE_HEADER * font_scale)),
+        "font_value": max(16, int(FONT_SIZE_VALUE * font_scale)),
+        "font_footer": max(12, int(FONT_SIZE_FOOTER * font_scale)),
+        "font_label": max(10, int(FONT_SIZE_LABEL * font_scale)),
+        "font_small": max(10, int(FONT_SIZE_SMALL * font_scale)),
+    }

@@ -1,11 +1,11 @@
 {
   "amplification": 1.0,
-  "condition": 5,
+  "condition": 0,
   "dicrotic_notch": 0.25,
-  "edit_mode": 0,
-  "heart_rate": 90,
+  "edit_mode": 5,
+  "heart_rate": 80,
   "noise_level": 0.09,
-  "perfusion_index": 9.5,
+  "perfusion_index": 2.9,
   "resp_rate": 19,
   "spo2": 99
 }
