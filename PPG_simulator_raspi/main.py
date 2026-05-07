@@ -70,6 +70,45 @@ def mapf(x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
+def pot_to_condition(pot_raw: int, current_cond: int, adc_max: int, count: int) -> int:
+    """Map potentiometer value to condition index with hysteresis.
+
+    Divides the ADC range into `count` equal zones. Uses ±3% hysteresis
+    at each boundary so that small ADC fluctuations near a boundary
+    don't cause the condition to jump back and forth.
+
+    Args:
+        pot_raw:      Raw ADC value (0 .. adc_max)
+        current_cond: Currently selected condition index
+        adc_max:      Maximum ADC value (e.g. 4095)
+        count:        Number of conditions (e.g. 6)
+
+    Returns:
+        Stable condition index (0 .. count-1)
+    """
+    zone_size = (adc_max + 1) / count        # ~683 counts per zone for 6 conditions
+    hysteresis = zone_size * 0.06             # ±3% of zone width (~41 counts)
+
+    # Calculate which zone the pot is pointing at
+    candidate = int(pot_raw / zone_size)
+    candidate = max(0, min(count - 1, candidate))
+
+    if candidate == current_cond:
+        return current_cond
+
+    # Only accept a change if the pot has crossed the boundary + hysteresis
+    if candidate > current_cond:
+        boundary = current_cond * zone_size + zone_size  # upper edge of current zone
+        if pot_raw >= boundary + hysteresis:
+            return candidate
+    else:
+        boundary = current_cond * zone_size  # lower edge of current zone
+        if pot_raw <= boundary - hysteresis:
+            return candidate
+
+    return current_cond
+
+
 class PPGSimulatorApp:
     """Main application class for the PPG Signal Simulator."""
 
@@ -83,6 +122,9 @@ class PPGSimulatorApp:
 
         # Simulated pot value (for keyboard/mouse control)
         self._sim_pot = 2048
+
+        # Track last raw pot reading to detect intentional movement
+        self._last_pot_raw = -1
 
         # Timing
         self._last_metrics = 0
@@ -257,12 +299,17 @@ class PPGSimulatorApp:
                 self.engine.resume_simulation()
                 self.state_machine.process_event(EVT_RESUME)
 
-        # Potentiometer
+        # Potentiometer — read with heavy smoothing + deadzone from ADCReader
         pot_raw = self.adc.read_raw()
 
+        # Skip processing if pot hasn't changed (deadzone already applied in ADCReader)
+        if pot_raw == self._last_pot_raw:
+            return
+        self._last_pot_raw = pot_raw
+
         if state == STATE_SELECT_CONDITION:
-            cond = int(mapf(pot_raw, 0, ADC_MAX_VALUE, 0, COND_COUNT))
-            cond = min(cond, COND_COUNT - 1)
+            cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
+                                   ADC_MAX_VALUE, COND_COUNT)
             if cond != self.state_machine.selected_condition:
                 self.state_machine.selected_condition = cond
                 self.display.show_condition_select(CONDITION_NAMES[cond], cond)
@@ -272,8 +319,8 @@ class PPGSimulatorApp:
             lim = get_ppg_limits(p.condition)
 
             if edit_mode == EDIT_CONDITION_SELECT:
-                cond = int(mapf(pot_raw, 0, ADC_MAX_VALUE, 0, COND_COUNT))
-                cond = min(cond, COND_COUNT - 1)
+                cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
+                                       ADC_MAX_VALUE, COND_COUNT)
                 if cond != self.state_machine.selected_condition:
                     self.state_machine.selected_condition = cond
                     self.engine.change_condition(cond)
@@ -281,28 +328,28 @@ class PPGSimulatorApp:
 
             elif edit_mode == EDIT_HR:
                 new_hr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.heart_rate.min, lim.heart_rate.max))
-                if abs(new_hr - p.heart_rate) > 0.5:
+                if abs(new_hr - p.heart_rate) >= 1.0:
                     self.engine.update_heart_rate(new_hr)
 
             elif edit_mode == EDIT_PI:
                 new_pi = round(mapf(pot_raw, 0, ADC_MAX_VALUE,
                                     lim.perfusion_index.min, lim.perfusion_index.max) * 10) / 10
-                if abs(new_pi - p.perfusion_index) > 0.05:
+                if abs(new_pi - p.perfusion_index) >= 0.1:
                     self.engine.update_perfusion_index(new_pi)
 
             elif edit_mode == EDIT_SPO2:
                 new_spo2 = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.spo2.min, lim.spo2.max))
-                if abs(new_spo2 - p.spo2) > 0.5:
+                if abs(new_spo2 - p.spo2) >= 1.0:
                     self.engine.update_spo2(new_spo2)
 
             elif edit_mode == EDIT_RR:
                 new_rr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.resp_rate.min, lim.resp_rate.max))
-                if abs(new_rr - p.resp_rate) > 0.5:
+                if abs(new_rr - p.resp_rate) >= 1.0:
                     self.engine.update_resp_rate(new_rr)
 
             elif edit_mode == EDIT_NOISE:
                 new_noise = round(mapf(pot_raw, 0, ADC_MAX_VALUE, 0.0, 0.10) * 100) / 100
-                if abs(new_noise - p.noise_level) > 0.005:
+                if abs(new_noise - p.noise_level) >= 0.01:
                     self.engine.update_noise_level(new_noise)
 
     # ─── Display Update ───
