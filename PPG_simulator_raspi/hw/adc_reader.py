@@ -1,4 +1,6 @@
 """
+DEPRECATED: This module is no longer used. UI sliders now control parameters.
+
 adc_reader.py — Grove Base Hat ADC reader for potentiometer input.
 
 Uses grove.adc (Seeed Studio Grove Base Hat for Raspberry Pi 4).

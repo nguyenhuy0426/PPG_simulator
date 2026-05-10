@@ -1,4 +1,6 @@
 """
+DEPRECATED: Mode button removed. Switching parameter control is now via UI or BLE.
+
 button_handler.py — GPIO push button handler with software debounce.
 
 Uses polling instead of edge detection to avoid the

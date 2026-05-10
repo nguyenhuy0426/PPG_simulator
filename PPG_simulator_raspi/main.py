@@ -55,10 +55,18 @@ from core.state_machine import (
     EDIT_CONDITION_SELECT, EDIT_HR, EDIT_PI, EDIT_SPO2, EDIT_RR, EDIT_NOISE,
 )
 from core.signal_engine import SignalEngine, SIG_RUNNING
-from hw.adc_reader import ADCReader
-from hw.button_handler import ButtonHandler
+# ============================================================
+# Physical hardware controls (potentiometer & button) removed
+# Date: 2026-05-10
+# Reason: Replaced by interactive sliders on the touch screen
+# See Section 3.2 of the UI update plan.
+# ============================================================
+# [REMOVED] Physical potentiometer (GPIO17) and mode button (GPIO27) – replaced by on-screen sliders and BLE commands.
+# from hw.adc_reader import ADCReader
+# from hw.button_handler import ButtonHandler
 from ui.pygame_display import PygameDisplay
 from core.csv_logger import CSVLogger
+from comm.ble_server import BleServer
 
 import pygame
 
@@ -115,10 +123,11 @@ class PPGSimulatorApp:
     def __init__(self):
         self.engine = SignalEngine.get_instance()
         self.state_machine = StateMachine()
-        self.adc = ADCReader()
-        self.buttons = ButtonHandler()
+        # self.adc = ADCReader()
+        # self.buttons = ButtonHandler()
         self.display = PygameDisplay()
         self.csv_logger = CSVLogger()
+        self.ble_server = BleServer(self.engine, self.display)
 
         # Simulated pot value (for keyboard/mouse control)
         self._sim_pot = 2048
@@ -147,13 +156,16 @@ class PPGSimulatorApp:
         log.info("=" * 50)
 
         # Hardware init
-        self.adc.begin()
-        self.buttons.begin()
+        # self.adc.begin()
+        # self.buttons.begin()
         self.engine.begin()
 
         # Display init
         self.display.begin()
         self.display.update_metrics(0, 0, 0, 0, "Initializing...")
+
+        # BLE Init
+        self.ble_server.begin()
 
         # State machine
         self.state_machine.set_state_change_callback(self._on_state_change)
@@ -203,13 +215,41 @@ class PPGSimulatorApp:
             if event.type == pygame.QUIT:
                 self.display.running = False
 
+            if self.display.handle_event(event):
+                # Slider or button changed! Update parameters
+                p = self.engine.get_ppg_params()
+                new_hr = self.display.sliders['hr'].get_value()
+                if abs(new_hr - p.heart_rate) >= 1.0:
+                    self.engine.update_heart_rate(new_hr)
+                
+                new_pi = self.display.sliders['pi'].get_value()
+                if abs(new_pi - p.perfusion_index) >= 0.1:
+                    self.engine.update_perfusion_index(new_pi)
+                
+                new_spo2 = self.display.sliders['spo2'].get_value()
+                if abs(new_spo2 - p.spo2) >= 1.0:
+                    self.engine.update_spo2(new_spo2)
+                
+                new_rr = self.display.sliders['rr'].get_value()
+                if abs(new_rr - p.resp_rate) >= 1.0:
+                    self.engine.update_resp_rate(new_rr)
+                
+                new_noise = self.display.sliders['noise'].get_value()
+                if abs(new_noise - p.noise_level) >= 0.01:
+                    self.engine.update_noise_level(new_noise)
+
+                # Sync condition if changed from UI buttons
+                if self.display.selected_cond_idx != self.state_machine.selected_condition:
+                    if self.state_machine.state == STATE_SIMULATING:
+                        self.engine.change_condition(self.display.selected_cond_idx)
+                    self.state_machine.selected_condition = self.display.selected_cond_idx
+
             elif event.type == pygame.KEYDOWN:
                 self._handle_keydown(event.key)
 
             elif event.type == pygame.MOUSEWHEEL:
-                # Scroll wheel adjusts pot value
+                # Scroll wheel adjusts simulated pot value
                 self._sim_pot = max(0, min(ADC_MAX_VALUE, self._sim_pot + event.y * 100))
-                self.adc.set_simulated_value(self._sim_pot)
 
     def _handle_keydown(self, key):
         """Handle keyboard input."""
@@ -232,9 +272,21 @@ class PPGSimulatorApp:
                 self.display.clear_waveform()
 
         elif key in (pygame.K_SPACE, pygame.K_m):
-            # MODE button (disabled in calibration mode)
+            # MODE button — simulate mode press via state machine
             if not self._calibration_mode:
-                self.buttons.simulate_mode_press()
+                state = self.state_machine.state
+                if state == STATE_SELECT_CONDITION:
+                    cond = self.state_machine.selected_condition
+                    self._start_simulation(cond)
+                    self.state_machine.process_event(EVT_START_SIMULATION)
+                elif state == STATE_SIMULATING:
+                    self.state_machine.process_event(EVT_BTN_MODE_PRESS)
+                    new_mode = self.state_machine.edit_mode
+                    log.debug(f"[KEY] Edit mode: {StateMachine.edit_mode_to_string(new_mode)}")
+                    if new_mode == EDIT_CONDITION_SELECT:
+                        self.state_machine.process_event(EVT_STOP)
+                        self.engine.stop_simulation()
+                        self.csv_logger.stop()
 
         elif key == pygame.K_LEFT:
             if self._calibration_mode:
@@ -244,7 +296,6 @@ class PPGSimulatorApp:
                     f"{self._cal_amplitude:.0f} mV  [LEFT/RIGHT=freq] [C=exit]")
             else:
                 self._sim_pot = max(0, self._sim_pot - 200)
-                self.adc.set_simulated_value(self._sim_pot)
 
         elif key == pygame.K_RIGHT:
             if self._calibration_mode:
@@ -254,7 +305,6 @@ class PPGSimulatorApp:
                     f"{self._cal_amplitude:.0f} mV  [LEFT/RIGHT=freq] [C=exit]")
             else:
                 self._sim_pot = min(ADC_MAX_VALUE, self._sim_pot + 200)
-                self.adc.set_simulated_value(self._sim_pot)
 
         elif key in (pygame.K_1, pygame.K_2, pygame.K_3,
                      pygame.K_4, pygame.K_5, pygame.K_6):
@@ -263,11 +313,13 @@ class PPGSimulatorApp:
                 cond = key - pygame.K_1
                 if 0 <= cond < COND_COUNT:
                     self.state_machine.selected_condition = cond
+                    self.display.selected_cond_idx = cond
                     if self.state_machine.state == STATE_SIMULATING:
                         self.engine.change_condition(cond)
                         self.display.clear_waveform()
                     elif self.state_machine.state == STATE_SELECT_CONDITION:
-                        self.display.show_condition_select(CONDITION_NAMES[cond], cond)
+                        self._start_simulation(cond)
+                        self.state_machine.process_event(EVT_START_SIMULATION)
 
     # ─── Input Handling ───
     def _handle_inputs(self):
@@ -275,82 +327,89 @@ class PPGSimulatorApp:
         state = self.state_machine.state
         edit_mode = self.state_machine.edit_mode
 
+        # ============================================================
+        # Physical hardware controls (potentiometer & button) removed
+        # Date: 2026-05-10
+        # Reason: Replaced by interactive sliders on the touch screen
+        # See Section 3.2 of the UI update plan.
+        # ============================================================
+
         # MODE button
-        if self.buttons.was_mode_pressed():
-            log.debug("[BTN] Mode pressed")
-
-            if state == STATE_SELECT_CONDITION:
-                cond = self.state_machine.selected_condition
-                self._start_simulation(cond)
-                self.state_machine.process_event(EVT_START_SIMULATION)
-
-            elif state == STATE_SIMULATING:
-                self.state_machine.process_event(EVT_BTN_MODE_PRESS)
-                new_mode = self.state_machine.edit_mode
-                log.debug(f"[BTN] Edit mode: {StateMachine.edit_mode_to_string(new_mode)}")
-
-                if new_mode == EDIT_CONDITION_SELECT:
-                    self.engine.stop_simulation()
-                    self.csv_logger.stop()
-                    self.state_machine.process_event(EVT_STOP)
-                    self.display.clear_waveform()
-
-            elif state == STATE_PAUSED:
-                self.engine.resume_simulation()
-                self.state_machine.process_event(EVT_RESUME)
-
-        # Potentiometer — read with heavy smoothing + deadzone from ADCReader
-        pot_raw = self.adc.read_raw()
-
-        # Skip processing if pot hasn't changed (deadzone already applied in ADCReader)
-        if pot_raw == self._last_pot_raw:
-            return
-        self._last_pot_raw = pot_raw
-
-        if state == STATE_SELECT_CONDITION:
-            cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
-                                   ADC_MAX_VALUE, COND_COUNT)
-            if cond != self.state_machine.selected_condition:
-                self.state_machine.selected_condition = cond
-                self.display.show_condition_select(CONDITION_NAMES[cond], cond)
-
-        elif state == STATE_SIMULATING:
-            p = self.engine.get_ppg_params()
-            lim = get_ppg_limits(p.condition)
-
-            if edit_mode == EDIT_CONDITION_SELECT:
-                cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
-                                       ADC_MAX_VALUE, COND_COUNT)
-                if cond != self.state_machine.selected_condition:
-                    self.state_machine.selected_condition = cond
-                    self.engine.change_condition(cond)
-                    self.display.clear_waveform()
-
-            elif edit_mode == EDIT_HR:
-                new_hr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.heart_rate.min, lim.heart_rate.max))
-                if abs(new_hr - p.heart_rate) >= 1.0:
-                    self.engine.update_heart_rate(new_hr)
-
-            elif edit_mode == EDIT_PI:
-                new_pi = round(mapf(pot_raw, 0, ADC_MAX_VALUE,
-                                    lim.perfusion_index.min, lim.perfusion_index.max) * 10) / 10
-                if abs(new_pi - p.perfusion_index) >= 0.1:
-                    self.engine.update_perfusion_index(new_pi)
-
-            elif edit_mode == EDIT_SPO2:
-                new_spo2 = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.spo2.min, lim.spo2.max))
-                if abs(new_spo2 - p.spo2) >= 1.0:
-                    self.engine.update_spo2(new_spo2)
-
-            elif edit_mode == EDIT_RR:
-                new_rr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.resp_rate.min, lim.resp_rate.max))
-                if abs(new_rr - p.resp_rate) >= 1.0:
-                    self.engine.update_resp_rate(new_rr)
-
-            elif edit_mode == EDIT_NOISE:
-                new_noise = round(mapf(pot_raw, 0, ADC_MAX_VALUE, 0.0, 0.10) * 100) / 100
-                if abs(new_noise - p.noise_level) >= 0.01:
-                    self.engine.update_noise_level(new_noise)
+        # if self.buttons.was_mode_pressed():
+        #     log.debug("[BTN] Mode pressed")
+        # 
+        #     if state == STATE_SELECT_CONDITION:
+        #         cond = self.state_machine.selected_condition
+        #         self._start_simulation(cond)
+        #         self.state_machine.process_event(EVT_START_SIMULATION)
+        # 
+        #     elif state == STATE_SIMULATING:
+        #         self.state_machine.process_event(EVT_BTN_MODE_PRESS)
+        #         new_mode = self.state_machine.edit_mode
+        #         log.debug(f"[BTN] Edit mode: {StateMachine.edit_mode_to_string(new_mode)}")
+        # 
+        #         if new_mode == EDIT_CONDITION_SELECT:
+        #             self.engine.stop_simulation()
+        #             self.csv_logger.stop()
+        #             self.state_machine.process_event(EVT_STOP)
+        #             self.display.clear_waveform()
+        # 
+        #     elif state == STATE_PAUSED:
+        #         self.engine.resume_simulation()
+        #         self.state_machine.process_event(EVT_RESUME)
+        # 
+        # # Potentiometer — read with heavy smoothing + deadzone from ADCReader
+        # pot_raw = self.adc.read_raw()
+        # 
+        # # Skip processing if pot hasn't changed (deadzone already applied in ADCReader)
+        # if pot_raw == self._last_pot_raw:
+        #     return
+        # self._last_pot_raw = pot_raw
+        # 
+        # if state == STATE_SELECT_CONDITION:
+        #     cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
+        #                            ADC_MAX_VALUE, COND_COUNT)
+        #     if cond != self.state_machine.selected_condition:
+        #         self.state_machine.selected_condition = cond
+        #         self.display.show_condition_select(CONDITION_NAMES[cond], cond)
+        # 
+        # elif state == STATE_SIMULATING:
+        #     p = self.engine.get_ppg_params()
+        #     lim = get_ppg_limits(p.condition)
+        # 
+        #     if edit_mode == EDIT_CONDITION_SELECT:
+        #         cond = pot_to_condition(pot_raw, self.state_machine.selected_condition,
+        #                                ADC_MAX_VALUE, COND_COUNT)
+        #         if cond != self.state_machine.selected_condition:
+        #             self.state_machine.selected_condition = cond
+        #             self.engine.change_condition(cond)
+        #             self.display.clear_waveform()
+        # 
+        #     elif edit_mode == EDIT_HR:
+        #         new_hr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.heart_rate.min, lim.heart_rate.max))
+        #         if abs(new_hr - p.heart_rate) >= 1.0:
+        #             self.engine.update_heart_rate(new_hr)
+        # 
+        #     elif edit_mode == EDIT_PI:
+        #         new_pi = round(mapf(pot_raw, 0, ADC_MAX_VALUE,
+        #                             lim.perfusion_index.min, lim.perfusion_index.max) * 10) / 10
+        #         if abs(new_pi - p.perfusion_index) >= 0.1:
+        #             self.engine.update_perfusion_index(new_pi)
+        # 
+        #     elif edit_mode == EDIT_SPO2:
+        #         new_spo2 = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.spo2.min, lim.spo2.max))
+        #         if abs(new_spo2 - p.spo2) >= 1.0:
+        #             self.engine.update_spo2(new_spo2)
+        # 
+        #     elif edit_mode == EDIT_RR:
+        #         new_rr = round(mapf(pot_raw, 0, ADC_MAX_VALUE, lim.resp_rate.min, lim.resp_rate.max))
+        #         if abs(new_rr - p.resp_rate) >= 1.0:
+        #             self.engine.update_resp_rate(new_rr)
+        # 
+        #     elif edit_mode == EDIT_NOISE:
+        #         new_noise = round(mapf(pot_raw, 0, ADC_MAX_VALUE, 0.0, 0.10) * 100) / 100
+        #         if abs(new_noise - p.noise_level) >= 0.01:
+        #             self.engine.update_noise_level(new_noise)
 
     # ─── Display Update ───
     def _update_display(self):
@@ -400,32 +459,15 @@ class PPGSimulatorApp:
                 cond_name = CONDITION_NAMES[cond] if cond < len(CONDITION_NAMES) else "Unknown"
                 self.display.update_metrics(p.heart_rate, p.perfusion_index,
                                             p.spo2, p.resp_rate, cond_name)
-
-                # Footer based on edit mode
-                mode = self.state_machine.edit_mode
-                if mode == EDIT_CONDITION_SELECT:
-                    self.display.show_condition_select(cond_name, cond)
-                elif mode == EDIT_HR:
-                    lim = get_ppg_limits(p.condition)
-                    self.display.show_param_edit("HR", p.heart_rate, lim.heart_rate.min, lim.heart_rate.max)
-                elif mode == EDIT_PI:
-                    lim = get_ppg_limits(p.condition)
-                    self.display.show_param_edit("PI", p.perfusion_index,
-                                                lim.perfusion_index.min, lim.perfusion_index.max)
-                elif mode == EDIT_SPO2:
-                    lim = get_ppg_limits(p.condition)
-                    self.display.show_param_edit("SpO2", p.spo2, lim.spo2.min, lim.spo2.max)
-                elif mode == EDIT_RR:
-                    lim = get_ppg_limits(p.condition)
-                    self.display.show_param_edit("RR", p.resp_rate, lim.resp_rate.min, lim.resp_rate.max)
-                elif mode == EDIT_NOISE:
-                    self.display.show_param_edit("Noise", p.noise_level * 100, 0, 10)
+                
+                # Sync UI sliders with current params (in case changed by BLE)
+                if not any(s.is_dragging for s in self.display.sliders.values()):
+                    self.display.update_sliders(p)
 
             elif state == STATE_SELECT_CONDITION:
                 cond = self.state_machine.selected_condition
                 cond_name = CONDITION_NAMES[cond] if cond < len(CONDITION_NAMES) else "Unknown"
                 self.display.update_metrics(0, 0, 0, 0, cond_name)
-                self.display.show_condition_select(cond_name, cond)
 
     # ─── Helpers ───
     def _start_simulation(self, condition: int):
@@ -454,8 +496,9 @@ class PPGSimulatorApp:
         except Exception as e:
             log.error(f"Failed to save config on exit: {e}")
 
+        self.ble_server.stop()
         self.engine.stop_simulation()
-        self.buttons.cleanup()
+        # self.buttons.cleanup()
         self.display.quit()
         log.info("Goodbye!")
 

@@ -19,31 +19,33 @@ Python port of the ESP32-S3 PPG Signal Simulator firmware for **Raspberry Pi 4**
 
 ### Key Features
 
-- ✅ **Overlaid dual-channel PPG waveform** — IR (green) and Red (red-orange) on single panel with shared time axis
+- ✅ **Overlaid dual-channel PPG waveform** — IR (green) and Red on single panel with shared time axis
 - ✅ **Beer-Lambert law physics** — Accurate R = (110 − SpO₂) / 25 for Red/IR amplitude ratio
 - ✅ **6 clinical conditions** — Normal, Arrhythmia, Weak perfusion, Vasoconstriction, Strong perfusion, Vasodilation
 - ✅ **Full respiratory modulations** — BW (baseline wander at 2% DC), AM (amplitude modulation), FM (RSA)
-- ✅ **Responsive display** — Auto-detects any HDMI screen resolution (7", 11", 14", 15", 24", 27")
-- ✅ **Dual 12-bit DAC outputs** — IR and Red channels via two MCP4725 (I2C) with proper voltage mapping
+- ✅ **Android-style UI** — Neon green on black theme matching the MedicalSimulator Android app
+- ✅ **Auto-detect resolution** — Scales to any HDMI screen (7” 1024×600, 11” 1366×768, 23.8” 1920×1080)
+- ✅ **On-screen sliders** — Touch/mouse interactive sliders for HR, SpO₂, RR, PI, Noise
+- ✅ **Condition buttons** — One-click condition switching via on-screen buttons
+- ✅ **BLE GATT server** — Connects to Android MedicalSimulator app for remote control
+- ✅ **Dual 12-bit DAC outputs** — IR and Red channels via two MCP4725 (I2C)
 - ✅ **Calibration mode** — Standard sine wave output (1/2/5 Hz) for oscilloscope verification
-- ✅ **Potentiometer + MODE button** — Real-time parameter control via Grove Base Hat ADC
-- ✅ **Mouse & keyboard control** — Full parameter adjustment from the UI
+- ✅ **Keyboard shortcuts** — Full parameter adjustment via keyboard (SPACE, 1-6, arrows)
 - ✅ **Dry-run mode** — Run on any Linux PC without Raspberry Pi hardware
 - ✅ **Config persistence** — Parameters saved to JSON, restored on reboot
-- ✅ **Debug logging** — Configurable logging to `/tmp/ppg_simulator.log`
-- ✅ **Data logging** — Automatically logs all numerical data (IR, RED, HR, SpO2, RR, PI, condition) to `data.csv` for analysis
+- ✅ **Data logging** — Logs all numerical data (IR, RED, HR, SpO2, RR, PI, condition) to `data.csv`
 
 ### Key Specifications
 
 | Parameter               | Value                                           |
 |------------------------|-------------------------------------------------|
 | Platform               | Raspberry Pi 4 (Ubuntu 24.04 LTS)               |
-| Display                | Any HDMI display (auto-detect resolution)        |
+| Display                | Auto-detect (7” / 11” / 23.8” HDMI)             |
 | DAC                    | MCP4725 (12-bit, I2C) × 2 — IR & Red channels   |
-| ADC                    | Grove Base Hat (12-bit, I2C STM32)               |
+| BLE                    | `bless` GATT server — Android app control        |
 | PPG model rate         | 100 Hz                                           |
 | DAC output rate        | 1 kHz (10× linear interpolation)                 |
-| Controls               | 1 MODE button (GPIO17) + 1 potentiometer (5 kΩ)  |
+| Controls               | On-screen sliders + condition buttons + keyboard |
 | Signal type            | PPG only (6 clinical conditions)                 |
 | DAC voltage range      | 0–3.3V linear (0 mV → 0, 3300 mV → 4095)        |
 | Language               | Python 3.10+                                     |
@@ -206,24 +208,24 @@ python main.py --dry-run
 
 ## 🎯 Quick Start Guide
 
-1. **Connect hardware**: Wire MCP4725 DACs (I2C), potentiometer (Grove A0), MODE button (GPIO17)
+1. **Connect hardware**: Wire MCP4725 DACs (I2C), potentiometer (Grove A0) - *Note: Hardware controls are deprecated, the UI now uses touch sliders*.
 2. **Run**: `python main.py`
-3. The display shows the condition selection screen
-4. Turn the **potentiometer** (or use LEFT/RIGHT arrow keys) to select a condition
-5. Press **MODE button** (or SPACE/M key) to start simulation
-6. While simulating:
-   - **MODE** cycles: HR → PI → SpO₂ → RR → Noise → Condition Select
-   - **Potentiometer** smoothly adjusts the active parameter
-   - **Keys 1-6** quick-select a condition
-   - When edit mode returns to Condition Select, simulation stops
-7. **Connect BNC cables** from IR/Red DAC outputs to external equipment
+3. The display will launch in a full-screen layout matching the Android App (Neon Green on Black).
+4. **Control via Touch/Mouse**: 
+   - Click the **+** or **-** buttons on any slider to adjust parameters (HR, SpO2, RR, PI, Noise).
+   - Click the Condition buttons at the bottom (NORMAL, ARRHYTHMIA, etc.) to switch the simulated condition.
+5. **Control via Keyboard** (For testing and dry-run):
+   - **MODE (SPACE/M)** cycles through conditions or edit modes.
+   - **Potentiometer (LEFT/RIGHT)** adjust active parameters if hardware is not used.
+   - **Keys 1-6** quick-select a condition.
+6. **Connect BNC cables** from IR/Red DAC outputs to external equipment.
 
 ### Keyboard Controls
 
 | Key | Action |
 |-----|--------|
 | `SPACE` / `M` | MODE button (cycle edit mode / start) |
-| `←` / `→` | Adjust potentiometer value |
+| `←` / `→` | Adjust potentiometer value (simulates hardware) |
 | `Mouse scroll` | Fine potentiometer adjustment |
 | `1`-`6` | Quick-select condition |
 | `C` | Toggle calibration mode (sine wave output) |

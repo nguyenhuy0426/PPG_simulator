@@ -15,13 +15,14 @@
 |---------|-------|
 | Platform | Raspberry Pi 4 (Ubuntu 24.04 LTS) |
 | Language | Python 3.10+ |
-| Display | 7" HDMI (1024×600), Pygame full-screen |
+| Display | Auto-detect (7"/11"/23.8" HDMI), Pygame full-screen |
 | DAC | Dual MCP4725 (12-bit, I2C) |
-| ADC | Grove Base Hat (12-bit, STM32 I2C) |
-| Controls | 1 MODE button (GPIO17) + 1 potentiometer + keyboard/mouse |
+| ADC | Grove Base Hat (12-bit, STM32 I2C) — **deprecated** |
+| Controls | On-screen touch sliders + keyboard/mouse |
+| BLE | `bless` GATT server — connects to Android MedicalSimulator app |
 | Model Rate | 100 Hz |
 | DAC Rate | 1 kHz |
-| Architecture | Python threading (main + generation) |
+| Architecture | Python threading (main + generation + BLE) |
 
 ---
 
@@ -36,14 +37,16 @@ MCP4725 DACs (I2C Bus 1):
   GPIO2 → SDA, GPIO3 → SCL
   0x60 = IR Channel, 0x61 = Red Channel
 
-Grove Base Hat ADC:
+Grove Base Hat ADC (DEPRECATED):
   I2C addr 0x04, Channel A0 → Potentiometer (5 kΩ)
+  NOTE: Replaced by on-screen sliders and BLE commands.
 
-Push Button (Active LOW, pull-up):
+Push Button (DEPRECATED):
   GPIO17 → BTN_MODE
+  NOTE: Replaced by on-screen condition buttons.
 
 Display:
-  HDMI → 7" screen (1024×600)
+  HDMI → Auto-detect resolution (1024×600 / 1366×768 / 1920×1080)
 ```
 
 ---
@@ -53,12 +56,12 @@ Display:
 ### Threading Model
 
 ```
-Main Thread                    Background Thread (daemon)
-═══════════════                ════════════════════════════
-Pygame loop @ 60 FPS           signal_engine._generation_loop()
-├── Events (keyboard/mouse)    ├── PPGModel @ 100 Hz
-├── Button/ADC polling         ├── 10× interpolation → 1 kHz
-├── Display rendering          ├── Ring buffer (1024)
+Main Thread                    Background Thread (daemon)     BLE Thread (daemon)
+═══════════════                ════════════════════════════    ═══════════════════
+Pygame loop @ 60 FPS           signal_engine._generation_loop()  ble_server (asyncio)
+├── Events (keyboard/mouse)    ├── PPGModel @ 100 Hz           ├── GATT notify @ 50 Hz
+├── Slider/button UI           ├── 10× interpolation → 1 kHz   ├── Status JSON @ 2 Hz
+├── Display rendering          ├── Ring buffer (1024)           └── Command JSON write
 └── State machine              └── MCP4725 DAC writes
 ```
 
@@ -73,9 +76,11 @@ main.py
 │   └── hw/dac_manager.py        Dual MCP4725
 ├── core/state_machine.py        State flow
 ├── core/param_controller.py     Limits & validation
-├── hw/adc_reader.py             Grove ADC
-├── hw/button_handler.py         GPIO button
-├── ui/pygame_display.py         Pygame GUI
+├── hw/adc_reader.py             Grove ADC (DEPRECATED)
+├── hw/button_handler.py         GPIO button (DEPRECATED)
+├── ui/pygame_display.py         Pygame GUI (Android-style layout)
+├── ui/sliders.py                Touch sliders & buttons
+├── comm/ble_server.py           BLE GATT server (bless)
 └── comm/logger.py               Logging
 ```
 
@@ -135,9 +140,10 @@ CONDITION_SELECT → EDIT_HR → EDIT_PI → EDIT_SPO2 → EDIT_RR → EDIT_NOIS
 
 Activated via `--dry-run` flag or `PPG_DRY_RUN=1` env var.
 - **DACManager**: Accepts writes but doesn't access I2C
-- **ADCReader**: Returns simulated value (controlled by keyboard/mouse)
-- **ButtonHandler**: Only responds to keyboard (SPACE/M key)
-- **Display**: Fully functional Pygame window
+- **ADCReader**: DEPRECATED — sliders control parameters directly
+- **ButtonHandler**: DEPRECATED — on-screen buttons and keyboard shortcuts
+- **Display**: Fully functional Pygame window matching Android app layout
+- **BLE Server**: Fully functional, advertises and accepts connections
 
 ---
 

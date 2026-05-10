@@ -85,7 +85,7 @@ UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 10
 DAC_RESOLUTION_BITS = 12
 DAC_MAX_VALUE = 4095
 DAC_CENTER_VALUE = 2048
-DAC_VOLTAGE_MAX = 3.3           # Volts
+DAC_VOLTAGE_MAX = 3.2           # Volts
 DAC_MV_PER_STEP = DAC_VOLTAGE_MAX * 1000.0 / 4096.0  # ~0.806 mV
 
 # ============================================================================
@@ -123,25 +123,25 @@ ADC_MAX_VALUE = 4095            # 12-bit
 ADC_VOLTAGE_REF = 3.3           # Volts
 
 # ============================================================================
-# COLOR PALETTE (RGB tuples for Pygame)
+# COLOR PALETTE (RGB tuples for Pygame) matching Android UI
 # ============================================================================
-COLOR_BG            = (10, 10, 15)          # Near-black background
-COLOR_WAVEFORM_IR   = (0, 255, 100)         # Bright green (PPG IR)
-COLOR_WAVEFORM_RED  = (255, 80, 60)         # Red-orange (PPG Red channel)
-COLOR_WAVEFORM_DIM  = (0, 100, 40)          # Dim green for trailing
-COLOR_GRID          = (30, 35, 45)          # Dark gray grid lines
-COLOR_HEADER_BG     = (15, 15, 25)          # Dark header
-COLOR_FOOTER_BG     = (15, 15, 25)          # Dark footer
-COLOR_TEXT          = (220, 225, 235)        # Off-white text
-COLOR_TEXT_VALUE    = (0, 220, 255)          # Cyan for values
-COLOR_TEXT_LABEL    = (140, 145, 160)        # Light gray for labels
-COLOR_HIGHLIGHT     = (255, 220, 50)        # Yellow highlight
-COLOR_ACCENT        = (100, 120, 255)       # Blue accent
-COLOR_SEPARATOR     = (40, 45, 60)          # Separator lines
-COLOR_BUTTON_BG     = (30, 35, 55)          # Button background
-COLOR_BUTTON_HOVER  = (50, 60, 90)          # Button hover
-COLOR_BUTTON_ACTIVE = (70, 90, 140)         # Button active/pressed
-COLOR_TIME_AXIS     = (80, 85, 100)         # Time axis text/ticks
+COLOR_BG            = (0, 0, 0)             # Pure black background
+COLOR_WAVEFORM_IR   = (0, 255, 128)         # Neon green
+COLOR_WAVEFORM_RED  = (0, 255, 128)         # Make red channel same as IR to match "PPG" trace
+COLOR_WAVEFORM_DIM  = (0, 80, 40)           # Dim green
+COLOR_GRID          = (0, 40, 20)           # Dark green grid lines
+COLOR_HEADER_BG     = (0, 0, 0)             # Black header
+COLOR_FOOTER_BG     = (0, 0, 0)             # Black footer
+COLOR_TEXT          = (0, 255, 128)         # Neon green text
+COLOR_TEXT_VALUE    = (0, 255, 128)         # Neon green for values
+COLOR_TEXT_LABEL    = (0, 150, 75)          # Darker green for labels
+COLOR_HIGHLIGHT     = (0, 255, 128)         # Neon green highlight
+COLOR_ACCENT        = (0, 255, 128)         # Neon green accent
+COLOR_SEPARATOR     = (0, 60, 30)           # Dark green separators
+COLOR_BUTTON_BG     = (0, 40, 20)           # Inactive button dark green
+COLOR_BUTTON_HOVER  = (0, 120, 60)          # Button hover
+COLOR_BUTTON_ACTIVE = (0, 255, 128)         # Active button neon green
+COLOR_TIME_AXIS     = (0, 100, 50)          # Time axis text/ticks
 
 # ============================================================================
 # FONT CONFIGURATION (base sizes — will be scaled proportionally at runtime)
@@ -163,39 +163,34 @@ FONT_SCALE_MAX = 2.5
 # ============================================================================
 # LAYOUT PROPORTIONS (percentage of screen dimensions)
 # ============================================================================
-# These ratios are used to compute actual pixel values at runtime
-LAYOUT_HEADER_RATIO = 0.08     # 8% of screen height for header
-LAYOUT_FOOTER_RATIO = 0.06     # 6% of screen height for footer
-# Waveform gets the remaining: 1 - header - footer = 86%
-
-# Minimum dimensions (for tiny screens)
-LAYOUT_MIN_HEADER_PX = 40
-LAYOUT_MIN_FOOTER_PX = 30
-LAYOUT_MIN_WAVEFORM_PX = 200
-
+LAYOUT_HEADER_RATIO = 0.10       # 10% for header
+LAYOUT_LEFT_MENU_RATIO = 0.15    # 15% for left menu
+LAYOUT_WAVEFORM_H_RATIO = 0.45   # 45% for waveform (below header)
+LAYOUT_CONTROLS_H_RATIO = 0.45   # 45% for bottom controls
 
 def compute_layout(screen_w: int, screen_h: int) -> dict:
-    """Compute all layout dimensions from actual screen size.
+    """Compute all layout dimensions from actual screen size."""
+    header_h = int(screen_h * LAYOUT_HEADER_RATIO)
+    left_menu_w = int(screen_w * LAYOUT_LEFT_MENU_RATIO)
+    waveform_h = int(screen_h * LAYOUT_WAVEFORM_H_RATIO)
+    controls_h = screen_h - header_h - waveform_h
+    
+    waveform_w = screen_w - left_menu_w
 
-    Returns a dict with all computed pixel values for header, footer,
-    waveform area, and font sizes.
-    """
-    header_h = max(LAYOUT_MIN_HEADER_PX, int(screen_h * LAYOUT_HEADER_RATIO))
-    footer_h = max(LAYOUT_MIN_FOOTER_PX, int(screen_h * LAYOUT_FOOTER_RATIO))
-    waveform_h = max(LAYOUT_MIN_WAVEFORM_PX, screen_h - header_h - footer_h)
-    waveform_w = screen_w
-
-    # Font scaling: proportional to screen height, capped
+    # Font scaling: proportional to screen height
     font_scale = min(screen_h / FONT_SIZE_BASE_HEIGHT, FONT_SCALE_MAX)
 
     return {
         "screen_w": screen_w,
         "screen_h": screen_h,
         "header_h": header_h,
-        "footer_h": footer_h,
+        "left_menu_w": left_menu_w,
+        "controls_h": controls_h,
+        "waveform_x": left_menu_w,
         "waveform_y": header_h,
         "waveform_w": waveform_w,
         "waveform_h": waveform_h,
+        "controls_y": header_h + waveform_h,
         "font_scale": font_scale,
         "font_header": max(14, int(FONT_SIZE_HEADER * font_scale)),
         "font_value": max(16, int(FONT_SIZE_VALUE * font_scale)),
