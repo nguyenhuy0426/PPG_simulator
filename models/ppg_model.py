@@ -28,7 +28,7 @@ PPG_BASE_SYSTOLIC_AMPL   = 1.0
 PPG_BASE_DIASTOLIC_RATIO = 0.3
 PPG_BASE_DICROTIC_DEPTH  = 0.18
 
-PPG_AC_SCALE_PER_PI = 15.0   # AC = PI × 15 mV
+PPG_AC_SCALE_PER_PI = 0.933    # AC = PI × 0.933 V  (2.8V peak at PI=3.0, fills 0.5V–3.3V)
 
 PPG_SYSTOLE_BASE_MS = 300.0
 PPG_SYSTOLE_MIN_MS  = 250.0
@@ -177,7 +177,7 @@ class PPGModel:
 
         self.current_hr = 75.0
         self.current_pi = 3.0
-        self.dc_baseline = 1500.0
+        self.dc_baseline = 0.5          # 0.5 V  (0.5V DC baseline)
 
         self.last_sample_value = self.dc_baseline
         self.last_ac_value = 0.0
@@ -429,10 +429,9 @@ class PPGModel:
         self.resp_phase_cycles += delta_time * (self.params.resp_rate / 60.0)
         resp_rad = self.resp_phase_cycles * 2.0 * math.pi
 
-        # Baseline wander (BW) — modified for a "slight ripple" per user request:
-        # Reduced from 3.0 and 15.0 to 1.0 and 2.0
-        wander = 1.0 * math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi) \
-               + 2.0 * math.sin(resp_rad)
+        # Baseline wander (BW) — scaled proportionally with AC amplitude
+        wander = 0.03 * math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi) \
+               + 0.06 * math.sin(resp_rad)
 
         # AM (amplitude modulation by respiration)
         # Matches HTML: amFactor = 1 + 0.25 * sin(respRad)
@@ -533,20 +532,22 @@ class PPGModel:
         self._gauss_has_spare = True
         return mean + std * u * s
 
-    # ─────────────────────── DAC CONVERSION ───────────────────────
+    # ─────────────────────── DAC CONVERSION (Volts → 12-bit) ───────────────────────
     @staticmethod
-    def ac_value_to_dac_12bit(ac_mv: float) -> int:
-        AC_MAX_MV = 150.0
-        normalized = _clamp(ac_mv / AC_MAX_MV, 0.0, 1.0)
+    def ac_value_to_dac_12bit(ac_v: float) -> int:
+        """Convert AC amplitude in Volts to 12-bit DAC value."""
+        AC_MAX_V = 3.0   # 3.0 V full-scale (accommodates PI up to 6 at 0.5 V/PI)
+        normalized = _clamp(ac_v / AC_MAX_V, 0.0, 1.0)
         return int(normalized * 4095.0)
 
     @staticmethod
-    def ppg_sample_to_dac_value(sample_mv: float, dc_baseline: float, max_ac: float) -> int:
+    def ppg_sample_to_dac_value(sample_v: float, dc_baseline: float, max_ac: float) -> int:
+        """Map a PPG sample (Volts) to a 12-bit DAC value."""
         min_v = dc_baseline - max_ac
         max_v = dc_baseline + max_ac
         if max_v <= min_v:
             return 2048
-        normalized = _clamp((sample_mv - min_v) / (max_v - min_v), 0.0, 1.0)
+        normalized = _clamp((sample_v - min_v) / (max_v - min_v), 0.0, 1.0)
         return int(normalized * 4095.0)
 
     # ─────────────────────── GETTERS ───────────────────────

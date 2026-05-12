@@ -101,9 +101,9 @@ class SignalEngine:
             self.ppg_model.set_parameters(params)
             self.ppg_params = params
 
-            # Pre-fill buffer
+            # Pre-fill buffer with DC baseline level
             dc = self.ppg_model.dc_baseline
-            fill_val = DACManager.ppg_sample_to_dac_value(dc, dc, 150.0)
+            fill_val = self._v_to_dac(dc)
             for i in range(SIGNAL_BUFFER_SIZE // 2):
                 self._buf_ir[i] = fill_val
                 self._buf_red[i] = fill_val
@@ -145,16 +145,16 @@ class SignalEngine:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
 
-    # ─── DAC Conversion ───
+    # ─── DAC Conversion (Volts → 12-bit) ───
     @staticmethod
-    def _mv_to_dac(signal_mv: float) -> int:
-        """Convert signal in mV to 12-bit DAC value.
+    def _v_to_dac(signal_v: float) -> int:
+        """Convert signal in Volts to 12-bit DAC value.
 
-        Linear mapping: 0 mV → 0, 3300 mV → 4095.
-        PPG signals typically center around dc_baseline (~1500 mV)
-        with AC components of ±100 mV and wander of ±30 mV.
+        Linear mapping: 0 V → 0, 3.3 V → 4095.
+        PPG signals: DC baseline = 0.5 V, AC peak = 2.8 V (PI=3.0).
+        Signal range: 0.5 V (diastolic valley) to 3.3 V (systolic peak).
         """
-        dac_val = int((signal_mv / 3300.0) * 4095.0)
+        dac_val = int((signal_v / 3.3) * 4095.0)
         return max(0, min(4095, dac_val))
 
     # ─── Generation Loop (background thread) ───
@@ -184,9 +184,9 @@ class SignalEngine:
                 ir_mv, red_mv, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
 
                 dc = self.ppg_model.dc_baseline
-                # DAC voltage mapping: 0 mV → 0, 3300 mV → 4095 (12-bit)
-                self._curr_ir = self._mv_to_dac(ir_mv)
-                self._curr_red = self._mv_to_dac(red_mv)
+                # DAC voltage mapping: 0 V → 0, 3.3 V → 4095 (12-bit)
+                self._curr_ir = self._v_to_dac(ir_mv)
+                self._curr_red = self._v_to_dac(red_mv)
                 self._curr_disp_ir = disp_ir
                 self._curr_disp_red = disp_red
 

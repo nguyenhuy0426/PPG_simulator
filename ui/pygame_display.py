@@ -47,8 +47,8 @@ class PygameDisplay:
         self._last_red = 0.0
         self._sweep_min = 9999.0
         self._sweep_max = -9999.0
-        self._disp_min = -20.0
-        self._disp_max = 150.0
+        self._disp_min = -0.2
+        self._disp_max = 3.0
         self._peak_ir = 0.0
         self._peak_red = 0.0
         self._cycle_peak_ir = 0.0
@@ -469,8 +469,8 @@ class PygameDisplay:
     @staticmethod
     def _map_to_y(value, d_min, d_max, height):
         r_min, r_max = d_min, d_max
-        if r_max - r_min < 10.0:
-            r_max = r_min + 10.0
+        if r_max - r_min < 0.1:
+            r_max = r_min + 0.1
         padding = (r_max - r_min) * 0.1
         r_max += padding
         r_min -= padding
@@ -539,8 +539,8 @@ class PygameDisplay:
         self._last_red = 0.0
         self._sweep_min = 9999.0
         self._sweep_max = -9999.0
-        self._disp_min = -20.0
-        self._disp_max = 150.0
+        self._disp_min = -0.2
+        self._disp_max = 3.0
         self._peak_ir = 0.0
         self._peak_red = 0.0
         self._cycle_peak_ir = 0.0

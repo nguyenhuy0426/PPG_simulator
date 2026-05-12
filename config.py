@@ -85,8 +85,8 @@ UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 10
 DAC_RESOLUTION_BITS = 12
 DAC_MAX_VALUE = 4095
 DAC_CENTER_VALUE = 2048
-DAC_VOLTAGE_MAX = 3.2           # Volts
-DAC_MV_PER_STEP = DAC_VOLTAGE_MAX * 1000.0 / 4096.0  # ~0.806 mV
+DAC_VOLTAGE_MAX = 3.3            # Volts (MCP4725 VDD = 3.3V)
+DAC_V_PER_STEP = DAC_VOLTAGE_MAX / 4096.0     # ~0.000806 V per step
 
 # ============================================================================
 # DISPLAY CONFIGURATION — Auto-detect resolution

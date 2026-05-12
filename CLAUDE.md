@@ -95,6 +95,18 @@ generate_both_samples()                                    0–3.3V analog
 returns IR, Red, display_IR                                (0–4095, 12-bit)
 ```
 
+### Signal Levels (Volts, default PI=3.0)
+
+| Component | Value |
+|-----------|-------|
+| DC baseline | 0.5 V |
+| AC scale | 0.933 V per PI unit |
+| AC peak (PI=3.0) | 2.8 V |
+| AM factor peak | ×1.25 |
+| Wander | ±0.09 V |
+| Signal range | 0.5 V (valley) to 3.3 V (systolic peak) |
+| DAC mapping | 0 V → 0, 3.3 V → 4095 |
+
 ### PPG Model (ppg_model.py)
 
 3-component Gaussian decomposition:

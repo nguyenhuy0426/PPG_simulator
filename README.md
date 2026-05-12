@@ -47,7 +47,7 @@ Python port of the ESP32-S3 PPG Signal Simulator firmware for **Raspberry Pi 4**
 | DAC output rate        | 1 kHz (10× linear interpolation)                 |
 | Controls               | On-screen sliders + condition buttons + keyboard |
 | Signal type            | PPG only (6 clinical conditions)                 |
-| DAC voltage range      | 0–3.3V linear (0 mV → 0, 3300 mV → 4095)        |
+| DAC voltage range      | 0–3.3V linear (0 V → 0, 3.3 V → 4095)             |
 | Language               | Python 3.10+                                     |
 
 ---
@@ -258,16 +258,24 @@ SpO₂ = 70%  →  R = 1.60  (Red > IR — critical hypoxemia)
 
 | Modulation | Description | Implementation |
 |------------|-------------|----------------|
-| **BW** | Baseline wander (2% of DC) | `wander = 0.02 × dc_baseline × sin(respPhase)` |
+| **BW** | Baseline wander (~6% of AC) | `wander = 0.03×sin(slowPhase) + 0.06×sin(respPhase)` |
 | **AM** | Peak amplitude changes | `amFactor = 1 + 0.25×sin(respPhase)` |
 | **FM/RSA** | Heart rate varies | `rr × (1 + 0.05×sin(respPhase))` |
 
 ### DAC Voltage Mapping
 
 ```
-0 mV    → DAC value 0    (0.000V output)
-1500 mV → DAC value 1861 (1.500V output, typical DC baseline)
-3300 mV → DAC value 4095 (3.300V output)
+0 V     → DAC value 0    (0.000V output)
+0.5 V   → DAC value 620  (0.500V output, DC baseline / diastolic valley)
+3.3 V   → DAC value 4095 (3.300V output, systolic peak at PI=3.0)
+```
+
+Signal composition (Volts, at default PI=3.0):
+```
+Total Signal = DC_baseline (0.5V) + AC_pulse (×0.933 V/PI) + Wander (±0.09V) + Noise
+                                    ~2.8V peak
+Output range: 0.5V (diastolic) to 3.3V (systolic peak)
+DAC range   : 620 (baseline) to 4093 (peak) — 3473 counts, 85% utilization
 ```
 
 ---
@@ -282,7 +290,7 @@ Press **C** to enter calibration mode. A known-amplitude sine wave is output on 
 | 2 Hz | Approximate heart rate range |
 | 5 Hz | Verify bandwidth |
 
-- **Amplitude**: 50 mV peak
+- **Amplitude**: 2.8 V peak (full-scale DAC output)
 - **Use LEFT/RIGHT** to change frequency
 - **Press C** again to exit
 
