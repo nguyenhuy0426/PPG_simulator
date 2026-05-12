@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <defs>
+    <!-- Gradiente de fondo suave -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8F9FA"/>
+      <stop offset="100%" style="stop-color:#E8EEF2"/>
+    </linearGradient>
+    
+    <!-- Gradiente para tarjetas -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F5F7FA"/>
+    </linearGradient>
+    
+    <!-- Sombra suave -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#1A237E" flood-opacity="0.2"/>
+    </filter>
+    
+    <!-- Sombra para imagen principal -->
+    <filter id="imgShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Gradiente para badges de funcionalidades -->
+    <linearGradient id="ecgBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C62828"/>
+      <stop offset="100%" style="stop-color:#E53935"/>
+    </linearGradient>
+    <linearGradient id="hwBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E7D32"/>
+      <stop offset="100%" style="stop-color:#43A047"/>
+    </linearGradient>
+    <linearGradient id="wifiBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1565C0"/>
+      <stop offset="100%" style="stop-color:#1E88E5"/>
+    </linearGradient>
+    <linearGradient id="appBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6A1B9A"/>
+      <stop offset="100%" style="stop-color:#8E24AA"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Fondo -->
+  <rect width="1920" height="1080" fill="url(#bgGradient)"/>
+  
+  <!-- Patrón decorativo sutil -->
+  <g opacity="0.04">
+    <circle cx="150" cy="150" r="300" fill="#0D47A1"/>
+    <circle cx="1770" cy="930" r="350" fill="#0D47A1"/>
+    <circle cx="1650" cy="200" r="200" fill="#1565C0"/>
+    <circle cx="200" cy="900" r="180" fill="#1565C0"/>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TÍTULO PRINCIPAL -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <text x="960" y="65" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="50" font-weight="bold" fill="#0D47A1">DISEÑO CONCEPTUAL DE LA SOLUCIÓN</text>
+  
+  <!-- Línea decorativa -->
+  <line x1="580" y1="85" x2="1340" y2="85" stroke="#0D47A1" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- IMAGEN CENTRAL DEL DISPOSITIVO -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <!-- Marco principal para imagen -->
+  <rect x="460" y="120" width="1000" height="580" rx="25" fill="url(#cardGrad)" filter="url(#imgShadow)"/>
+  
+  <!-- Imagen del dispositivo (referencia externa) - ELEMENTO PRINCIPAL -->
+  <image x="480" y="140" width="960" height="540" 
+         href="Gemini_Generated_Image_dkdo1udkdo1udkdo (1).png" 
+         preserveAspectRatio="xMidYMid meet"/>
+  
+  <!-- Etiqueta inferior de imagen -->
+  <rect x="460" y="680" width="1000" height="45" rx="0" ry="0" fill="#0D47A1"/>
+  <text x="960" y="712" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="24" font-weight="bold" fill="#FFFFFF">BioSignalSimulator Pro • Simulador Portátil de Bioseñales</text>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FUNCIONALIDADES IZQUIERDA -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <!-- Tarjeta Generación de Señales -->
+  <g transform="translate(60, 150)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#C62828"/>
+    
+    <!-- Icono ECG -->
+    <circle cx="55" cy="70" r="35" fill="#FFEBEE"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">❤️</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#C62828">Generación de Señales</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">ECG • EMG • PPG</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">Modelos matemáticos validados</text>
+  </g>
+  
+  <!-- Tarjeta Interfaz Táctil -->
+  <g transform="translate(60, 310)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#2E7D32"/>
+    
+    <!-- Icono Pantalla -->
+    <circle cx="55" cy="70" r="35" fill="#E8F5E9"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">📱</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#2E7D32">Interfaz Táctil 7"</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">Nextion 800×480</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">Ajuste de parámetros en vivo</text>
+  </g>
+  
+  <!-- Tarjeta Portabilidad -->
+  <g transform="translate(60, 470)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#F57C00"/>
+    
+    <!-- Icono Batería -->
+    <circle cx="55" cy="70" r="35" fill="#FFF3E0"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">🔋</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#E65100">Portátil Autónomo</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">Batería 5200 mAh</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">≥3.9 horas de autonomía</text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FUNCIONALIDADES DERECHA -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <!-- Tarjeta Salida Analógica -->
+  <g transform="translate(1480, 150)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#1565C0"/>
+    
+    <!-- Icono Osciloscopio -->
+    <circle cx="55" cy="70" r="35" fill="#E3F2FD"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">📊</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#0D47A1">Salida Analógica BNC</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">0-3.3V compatible</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">Conexión a osciloscopio</text>
+  </g>
+  
+  <!-- Tarjeta WiFi -->
+  <g transform="translate(1480, 310)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#6A1B9A"/>
+    
+    <!-- Icono WiFi -->
+    <circle cx="55" cy="70" r="35" fill="#F3E5F5"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">📡</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#6A1B9A">Conectividad WiFi</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">Monitoreo remoto</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">Streaming en tiempo real</text>
+  </g>
+  
+  <!-- Tarjeta App Web -->
+  <g transform="translate(1480, 470)">
+    <rect x="0" y="0" width="380" height="130" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="380" height="8" rx="4" fill="#00838F"/>
+    
+    <!-- Icono App -->
+    <circle cx="55" cy="70" r="35" fill="#E0F7FA"/>
+    <text x="55" y="80" text-anchor="middle" font-size="36">💻</text>
+    
+    <text x="105" y="55" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#00695C">App Web Integrada</text>
+    <text x="105" y="85" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" fill="#455A64">Control y visualización</text>
+    <text x="105" y="110" font-family="Comic Sans MS, Comic Neue, cursive" font-size="16" fill="#78909C">Exportación CSV</text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COMPONENTES PRINCIPALES (INFERIOR) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 750)">
+    <rect x="0" y="0" width="1800" height="140" rx="20" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="0" y="0" width="1800" height="8" rx="4" fill="#0D47A1"/>
+    
+    <text x="900" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="28" font-weight="bold" fill="#0D47A1">Arquitectura del Sistema</text>
+    
+    <!-- Componentes en línea -->
+    <g transform="translate(80, 70)">
+      <!-- ESP32 -->
+      <rect x="0" y="0" width="200" height="55" rx="12" fill="#E3F2FD" stroke="#1565C0" stroke-width="2"/>
+      <text x="100" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#0D47A1">ESP32-WROOM</text>
+      <text x="100" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">Núcleo de procesamiento</text>
+      
+      <!-- Flecha -->
+      <polygon points="215,27 240,27 240,20 260,30 240,40 240,33 215,33" fill="#1565C0"/>
+      
+      <!-- DAC + Buffer -->
+      <rect x="275" y="0" width="200" height="55" rx="12" fill="#FFEBEE" stroke="#C62828" stroke-width="2"/>
+      <text x="375" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#C62828">DAC + LM358</text>
+      <text x="375" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">Conversión analógica</text>
+      
+      <!-- Flecha -->
+      <polygon points="490,27 515,27 515,20 535,30 515,40 515,33 490,33" fill="#C62828"/>
+      
+      <!-- MUX + Filtros -->
+      <rect x="550" y="0" width="200" height="55" rx="12" fill="#E8F5E9" stroke="#2E7D32" stroke-width="2"/>
+      <text x="650" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#2E7D32">CD4051 + RC</text>
+      <text x="650" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">Filtros selectivos</text>
+      
+      <!-- Flecha -->
+      <polygon points="765,27 790,27 790,20 810,30 790,40 790,33 765,33" fill="#2E7D32"/>
+      
+      <!-- BNC -->
+      <rect x="825" y="0" width="180" height="55" rx="12" fill="#FFF3E0" stroke="#F57C00" stroke-width="2"/>
+      <text x="915" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#E65100">Salida BNC</text>
+      <text x="915" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">Al osciloscopio</text>
+      
+      <!-- Separador -->
+      <line x1="1050" y1="0" x2="1050" y2="55" stroke="#BDBDBD" stroke-width="2" stroke-dasharray="5,5"/>
+      
+      <!-- Nextion -->
+      <rect x="1095" y="0" width="200" height="55" rx="12" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="2"/>
+      <text x="1195" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#6A1B9A">Nextion 7"</text>
+      <text x="1195" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">Interfaz táctil</text>
+      
+      <!-- Batería -->
+      <rect x="1340" y="0" width="200" height="55" rx="12" fill="#E0F7FA" stroke="#00838F" stroke-width="2"/>
+      <text x="1440" y="25" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="18" font-weight="bold" fill="#00695C">2×18650</text>
+      <text x="1440" y="45" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="14" fill="#455A64">5200 mAh portátil</text>
+    </g>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FRASE RESUMEN -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <text x="960" y="935" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="26" font-style="italic" fill="#455A64">"Paciente Virtual de Bolsillo" para educación en bioinstrumentación</text>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <rect x="0" y="1040" width="1920" height="40" fill="#0D47A1"/>
+  <text x="60" y="1065" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">Grupo #22 • Scarlet Sánchez y Rafael Mata</text>
+  <text x="960" y="1065" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">ESPOL • Ingeniería Mecatrónica • Trabajo de Titulación</text>
+  <text x="1860" y="1065" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">BioSignalSimulator Pro v3.0</text>
+  
+</svg>

@@ -1,0 +1,494 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans);font-size:13px;color:var(--color-text-primary)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:5px 10px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer;font-size:12px;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.tab.active{background:var(--color-background-primary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px}
+.sec{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);margin:0 0 8px}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.row label{font-size:12px;color:var(--color-text-secondary);width:76px;flex-shrink:0}
+.row input[type=range]{flex:1}
+.row .rv{font-size:12px;font-weight:500;width:54px;text-align:right;flex-shrink:0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{padding:4px 6px;border-bottom:0.5px solid var(--color-border-tertiary)}
+th{color:var(--color-text-secondary);font-weight:400;font-size:11px}
+canvas{width:100%;display:block;border-radius:6px}
+.effect-row{margin-bottom:6px}
+.effect-row .ek{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.effect-row .ev{font-size:12px;color:var(--color-text-secondary);line-height:1.5;border-left:2px solid var(--color-border-secondary);padding-left:8px;margin-top:2px}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:500;margin:2px}
+.b-g{background:#EAF3DE;color:#3B6D11}
+.b-w{background:#FAEEDA;color:#854F0B}
+.b-r{background:#FCEBEB;color:#A32D2D}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">PPG parameter analysis — real-time sweep waveform, IR and Red channels, 6 clinical conditions</h2>
+
+<div class="tabs" id="condTabs"></div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="sec">Tham số đầu vào</div>
+    <div class="row"><label>HR (BPM)</label><input type="range" id="sHR" min="40" max="180" step="1" value="75"><span class="rv" id="vHR">75</span></div>
+    <div class="row"><label>PI (%)</label><input type="range" id="sPI" min="0.5" max="20" step="0.1" value="3"><span class="rv" id="vPI">3.0</span></div>
+    <div class="row"><label>SpO₂ (%)</label><input type="range" id="sSPO2" min="80" max="100" step="1" value="98"><span class="rv" id="vSPO2">98</span></div>
+    <div class="row"><label>RR (brpm)</label><input type="range" id="sRR" min="6" max="30" step="1" value="16"><span class="rv" id="vRR">16</span></div>
+    <div class="row"><label>Noise (%)</label><input type="range" id="sNoise" min="0" max="10" step="0.5" value="0"><span class="rv" id="vNoise">0</span></div>
+    <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary);font-size:11px;color:var(--color-text-tertiary)">
+      Quét liên tục (5 s/vòng) — thay đổi tham số có hiệu lực ngay
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec">Metrics (từ code ppg_model.cpp)</div>
+    <table>
+      <tr><th>Tham số</th><th style="text-align:right">IR</th><th style="text-align:right">Red</th></tr>
+      <tr><td>AC amplitude</td><td style="text-align:right;color:#1D9E75" id="mACIR">—</td><td style="text-align:right;color:#D85A30" id="mACRed">—</td></tr>
+      <tr><td>R-value SpO₂</td><td colspan="2" style="text-align:right" id="mRval">—</td></tr>
+      <tr><td>Chu kỳ / 5s</td><td colspan="2" style="text-align:right" id="mCycles">—</td></tr>
+      <tr><td>RR interval</td><td colspan="2" style="text-align:right" id="mRRms">—</td></tr>
+      <tr><td>Systole</td><td colspan="2" style="text-align:right" id="mSys">—</td></tr>
+      <tr><td>Diastole</td><td colspan="2" style="text-align:right" id="mDia">—</td></tr>
+      <tr><td>AM wander ±</td><td colspan="2" style="text-align:right" id="mAM">—</td></tr>
+      <tr><td>BW wander ±</td><td colspan="2" style="text-align:right" id="mBW">—</td></tr>
+    </table>
+    <div id="badges" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:12px">
+  <div class="sec" id="canvasTitle">Dạng sóng PPG — quét liên tục — IR (xanh) / Red (cam)</div>
+  <canvas id="wv" height="620"></canvas>
+  <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--color-text-secondary)">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:3px;background:#1D9E75;display:inline-block;border-radius:2px"></span>IR channel</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:3px;background:#D85A30;display:inline-block;border-radius:2px;opacity:.7"></span>Red channel</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:14px;height:10px;background:rgba(29,158,117,0.08);display:inline-block;border-radius:2px;border:1px dashed rgba(29,158,117,0.4)"></span>Systole zone</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="sec">Phân tích ảnh hưởng tham số</div>
+    <div id="effectsPanel"></div>
+  </div>
+  <div class="card">
+    <div class="sec">Đặc tính bệnh lý hiện tại</div>
+    <div id="condProfile" style="font-size:12px;color:var(--color-text-secondary);line-height:1.6"></div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ── CONDITIONS & DESCRIPTIONS (unchanged) ─────────────────────────────── */
+const CONDITIONS=[
+  {name:'Normal',      hrMin:60, hrMax:120,hrCV:0.02,piMin:2.9,piMax:6.1, piCV:0.10,sysA:1.0,diaA:0.30,notch:0.18},
+  {name:'Arrhythmia',  hrMin:60, hrMax:180,hrCV:0.15,piMin:1.0,piMax:5.0, piCV:0.20,sysA:1.0,diaA:0.40,notch:0.20},
+  {name:'Weak Perf',   hrMin:70, hrMax:120,hrCV:0.02,piMin:0.5,piMax:2.1, piCV:0.15,sysA:1.0,diaA:0.30,notch:0.05},
+  {name:'Vasoconstric',hrMin:65, hrMax:110,hrCV:0.02,piMin:0.7,piMax:0.8, piCV:0.10,sysA:1.0,diaA:0.25,notch:0.05},
+  {name:'Strong Perf', hrMin:60, hrMax:90, hrCV:0.02,piMin:7.0,piMax:20.0,piCV:0.10,sysA:1.0,diaA:0.50,notch:0.25},
+  {name:'Vasodilation',hrMin:60, hrMax:90, hrCV:0.02,piMin:5.0,piMax:10.0,piCV:0.10,sysA:1.0,diaA:0.50,notch:0.25},
+];
+const COND_DESC=[
+  'Sóng chuẩn Allen 2007: upstroke dốc, systolic peak rõ, dicrotic notch (~18%), diastolic peak nhỏ. HR thay đổi → số sóng trên màn hình thay đổi rõ ràng. Baseline wander nhẹ theo nhịp thở.',
+  'RR interval thay đổi ngẫu nhiên (CV=15%). 15% xác suất ectopic beat (RR×0.7 = nhịp sớm). Beat-to-beat PI biến động lớn (piCV=20%). Khoảng cách các đỉnh không đều, một số sóng ngắn hơn đột ngột.',
+  'PI rất thấp (0.5–2.1%) → AC nhỏ → sóng gần phẳng. Notch hầu như biến mất (depth=0.05). Diastolic amplitude giảm. Khó phân biệt systole/diastole trên màn hình.',
+  'PI cực thấp (0.7–0.8%) → AC ≈ 10–12 mV. Waveform gần flat line. Notch không hiện diện. Red channel càng nhỏ hơn do R-value. Khó phân biệt với noise ở mức PI này.',
+  'PI cao (7–20%) → AC lớn, biên độ sóng lớn. Diastolic amplitude tăng (0.5), notch sâu (0.25). Hai đỉnh phân biệt rõ. HR thấp → diastole dài → diastolic wave nổi rõ. Số sóng ít hơn trên màn hình.',
+  'Tương tự Strong nhưng PI vừa phải. Diastolic filling tốt (diaA=0.5). Notch depth=0.25. HR thấp → diastole dài → diastolic wave rõ. Cả hai channel ổn định và đẹp hình.',
+];
+
+/* ── PARAMETERS (unchanged) ────────────────────────────────────────────── */
+const TIME_WINDOW = 5.0;
+let condIdx=0, HR=75, PI=3, SPO2=98, RR=16, NOISE=0;
+
+function seededRand(i){ return ((Math.sin(i*127.1+33.7)*43758.5453)%1+1)%1; }
+
+function computePulse(phase,c){
+  const SYS_POS=0.15,DIA_POS=0.35,NOTCH_POS=0.28;
+  const SYS_W=0.055,DIA_W=0.10,NOTCH_W=0.02;
+  const g=(x,mu,s)=>Math.exp(-Math.pow(x-mu,2)/(2*s*s));
+  let s=c.sysA*g(phase,SYS_POS,SYS_W);
+  let d=c.diaA*g(phase,DIA_POS,DIA_W);
+  let n=c.notch*c.sysA*g(phase,NOTCH_POS,NOTCH_W);
+  return Math.max(0,Math.min(1,(s+d-n)/1.4));
+}
+
+function calcSysFrac(hr){
+  let ms=300-0.5*(hr-60);
+  ms=Math.max(250,Math.min(350,ms));
+  return Math.max(0.2,Math.min(0.6,ms/(60000/hr)));
+}
+
+/* ── CANVAS & SWEEP STATE ───────────────────────────────────────────────── */
+const canvas = document.getElementById('wv');
+const ctx    = canvas.getContext('2d');
+let CW=0, CH=620, DPR=1;
+
+/* Sweep engine state */
+let sweepX   = 0;
+let prevYIR  = null;
+let prevYRed = null;
+
+/* Signal generation state */
+let simPhase   = 0;      // PPG phase in current beat [0,1)
+let simTime    = 0;      // total elapsed simulated seconds
+let simRespPh  = 0;      // respiratory phase (radians)
+let simBeatIdx = 0;      // beat counter (for arrhythmia seeding)
+let simRRnow   = 60/75;  // current RR interval (seconds)
+
+/* Auto-scale: track per-sweep min/max, interpolate slowly toward it */
+let scaleMin = -20, scaleMax = 150;
+let sweepMin =  9999, sweepMax = -9999;
+
+/* Systole zone overlay buffer: store beat pixel positions each sweep */
+let beatPixels = [];     // [{px, rrPx}] reset each wrap
+
+/* rAF handle */
+let rafId = null;
+let lastTs = null;
+
+/* ── CANVAS INIT ────────────────────────────────────────────────────────── */
+function isDark(){ return matchMedia('(prefers-color-scheme:dark)').matches; }
+function bgColor(){ return isDark() ? '#181818' : '#f7f7f5'; }
+function gridColor(){ return isDark() ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'; }
+function gridColorMid(){ return isDark() ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'; }
+
+function initCanvas(){
+  DPR = window.devicePixelRatio || 1;
+  CW  = canvas.offsetWidth || 640;
+  CH  = 620;
+  canvas.width  = CW * DPR;
+  canvas.height = CH * DPR;
+  ctx.scale(DPR, DPR);
+  clearFull();
+}
+
+function clearFull(){
+  ctx.fillStyle = bgColor();
+  ctx.fillRect(0, 0, CW, CH);
+  drawGrid();
+}
+
+function drawGrid(){
+  const PAD = {t:10, b:14, l:4, r:4};
+  const pw = CW - PAD.l - PAD.r;
+  const ph = CH - PAD.t - PAD.b;
+
+  /* horizontal lines */
+  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = gridColor();
+  for(let i=0; i<=4; i++){
+    const y = PAD.t + (i/4)*ph;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(CW-PAD.r, y); ctx.stroke();
+  }
+
+  /* vertical second markers */
+  ctx.strokeStyle = gridColorMid();
+  for(let s=1; s<TIME_WINDOW; s++){
+    const x = PAD.l + (s/TIME_WINDOW)*pw;
+    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, CH-PAD.b); ctx.stroke();
+  }
+
+  /* time labels */
+  ctx.font = `10px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.fillStyle = isDark() ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.20)';
+  for(let s=0; s<=TIME_WINDOW; s++){
+    const x = PAD.l + (s/TIME_WINDOW)*pw;
+    ctx.fillText(s+'s', x-4, CH-2);
+  }
+}
+
+/* ── SIGNAL GENERATION (one sample, advances state) ───────────────────── */
+function generateSample(dt){
+  const c   = CONDITIONS[condIdx];
+  const AC  = 15.0;
+  const rVal= (110 - SPO2) / 25;
+
+  /* Advance PPG phase */
+  simPhase    += dt / simRRnow;
+  simTime     += dt;
+  simRespPh   += dt * (RR / 60);   /* respiratory phase in cycles/sec */
+
+  let newBeat = false;
+  if(simPhase >= 1.0){
+    simPhase -= 1.0;
+    simBeatIdx++;
+    newBeat = true;
+
+    /* Next RR interval */
+    simRRnow = 60 / HR;
+    if(c.name === 'Arrhythmia'){
+      const r1 = seededRand(simBeatIdx * 7 + 13);
+      const r2 = seededRand(simBeatIdx * 3 +  7);
+      if(r1 < 0.15) simRRnow *= 0.70;        /* ectopic (early) */
+      else if(r1 < 0.25) simRRnow *= 1.30;   /* compensatory pause */
+      simRRnow *= (1 + c.hrCV * (r2 - 0.5) * 2);
+      simRRnow = Math.max(0.30, Math.min(1.50, simRRnow));
+    }
+  }
+
+  /* PI beat-to-beat variability */
+  const piNow    = PI * (1 + c.piCV * (seededRand(simBeatIdx*11 + Math.floor(simPhase*17)) - 0.5) * 1.2);
+  const piClamped= Math.max(c.piMin * 0.8, Math.min(c.piMax * 1.2, piNow));
+
+  /* Respiration modulation */
+  const respRad  = simRespPh * 2 * Math.PI;
+  const amFactor = 1 + 0.25 * Math.sin(respRad);
+  const bw       = 3 * Math.sin(simTime * 0.3 * 2 * Math.PI) + 15 * Math.sin(respRad);
+
+  /* Pulse shape */
+  const pulse = computePulse(simPhase, c);
+
+  /* Noise */
+  const nIR  = NOISE > 0 ? (seededRand(simBeatIdx*31 + Math.round(simTime*1000) % 997) - 0.5) * 2.5 * (NOISE/100) * piClamped * AC : 0;
+  const nRed = NOISE > 0 ? (seededRand(simBeatIdx*53 + Math.round(simTime*1000) % 991) - 0.5) * 2.5 * (NOISE/100) * piClamped * AC * rVal : 0;
+
+  const ir  = pulse * piClamped * AC * amFactor + bw + nIR;
+  const red = pulse * piClamped * AC * rVal * amFactor + bw + nRed;
+
+  return { ir, red, newBeat };
+}
+
+/* ── COORDINATE MAPPING ────────────────────────────────────────────────── */
+const PAD = {t:10, b:14};
+function sigToY(v){
+  const ph = CH - PAD.t - PAD.b;
+  const n  = (v - scaleMin) / (scaleMax - scaleMin + 0.001);
+  return PAD.t + ph * (1 - Math.max(0, Math.min(1, n)));
+}
+
+/* ── ANIMATION TICK ─────────────────────────────────────────────────────── */
+function tick(ts){
+  rafId = requestAnimationFrame(tick);
+
+  if(!lastTs){ lastTs = ts; return; }
+  const wallDt = Math.min((ts - lastTs) / 1000, 0.05);  /* cap at 50ms */
+  lastTs = ts;
+
+  /* How many pixels to advance this frame:
+     1 pixel = TIME_WINDOW / CW seconds of simulated time              */
+  const dtPerPx   = TIME_WINDOW / CW;
+  const pxPerSec  = CW / TIME_WINDOW;                  /* ~128 px/s for 5s */
+  const pxTarget  = wallDt * pxPerSec;
+  const steps     = Math.max(1, Math.round(pxTarget));
+  const dtPerStep = wallDt / steps;
+
+  for(let s = 0; s < steps; s++){
+    const { ir, red, newBeat } = generateSample(dtPerStep);
+
+    /* Track auto-scale bounds */
+    if(ir < sweepMin) sweepMin = ir;
+    if(ir > sweepMax) sweepMax = ir;
+
+    /* ── ERASE AHEAD (cursor approach from firmware) ─── */
+    const eraseW = 4;
+    const ex = (sweepX + 2) % CW;
+    ctx.fillStyle = bgColor();
+    /* erase column block (handles wrap) */
+    if(ex + eraseW <= CW){
+      ctx.fillRect(ex, PAD.t, eraseW, CH - PAD.t - PAD.b);
+    } else {
+      ctx.fillRect(ex, PAD.t, CW - ex, CH - PAD.t - PAD.b);
+      ctx.fillRect(0,  PAD.t, eraseW - (CW - ex), CH - PAD.t - PAD.b);
+    }
+
+    /* ── SWEEP CURSOR LINE ─── */
+    const cx = (sweepX + 1) % CW;
+    ctx.fillStyle = isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+    ctx.fillRect(cx, PAD.t, 1, CH - PAD.t - PAD.b);
+
+    /* ── SYSTOLE ZONE HIGHLIGHT on new beat ─── */
+    if(newBeat){
+      beatPixels.push({ px: sweepX, rrPx: simRRnow * pxPerSec });
+    }
+
+    /* Paint systole shading for active beats visible ahead of cursor */
+    beatPixels = beatPixels.filter(b => {
+      const dist = (sweepX - b.px + CW) % CW;
+      return dist < b.rrPx + 2;
+    });
+    beatPixels.forEach(b => {
+      const sysW = b.rrPx * calcSysFrac(HR);
+      const relPx = (sweepX - b.px + CW) % CW;
+      if(relPx < sysW){
+        ctx.fillStyle = isDark()
+          ? 'rgba(29,158,117,0.06)'
+          : 'rgba(29,158,117,0.08)';
+        ctx.fillRect(sweepX, PAD.t, 1, CH - PAD.t - PAD.b);
+      }
+    });
+
+    /* ── DRAW WAVEFORM SEGMENT ─── */
+    const yIR  = sigToY(ir);
+    const yRed = sigToY(red);
+
+    if(prevYIR !== null){
+      const px = (sweepX - 1 + CW) % CW;
+
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(216,90,48,0.55)';
+      ctx.lineWidth   = 1.3;
+      ctx.moveTo(px, prevYRed);
+      ctx.lineTo(sweepX, yRed);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(29,158,117,0.95)';
+      ctx.lineWidth   = 1.8;
+      ctx.moveTo(px, prevYIR);
+      ctx.lineTo(sweepX, yIR);
+      ctx.stroke();
+    }
+
+    prevYIR  = yIR;
+    prevYRed = yRed;
+
+    /* ── ADVANCE SWEEP ─── */
+    sweepX = (sweepX + 1) % CW;
+
+    /* On wrap: update auto-scale, redraw grid, reset tracking */
+    if(sweepX === 0){
+      const margin = (sweepMax - sweepMin) * 0.12 + 5;
+      scaleMin += ((sweepMin - margin) - scaleMin) * 0.4;
+      scaleMax += ((sweepMax + margin) - scaleMax) * 0.4;
+      sweepMin =  9999;
+      sweepMax = -9999;
+      beatPixels = [];
+      prevYIR  = null;
+      prevYRed = null;
+      drawGrid();
+    }
+  }
+
+  /* Update info overlay on canvas (top-left, re-drawn each frame) */
+  const acIR  = PI * 15;
+  const rVal  = (110 - SPO2) / 25;
+  const acRed = acIR * rVal;
+  const cycles = (HR * TIME_WINDOW / 60).toFixed(1);
+  ctx.font      = `11px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.fillStyle = 'rgba(29,158,117,0.85)';   ctx.fillText('IR: '+acIR.toFixed(1)+'mV', 8, PAD.t+13);
+  ctx.fillStyle = 'rgba(216,90,48,0.85)';    ctx.fillText('Red: '+acRed.toFixed(1)+'mV', 90, PAD.t+13);
+  ctx.fillStyle = isDark() ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)';
+  ctx.fillText('HR='+HR+' BPM  →  ~'+cycles+' chu kỳ/vòng quét', 185, PAD.t+13);
+
+  /* Call metrics updater every frame (throttled internally) */
+  updateMetrics();
+}
+
+/* ── METRICS TEXT UPDATE (unchanged logic) ──────────────────────────────── */
+let metricTimer = 0;
+function updateMetrics(){
+  metricTimer++;
+  if(metricTimer < 6) return;   /* throttle to ~10Hz */
+  metricTimer = 0;
+
+  const c      = CONDITIONS[condIdx];
+  const AC_SCALE = 15.0;
+  const acIR   = PI * AC_SCALE;
+  const rVal   = (110 - SPO2) / 25;
+  const acRed  = acIR * rVal;
+  const sysFrac= calcSysFrac(HR);
+  const rrMs   = 60000 / HR;
+  const sysMs  = rrMs * sysFrac;
+  const diaMs  = rrMs * (1 - sysFrac);
+  const cycles = +(HR * TIME_WINDOW / 60).toFixed(1);
+  const amPeak = acIR * 0.25;
+
+  document.getElementById('mACIR').textContent   = acIR.toFixed(1)+' mV';
+  document.getElementById('mACRed').textContent  = acRed.toFixed(1)+' mV';
+  document.getElementById('mRval').textContent   = rVal.toFixed(3)+' — AC_Red/AC_IR';
+  document.getElementById('mCycles').textContent = cycles+' chu kỳ tim (HR×5/60)';
+  document.getElementById('mRRms').textContent   = rrMs.toFixed(0)+' ms';
+  document.getElementById('mSys').textContent    = sysMs.toFixed(0)+' ms ('+Math.round(sysFrac*100)+'%)';
+  document.getElementById('mDia').textContent    = diaMs.toFixed(0)+' ms ('+Math.round((1-sysFrac)*100)+'%)';
+  document.getElementById('mAM').textContent     = '±'+amPeak.toFixed(1)+' mV (25% AC)';
+  document.getElementById('mBW').textContent     = '±18 mV (3+15 sin)';
+
+  document.getElementById('canvasTitle').textContent =
+    'Dạng sóng PPG — quét liên tục — '+cycles+' chu kỳ tại HR='+HR+' BPM — IR (xanh) / Red (cam)';
+
+  const outOfRange = HR<c.hrMin||HR>c.hrMax||PI<c.piMin||PI>c.piMax;
+  const badges = document.getElementById('badges');
+  badges.innerHTML = '';
+  [{cls:'b-g',t:'IR không đổi khi SpO₂ thay đổi'},{cls:'b-g',t:'Red ∝ R-value'},
+   outOfRange?{cls:'b-w',t:'Tham số ngoài range bệnh lý'}:null]
+  .filter(Boolean).forEach(b=>{
+    badges.innerHTML += `<span class="badge ${b.cls}">${b.t}</span>`;
+  });
+
+  document.getElementById('effectsPanel').innerHTML=[
+    {k:'HR ↑ → nhiều sóng hơn',      v:`Hiện tại HR=${HR}: ~${cycles} chu kỳ/vòng. Sóng dày lên ngay khi kéo slider. Systole ≈ ${sysMs.toFixed(0)}ms (gần cố định). Diastole co lại còn ${diaMs.toFixed(0)}ms.`},
+    {k:'PI ↑ → biên độ tăng',        v:`AC_IR = PI×15 = ${acIR.toFixed(1)} mV. AC_Red = ${acRed.toFixed(1)} mV. Auto-scale điều chỉnh trong vài giây. Noise σ = ${(NOISE/100*acIR).toFixed(2)} mV.`},
+    {k:'SpO₂ ↓ → Red lớn hơn',       v:`R = (110−${SPO2})/25 = ${rVal.toFixed(3)}. SpO₂=100→R=0.4; SpO₂=80→R=1.2. Chỉ kênh Red thay đổi — IR giữ nguyên.`},
+    {k:'RR thở ↑ → wander chậm',     v:`BW = 3sin(0.3t) + 15sin(respPhase). RR=${RR}brpm → f=${(RR/60).toFixed(2)} Hz. Thở chậm → gợn sóng dài và rộng.`},
+  ].map(e=>`<div class="effect-row"><div class="ek">${e.k}</div><div class="ev">${e.v}</div></div>`).join('');
+
+  document.getElementById('condProfile').textContent = COND_DESC[condIdx];
+}
+
+/* ── TABS ────────────────────────────────────────────────────────────────── */
+const tabsEl=document.getElementById('condTabs');
+CONDITIONS.forEach((c,i)=>{
+  const btn=document.createElement('button');
+  btn.className='tab'+(i===0?' active':'');
+  btn.textContent=c.name;
+  btn.onclick=()=>{
+    condIdx=i;
+    document.querySelectorAll('.tab').forEach((b,j)=>b.classList.toggle('active',j===i));
+    const midHR  = Math.round((c.hrMin+c.hrMax)/2);
+    const midPI  = +((c.piMin+c.piMax)/2).toFixed(1);
+    HR=midHR; PI=midPI;
+    document.getElementById('sHR').value=HR; document.getElementById('vHR').textContent=HR;
+    document.getElementById('sPI').value=PI; document.getElementById('vPI').textContent=PI.toFixed(1);
+    /* Reset RR so next beat uses fresh interval */
+    simRRnow = 60 / HR;
+    /* Reset auto-scale so new condition scales quickly */
+    sweepMin=9999; sweepMax=-9999; scaleMin=-20; scaleMax=150;
+  };
+  tabsEl.appendChild(btn);
+});
+
+/* ── SLIDERS ─────────────────────────────────────────────────────────────── */
+[['sHR','vHR',   v=>{ HR=+v;    simRRnow=60/HR; }],
+ ['sPI','vPI',   v=>{ PI=+v;    sweepMin=9999; sweepMax=-9999; }],
+ ['sSPO2','vSPO2',v=>{ SPO2=+v; }],
+ ['sRR','vRR',   v=>{ RR=+v;   }],
+ ['sNoise','vNoise',v=>{ NOISE=+v; }],
+].forEach(([id,vid,fn])=>{
+  document.getElementById(id).oninput=function(){
+    fn(this.value);
+    const val=+this.value;
+    document.getElementById(vid).textContent = (id==='sPI') ? val.toFixed(1) : val;
+  };
+});
+
+/* ── RESIZE ──────────────────────────────────────────────────────────────── */
+let resizeT;
+window.onresize=()=>{
+  clearTimeout(resizeT);
+  resizeT=setTimeout(()=>{
+    cancelAnimationFrame(rafId);
+    lastTs=null;
+    sweepX=0; prevYIR=null; prevYRed=null;
+    beatPixels=[];
+    initCanvas();
+    requestAnimationFrame(tick);
+  }, 150);
+};
+
+/* ── BOOT ────────────────────────────────────────────────────────────────── */
+setTimeout(()=>{
+  initCanvas();
+  document.getElementById('vHR').textContent   = HR;
+  document.getElementById('vPI').textContent   = PI.toFixed(1);
+  document.getElementById('vSPO2').textContent = SPO2;
+  document.getElementById('vRR').textContent   = RR;
+  document.getElementById('vNoise').textContent= NOISE.toFixed(1);
+  updateMetrics();
+  requestAnimationFrame(tick);
+}, 60);
+</script>

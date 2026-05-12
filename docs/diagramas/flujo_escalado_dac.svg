@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2c3e50"/>
+    </marker>
+    <linearGradient id="gradModel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2980b9;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradProcess" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9b59b6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8e44ad;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradDAC" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradOutput" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#27ae60;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e8449;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Título -->
+  <text x="450" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+    Cadena de Escalado: Modelo Matemático → Salida Analógica
+  </text>
+  
+  <!-- Bloque 1: Modelo Matemático -->
+  <rect x="30" y="60" width="180" height="120" rx="8" fill="url(#gradModel)" stroke="#2c3e50" stroke-width="2"/>
+  <text x="120" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">MODELO</text>
+  <text x="120" y="110" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">MATEMÁTICO</text>
+  <text x="120" y="135" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">generateSample(Δt)</text>
+  <text x="120" y="155" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">Salida: float (mV)</text>
+  <text x="120" y="170" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#bdc3c7">Continuo → Discreto</text>
+  
+  <!-- Flecha 1 -->
+  <line x1="210" y1="120" x2="255" y2="120" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Bloque 2: Escalado -->
+  <rect x="260" y="60" width="180" height="120" rx="8" fill="url(#gradProcess)" stroke="#2c3e50" stroke-width="2"/>
+  <text x="350" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">ESCALADO</text>
+  <text x="350" y="110" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">LINEAL</text>
+  <text x="350" y="135" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#ecf0f1">Normalización + Offset</text>
+  <text x="350" y="155" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#ecf0f1">mV → [0, 1] → [0, 255]</text>
+  <text x="350" y="170" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#bdc3c7">Preserva morfología</text>
+  
+  <!-- Flecha 2 -->
+  <line x1="440" y1="120" x2="485" y2="120" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Bloque 3: DAC -->
+  <rect x="490" y="60" width="180" height="120" rx="8" fill="url(#gradDAC)" stroke="#2c3e50" stroke-width="2"/>
+  <text x="580" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">CONVERSIÓN</text>
+  <text x="580" y="110" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">DAC 8-BIT</text>
+  <text x="580" y="135" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">dacWrite(GPIO25)</text>
+  <text x="580" y="155" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">[0, 255] → [0, 3.3V]</text>
+  <text x="580" y="170" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#bdc3c7">Señal escalonada</text>
+  
+  <!-- Flecha 3 -->
+  <line x1="670" y1="120" x2="715" y2="120" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Bloque 4: Salida -->
+  <rect x="720" y="60" width="150" height="120" rx="8" fill="url(#gradOutput)" stroke="#2c3e50" stroke-width="2"/>
+  <text x="795" y="90" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">FILTRO RC</text>
+  <text x="795" y="110" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">+ BNC</text>
+  <text x="795" y="135" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">Reconstrucción</text>
+  <text x="795" y="155" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#ecf0f1">Señal continua</text>
+  <text x="795" y="170" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#bdc3c7">Salida analógica</text>
+  
+  <!-- Tabla de fórmulas -->
+  <rect x="30" y="210" width="840" height="150" rx="5" fill="#f8f9fa" stroke="#bdc3c7" stroke-width="1"/>
+  <text x="450" y="235" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#2c3e50">Fórmulas de Escalado por Tipo de Señal</text>
+  
+  <!-- Headers tabla -->
+  <line x1="30" y1="250" x2="870" y2="250" stroke="#bdc3c7" stroke-width="1"/>
+  <text x="120" y="270" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2c3e50">Señal</text>
+  <text x="280" y="270" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2c3e50">Rango Fisiológico</text>
+  <text x="500" y="270" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2c3e50">Fórmula de Escalado</text>
+  <text x="750" y="270" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2c3e50">Justificación</text>
+  <line x1="30" y1="280" x2="870" y2="280" stroke="#bdc3c7" stroke-width="1"/>
+  
+  <!-- Líneas verticales tabla -->
+  <line x1="200" y1="250" x2="200" y2="360" stroke="#bdc3c7" stroke-width="1"/>
+  <line x1="370" y1="250" x2="370" y2="360" stroke="#bdc3c7" stroke-width="1"/>
+  <line x1="640" y1="250" x2="640" y2="360" stroke="#bdc3c7" stroke-width="1"/>
+  
+  <!-- Fila ECG -->
+  <rect x="35" y="285" width="50" height="20" rx="3" fill="#3498db"/>
+  <text x="60" y="300" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">ECG</text>
+  <text x="280" y="300" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#2c3e50">[-0.5, +1.5] mV</text>
+  <text x="500" y="300" font-family="Courier New, monospace" font-size="10" text-anchor="middle" fill="#8e44ad">DAC = ((mV + 0.5) / 2.0) × 255</text>
+  <text x="750" y="300" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#7f8c8d">Rango ondas PQRST</text>
+  
+  <!-- Fila EMG -->
+  <rect x="35" y="310" width="50" height="20" rx="3" fill="#e67e22"/>
+  <text x="60" y="325" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">EMG</text>
+  <text x="280" y="325" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#2c3e50">[-5.0, +5.0] mV</text>
+  <text x="500" y="325" font-family="Courier New, monospace" font-size="10" text-anchor="middle" fill="#8e44ad">DAC = ((mV + 5.0) / 10.0) × 255</text>
+  <text x="750" y="325" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#7f8c8d">Contracción máxima</text>
+  
+  <!-- Fila PPG -->
+  <rect x="35" y="335" width="50" height="20" rx="3" fill="#27ae60"/>
+  <text x="60" y="350" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">PPG</text>
+  <text x="280" y="350" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#2c3e50">[0, 150] mV (AC)</text>
+  <text x="500" y="350" font-family="Courier New, monospace" font-size="10" text-anchor="middle" fill="#8e44ad">DAC = (acValue / 150.0) × 255</text>
+  <text x="750" y="350" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#7f8c8d">Solo comp. pulsátil</text>
+  
+  <!-- Gráfico de mapeo visual -->
+  <rect x="30" y="380" width="400" height="110" rx="5" fill="#fff" stroke="#bdc3c7" stroke-width="1"/>
+  <text x="230" y="400" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2c3e50">Ejemplo ECG: Mapeo Visual</text>
+  
+  <!-- Eje entrada -->
+  <line x1="50" y1="460" x2="200" y2="460" stroke="#2c3e50" stroke-width="2"/>
+  <text x="50" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">-0.5</text>
+  <text x="125" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">0.5</text>
+  <text x="195" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">1.5 mV</text>
+  <text x="125" y="450" font-family="Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#3498db">Entrada (mV)</text>
+  
+  <!-- Flecha mapeo -->
+  <line x1="220" y1="440" x2="260" y2="440" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Eje salida -->
+  <line x1="280" y1="460" x2="410" y2="460" stroke="#2c3e50" stroke-width="2"/>
+  <text x="280" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">0</text>
+  <text x="345" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">127</text>
+  <text x="405" y="475" font-family="Arial, sans-serif" font-size="9" fill="#7f8c8d">255</text>
+  <text x="345" y="450" font-family="Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#e74c3c">Salida DAC</text>
+  
+  <!-- Puntos de referencia -->
+  <circle cx="50" cy="460" r="4" fill="#3498db"/>
+  <circle cx="125" cy="460" r="4" fill="#3498db"/>
+  <circle cx="200" cy="460" r="4" fill="#3498db"/>
+  <circle cx="280" cy="460" r="4" fill="#e74c3c"/>
+  <circle cx="345" cy="460" r="4" fill="#e74c3c"/>
+  <circle cx="410" cy="460" r="4" fill="#e74c3c"/>
+  
+  <!-- Líneas de correspondencia -->
+  <line x1="50" y1="420" x2="280" y2="420" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="125" y1="430" x2="345" y2="430" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="200" y1="440" x2="410" y2="440" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3,3"/>
+  
+  <!-- Nota importante -->
+  <rect x="450" y="380" width="420" height="110" rx="5" fill="#fef9e7" stroke="#f39c12" stroke-width="2"/>
+  <text x="660" y="405" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#d35400">⚠ Consideraciones de Diseño</text>
+  <text x="470" y="425" font-family="Arial, sans-serif" font-size="10" fill="#2c3e50">• El offset elimina valores negativos (DAC no acepta negativos)</text>
+  <text x="470" y="445" font-family="Arial, sans-serif" font-size="10" fill="#2c3e50">• El rango se maximiza para aprovechar resolución de 8 bits</text>
+  <text x="470" y="465" font-family="Arial, sans-serif" font-size="10" fill="#2c3e50">• Clamping [0,255] previene overflow en condiciones extremas</text>
+  <text x="470" y="485" font-family="Arial, sans-serif" font-size="10" fill="#2c3e50">• La morfología se preserva (transformación lineal)</text>
+</svg>

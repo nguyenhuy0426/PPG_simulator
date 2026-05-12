@@ -1,0 +1,372 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FAFBFC"/>
+      <stop offset="100%" style="stop-color:#EDF2F7"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo -->
+  <rect width="1920" height="1080" fill="url(#bgGrad)"/>
+
+  <!-- Título Principal -->
+  <text x="960" y="60" font-family="Comic Sans MS, cursive" font-size="52" font-weight="bold" fill="#1A365D" text-anchor="middle">REQUERIMIENTOS DEL DISEÑO</text>
+  <line x1="580" y1="85" x2="1340" y2="85" stroke="#3182CE" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- REQUISITOS FUNCIONALES -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <rect x="360" y="110" width="1200" height="50" rx="25" fill="#3182CE" filter="url(#shadow)"/>
+  <text x="960" y="145" font-family="Comic Sans MS, cursive" font-size="26" font-weight="bold" fill="white" text-anchor="middle">REQUISITOS FUNCIONALES</text>
+
+  <!-- Tarjeta 1: Generación de Señales -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="180" width="350" height="280" rx="16" fill="white"/>
+    <rect x="60" y="180" width="350" height="55" rx="16" fill="#E53935"/>
+    <rect x="60" y="220" width="350" height="15" fill="#E53935"/>
+    <text x="235" y="218" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="white" text-anchor="middle">Generación de Señales</text>
+    
+    <!-- Iconos de señales grandes -->
+    <g transform="translate(75, 255)">
+      <rect x="0" y="0" width="100" height="70" rx="10" fill="#FEE2E2"/>
+      <text x="50" y="35" font-size="28" text-anchor="middle">❤️</text>
+      <text x="50" y="58" font-family="Arial" font-size="16" font-weight="bold" fill="#991B1B" text-anchor="middle">ECG</text>
+    </g>
+    <g transform="translate(185, 255)">
+      <rect x="0" y="0" width="100" height="70" rx="10" fill="#FEE2E2"/>
+      <text x="50" y="35" font-size="28" text-anchor="middle">💪</text>
+      <text x="50" y="58" font-family="Arial" font-size="16" font-weight="bold" fill="#991B1B" text-anchor="middle">EMG</text>
+    </g>
+    <g transform="translate(295, 255)">
+      <rect x="0" y="0" width="100" height="70" rx="10" fill="#FEE2E2"/>
+      <text x="50" y="35" font-size="28" text-anchor="middle">🫀</text>
+      <text x="50" y="58" font-family="Arial" font-size="16" font-weight="bold" fill="#991B1B" text-anchor="middle">PPG</text>
+    </g>
+    
+    <text x="235" y="365" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Modelos validados científicamente</text>
+    <text x="235" y="388" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Patologías configurables</text>
+    <text x="235" y="411" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Parámetros en tiempo real</text>
+  </g>
+
+  <!-- Tarjeta 2: Hardware Electrónico -->
+  <g filter="url(#shadow)">
+    <rect x="430" y="180" width="350" height="280" rx="16" fill="white"/>
+    <rect x="430" y="180" width="350" height="55" rx="16" fill="#38A169"/>
+    <rect x="430" y="220" width="350" height="15" fill="#38A169"/>
+    <text x="605" y="218" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="white" text-anchor="middle">Hardware Electrónico</text>
+    
+    <g transform="translate(445, 255)">
+      <rect x="0" y="0" width="75" height="70" rx="10" fill="#D1FAE5"/>
+      <text x="37" y="35" font-size="24" text-anchor="middle">📡</text>
+      <text x="37" y="58" font-family="Arial" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle">DAC</text>
+    </g>
+    <g transform="translate(530, 255)">
+      <rect x="0" y="0" width="75" height="70" rx="10" fill="#D1FAE5"/>
+      <text x="37" y="35" font-size="24" text-anchor="middle">🔘</text>
+      <text x="37" y="58" font-family="Arial" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle">BNC</text>
+    </g>
+    <g transform="translate(615, 255)">
+      <rect x="0" y="0" width="75" height="70" rx="10" fill="#D1FAE5"/>
+      <text x="37" y="35" font-size="24" text-anchor="middle">🔋</text>
+      <text x="37" y="58" font-family="Arial" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle">5200mAh</text>
+    </g>
+    <g transform="translate(700, 255)">
+      <rect x="0" y="0" width="65" height="70" rx="10" fill="#D1FAE5"/>
+      <text x="32" y="35" font-size="24" text-anchor="middle">〰️</text>
+      <text x="32" y="58" font-family="Arial" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle">Filtros</text>
+    </g>
+    
+    <text x="605" y="365" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Compatible lab/MCU</text>
+    <text x="605" y="388" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Filtrado automático por señal</text>
+    <text x="605" y="411" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Batería recargable USB-C</text>
+  </g>
+
+  <!-- Tarjeta 3: Interfaz Local -->
+  <g filter="url(#shadow)">
+    <rect x="800" y="180" width="320" height="280" rx="16" fill="white"/>
+    <rect x="800" y="180" width="320" height="55" rx="16" fill="#805AD5"/>
+    <rect x="800" y="220" width="320" height="15" fill="#805AD5"/>
+    <text x="960" y="218" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="white" text-anchor="middle">Interfaz Local</text>
+    
+    <!-- Mockup pantalla -->
+    <rect x="830" y="255" width="180" height="100" rx="8" fill="#1A202C"/>
+    <polyline points="850,330 875,290 900,315 925,275 950,305 975,285 990,310" 
+              stroke="#48BB78" stroke-width="3" fill="none"/>
+    <text x="920" y="345" font-family="Arial" font-size="12" fill="#48BB78" text-anchor="middle">Waveform</text>
+    
+    <g transform="translate(1025, 260)">
+      <rect x="0" y="0" width="80" height="40" rx="8" fill="#EDE9FE"/>
+      <text x="40" y="27" font-family="Arial" font-size="14" font-weight="bold" fill="#5B21B6" text-anchor="middle">👆 Táctil</text>
+    </g>
+    <g transform="translate(1025, 310)">
+      <rect x="0" y="0" width="80" height="40" rx="8" fill="#EDE9FE"/>
+      <text x="40" y="27" font-family="Arial" font-size="14" font-weight="bold" fill="#5B21B6" text-anchor="middle">📋 Menús</text>
+    </g>
+    
+    <text x="960" y="388" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Nextion 7" táctil</text>
+    <text x="960" y="411" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Navegación intuitiva</text>
+  </g>
+
+  <!-- Tarjeta 4: Conectividad WiFi -->
+  <g filter="url(#shadow)">
+    <rect x="1140" y="180" width="350" height="280" rx="16" fill="white"/>
+    <rect x="1140" y="180" width="350" height="55" rx="16" fill="#3182CE"/>
+    <rect x="1140" y="220" width="350" height="15" fill="#3182CE"/>
+    <text x="1315" y="218" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="white" text-anchor="middle">Conectividad WiFi</text>
+    
+    <!-- Diagrama de flujo -->
+    <g transform="translate(1160, 260)">
+      <rect x="0" y="0" width="90" height="60" rx="10" fill="#DBEAFE"/>
+      <text x="45" y="30" font-size="22" text-anchor="middle">🌐</text>
+      <text x="45" y="50" font-family="Arial" font-size="12" font-weight="bold" fill="#1E40AF" text-anchor="middle">WiFi AP</text>
+    </g>
+    <text x="1260" y="295" font-size="20" fill="#3182CE">→</text>
+    <g transform="translate(1275, 260)">
+      <rect x="0" y="0" width="90" height="60" rx="10" fill="#DBEAFE"/>
+      <text x="45" y="30" font-size="22" text-anchor="middle">🔄</text>
+      <text x="45" y="50" font-family="Arial" font-size="12" font-weight="bold" fill="#1E40AF" text-anchor="middle">WebSocket</text>
+    </g>
+    <text x="1375" y="295" font-size="20" fill="#3182CE">→</text>
+    <g transform="translate(1390, 260)">
+      <rect x="0" y="0" width="85" height="60" rx="10" fill="#DBEAFE"/>
+      <text x="25" y="35" font-size="20" text-anchor="middle">📱</text>
+      <text x="60" y="35" font-size="20" text-anchor="middle">💻</text>
+    </g>
+    
+    <text x="1315" y="365" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Streaming tiempo real</text>
+    <text x="1315" y="388" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Hasta 6 clientes simultáneos</text>
+    <text x="1315" y="411" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Servidor web embebido</text>
+  </g>
+
+  <!-- Tarjeta 5: Software Embebido -->
+  <g filter="url(#shadow)">
+    <rect x="1510" y="180" width="350" height="280" rx="16" fill="white"/>
+    <rect x="1510" y="180" width="350" height="55" rx="16" fill="#DD6B20"/>
+    <rect x="1510" y="220" width="350" height="15" fill="#DD6B20"/>
+    <text x="1685" y="218" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="white" text-anchor="middle">Software Embebido</text>
+    
+    <!-- Chips de tecnología -->
+    <g transform="translate(1530, 260)">
+      <rect x="0" y="0" width="145" height="45" rx="22" fill="#FED7AA" stroke="#DD6B20" stroke-width="2"/>
+      <text x="72" y="30" font-family="Arial" font-size="15" font-weight="bold" fill="#C2410C" text-anchor="middle">🔀 Dual-Core</text>
+    </g>
+    <g transform="translate(1690, 260)">
+      <rect x="0" y="0" width="145" height="45" rx="22" fill="#FED7AA" stroke="#DD6B20" stroke-width="2"/>
+      <text x="72" y="30" font-family="Arial" font-size="15" font-weight="bold" fill="#C2410C" text-anchor="middle">🔁 Buffer</text>
+    </g>
+    <g transform="translate(1530, 315)">
+      <rect x="0" y="0" width="145" height="45" rx="22" fill="#FED7AA" stroke="#DD6B20" stroke-width="2"/>
+      <text x="72" y="30" font-family="Arial" font-size="15" font-weight="bold" fill="#C2410C" text-anchor="middle">📊 Estados</text>
+    </g>
+    <g transform="translate(1690, 315)">
+      <rect x="0" y="0" width="145" height="45" rx="22" fill="#FED7AA" stroke="#DD6B20" stroke-width="2"/>
+      <text x="72" y="30" font-family="Arial" font-size="15" font-weight="bold" fill="#C2410C" text-anchor="middle">⚡ 2 kHz</text>
+    </g>
+    
+    <text x="1685" y="400" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">Procesamiento tiempo real</text>
+    <text x="1685" y="423" font-family="Arial" font-size="15" fill="#555" text-anchor="middle">FreeRTOS multitarea</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- REQUISITOS NO FUNCIONALES -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <rect x="360" y="485" width="1200" height="50" rx="25" fill="#2D3748" filter="url(#shadow)"/>
+  <text x="960" y="520" font-family="Comic Sans MS, cursive" font-size="26" font-weight="bold" fill="white" text-anchor="middle">REQUISITOS NO FUNCIONALES</text>
+
+  <!-- 8 Tarjetas en grid 4x2 -->
+  
+  <!-- Fila 1 -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="60" y="555" width="220" height="8" rx="4" fill="#3182CE"/>
+    <text x="170" y="600" font-size="36" text-anchor="middle">⚡</text>
+    <text x="170" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Rendimiento</text>
+    <text x="170" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">DAC @ 2 kHz</text>
+    <text x="170" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Latencia &lt; 1 ms</text>
+    <text x="170" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Arranque &lt; 5 s</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="295" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="295" y="555" width="220" height="8" rx="4" fill="#38A169"/>
+    <text x="405" y="600" font-size="36" text-anchor="middle">🔋</text>
+    <text x="405" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Energía</text>
+    <text x="405" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Autonomía ≥ 3 h</text>
+    <text x="405" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Carga USB-C</text>
+    <text x="405" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">5200 mAh</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="530" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="530" y="555" width="220" height="8" rx="4" fill="#E53E3E"/>
+    <text x="640" y="600" font-size="36" text-anchor="middle">🛡️</text>
+    <text x="640" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Seguridad</text>
+    <text x="640" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">SELV &lt; 5V DC</text>
+    <text x="640" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">IEC 61010-1</text>
+    <text x="640" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Protecciones</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="765" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="765" y="555" width="220" height="8" rx="4" fill="#805AD5"/>
+    <text x="875" y="600" font-size="36" text-anchor="middle">📈</text>
+    <text x="875" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Fidelidad</text>
+    <text x="875" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">BW clínicos</text>
+    <text x="875" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Amplitudes mV</text>
+    <text x="875" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">SNR adecuado</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1000" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="1000" y="555" width="220" height="8" rx="4" fill="#DD6B20"/>
+    <text x="1110" y="600" font-size="36" text-anchor="middle">📦</text>
+    <text x="1110" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Mecánica</text>
+    <text x="1110" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Peso &lt; 2 kg</text>
+    <text x="1110" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">PETG impreso 3D</text>
+    <text x="1110" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Portátil</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1235" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="1235" y="555" width="220" height="8" rx="4" fill="#0891B2"/>
+    <text x="1345" y="600" font-size="36" text-anchor="middle">🌡️</text>
+    <text x="1345" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Térmica</text>
+    <text x="1345" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">T &lt; 75°C int.</text>
+    <text x="1345" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Vent. pasiva</text>
+    <text x="1345" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Sin ventilador</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1470" y="555" width="220" height="160" rx="12" fill="white"/>
+    <rect x="1470" y="555" width="220" height="8" rx="4" fill="#4F46E5"/>
+    <text x="1580" y="600" font-size="36" text-anchor="middle">🏭</text>
+    <text x="1580" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Manufactura</text>
+    <text x="1580" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Costo &lt; $150</text>
+    <text x="1580" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Componentes locales</text>
+    <text x="1580" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Ensamble manual</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1705" y="555" width="155" height="160" rx="12" fill="white"/>
+    <rect x="1705" y="555" width="155" height="8" rx="4" fill="#DB2777"/>
+    <text x="1782" y="600" font-size="36" text-anchor="middle">👆</text>
+    <text x="1782" y="635" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#1A365D" text-anchor="middle">Usabilidad</text>
+    <text x="1782" y="660" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Intuitivo</text>
+    <text x="1782" y="680" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Español</text>
+    <text x="1782" y="700" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">Feedback</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MÉTRICAS CLAVE -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <rect x="60" y="740" width="1800" height="200" rx="16" fill="white" filter="url(#shadow)"/>
+  <rect x="60" y="740" width="1800" height="50" rx="16" fill="#1A365D"/>
+  <rect x="60" y="775" width="1800" height="15" fill="#1A365D"/>
+  <text x="960" y="775" font-family="Comic Sans MS, cursive" font-size="24" font-weight="bold" fill="white" text-anchor="middle">MÉTRICAS CLAVE DEL DISEÑO</text>
+
+  <!-- Señales -->
+  <g transform="translate(80, 810)">
+    <rect x="0" y="0" width="300" height="100" rx="12" fill="#FEE2E2" stroke="#FECACA" stroke-width="2"/>
+    <text x="150" y="35" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="#991B1B" text-anchor="middle">❤️ ECG</text>
+    <text x="150" y="60" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">-0.5 a +1.5 mV | BW: 21.6 Hz</text>
+    <text x="150" y="82" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">8 patologías | 40-180 BPM</text>
+  </g>
+
+  <g transform="translate(400, 810)">
+    <rect x="0" y="0" width="300" height="100" rx="12" fill="#FED7AA" stroke="#FDBA74" stroke-width="2"/>
+    <text x="150" y="35" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="#C2410C" text-anchor="middle">💪 EMG</text>
+    <text x="150" y="60" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">-5.0 a +5.0 mV | BW: 146 Hz</text>
+    <text x="150" y="82" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">6 condiciones | 0-100% MVC</text>
+  </g>
+
+  <g transform="translate(720, 810)">
+    <rect x="0" y="0" width="300" height="100" rx="12" fill="#D1FAE5" stroke="#A7F3D0" stroke-width="2"/>
+    <text x="150" y="35" font-family="Comic Sans MS, cursive" font-size="22" font-weight="bold" fill="#166534" text-anchor="middle">🫀 PPG</text>
+    <text x="150" y="60" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">0 a +2.0 mV | BW: 4.9 Hz</text>
+    <text x="150" y="82" font-family="Arial" font-size="14" fill="#555" text-anchor="middle">6 condiciones | PI y SpO2</text>
+  </g>
+
+  <!-- Indicadores -->
+  <g transform="translate(1050, 810)">
+    <rect x="0" y="0" width="115" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="57" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">3.9 h</text>
+    <text x="57" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Autonomía</text>
+    <text x="57" y="88" font-size="20" text-anchor="middle">🔋</text>
+  </g>
+
+  <g transform="translate(1180, 810)">
+    <rect x="0" y="0" width="115" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="57" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">6</text>
+    <text x="57" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Clientes WiFi</text>
+    <text x="57" y="88" font-size="20" text-anchor="middle">📶</text>
+  </g>
+
+  <g transform="translate(1310, 810)">
+    <rect x="0" y="0" width="115" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="57" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">2 kHz</text>
+    <text x="57" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Muestreo</text>
+    <text x="57" y="88" font-size="20" text-anchor="middle">⚡</text>
+  </g>
+
+  <g transform="translate(1440, 810)">
+    <rect x="0" y="0" width="115" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="57" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">350 g</text>
+    <text x="57" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Peso</text>
+    <text x="57" y="88" font-size="20" text-anchor="middle">⚖️</text>
+  </g>
+
+  <g transform="translate(1570, 810)">
+    <rect x="0" y="0" width="115" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="57" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">&lt;$150</text>
+    <text x="57" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Costo</text>
+    <text x="57" y="88" font-size="20" text-anchor="middle">💰</text>
+  </g>
+
+  <g transform="translate(1700, 810)">
+    <rect x="0" y="0" width="140" height="100" rx="10" fill="#F1F5F9"/>
+    <text x="70" y="40" font-family="Comic Sans MS, cursive" font-size="28" font-weight="bold" fill="#1A365D" text-anchor="middle">7"</text>
+    <text x="70" y="65" font-family="Arial" font-size="13" fill="#555" text-anchor="middle">Nextion Touch</text>
+    <text x="70" y="88" font-size="20" text-anchor="middle">📱</text>
+  </g>
+
+  <!-- Footer -->
+  <rect x="0" y="960" width="1920" height="120" fill="#1A365D"/>
+  
+  <!-- Normativas -->
+  <text x="200" y="1000" font-family="Arial" font-size="16" font-weight="bold" fill="white">Normativas:</text>
+  <rect x="310" y="982" width="110" height="30" rx="15" fill="#2D3748"/>
+  <text x="365" y="1003" font-family="Arial" font-size="14" fill="white" text-anchor="middle">IEC 61010-1</text>
+  <rect x="430" y="982" width="100" height="30" rx="15" fill="#2D3748"/>
+  <text x="480" y="1003" font-family="Arial" font-size="14" fill="white" text-anchor="middle">IEC 62133</text>
+  <rect x="540" y="982" width="70" height="30" rx="15" fill="#2D3748"/>
+  <text x="575" y="1003" font-family="Arial" font-size="14" fill="white" text-anchor="middle">RoHS</text>
+  <rect x="620" y="982" width="65" height="30" rx="15" fill="#2D3748"/>
+  <text x="652" y="1003" font-family="Arial" font-size="14" fill="white" text-anchor="middle">SELV</text>
+
+  <!-- Contadores -->
+  <rect x="800" y="982" width="240" height="50" rx="10" fill="#3182CE"/>
+  <text x="920" y="1002" font-family="Arial" font-size="12" fill="white" text-anchor="middle">FUNCIONALES</text>
+  <text x="920" y="1022" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="white" text-anchor="middle">47</text>
+
+  <rect x="1060" y="982" width="280" height="50" rx="10" fill="#2D3748"/>
+  <text x="1200" y="1002" font-family="Arial" font-size="12" fill="white" text-anchor="middle">NO FUNCIONALES</text>
+  <text x="1200" y="1022" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="white" text-anchor="middle">62</text>
+
+  <rect x="1360" y="982" width="130" height="50" rx="10" fill="#38A169"/>
+  <text x="1425" y="1002" font-family="Arial" font-size="12" fill="white" text-anchor="middle">SUBSISTEMAS</text>
+  <text x="1425" y="1022" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="white" text-anchor="middle">5</text>
+
+  <rect x="1510" y="982" width="230" height="50" rx="10" fill="#E53935"/>
+  <text x="1625" y="1002" font-family="Arial" font-size="12" fill="white" text-anchor="middle">SEÑALES BIOMÉDICAS</text>
+  <text x="1625" y="1022" font-family="Comic Sans MS, cursive" font-size="16" font-weight="bold" fill="white" text-anchor="middle">ECG • EMG • PPG</text>
+
+  <!-- Créditos -->
+  <text x="960" y="1065" font-family="Arial" font-size="15" fill="white" text-anchor="middle">Grupo #22 • Scarlet Sánchez &amp; Rafael Mata • ESPOL Mecatrónica • BioSignalSimulator Pro v3.0</text>
+
+</svg>

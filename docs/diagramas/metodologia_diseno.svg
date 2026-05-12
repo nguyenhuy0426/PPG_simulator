@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" width="1100" height="720">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#555"/>
+    </marker>
+  </defs>
+  
+  <!-- Fondo -->
+  <rect width="1100" height="720" fill="#ffffff"/>
+  
+  <!-- Título -->
+  <text x="550" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" font-style="italic">
+    Diagrama de flujo del proceso de diseño del sistema
+  </text>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 1: FLUJO PRINCIPAL (sin borde) -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Caja: Inicio del Proyecto -->
+  <rect x="40" y="55" width="95" height="40" rx="15" ry="15" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="87" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Inicio del</text>
+  <text x="87" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Proyecto</text>
+  
+  <line x1="135" y1="75" x2="160" y2="75" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Identificación de Requerimientos -->
+  <rect x="165" y="55" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="215" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Identificación de</text>
+  <text x="215" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Requerimientos</text>
+  
+  <line x1="265" y1="75" x2="290" y2="75" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Evaluación de Alternativas -->
+  <rect x="295" y="55" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="345" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Evaluación de</text>
+  <text x="345" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Alternativas</text>
+  
+  <line x1="395" y1="75" x2="420" y2="75" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Matriz de Decisión -->
+  <rect x="425" y="55" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="475" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Matriz de</text>
+  <text x="475" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Decisión</text>
+  
+  <line x1="525" y1="75" x2="550" y2="75" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Selección de Componentes -->
+  <rect x="555" y="55" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="605" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="605" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Componentes</text>
+  
+  <line x1="655" y1="75" x2="680" y2="75" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Diseño Conceptual -->
+  <rect x="685" y="55" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="735" y="72" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Diseño</text>
+  <text x="735" y="83" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Conceptual</text>
+  
+  <!-- Flecha bajando desde Diseño Conceptual -->
+  <line x1="735" y1="95" x2="735" y2="125" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 2: DISEÑO DEL SUBSISTEMA DE GENERACIÓN DE SEÑALES -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Etiqueta del subsistema -->
+  <text x="25" y="165" font-family="Arial, sans-serif" font-size="10" fill="#2E7D32" font-style="italic" writing-mode="tb">Diseño de Generación de Señales</text>
+  
+  <!-- Borde punteado verde -->
+  <rect x="45" y="130" width="700" height="70" rx="8" fill="none" stroke="#4CAF50" stroke-width="2" stroke-dasharray="6,3"/>
+  
+  <!-- Cajas internas -->
+  <rect x="60" y="145" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="110" y="162" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="110" y="173" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Modelos Matemáticos</text>
+  
+  <line x1="160" y1="165" x2="185" y2="165" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="190" y="145" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="240" y="162" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Implementación</text>
+  <text x="240" y="173" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Modelo ECG</text>
+  
+  <line x1="290" y1="165" x2="315" y2="165" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="320" y="145" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="370" y="162" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Implementación</text>
+  <text x="370" y="173" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Modelo EMG</text>
+  
+  <line x1="420" y1="165" x2="445" y2="165" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="450" y="145" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="500" y="162" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Implementación</text>
+  <text x="500" y="173" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Modelo PPG</text>
+  
+  <line x1="550" y1="165" x2="575" y2="165" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="580" y="145" width="100" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="630" y="162" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Validación de</text>
+  <text x="630" y="173" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Señales Sintéticas</text>
+  
+  <!-- Flecha bajando -->
+  <line x1="630" y1="200" x2="630" y2="225" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 3: DISEÑO DEL SUBSISTEMA COMPUTACIONAL -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Etiqueta -->
+  <text x="775" y="275" font-family="Arial, sans-serif" font-size="10" fill="#1565C0" font-style="italic" writing-mode="tb">Diseño Computacional</text>
+  
+  <!-- Borde punteado azul -->
+  <rect x="45" y="230" width="720" height="70" rx="8" fill="none" stroke="#2196F3" stroke-width="2" stroke-dasharray="6,3"/>
+  
+  <!-- Cajas internas - Invertidas (derecha a izquierda) -->
+  <rect x="630" y="245" width="110" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="685" y="262" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="685" y="273" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Arquitectura de Software</text>
+  
+  <line x1="630" y1="265" x2="605" y2="265" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="495" y="245" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="547" y="262" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Implementación del</text>
+  <text x="547" y="273" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Motor de Señales</text>
+  
+  <line x1="495" y1="265" x2="470" y2="265" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="360" y="245" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="412" y="262" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Configuración de</text>
+  <text x="412" y="273" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Driver e Interfaz</text>
+  
+  <line x1="360" y1="265" x2="335" y2="265" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="225" y="245" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="277" y="262" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Implementación de</text>
+  <text x="277" y="273" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Aplicación Web</text>
+  
+  <line x1="225" y1="265" x2="200" y2="265" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="80" y="245" width="115" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="137" y="262" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Diseño del Sistema</text>
+  <text x="137" y="273" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">de Control</text>
+  
+  <!-- Flecha bajando -->
+  <line x1="137" y1="300" x2="137" y2="325" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 4: DISEÑO DEL SUBSISTEMA ELECTRÓNICO -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Etiqueta -->
+  <text x="25" y="375" font-family="Arial, sans-serif" font-size="10" fill="#E65100" font-style="italic" writing-mode="tb">Diseño Electrónico</text>
+  
+  <!-- Borde punteado naranja -->
+  <rect x="45" y="330" width="720" height="70" rx="8" fill="none" stroke="#FF9800" stroke-width="2" stroke-dasharray="6,3"/>
+  
+  <!-- Cajas internas -->
+  <rect x="60" y="345" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="112" y="362" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="112" y="373" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Conversor DAC</text>
+  
+  <line x1="165" y1="365" x2="190" y2="365" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="195" y="345" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="247" y="362" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Diseño de Filtrado</text>
+  <text x="247" y="373" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Analógico</text>
+  
+  <line x1="300" y1="365" x2="325" y2="365" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="330" y="345" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="382" y="362" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Diseño de</text>
+  <text x="382" y="373" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Alimentación</text>
+  
+  <line x1="435" y1="365" x2="460" y2="365" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="465" y="345" width="110" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="520" y="362" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Protecciones y</text>
+  <text x="520" y="373" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Seguridad Eléctrica</text>
+  
+  <line x1="575" y1="365" x2="600" y2="365" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="605" y="345" width="110" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="660" y="362" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="660" y="373" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Conectores de Salida</text>
+  
+  <!-- Flecha bajando -->
+  <line x1="660" y1="400" x2="660" y2="425" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 5: DISEÑO DEL SUBSISTEMA MECÁNICO -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Etiqueta -->
+  <text x="775" y="475" font-family="Arial, sans-serif" font-size="10" fill="#6A1B9A" font-style="italic" writing-mode="tb">Diseño Mecánico</text>
+  
+  <!-- Borde punteado púrpura -->
+  <rect x="45" y="430" width="720" height="70" rx="8" fill="none" stroke="#9C27B0" stroke-width="2" stroke-dasharray="6,3"/>
+  
+  <!-- Cajas internas - Invertidas (derecha a izquierda) -->
+  <rect x="630" y="445" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="682" y="462" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Análisis de</text>
+  <text x="682" y="473" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Requisitos Térmicos</text>
+  
+  <line x1="630" y1="465" x2="605" y2="465" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="495" y="445" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="547" y="462" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Selección de</text>
+  <text x="547" y="473" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Material</text>
+  
+  <line x1="495" y1="465" x2="470" y2="465" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="360" y="445" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="412" y="462" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Diseño CAD</text>
+  <text x="412" y="473" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">de Carcasa</text>
+  
+  <line x1="360" y1="465" x2="335" y2="465" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="225" y="445" width="105" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="277" y="462" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Diseño de</text>
+  <text x="277" y="473" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Ventilación</text>
+  
+  <line x1="225" y1="465" x2="200" y2="465" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <rect x="80" y="445" width="115" height="40" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="137" y="462" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Prototipado</text>
+  <text x="137" y="473" font-family="Arial, sans-serif" font-size="8" fill="#333" text-anchor="middle">Rápido</text>
+  
+  <!-- Flecha bajando -->
+  <line x1="137" y1="500" x2="137" y2="525" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- FILA 6: INTEGRACIÓN Y VALIDACIÓN -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Caja: Integración de todos los subsistemas -->
+  <rect x="60" y="530" width="140" height="45" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="130" y="550" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Integración de todos</text>
+  <text x="130" y="562" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">los subsistemas</text>
+  
+  <line x1="200" y1="552" x2="250" y2="552" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja: Validación del prototipo -->
+  <rect x="255" y="530" width="150" height="45" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="330" y="550" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">Validación del prototipo</text>
+  <text x="330" y="562" font-family="Arial, sans-serif" font-size="9" fill="#333" text-anchor="middle">con datos en tiempo real</text>
+  
+  <!-- Flecha hacia prototipo final -->
+  <line x1="405" y1="552" x2="455" y2="552" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Caja final: Prototipo Funcional -->
+  <rect x="460" y="525" width="130" height="55" rx="18" ry="18" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+  <text x="525" y="548" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#2E7D32" text-anchor="middle">Prototipo</text>
+  <text x="525" y="562" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#2E7D32" text-anchor="middle">Funcional</text>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- LEYENDA DE COLORES -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <rect x="45" y="605" width="720" height="100" rx="5" fill="#FAFAFA" stroke="#ddd" stroke-width="1"/>
+  
+  <text x="405" y="625" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#333" text-anchor="middle">Leyenda - Subsistemas del BioSimulator Pro</text>
+  
+  <!-- Columna 1 -->
+  <line x1="70" y1="645" x2="120" y2="645" stroke="#4CAF50" stroke-width="3" stroke-dasharray="6,3"/>
+  <text x="130" y="649" font-family="Arial, sans-serif" font-size="9" fill="#333">Subsistema de Generación de Señales</text>
+  
+  <line x1="70" y1="670" x2="120" y2="670" stroke="#2196F3" stroke-width="3" stroke-dasharray="6,3"/>
+  <text x="130" y="674" font-family="Arial, sans-serif" font-size="9" fill="#333">Subsistema Computacional</text>
+  
+  <!-- Columna 2 -->
+  <line x1="420" y1="645" x2="470" y2="645" stroke="#FF9800" stroke-width="3" stroke-dasharray="6,3"/>
+  <text x="480" y="649" font-family="Arial, sans-serif" font-size="9" fill="#333">Subsistema Electrónico</text>
+  
+  <line x1="420" y1="670" x2="470" y2="670" stroke="#9C27B0" stroke-width="3" stroke-dasharray="6,3"/>
+  <text x="480" y="674" font-family="Arial, sans-serif" font-size="9" fill="#333">Subsistema Mecánico</text>
+  
+  <!-- Nota de metodología -->
+  <text x="405" y="695" font-family="Arial, sans-serif" font-size="8" font-style="italic" fill="#777" text-anchor="middle">
+    Metodología: Diseño modular descendente (top-down) con prototipado iterativo
+  </text>
+  
+</svg>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#555"/>
+    </marker>
+  </defs>
+  
+  <!-- Fondo -->
+  <rect width="900" height="480" fill="#ffffff"/>
+  
+  <!-- Título -->
+  <text x="450" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" font-style="italic">
+    Resultado de Diseño: Aplicación Web
+  </text>
+  
+  <!-- ESP32 WiFi AP -->
+  <rect x="60" y="70" width="160" height="80" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="140" y="95" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#333" text-anchor="middle">ESP32 WiFi AP</text>
+  <text x="140" y="112" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">192.168.4.1</text>
+  <text x="140" y="127" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">4 clientes máx</text>
+  <text x="140" y="140" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">WPA2</text>
+  
+  <!-- Web Server -->
+  <rect x="280" y="70" width="160" height="80" rx="4" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+  <text x="360" y="95" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#2e7d32" text-anchor="middle">ESPAsyncWebServer</text>
+  <text x="360" y="112" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Puerto 80 (HTTP)</text>
+  <text x="360" y="127" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">SPIFFS: app.html/js</text>
+  <text x="360" y="140" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Buffer 128 KB</text>
+  
+  <!-- Browser -->
+  <rect x="500" y="70" width="160" height="80" rx="4" fill="#fff" stroke="#555" stroke-width="1.2"/>
+  <text x="580" y="95" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#333" text-anchor="middle">Navegador Cliente</text>
+  <text x="580" y="112" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Chrome/Firefox</text>
+  <text x="580" y="127" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Móvil/Desktop</text>
+  <text x="580" y="140" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Responsive</text>
+  
+  <!-- Arrows -->
+  <line x1="220" y1="110" x2="280" y2="110" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="440" y1="110" x2="500" y2="110" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- WebSocket Layer -->
+  <rect x="60" y="200" width="600" height="60" rx="4" fill="#e3f2fd" stroke="#2196f3" stroke-width="1.5"/>
+  <text x="360" y="222" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#0d47a1" text-anchor="middle">WebSocket (Puerto 81)</text>
+  <text x="360" y="237" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Comunicación bidireccional • Protocolo JSON • 100 Hz datos + 4 Hz métricas</text>
+  <text x="360" y="252" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Throughput ~9.5 KB/s • Latencia &lt;50 ms • Reconexión automática</text>
+  
+  <!-- Vertical arrows -->
+  <line x1="140" y1="150" x2="140" y2="200" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="360" y1="150" x2="360" y2="200" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="580" y1="150" x2="580" y2="200" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Signal Engine -->
+  <rect x="60" y="310" width="160" height="70" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+  <text x="140" y="332" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#e65100" text-anchor="middle">Signal Engine</text>
+  <text x="140" y="347" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Core 1 - ISR 2000 Hz</text>
+  <text x="140" y="362" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">ECG/EMG/PPG</text>
+  <text x="140" y="375" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Tiempo real</text>
+  
+  <!-- JSON Encoder -->
+  <rect x="280" y="310" width="160" height="70" rx="4" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/>
+  <text x="360" y="332" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#4a148c" text-anchor="middle">JSON Encoder</text>
+  <text x="360" y="347" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Formato compacto</text>
+  <text x="360" y="362" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">~95 bytes/mensaje</text>
+  <text x="360" y="375" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Streaming 100 Hz</text>
+  
+  <!-- Chart.js -->
+  <rect x="500" y="310" width="160" height="70" rx="4" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5"/>
+  <text x="580" y="332" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#f57f17" text-anchor="middle">Chart.js Renderer</text>
+  <text x="580" y="347" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Canvas API @ 60 fps</text>
+  <text x="580" y="362" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Buffer circular 500 pts</text>
+  <text x="580" y="375" font-family="Arial, sans-serif" font-size="9" fill="#555" text-anchor="middle">Zoom/Pausa/Reset</text>
+  
+  <!-- Vertical arrows -->
+  <line x1="140" y1="260" x2="140" y2="310" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="360" y1="260" x2="360" y2="310" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="580" y1="260" x2="580" y2="310" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- Horizontal arrows -->
+  <line x1="220" y1="345" x2="280" y2="345" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="440" y1="345" x2="500" y2="345" stroke="#555" stroke-width="1" marker-end="url(#arrow)"/>
+  
+  <!-- JSON Format -->
+  <rect x="60" y="410" width="280" height="55" rx="3" fill="#fafafa" stroke="#555" stroke-width="1"/>
+  <text x="200" y="427" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#333" text-anchor="middle">Formato JSON - Datos</text>
+  <text x="200" y="441" font-family="monospace" font-size="8" fill="#555" text-anchor="middle">{"type":"signal","signalType":"ECG",</text>
+  <text x="200" y="454" font-family="monospace" font-size="8" fill="#555" text-anchor="middle">"value":1.23,"dac":185,"timestamp":12345}</text>
+  
+  <!-- Metrics Format -->
+  <rect x="380" y="410" width="280" height="55" rx="3" fill="#fafafa" stroke="#555" stroke-width="1"/>
+  <text x="520" y="427" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#333" text-anchor="middle">Formato JSON - Métricas</text>
+  <text x="520" y="441" font-family="monospace" font-size="8" fill="#555" text-anchor="middle">{"type":"metrics","hr":75,"rr":800,</text>
+  <text x="520" y="454" font-family="monospace" font-size="8" fill="#555" text-anchor="middle">"qrs":1.2,"st":0.05,"hrv":1.0}</text>
+  
+  <!-- Legend -->
+  <rect x="700" y="70" width="160" height="180" rx="4" fill="#fafafa" stroke="#555" stroke-width="1"/>
+  <text x="780" y="90" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#333" text-anchor="middle">Leyenda</text>
+  
+  <rect x="715" y="105" width="20" height="15" fill="#e8f5e9" stroke="#4caf50" stroke-width="1"/>
+  <text x="745" y="116" font-family="Arial, sans-serif" font-size="8" fill="#555">Servidor Web</text>
+  
+  <rect x="715" y="130" width="20" height="15" fill="#e3f2fd" stroke="#2196f3" stroke-width="1"/>
+  <text x="745" y="141" font-family="Arial, sans-serif" font-size="8" fill="#555">WebSocket</text>
+  
+  <rect x="715" y="155" width="20" height="15" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+  <text x="745" y="166" font-family="Arial, sans-serif" font-size="8" fill="#555">Generación</text>
+  
+  <rect x="715" y="180" width="20" height="15" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+  <text x="745" y="191" font-family="Arial, sans-serif" font-size="8" fill="#555">Codificación</text>
+  
+  <rect x="715" y="205" width="20" height="15" fill="#fff9c4" stroke="#fbc02d" stroke-width="1"/>
+  <text x="745" y="216" font-family="Arial, sans-serif" font-size="8" fill="#555">Renderizado</text>
+  
+  <text x="780" y="238" font-family="Arial, sans-serif" font-size="7" fill="#777" text-anchor="middle" font-style="italic">Arquitectura cliente-servidor</text>
+  <text x="780" y="248" font-family="Arial, sans-serif" font-size="7" fill="#777" text-anchor="middle" font-style="italic">ESP32: Access Point</text>
+  <text x="780" y="258" font-family="Arial, sans-serif" font-size="7" fill="#777" text-anchor="middle" font-style="italic">Cliente: SPA responsive</text>
+</svg>

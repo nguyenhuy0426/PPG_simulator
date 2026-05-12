@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="1050" viewBox="0 0 620 1050">
+  <style>
+    .title { font: bold 18px Arial; }
+    .subtitle { font: 13px Arial; fill: #666; }
+    .box-text { font: 10px Arial; }
+    .box-bold { font: bold 10px Arial; }
+    .box-code { font: 9px Courier New; }
+    .label { font: bold 9px Arial; fill: #c00; }
+    .note { font: 8px Arial; fill: #666; }
+  </style>
+  
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Header -->
+  <text x="310" y="30" text-anchor="middle" class="title">PPG – Modelo determinista Allen 2007</text>
+  <text x="310" y="48" text-anchor="middle" class="subtitle">Flujo de generación de señal fotopletismográfica</text>
+  
+  <!-- Frecuencia de muestreo con nota -->
+  <rect x="140" y="60" width="340" height="36" rx="3" fill="#e3f2fd" stroke="#1976d2" stroke-width="1"/>
+  <text x="310" y="76" text-anchor="middle" class="box-text">Fs_modelo = 100 Hz  •  Upsampling 20:1 → 2 kHz DAC</text>
+  <text x="310" y="90" text-anchor="middle" class="note">Nota: Nyquist requiere 10 Hz (BW=5 Hz), Fs_modelo = 100 Hz cumple criterio</text>
+  
+  <!-- deltaTime -->
+  <rect x="235" y="108" width="150" height="28" rx="4" fill="#d5d5d5" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="127" text-anchor="middle" class="box-bold">deltaTime = 10 ms</text>
+  <path d="M310 136 L310 151 L306 146 M310 151 L314 146" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- generateSample -->
+  <rect x="185" y="156" width="250" height="28" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="175" text-anchor="middle" class="box-bold">generateSample(deltaTime)</text>
+  <path d="M310 184 L310 199 L306 194 M310 199 L314 194" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Condición -->
+  <rect x="115" y="204" width="390" height="28" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="223" text-anchor="middle" class="box-text">Condición: NORMAL, ARRHYTHMIA, WEAK/STRONG_PERFUSION, VASO*</text>
+  <path d="M310 232 L310 247 L306 242 M310 247 L314 242" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- phaseInCycle -->
+  <rect x="165" y="252" width="290" height="26" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="270" text-anchor="middle" class="box-code">phaseInCycle += deltaTime / currentRR</text>
+  <path d="M310 278 L310 293 L306 288 M310 293 L314 288" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Decision nuevo latido -->
+  <rect x="165" y="298" width="290" height="26" rx="3" fill="#fff3cd" stroke="#b8860b" stroke-width="1.5"/>
+  <text x="310" y="316" text-anchor="middle" class="box-text">¿phaseInCycle ≥ 1.0? (nuevo latido)</text>
+  <text x="325" y="340" class="label">SÍ</text>
+  <path d="M310 324 L310 344 L306 339 M310 344 L314 339" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- detectBeat -->
+  <rect x="145" y="349" width="330" height="58" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="367" text-anchor="middle" class="box-bold">detectBeatAndApplyPending()</text>
+  <text x="310" y="385" text-anchor="middle" class="box-text">• phaseInCycle −= 1.0  • currentHR = generateDynamicHR()</text>
+  <text x="310" y="401" text-anchor="middle" class="box-text">• currentPI = generateDynamicPI()  • Aplicar parámetros pending</text>
+  <path d="M310 407 L310 422 L306 417 M310 422 L314 417" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- computePulseShape -->
+  <rect x="115" y="427" width="390" height="90" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="445" text-anchor="middle" class="box-bold">computePulseShape(φ)</text>
+  <text x="310" y="465" text-anchor="middle" class="box-code">Gₛ = exp(−(φ−0.15)²/(2×0.055²))  sistólica</text>
+  <text x="310" y="483" text-anchor="middle" class="box-code">G_d = exp(−(φ−0.40)²/(2×0.10²))   diastólica</text>
+  <text x="310" y="501" text-anchor="middle" class="box-code">Gₙ = β×exp(−(φ−λ)²/(2×0.02²))    muesca dicrótica</text>
+  <text x="310" y="514" text-anchor="middle" class="note">pulse = Gₛ + 0.4×G_d − Gₙ  →  normalizado [0, 1]</text>
+  <path d="M310 517 L310 537 L306 532 M310 537 L314 532" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Tracking tiempo real -->
+  <rect x="140" y="542" width="340" height="50" rx="3" fill="#fce4ec" stroke="#c2185b" stroke-width="1.5"/>
+  <text x="310" y="560" text-anchor="middle" class="box-bold">Medición en tiempo real (basada en fase)</text>
+  <text x="310" y="578" text-anchor="middle" class="box-text">Tracking: isSystole (φ&lt;0.3), peakValue, valleyValue, dicroticNotch</text>
+  <path d="M310 592 L310 607 L306 602 M310 607 L314 602" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Modificadores -->
+  <rect x="130" y="612" width="360" height="40" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="630" text-anchor="middle" class="box-bold">Modificadores de condición</text>
+  <text x="310" y="646" text-anchor="middle" class="box-text">WEAK_PERFUSION • VASODILATION • ARRHYTHMIA (CV>15%)</text>
+  <path d="M310 652 L310 667 L306 662 M310 667 L314 662" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- AC calculation -->
+  <rect x="165" y="672" width="290" height="40" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="690" text-anchor="middle" class="box-bold">AC = PI × DC/100 = PI × 15 mV</text>
+  <text x="310" y="706" text-anchor="middle" class="note">(DC=1.5V, PI=3%→45mV, PI=10%→150mV)</text>
+  <path d="M310 712 L310 727 L306 722 M310 727 L314 722" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- signal construction -->
+  <rect x="155" y="732" width="310" height="28" rx="3" fill="#f5f5f5" stroke="#333" stroke-width="1.5"/>
+  <text x="310" y="751" text-anchor="middle" class="box-text">acSignal = pulse × AC + noise × gaussian()</text>
+  <path d="M310 760 L310 775 L306 770 M310 775 L314 770" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Output range -->
+  <rect x="155" y="780" width="310" height="45" rx="3" fill="#d4edda" stroke="#198754" stroke-width="1.5"/>
+  <text x="310" y="798" text-anchor="middle" class="box-bold">Rango fisiológico AC puro:</text>
+  <text x="310" y="816" text-anchor="middle" class="box-text">0 a 150 mV (unipolar)  •  DC=1.5V</text>
+  
+  <line x1="230" y1="825" x2="170" y2="858" stroke="#333" stroke-width="1.5"/>
+  <line x1="390" y1="825" x2="450" y2="858" stroke="#333" stroke-width="1.5"/>
+  
+  <!-- getDACValue -->
+  <rect x="70" y="863" width="200" height="85" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="170" y="881" text-anchor="middle" class="box-bold">getDACValue()</text>
+  <text x="170" y="898" text-anchor="middle" class="box-text">Salida analógica 0-3.3V</text>
+  <text x="170" y="918" text-anchor="middle" class="box-code">DAC = acValue/150 × 255</text>
+  <text x="170" y="938" text-anchor="middle" class="note">0mV→0  75mV→128  150mV→255</text>
+  
+  <!-- getWaveformValue -->
+  <rect x="350" y="863" width="200" height="85" rx="3" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+  <text x="450" y="881" text-anchor="middle" class="box-bold">getWaveformValue()</text>
+  <text x="450" y="898" text-anchor="middle" class="box-text">Nextion waveform (26-255)</text>
+  <text x="450" y="918" text-anchor="middle" class="box-code">val = 26 + norm × 229</text>
+  <text x="450" y="938" text-anchor="middle" class="note">0mV→26 (piso 10%)  150mV→255</text>
+  
+  <text x="310" y="975" text-anchor="middle" class="note">Muesca dicrótica: β (escala) y λ (atraso) según SpO₂ y condición vascular</text>
+  <text x="310" y="995" text-anchor="middle" class="note">Timer @ 2 kHz → Display @ 100 Hz (downsample 20:1 desde timer)</text>
+  
+  <text x="310" y="1030" text-anchor="middle" style="font:9px Arial;fill:#999">BioSimulator Pro v1.0.0 – PPG Allen Gaussian Pulse Model</text>
+</svg>

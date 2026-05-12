@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="945" height="580" viewBox="0 0 945 580">
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Título -->
+  <text x="472" y="35" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="26" font-weight="bold" fill="#333">Circuito Buffer de Salida Analógica</text>
+  
+  <!-- Subtítulo -->
+  <text x="472" y="60" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="16" fill="#7f8c8d">LM358 - Amplificador Operacional Dual (Implementado)</text>
+  
+  <!-- Sección izquierda: Circuito -->
+  <rect x="30" y="80" width="500" height="350" rx="8" fill="#f5f5f5" stroke="#999" stroke-width="2"/>
+  <text x="280" y="105" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#333">Esquema del Circuito</text>
+  
+  <!-- Dibujo del circuito -->
+  <!-- VCC -->
+  <line x1="280" y1="130" x2="280" y2="150" stroke="#555" stroke-width="2"/>
+  <text x="280" y="125" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#555">+5V</text>
+  
+  <!-- Op-Amp triangulo -->
+  <polygon points="200,200 200,300 330,250" fill="white" stroke="#2c3e50" stroke-width="2.5"/>
+  
+  <!-- Conexión VCC al op-amp -->
+  <line x1="280" y1="150" x2="280" y2="200" stroke="#555" stroke-width="2"/>
+  
+  <!-- Entrada + -->
+  <line x1="100" y1="225" x2="200" y2="225" stroke="#2980b9" stroke-width="2"/>
+  <text x="210" y="230" font-family="Arial" font-size="14" font-weight="bold" fill="#333">+</text>
+  <circle cx="100" cy="225" r="5" fill="#555"/>
+  <text x="60" y="220" font-family="Comic Sans MS, cursive" font-size="12" fill="#333">ESP32</text>
+  <text x="55" y="235" font-family="Comic Sans MS, cursive" font-size="12" fill="#333">GPIO25</text>
+  <text x="50" y="250" font-family="Courier New" font-size="11" fill="#555">(0-3.3V)</text>
+  
+  <!-- Entrada - con realimentación -->
+  <text x="210" y="280" font-family="Arial" font-size="14" font-weight="bold" fill="#333">−</text>
+  <line x1="200" y1="275" x2="170" y2="275" stroke="#333" stroke-width="2"/>
+  <line x1="170" y1="275" x2="170" y2="320" stroke="#333" stroke-width="2"/>
+  <line x1="170" y1="320" x2="380" y2="320" stroke="#333" stroke-width="2"/>
+  <line x1="380" y1="320" x2="380" y2="250" stroke="#333" stroke-width="2"/>
+  
+  <!-- Salida -->
+  <line x1="330" y1="250" x2="380" y2="250" stroke="#555" stroke-width="2"/>
+  <circle cx="380" cy="250" r="4" fill="#555"/>
+  
+  <!-- Flecha a CD4051 -->
+  <line x1="395" y1="250" x2="490" y2="250" stroke="#27ae60" stroke-width="2"/>
+  <polygon points="490,245 500,250 490,255" fill="#27ae60"/>
+  <text x="445" y="240" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="11" fill="#27ae60">→ CD4051</text>
+  <text x="445" y="268" text-anchor="middle" font-family="Courier New" font-size="10" fill="#555">(0-3.3V)</text>
+  
+  <!-- GND -->
+  <line x1="280" y1="300" x2="280" y2="330" stroke="#333" stroke-width="2"/>
+  <line x1="260" y1="330" x2="300" y2="330" stroke="#333" stroke-width="2"/>
+  <line x1="268" y1="336" x2="292" y2="336" stroke="#333" stroke-width="1.5"/>
+  <line x1="274" y1="342" x2="286" y2="342" stroke="#333" stroke-width="1"/>
+  <text x="280" y="358" text-anchor="middle" font-family="Arial" font-size="12" fill="#333">GND</text>
+  
+  <!-- Etiqueta LM358 -->
+  <text x="265" y="255" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#8e44ad">LM358</text>
+  
+  <!-- Etiqueta realimentación -->
+  <text x="275" y="380" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="13" fill="#555">Realimentación 100% (ganancia unitaria)</text>
+  
+  <!-- Notas del circuito -->
+  <text x="280" y="410" text-anchor="middle" font-family="Arial" font-size="11" fill="#666">Configurado como seguidor de voltaje (buffer)</text>
+  
+  <!-- Sección derecha: Ecuaciones y características -->
+  <rect x="550" y="80" width="370" height="180" rx="8" fill="#f5f5f5" stroke="#2980b9" stroke-width="2"/>
+  <text x="735" y="105" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#333">Ecuación del Buffer</text>
+  
+  <!-- Ecuación principal -->
+  <rect x="580" y="120" width="310" height="60" rx="5" fill="white" stroke="#2980b9"/>
+  <text x="735" y="150" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="16" fill="#333">Seguidor de voltaje (Ganancia = 1):</text>
+  <text x="735" y="172" text-anchor="middle" font-family="Courier New" font-size="24" font-weight="bold" fill="#333">Vout = Vin × 1 = Vin</text>
+  
+  <!-- Explicación -->
+  <text x="735" y="205" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="13" fill="#333">La salida replica exactamente la entrada</text>
+  <text x="735" y="225" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="13" fill="#333">con alta impedancia de entrada y baja de salida</text>
+  <text x="735" y="245" text-anchor="middle" font-family="Courier New" font-size="12" fill="#7f8c8d">Z_in ≈ ∞  |  Z_out ≈ 0</text>
+  
+  <!-- Características LM358 -->
+  <rect x="550" y="275" width="370" height="155" rx="8" fill="#f5f5f5" stroke="#999" stroke-width="2"/>
+  <text x="735" y="300" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="18" font-weight="bold" fill="#333">Características LM358</text>
+  
+  <!-- Tabla características -->
+  <rect x="570" y="315" width="165" height="25" fill="#555"/>
+  <text x="652" y="333" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="white">Parámetro</text>
+  <rect x="735" y="315" width="165" height="25" fill="#555"/>
+  <text x="817" y="333" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="white">Valor</text>
+  
+  <rect x="570" y="340" width="165" height="20" fill="#eee"/>
+  <text x="652" y="355" text-anchor="middle" font-family="Arial" font-size="11" fill="#333">Slew Rate</text>
+  <rect x="735" y="340" width="165" height="20" fill="#eee"/>
+  <text x="817" y="355" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="#555">0.3 V/µs</text>
+  
+  <rect x="570" y="360" width="165" height="20" fill="white"/>
+  <text x="652" y="375" text-anchor="middle" font-family="Arial" font-size="11" fill="#333">GBW (Ancho de banda)</text>
+  <rect x="735" y="360" width="165" height="20" fill="white"/>
+  <text x="817" y="375" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="#555">0.7 MHz</text>
+  
+  <rect x="570" y="380" width="165" height="20" fill="#eee"/>
+  <text x="652" y="395" text-anchor="middle" font-family="Arial" font-size="11" fill="#333">Ruido de entrada</text>
+  <rect x="735" y="380" width="165" height="20" fill="#eee"/>
+  <text x="817" y="395" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="#555">40 nV/√Hz</text>
+  
+  <rect x="570" y="400" width="165" height="20" fill="white"/>
+  <text x="652" y="415" text-anchor="middle" font-family="Arial" font-size="11" fill="#333">Consumo (por amp)</text>
+  <rect x="735" y="400" width="165" height="20" fill="white"/>
+  <text x="817" y="415" text-anchor="middle" font-family="Arial" font-size="11" fill="#333">0.7 mA típico</text>
+  
+  <!-- Justificación actualizada -->
+  <rect x="30" y="445" width="885" height="120" rx="8" fill="#fff3cd" stroke="#ffc107" stroke-width="2"/>
+  <text x="472" y="470" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="16" font-weight="bold" fill="#333">¿Por qué LM358 y no MCP6002?</text>
+  <text x="472" y="495" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="13" fill="#333">El MCP6002 sería ideal (rail-to-rail, 1.8-6V, mejor para 3.3V del ESP32)</text>
+  <text x="472" y="515" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="13" fill="#333">pero el LM358 se usa por disponibilidad inmediata en Ecuador</text>
+  <text x="472" y="540" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="12" fill="#666">LM358: VCC=5V, Vout máx ≈ 3.5V (suficiente para DAC 0-3.3V)</text>
+  <text x="472" y="558" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="11" fill="#27ae60">✓ Recomendación: Importar MCP6002 para versiones futuras</text>
+</svg>

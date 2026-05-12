@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <defs>
+    <!-- Gradiente de fondo suave -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8F9FA"/>
+      <stop offset="100%" style="stop-color:#E8EEF2"/>
+    </linearGradient>
+    
+    <!-- Gradiente para tarjetas -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F5F7FA"/>
+    </linearGradient>
+    
+    <!-- Sombra suave -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1A237E" flood-opacity="0.12"/>
+    </filter>
+    
+    <!-- Sombra para cajas 3D -->
+    <filter id="boxShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="3" dy="5" stdDeviation="5" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Fondo -->
+  <rect width="1920" height="1080" fill="url(#bgGradient)"/>
+  
+  <!-- Patrón decorativo sutil -->
+  <g opacity="0.03">
+    <circle cx="100" cy="100" r="200" fill="#0D47A1"/>
+    <circle cx="1820" cy="980" r="250" fill="#0D47A1"/>
+    <circle cx="1700" cy="150" r="150" fill="#1565C0"/>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TÍTULO PRINCIPAL -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <text x="960" y="70" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="52" font-weight="bold" fill="#0D47A1">PLANTEAMIENTO DEL PROBLEMA</text>
+  
+  <!-- Línea decorativa -->
+  <line x1="660" y1="90" x2="1260" y2="90" stroke="#0D47A1" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 1: CONTEXTO -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 130)">
+    <!-- Caja 3D lateral -->
+    <g filter="url(#boxShadow)">
+      <polygon points="0,30 0,100 180,100 180,30" fill="#1565C0"/>
+      <polygon points="0,30 25,10 205,10 180,30" fill="#42A5F5"/>
+      <polygon points="180,30 205,10 205,80 180,100" fill="#0D47A1"/>
+    </g>
+    <text x="90" y="72" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="white">CONTEXTO</text>
+    
+    <!-- Tarjeta de contenido -->
+    <rect x="230" y="0" width="1570" height="110" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="230" y="0" width="1570" height="6" rx="3" fill="#1565C0"/>
+    
+    <!-- Icono -->
+    <circle cx="280" cy="55" r="30" fill="#E3F2FD"/>
+    <text x="280" y="65" text-anchor="middle" font-size="32">🎓</text>
+    
+    <!-- Texto -->
+    <text x="330" y="45" font-family="Arial, sans-serif" font-size="22" fill="#37474F">
+      <tspan font-weight="bold" fill="#0D47A1">El Laboratorio de Neuroimagen y Bioingeniería (LNB) de ESPOL</tspan>
+    </text>
+    <text x="330" y="78" font-family="Arial, sans-serif" font-size="20" fill="#455A64">
+      forma estudiantes de Ingeniería Mecatrónica en bioinstrumentación, procesamiento
+    </text>
+    <text x="330" y="102" font-family="Arial, sans-serif" font-size="20" fill="#455A64">
+      de señales fisiológicas y diseño de sistemas biomédicos.
+    </text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 2: LIMITACIONES ACTUALES -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 270)">
+    <!-- Caja 3D lateral -->
+    <g filter="url(#boxShadow)">
+      <polygon points="0,30 0,120 180,120 180,30" fill="#E53935"/>
+      <polygon points="0,30 25,10 205,10 180,30" fill="#EF5350"/>
+      <polygon points="180,30 205,10 205,100 180,120" fill="#C62828"/>
+    </g>
+    <text x="90" y="65" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">LIMITACIONES</text>
+    <text x="90" y="90" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">ACTUALES</text>
+    
+    <!-- Tarjeta de contenido -->
+    <rect x="230" y="0" width="1570" height="140" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="230" y="0" width="1570" height="6" rx="3" fill="#E53935"/>
+    
+    <!-- Limitación 1 -->
+    <circle cx="280" cy="45" r="25" fill="#FFEBEE"/>
+    <text x="280" y="53" text-anchor="middle" font-size="24">📊</text>
+    <text x="320" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#C62828">Bases de datos pregrabadas:</text>
+    <text x="595" y="40" font-family="Arial, sans-serif" font-size="20" fill="#455A64">Escenarios fijos, sin interacción ni variaciones en tiempo real.</text>
+    <text x="320" y="65" font-family="Arial, sans-serif" font-size="18" fill="#78909C" font-style="italic">No permiten experimentación dinámica con parámetros fisiológicos.</text>
+    
+    <!-- Limitación 2 -->
+    <circle cx="280" cy="110" r="25" fill="#FFEBEE"/>
+    <text x="280" y="118" text-anchor="middle" font-size="24">👤</text>
+    <text x="320" y="105" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#C62828">Adquisición con sujetos reales:</text>
+    <text x="630" y="105" font-family="Arial, sans-serif" font-size="20" fill="#455A64">Restricciones éticas, variabilidad incontrolada, baja reproducibilidad.</text>
+    <text x="320" y="130" font-family="Arial, sans-serif" font-size="18" fill="#78909C" font-style="italic">Imposibilidad de explorar patologías específicas de forma controlada.</text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 3: PROBLEMA CENTRAL -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 440)">
+    <!-- Caja 3D lateral -->
+    <g filter="url(#boxShadow)">
+      <polygon points="0,30 0,160 180,160 180,30" fill="#F57C00"/>
+      <polygon points="0,30 25,10 205,10 180,30" fill="#FF9800"/>
+      <polygon points="180,30 205,10 205,140 180,160" fill="#E65100"/>
+    </g>
+    <text x="90" y="85" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">PROBLEMA</text>
+    <text x="90" y="110" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">CENTRAL</text>
+    
+    <!-- Tarjeta de contenido -->
+    <rect x="230" y="0" width="1570" height="180" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="230" y="0" width="1570" height="6" rx="3" fill="#F57C00"/>
+    
+    <!-- Encabezado del problema -->
+    <text x="280" y="40" font-family="Comic Sans MS, Comic Neue, cursive" font-size="24" font-weight="bold" fill="#E65100">⚠️ Los estudiantes necesitan:</text>
+    
+    <!-- Lista de necesidades -->
+    <g font-family="Arial, sans-serif" font-size="19" fill="#37474F">
+      <circle cx="290" cy="75" r="8" fill="#F57C00"/>
+      <text x="310" y="82">Comprender cómo se comportan las señales fisiológicas (ECG, EMG, PPG) de forma dinámica.</text>
+      
+      <circle cx="290" cy="107" r="8" fill="#F57C00"/>
+      <text x="310" y="114">Observar y comparar escenarios normales versus condiciones patológicas.</text>
+      
+      <circle cx="290" cy="139" r="8" fill="#F57C00"/>
+      <text x="310" y="146">Visualizar y reconocer en tiempo real variables de interés clínico.</text>
+      
+      <circle cx="290" cy="171" r="8" fill="#F57C00"/>
+      <text x="310" y="178">Experimentar modificando parámetros y observando el efecto inmediato en la señal.</text>
+    </g>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 4: SOLUCIÓN REQUERIDA -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 660)">
+    <!-- Caja 3D lateral -->
+    <g filter="url(#boxShadow)">
+      <polygon points="0,30 0,130 180,130 180,30" fill="#43A047"/>
+      <polygon points="0,30 25,10 205,10 180,30" fill="#66BB6A"/>
+      <polygon points="180,30 205,10 205,110 180,130" fill="#2E7D32"/>
+    </g>
+    <text x="90" y="70" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">SE</text>
+    <text x="90" y="95" text-anchor="middle" font-family="Comic Sans MS, Comic Neue, cursive" font-size="20" font-weight="bold" fill="white">REQUIERE</text>
+    
+    <!-- Tarjeta de contenido -->
+    <rect x="230" y="0" width="1570" height="150" rx="15" fill="url(#cardGrad)" filter="url(#softShadow)"/>
+    <rect x="230" y="0" width="1570" height="6" rx="3" fill="#43A047"/>
+    
+    <!-- Icono check -->
+    <circle cx="280" cy="75" r="35" fill="#E8F5E9"/>
+    <text x="280" y="88" text-anchor="middle" font-size="40" fill="#2E7D32">✓</text>
+    
+    <!-- Texto de solución -->
+    <text x="340" y="45" font-family="Comic Sans MS, Comic Neue, cursive" font-size="24" font-weight="bold" fill="#2E7D32">Solución propuesta:</text>
+    
+    <text x="340" y="80" font-family="Arial, sans-serif" font-size="21" fill="#37474F">
+      Un <tspan font-weight="bold" fill="#2E7D32">dispositivo educativo portátil</tspan> que simule señales ECG, EMG y PPG
+    </text>
+    <text x="340" y="108" font-family="Arial, sans-serif" font-size="21" fill="#37474F">
+      con condiciones normales y patológicas, permitiendo <tspan font-weight="bold">visualizar y parametrizar</tspan>
+    </text>
+    <text x="340" y="136" font-family="Arial, sans-serif" font-size="21" fill="#37474F">
+      las señales en tiempo real <tspan font-weight="bold" fill="#2E7D32">sin restricciones logísticas ni éticas.</tspan>
+    </text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PREGUNTA DE INVESTIGACIÓN -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <g transform="translate(60, 840)">
+    <rect x="0" y="0" width="1800" height="90" rx="15" fill="#E3F2FD" filter="url(#softShadow)" stroke="#1565C0" stroke-width="2"/>
+    
+    <!-- Icono pregunta -->
+    <circle cx="60" cy="45" r="30" fill="#1565C0"/>
+    <text x="60" y="55" text-anchor="middle" font-size="32" fill="white">?</text>
+    
+    <text x="110" y="38" font-family="Comic Sans MS, Comic Neue, cursive" font-size="22" font-weight="bold" fill="#0D47A1">Pregunta de investigación:</text>
+    <text x="110" y="70" font-family="Arial, sans-serif" font-size="20" fill="#37474F" font-style="italic">
+      ¿Cómo implementar un simulador de señales fisiológicas basado en modelos computacionales que genere
+    </text>
+    <text x="110" y="95" font-family="Arial, sans-serif" font-size="20" fill="#37474F" font-style="italic">
+      formas de onda ECG, EMG y PPG ajustables en tiempo real para uso didáctico en el LNB-ESPOL?
+    </text>
+  </g>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  
+  <rect x="0" y="1040" width="1920" height="40" fill="#0D47A1"/>
+  <text x="60" y="1065" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">Grupo #22 • Scarlet Sánchez y Rafael Mata</text>
+  <text x="960" y="1065" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">ESPOL • Ingeniería Mecatrónica • Trabajo de Titulación</text>
+  <text x="1860" y="1065" text-anchor="end" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">BioSignalSimulator Pro</text>
+  
+</svg>

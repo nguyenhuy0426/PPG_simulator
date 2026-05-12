@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="900" viewBox="0 0 700 900">
+  <style>
+    .title { font: bold 18px Arial; }
+    .subtitle { font: 13px Arial; fill: #666; }
+    .section-title { font: bold 12px Arial; fill: white; }
+    .box-text { font: 10px Arial; }
+    .box-bold { font: bold 10px Arial; }
+    .box-code { font: 9px Courier New; }
+    .small { font: 8px Arial; fill: #666; }
+    .label { font: bold 9px Arial; }
+  </style>
+  
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Título -->
+  <text x="350" y="30" text-anchor="middle" class="title">Arquitectura Computacional - BioSimulator Pro</text>
+  <text x="350" y="48" text-anchor="middle" class="subtitle">ESP32-WROOM-32 Dual-Core + FreeRTOS</text>
+  
+  <!-- ESP32 Container -->
+  <rect x="30" y="70" width="640" height="480" rx="8" fill="none" stroke="#333" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="50" y="90" class="box-bold">ESP32-WROOM-32</text>
+  
+  <!-- CORE 1 - Tiempo Real -->
+  <rect x="50" y="105" width="280" height="280" rx="5" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <rect x="50" y="105" width="280" height="25" rx="5" fill="#1976d2"/>
+  <text x="190" y="122" text-anchor="middle" class="section-title">CORE 1 - Tiempo Real</text>
+  
+  <!-- Tarea generación -->
+  <rect x="70" y="145" width="240" height="55" rx="3" fill="white" stroke="#333" stroke-width="1"/>
+  <text x="190" y="162" text-anchor="middle" class="box-bold">generationTask()</text>
+  <text x="190" y="177" text-anchor="middle" class="box-text">Prioridad: 5 (máxima)</text>
+  <text x="190" y="192" text-anchor="middle" class="box-code">Stack: 4096 bytes</text>
+  
+  <!-- Flecha -->
+  <path d="M190 200 L190 215 L186 210 M190 215 L194 210" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Modelos -->
+  <rect x="70" y="220" width="240" height="50" rx="3" fill="#fff9c4" stroke="#f9a825" stroke-width="1"/>
+  <text x="190" y="240" text-anchor="middle" class="box-bold">Modelo Activo</text>
+  <text x="190" y="257" text-anchor="middle" class="box-text">ECG | EMG | PPG → getDACValue(dt)</text>
+  
+  <!-- Flecha -->
+  <path d="M190 270 L190 285 L186 280 M190 285 L194 280" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Buffer circular -->
+  <rect x="70" y="290" width="240" height="45" rx="3" fill="#e8f5e9" stroke="#388e3c" stroke-width="1"/>
+  <text x="190" y="308" text-anchor="middle" class="box-bold">Buffer Circular</text>
+  <text x="190" y="323" text-anchor="middle" class="box-code">SIGNAL_BUFFER_SIZE = 2048</text>
+  
+  <!-- Flecha -->
+  <path d="M190 335 L190 350 L186 345 M190 350 L194 345" stroke="#333" stroke-width="1.5" fill="none"/>
+  
+  <!-- Timer ISR -->
+  <rect x="70" y="355" width="240" height="55" rx="3" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+  <text x="190" y="372" text-anchor="middle" class="box-bold">Timer ISR @ 2 kHz</text>
+  <text x="190" y="387" text-anchor="middle" class="box-code">dacWrite(GPIO25, sample)</text>
+  <text x="190" y="402" text-anchor="middle" class="small">Jitter &lt; ±0.25 ms</text>
+  
+  <!-- CORE 0 - UI/Comm -->
+  <rect x="370" y="105" width="280" height="280" rx="5" fill="#fce4ec" stroke="#c2185b" stroke-width="2"/>
+  <rect x="370" y="105" width="280" height="25" rx="5" fill="#c2185b"/>
+  <text x="510" y="122" text-anchor="middle" class="section-title">CORE 0 - UI y Comunicación</text>
+  
+  <!-- Loop principal -->
+  <rect x="390" y="145" width="240" height="40" rx="3" fill="white" stroke="#333" stroke-width="1"/>
+  <text x="510" y="163" text-anchor="middle" class="box-bold">loop() - Arduino</text>
+  <text x="510" y="178" text-anchor="middle" class="box-text">Prioridad: 1</text>
+  
+  <!-- Nextion -->
+  <rect x="390" y="195" width="115" height="70" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1"/>
+  <text x="447" y="212" text-anchor="middle" class="box-bold">Nextion</text>
+  <text x="447" y="227" text-anchor="middle" class="box-text">UART2</text>
+  <text x="447" y="242" text-anchor="middle" class="box-code">115200 baud</text>
+  <text x="447" y="257" text-anchor="middle" class="small">ECG 200Hz EMG/PPG 100Hz</text>
+  
+  <!-- WiFi -->
+  <rect x="515" y="195" width="115" height="70" rx="3" fill="#e0e0e0" stroke="#333" stroke-width="1"/>
+  <text x="572" y="212" text-anchor="middle" class="box-bold">WiFi AP</text>
+  <text x="572" y="227" text-anchor="middle" class="box-code">192.168.4.1</text>
+  <text x="572" y="242" text-anchor="middle" class="small">SSID:</text>
+  <text x="572" y="255" text-anchor="middle" class="small">BioSimulator_Pro</text>
+  
+  <!-- WebSocket -->
+  <rect x="390" y="275" width="240" height="50" rx="3" fill="#e8eaf6" stroke="#3f51b5" stroke-width="1"/>
+  <text x="510" y="293" text-anchor="middle" class="box-bold">WebSocket :81</text>
+  <text x="510" y="310" text-anchor="middle" class="box-text">Señal JSON @ 100Hz | Métricas @ 4Hz</text>
+  
+  <!-- Parámetros -->
+  <rect x="390" y="335" width="240" height="45" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+  <text x="510" y="352" text-anchor="middle" class="box-bold">ParamController</text>
+  <text x="510" y="370" text-anchor="middle" class="box-text">Tipo A (inmediato) | Tipo B (fin ciclo)</text>
+  
+  <!-- DAC Output -->
+  <rect x="130" y="430" width="140" height="40" rx="3" fill="#c8e6c9" stroke="#2e7d32" stroke-width="2"/>
+  <text x="200" y="448" text-anchor="middle" class="box-bold">DAC GPIO25</text>
+  <text x="200" y="463" text-anchor="middle" class="box-text">0-3.3V Analógico</text>
+  
+  <!-- Flecha DAC -->
+  <path d="M200 410 L200 425" stroke="#333" stroke-width="1.5" fill="none"/>
+  <polygon points="200,430 196,423 204,423" fill="#333"/>
+  
+  <!-- Flechas entre cores -->
+  <path d="M330 310 L370 310" stroke="#666" stroke-width="1.5" stroke-dasharray="4,2" fill="none"/>
+  <text x="350" y="303" text-anchor="middle" class="small">samples</text>
+  
+  <!-- SALIDAS EXTERNAS -->
+  <rect x="30" y="560" width="640" height="150" rx="5" fill="#f5f5f5" stroke="#666" stroke-width="1"/>
+  <text x="50" y="580" class="box-bold">Interfaces de Salida</text>
+  
+  <!-- Pantalla Nextion -->
+  <rect x="50" y="595" width="180" height="100" rx="5" fill="white" stroke="#333" stroke-width="1.5"/>
+  <text x="140" y="615" text-anchor="middle" class="box-bold">📺 Pantalla Nextion 7"</text>
+  <text x="140" y="633" text-anchor="middle" class="box-text">NX8048T070</text>
+  <text x="140" y="650" text-anchor="middle" class="box-code">800×480 px</text>
+  <text x="140" y="670" text-anchor="middle" class="small">Waveform + Métricas + UI</text>
+  <text x="140" y="685" text-anchor="middle" class="small">ECG 200Hz, EMG/PPG 100Hz</text>
+  
+  <!-- BNC -->
+  <rect x="260" y="595" width="180" height="100" rx="5" fill="white" stroke="#333" stroke-width="1.5"/>
+  <text x="350" y="615" text-anchor="middle" class="box-bold">🔌 Salida BNC</text>
+  <text x="350" y="635" text-anchor="middle" class="box-text">Señal Analógica</text>
+  <text x="350" y="655" text-anchor="middle" class="box-code">0-3.3V @ 2kHz</text>
+  <text x="350" y="675" text-anchor="middle" class="small">Buffer LM358 + CD4051+RC</text>
+  <text x="350" y="690" text-anchor="middle" class="small">→ Osciloscopio/Monitor</text>
+  
+  <!-- Web App -->
+  <rect x="470" y="595" width="180" height="100" rx="5" fill="white" stroke="#333" stroke-width="1.5"/>
+  <text x="560" y="615" text-anchor="middle" class="box-bold">🌐 App Web</text>
+  <text x="560" y="635" text-anchor="middle" class="box-text">Cliente WebSocket</text>
+  <text x="560" y="655" text-anchor="middle" class="box-code">http://192.168.4.1</text>
+  <text x="560" y="675" text-anchor="middle" class="small">Visualización remota</text>
+  <text x="560" y="690" text-anchor="middle" class="small">Control de parámetros</text>
+  
+  <!-- Flechas a salidas -->
+  <line x1="200" y1="470" x2="200" y2="520" stroke="#333" stroke-width="1.5"/>
+  <line x1="200" y1="520" x2="140" y2="520" stroke="#333" stroke-width="1.5"/>
+  <line x1="140" y1="520" x2="140" y2="590" stroke="#333" stroke-width="1.5"/>
+  <polygon points="140,595 136,588 144,588" fill="#333"/>
+  
+  <line x1="200" y1="520" x2="350" y2="520" stroke="#333" stroke-width="1.5"/>
+  <line x1="350" y1="520" x2="350" y2="590" stroke="#333" stroke-width="1.5"/>
+  <polygon points="350,595 346,588 354,588" fill="#333"/>
+  
+  <line x1="510" y1="385" x2="510" y2="520" stroke="#333" stroke-width="1.5"/>
+  <line x1="510" y1="520" x2="560" y2="520" stroke="#333" stroke-width="1.5"/>
+  <line x1="560" y1="520" x2="560" y2="590" stroke="#333" stroke-width="1.5"/>
+  <polygon points="560,595 556,588 564,588" fill="#333"/>
+  
+  <!-- Leyenda -->
+  <rect x="30" y="725" width="640" height="80" rx="5" fill="#fafafa" stroke="#ddd" stroke-width="1"/>
+  <text x="50" y="745" class="box-bold">Parámetros Clave:</text>
+  
+  <text x="50" y="765" class="box-code">FS_TIMER_HZ = 2000</text>
+  <text x="50" y="780" class="small">Timer + DAC (sin decim.)</text>
+  
+  <text x="200" y="765" class="box-code">SIGNAL_BUFFER_SIZE = 2048</text>
+  <text x="200" y="780" class="small">~0.5 segundos de buffer</text>
+  
+  <text x="400" y="765" class="box-code">FDS_ECG=200, FDS_EMG/PPG=100</text>
+  <text x="400" y="780" class="small">Freq. Nextion (decimado)</text>
+  
+  <text x="560" y="765" class="box-code">Nextion downsampling</text>
+  <text x="560" y="780" class="small">10:1, 20:1, 20:1</text>
+  
+  <!-- Footer -->
+  <text x="350" y="830" text-anchor="middle" class="box-text">Separación de responsabilidades: Core 1 (tiempo real) nunca es interrumpido por Core 0 (UI)</text>
+  <text x="350" y="860" text-anchor="middle" style="font:9px Arial;fill:#999">BioSimulator Pro v1.0.0 - ESP32-WROOM-32 + FreeRTOS</text>
+</svg>
