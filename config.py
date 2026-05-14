@@ -164,7 +164,7 @@ FONT_SCALE_MAX = 2.5
 # LAYOUT PROPORTIONS (percentage of screen dimensions)
 # ============================================================================
 LAYOUT_HEADER_RATIO = 0.10       # 10% for header
-LAYOUT_LEFT_MENU_RATIO = 0.15    # 15% for left menu
+LAYOUT_LEFT_MENU_RATIO = 0.0     # 0% for left menu (disabled to center UI)
 LAYOUT_WAVEFORM_H_RATIO = 0.45   # 45% for waveform (below header)
 LAYOUT_CONTROLS_H_RATIO = 0.45   # 45% for bottom controls
 

@@ -101,15 +101,8 @@ class SignalEngine:
             self.ppg_model.set_parameters(params)
             self.ppg_params = params
 
-            # Pre-fill buffer with DC baseline level
-            dc = self.ppg_model.dc_baseline
-            fill_val = self._v_to_dac(dc)
-            for i in range(SIGNAL_BUFFER_SIZE // 2):
-                self._buf_ir[i] = fill_val
-                self._buf_red[i] = fill_val
-                self._buf_display_ir[i] = 0.0
-                self._buf_display_red[i] = 0.0
-            self._write_idx = SIGNAL_BUFFER_SIZE // 2
+            # Do not pre-fill buffer with DC baseline; start generating immediately
+            self._write_idx = 0
 
             self.state = SIG_RUNNING
 
@@ -190,38 +183,24 @@ class SignalEngine:
                 self._curr_disp_ir = disp_ir
                 self._curr_disp_red = disp_red
 
-                self._interp_counter = 0
+                # Write interpolated samples to buffer for this model tick
+                write_idx = self._write_idx
+                for i in range(UPSAMPLE_RATIO_PPG):
+                    t = i / float(UPSAMPLE_RATIO_PPG)
+                    interp_ir = int(self._prev_ir + (self._curr_ir - self._prev_ir) * t)
+                    interp_red = int(self._prev_red + (self._curr_red - self._prev_red) * t)
+                    interp_disp_ir = self._prev_disp_ir + (self._curr_disp_ir - self._prev_disp_ir) * t
+                    interp_disp_red = self._prev_disp_red + (self._curr_disp_red - self._prev_disp_red) * t
 
-            # Fill ring buffer with interpolated samples
-            write_idx = self._write_idx
-            read_idx = self._read_idx
-            available = (read_idx - write_idx - 1 + SIGNAL_BUFFER_SIZE) % SIGNAL_BUFFER_SIZE
+                    self._buf_ir[write_idx] = max(0, min(4095, interp_ir))
+                    self._buf_red[write_idx] = max(0, min(4095, interp_red))
+                    self._buf_display_ir[write_idx] = interp_disp_ir
+                    self._buf_display_red[write_idx] = interp_disp_red
 
-            while available > 0:
-                t = self._interp_counter / UPSAMPLE_RATIO_PPG
-                interp_ir = int(self._prev_ir + (self._curr_ir - self._prev_ir) * t)
-                interp_red = int(self._prev_red + (self._curr_red - self._prev_red) * t)
-                interp_disp_ir = self._prev_disp_ir + (self._curr_disp_ir - self._prev_disp_ir) * t
-                interp_disp_red = self._prev_disp_red + (self._curr_disp_red - self._prev_disp_red) * t
-
-                interp_ir = max(0, min(4095, interp_ir))
-                interp_red = max(0, min(4095, interp_red))
-
-                self._buf_ir[write_idx] = interp_ir
-                self._buf_red[write_idx] = interp_red
-                self._buf_display_ir[write_idx] = interp_disp_ir
-                self._buf_display_red[write_idx] = interp_disp_red
-
-                write_idx = (write_idx + 1) % SIGNAL_BUFFER_SIZE
+                    write_idx = (write_idx + 1) % SIGNAL_BUFFER_SIZE
+                
                 self._write_idx = write_idx
-                available -= 1
-                self._sample_count += 1
-
-                self._interp_counter += 1
-                if self._interp_counter >= UPSAMPLE_RATIO_PPG:
-                    self._interp_counter = 0
-                    self._prev_disp_ir = self._curr_disp_ir
-                    self._prev_disp_red = self._curr_disp_red
+                self._sample_count += UPSAMPLE_RATIO_PPG
 
             # Write to DACs at ~1 kHz
             if now - last_dac_time >= dac_interval_s:
