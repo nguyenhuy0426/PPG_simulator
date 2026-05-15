@@ -92,11 +92,21 @@ class PathologyFrame(ctk.CTkFrame):
         if self.cond_btns:
             self.cond_btns[0].configure(fg_color=["#3a7ebf", "#1f538d"]) # default active color
             
-        # Record Button
-        self.record_btn = ctk.CTkButton(self.ctrl_frame, text="Start Recording", 
+        # Bottom Controls (Run & Record)
+        self.bottom_frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
+        self.bottom_frame.grid(row=4, column=0, columnspan=2, pady=10, sticky="ew")
+        self.bottom_frame.grid_columnconfigure(0, weight=1)
+        self.bottom_frame.grid_columnconfigure(1, weight=1)
+        
+        self.run_btn = ctk.CTkButton(self.bottom_frame, text="Run Simulation",
+                                     fg_color="darkgreen", hover_color="green",
+                                     command=self.toggle_simulation)
+        self.run_btn.grid(row=0, column=0, padx=10)
+        
+        self.record_btn = ctk.CTkButton(self.bottom_frame, text="Start Recording", 
                                         fg_color="darkred", hover_color="red",
                                         command=self.toggle_recording)
-        self.record_btn.grid(row=4, column=0, columnspan=2, pady=10)
+        self.record_btn.grid(row=0, column=1, padx=10)
         self.is_recording = False
 
     def on_show(self):
@@ -113,6 +123,12 @@ class PathologyFrame(ctk.CTkFrame):
             self.sliders[k]._command(v.get())
             
         self.set_condition(p.condition)
+        
+        # Sync run button state
+        if self.engine._running:
+            self.run_btn.configure(text="Stop Simulation", fg_color="darkorange", hover_color="orange")
+        else:
+            self.run_btn.configure(text="Run Simulation", fg_color="darkgreen", hover_color="green")
 
     def update_param(self, key, val):
         if key == "hr": self.engine.update_heart_rate(val)
@@ -125,6 +141,24 @@ class PathologyFrame(ctk.CTkFrame):
         for i, btn in enumerate(self.cond_btns):
             btn.configure(fg_color=["#3a7ebf", "#1f538d"] if i == idx else "gray25")
         self.engine.ppg_params.condition = idx
+        if self.engine._running:
+            self.engine.change_condition(idx)
+
+    def toggle_simulation(self):
+        if self.engine._running:
+            self.engine.stop_simulation()
+            self.run_btn.configure(text="Run Simulation", fg_color="darkgreen", hover_color="green")
+            # Clear canvas sweep when stopped
+            self.sweep_x = 0
+            self.last_y_ir = None
+            self.last_y_red = None
+            self.canvas.delete("trace")
+            # If recording, stop it automatically
+            if self.is_recording:
+                self.toggle_recording()
+        else:
+            self.engine.start_simulation(self.engine.ppg_params.condition)
+            self.run_btn.configure(text="Stop Simulation", fg_color="darkorange", hover_color="orange")
 
     def toggle_recording(self):
         if not self.is_recording:

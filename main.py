@@ -40,8 +40,7 @@ def main():
     p = engine.get_ppg_params()
     apply_config_to_params(config, p)
     
-    # Start simulating by default
-    engine.start_simulation(p.condition)
+    # Simulation will be started manually via the GUI
     
     # Initialize UI
     app = CTkApp()

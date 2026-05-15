@@ -23,19 +23,23 @@ class PlaybackFrame(ctk.CTkFrame):
         self.display_frame.grid_rowconfigure(1, weight=1)
         self.display_frame.grid_columnconfigure(0, weight=1)
         
-        # Parameters readout
-        self.param_frame = ctk.CTkFrame(self.display_frame, fg_color="transparent")
-        self.param_frame.grid(row=0, column=0, sticky="ew", pady=10)
+        # Controls & Parameters
+        self.control_frame = ctk.CTkFrame(self.display_frame, fg_color="transparent")
+        self.control_frame.grid(row=0, column=0, sticky="ew", pady=10)
         
-        self.lbl_hr = ctk.CTkLabel(self.param_frame, text="HR: --")
+        self.play_btn = ctk.CTkButton(self.control_frame, text="Play", width=60, 
+                                      command=self.toggle_playback, state="disabled")
+        self.play_btn.pack(side="left", padx=10)
+        
+        self.lbl_hr = ctk.CTkLabel(self.control_frame, text="HR: --")
         self.lbl_hr.pack(side="left", expand=True)
-        self.lbl_spo2 = ctk.CTkLabel(self.param_frame, text="SpO2: --")
+        self.lbl_spo2 = ctk.CTkLabel(self.control_frame, text="SpO2: --")
         self.lbl_spo2.pack(side="left", expand=True)
-        self.lbl_rr = ctk.CTkLabel(self.param_frame, text="RR: --")
+        self.lbl_rr = ctk.CTkLabel(self.control_frame, text="RR: --")
         self.lbl_rr.pack(side="left", expand=True)
-        self.lbl_pi = ctk.CTkLabel(self.param_frame, text="PI: --")
+        self.lbl_pi = ctk.CTkLabel(self.control_frame, text="PI: --")
         self.lbl_pi.pack(side="left", expand=True)
-        self.lbl_cond = ctk.CTkLabel(self.param_frame, text="Cond: --")
+        self.lbl_cond = ctk.CTkLabel(self.control_frame, text="Cond: --")
         self.lbl_cond.pack(side="left", expand=True)
         
         # Canvas
@@ -45,6 +49,20 @@ class PlaybackFrame(ctk.CTkFrame):
         
         self.canvas_width = 600
         self.canvas_height = 400
+        
+        # Playback State
+        self.is_playing = False
+        self.playback_ir = []
+        self.playback_red = []
+        self.playback_idx = 0
+        self.sweep_x = 0
+        self.last_y_ir = None
+        self.last_y_red = None
+        self.v_min = 0
+        self.v_max = 4095
+        self.v_range = 4095
+        
+        self._draw_grid()
         
     def on_show(self):
         self.refresh_file_list()
@@ -64,6 +82,25 @@ class PlaybackFrame(ctk.CTkFrame):
                                 command=lambda p=fpath: self.load_data(p),
                                 fg_color="gray25", hover_color="gray40")
             btn.pack(fill="x", pady=2, padx=5)
+
+    def toggle_playback(self):
+        if not self.playback_ir:
+            return
+            
+        if self.is_playing:
+            self.is_playing = False
+            self.play_btn.configure(text="Play", fg_color=["#3a7ebf", "#1f538d"])
+        else:
+            if self.playback_idx >= len(self.playback_ir):
+                # restart from beginning
+                self.playback_idx = 0
+                self.sweep_x = 0
+                self.last_y_ir = None
+                self.last_y_red = None
+                self.canvas.delete("trace")
+            
+            self.is_playing = True
+            self.play_btn.configure(text="Pause", fg_color="darkorange")
 
     def load_data(self, filepath):
         ir_data = []
@@ -94,48 +131,66 @@ class PlaybackFrame(ctk.CTkFrame):
             self.lbl_pi.configure(text=f"PI: {params['pi']} %")
             self.lbl_cond.configure(text=f"Cond: {params['cond']}")
             
-        self.plot_data(ir_data, red_data)
+        self.playback_ir = ir_data
+        self.playback_red = red_data
+        self.playback_idx = 0
+        self.sweep_x = 0
+        self.last_y_ir = None
+        self.last_y_red = None
+        
+        self.is_playing = False
+        self.play_btn.configure(text="Play", state="normal", fg_color=["#3a7ebf", "#1f538d"])
+        self.canvas.delete("trace")
+        
+        if self.playback_ir:
+            v_min = min(min(ir_data), min(red_data))
+            v_max = max(max(ir_data), max(red_data))
+            v_range = v_max - v_min if v_max > v_min else 1
+            self.v_min = v_min - v_range * 0.1
+            self.v_max = v_max + v_range * 0.1
+            self.v_range = self.v_max - self.v_min
+
+    def _draw_grid(self):
+        self.canvas.delete("grid")
+        mid_y = self.canvas_height // 2
+        self.canvas.create_line(0, mid_y, self.canvas_width, mid_y, fill="#004020", tags="grid")
+        for x in range(0, self.canvas_width, 100):
+            self.canvas.create_line(x, 0, x, self.canvas_height, fill="#002010", tags="grid")
 
     def on_canvas_resize(self, event):
         self.canvas_width = event.width
         self.canvas_height = event.height
+        self._draw_grid()
 
-    def plot_data(self, ir_data, red_data):
-        self.canvas.delete("all")
-        if not ir_data:
+    def periodic_update(self):
+        if not self.is_playing or not self.playback_ir:
             return
             
-        n = len(ir_data)
-        if n < 2: return
-        
-        # Determine min/max
-        v_min = min(min(ir_data), min(red_data))
-        v_max = max(max(ir_data), max(red_data))
-        v_range = v_max - v_min if v_max > v_min else 1
-        
-        # Add 10% padding
-        v_min -= v_range * 0.1
-        v_max += v_range * 0.1
-        v_range = v_max - v_min
-        
-        w = self.canvas_width
+        if self.playback_idx >= len(self.playback_ir):
+            self.is_playing = False
+            self.play_btn.configure(text="Play", fg_color=["#3a7ebf", "#1f538d"])
+            return
+            
         h = self.canvas_height
+        ir_val = self.playback_ir[self.playback_idx]
+        red_val = self.playback_red[self.playback_idx]
+        self.playback_idx += 1
         
-        # Downsample if too many points to avoid Canvas lag
-        step = max(1, n // w)
+        y_ir = h - ((ir_val - self.v_min) / self.v_range * h)
+        y_red = h - ((red_val - self.v_min) / self.v_range * h)
         
-        ir_coords = []
-        red_coords = []
+        x = self.sweep_x
         
-        for i in range(0, n, step):
-            x = (i / (n-1)) * w
+        if self.last_y_ir is not None:
+            self.canvas.create_line(x-2, self.last_y_ir, x, y_ir, fill="#00ff80", width=2, tags="trace")
+            self.canvas.create_line(x-2, self.last_y_red, x, y_red, fill="#ff4040", width=1, tags="trace")
             
-            y_ir = h - ((ir_data[i] - v_min) / v_range * h)
-            ir_coords.extend([x, y_ir])
-            
-            y_red = h - ((red_data[i] - v_min) / v_range * h)
-            red_coords.extend([x, y_red])
-            
-        if len(ir_coords) >= 4:
-            self.canvas.create_line(*ir_coords, fill="#00ff80", width=2)
-            self.canvas.create_line(*red_coords, fill="#ff4040", width=1)
+        self.last_y_ir = y_ir
+        self.last_y_red = y_red
+        self.sweep_x += 2
+        
+        if self.sweep_x >= self.canvas_width:
+            self.sweep_x = 0
+            self.last_y_ir = None
+            self.last_y_red = None
+            self.canvas.delete("trace")
