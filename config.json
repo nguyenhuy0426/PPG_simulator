@@ -1,6 +1,6 @@
 {
   "amplification": 1.0,
-  "condition": 0,
+  "condition": 4,
   "dicrotic_notch": 0.25,
   "heart_rate": 75.0,
   "noise_level": 0.0,

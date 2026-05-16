@@ -54,6 +54,7 @@ class PlaybackFrame(ctk.CTkFrame):
         self.is_playing = False
         self.playback_ir = []
         self.playback_red = []
+        self.playback_params = []
         self.playback_idx = 0
         self.sweep_x = 0
         self.last_y_ir = None
@@ -105,6 +106,7 @@ class PlaybackFrame(ctk.CTkFrame):
     def load_data(self, filepath):
         ir_data = []
         red_data = []
+        params_data = []
         params = None
         
         try:
@@ -115,11 +117,13 @@ class PlaybackFrame(ctk.CTkFrame):
                     if len(row) >= 7:
                         ir_data.append(float(row[0]))
                         red_data.append(float(row[1]))
+                        p_dict = {
+                            "hr": row[2], "spo2": row[3], 
+                            "rr": row[4], "pi": row[5], "cond": row[6]
+                        }
+                        params_data.append(p_dict)
                         if params is None:
-                            params = {
-                                "hr": row[2], "spo2": row[3], 
-                                "rr": row[4], "pi": row[5], "cond": row[6]
-                            }
+                            params = p_dict
         except Exception as e:
             print(f"Failed to load {filepath}: {e}")
             return
@@ -133,6 +137,7 @@ class PlaybackFrame(ctk.CTkFrame):
             
         self.playback_ir = ir_data
         self.playback_red = red_data
+        self.playback_params = params_data
         self.playback_idx = 0
         self.sweep_x = 0
         self.last_y_ir = None
@@ -174,6 +179,14 @@ class PlaybackFrame(ctk.CTkFrame):
         h = self.canvas_height
         ir_val = self.playback_ir[self.playback_idx]
         red_val = self.playback_red[self.playback_idx]
+        p_dict = self.playback_params[self.playback_idx]
+        
+        self.lbl_hr.configure(text=f"HR: {p_dict['hr']} BPM")
+        self.lbl_spo2.configure(text=f"SpO2: {p_dict['spo2']} %")
+        self.lbl_rr.configure(text=f"RR: {p_dict['rr']} BPM")
+        self.lbl_pi.configure(text=f"PI: {p_dict['pi']} %")
+        self.lbl_cond.configure(text=f"Cond: {p_dict['cond']}")
+        
         self.playback_idx += 1
         
         y_ir = h - ((ir_val - self.v_min) / self.v_range * h)
