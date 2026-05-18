@@ -87,9 +87,12 @@ returns IR, Red, display_IR                                (0–4095, 12-bit)
 | Component | Value |
 |-----------|-------|
 | DC baseline | 0.5 V |
-| AC peak (PI=3.0) | 2.8 V |
-| Signal range | 0.5 V (valley) to 3.3 V (systolic peak) |
+| AC peak (PI=3.0) | 1.05 V |
+| AC scale factor | 0.35 V per PI unit |
+| Signal range (PI=3) | ~0.5 V (valley) to ~1.55 V (systolic peak) |
+| Signal range (PI=6) | ~0.5 V (valley) to ~2.60 V (systolic peak) |
 | DAC mapping | 0 V → 0, 3.3 V → 4095 |
+| Headroom | Supports PI up to ~6 with AM + BW without clipping |
 
 ---
 
