@@ -24,7 +24,9 @@ Featuring a modern **CustomTkinter** UI, this version introduces a structured na
 - ✅ **CustomTkinter GUI** — Professional sidebar-based navigation (Pathology, Calibration, Playback).
 - ✅ **Real-time Recording** — Save PPG waveform segments to `dataset/data_N.csv` with a confirmation dialog.
 - ✅ **Playback Mode** — Browse and visualize recorded datasets directly within the app.
+- ✅ **Physiological Couplings** — Real-time HR → amplitude attenuation and SpO₂ → dicrotic notch fading.
 - ✅ **Beer-Lambert law physics** — Accurate R = (110 − SpO₂) / 25 for Red/IR amplitude ratio.
+- ✅ **Clinical Perfusion Index (PI)** — Strict mathematical mapping: `AC = PI * DC / 100` at a `1.5V` DC baseline for high-fidelity sensor testing.
 - ✅ **6 clinical conditions** — Normal, Arrhythmia, Weak perfusion, Vasoconstriction, Strong perfusion, Vasodilation.
 - ✅ **Calibration mode** — Dedicated tab for sine wave output (adjustable freq/amp) for hardware verification.
 - ✅ **Dual 12-bit DAC outputs** — IR and Red channels via two MCP4725 (I2C).
@@ -123,9 +125,42 @@ Review previously recorded data.
 
 ---
 
-## 📈 PPG Signal Model
+## 📈 PPG Signal Model & Physiological Synthesis
 
-The simulator uses a 3-component Gaussian sum model to represent the systolic peak, dicrotic notch, and diastolic peak. Red/IR amplitude ratio is calculated based on SpO2 using the Beer-Lambert law: `R = (110 − SpO2) / 25`.
+The simulator synthesizes realistic dual-channel (IR & Red) photoplethysmography (PPG) waveforms by modeling cardiac and respiratory physiology with clinical precision:
+
+### 1. Waveform Shape (Allen 2007)
+A 3-component Gaussian sum model represents the physiological pressure-pulse cycle:
+$$\text{pulse}(t) = \text{systolic\_gaussian}(t) + \text{diastolic\_gaussian}(t) - \text{dicrotic\_notch\_gaussian}(t)$$
+
+aligned with the reference C++ physiological models:
+- **Systolic Peak**: $\mu = 0.15$, $\sigma = 0.055$ (Sharp systolic rise and peak)
+- **Dicrotic Notch**: $\mu = 0.30$, $\sigma = 0.020$ (Rapid closing of the aortic valve)
+- **Diastolic Peak**: $\mu = 0.40$, $\sigma = 0.100$ (Pressure wave reflection from lower body)
+
+### 2. Clinical Perfusion Index (PI) Scaling
+To guarantee compatibility with medical-grade pulse oximeters, the model implements the strict clinical definition of the Perfusion Index:
+$$\text{PI} = \frac{\text{AC}}{\text{DC}} \times 100\% \implies \text{AC} = \text{PI} \times \frac{\text{DC}}{100}$$
+
+- **DC Baseline**: Set to $1.5\text{V}$ representing static tissue, venous, and baseline arterial light absorption.
+- **AC Pulsatile Amplitude**: Scaled at exactly $0.015\text{V}$ per $\text{PI}\%$.
+  - At $\text{PI} = 3\%$, $\text{AC} = 45\text{mV}$.
+  - At $\text{PI} = 10\%$, $\text{AC} = 150\text{mV}$.
+This ensures that the output signal represents physiologically accurate ratios for external sensor calibration.
+
+### 3. SpO₂ Modulation (Beer-Lambert Law)
+The amplitude ratio of the Red and Infrared channels ($R$-ratio) is dynamically derived using empirical calibration coefficients:
+$$R = \frac{110 - \text{SpO}_2}{25}$$
+$$\text{AC}_{\text{Red}} = \text{AC}_{\text{IR}} \times R$$
+
+### 4. Advanced Physiological Couplings
+- **Heart Rate $\to$ Amplitude Coupling**: Real-time vasoconstriction and stroke volume reduction under elevated heart rate. AC amplitudes undergo a $-3.2\%$ attenuation per $10\text{ BPM}$ increase above $60\text{ BPM}$ (physiological limit $\ge 70\%$).
+- **Hypoxia $\to$ Vasoconstriction Coupling**: When $\text{SpO}_2$ drops below $94\%$, sympathetic activation is simulated by fading out the dicrotic notch (simulating loss of arterial elasticity and increased vascular resistance). The notch depth is reduced by up to $60\%$ at severe hypoxia ($\text{SpO}_2 \le 84\%$).
+
+### 5. Respiratory Modulations (Charlton 2018)
+- **Baseline Wander (BW / RIIV)**: Respiratory-induced intensity variation up to $0.4\%$ of the DC baseline.
+- **Amplitude Modulation (AM / RIAV)**: Respiratory-induced amplitude variation ($\pm25\%$) matching the chest cavity's mechanical pressure changes.
+- **Frequency Modulation (FM / RIFV / RSA)**: Respiratory sinus arrhythmia (±5% cardiac interval modulation).
 
 ---
 

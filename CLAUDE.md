@@ -82,17 +82,26 @@ generate_both_samples()                                    0–3.3V analog
 returns IR, Red, display_IR                                (0–4095, 12-bit)
 ```
 
-### Signal Levels (Volts, default PI=3.0)
+### Signal Levels (Volts — strict clinical PI = AC/DC × 100%)
 
 | Component | Value |
 |-----------|-------|
-| DC baseline | 0.5 V |
-| AC peak (PI=3.0) | 1.05 V |
-| AC scale factor | 0.35 V per PI unit |
-| Signal range (PI=3) | ~0.5 V (valley) to ~1.55 V (systolic peak) |
-| Signal range (PI=6) | ~0.5 V (valley) to ~2.60 V (systolic peak) |
+| DC baseline | 1.5 V (tissue + venous absorption) |
+| AC scale factor | 0.015 V per PI% (= DC / 100) |
+| AC peak (PI=3%) | 45 mV |
+| AC peak (PI=10%) | 150 mV |
+| AC peak (PI=20%) | 300 mV |
+| Signal range (PI=3) | ~1.455 V (valley) to ~1.545 V (systolic peak) |
+| Signal range (PI=20) | ~1.200 V (valley) to ~1.800 V (systolic peak) |
 | DAC mapping | 0 V → 0, 3.3 V → 4095 |
-| Headroom | Supports PI up to ~6 with AM + BW without clipping |
+| Headroom | Full PI range (0.5–20%) within 0–3.3V |
+
+### Physiological Couplings (optional, enabled by default)
+
+| Coupling | Effect | Reference |
+|----------|--------|-----------|
+| HR → amplitude | −3.2% per 10 BPM above 60 | PMC6261569 |
+| SpO2 → notch | Dicrotic notch fades when SpO2 < 94% | Li et al. 2022 |
 
 ---
 

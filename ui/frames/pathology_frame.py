@@ -37,6 +37,12 @@ class PathologyFrame(ctk.CTkFrame):
         # Draw grid
         self._draw_grid()
 
+        # Amplitude display box overlay
+        self.amp_label = ctk.CTkLabel(self.wf_frame, text="IR: 0.0 mV | RED: 0.0 mV", 
+                                      fg_color="#1a1a1a", text_color="white", corner_radius=5,
+                                      font=("Arial", 14, "bold"), padx=10, pady=5)
+        self.amp_label.place(relx=0.98, rely=0.05, anchor="ne")
+
         # --- Controls Area ---
         self.ctrl_frame = ctk.CTkFrame(self)
         self.ctrl_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -223,14 +229,24 @@ class PathologyFrame(ctk.CTkFrame):
         if self.is_recording:
             p = self.engine.ppg_params
             self.logger.log_data(
-                ir_val * 4095 / 3.3, # approximate raw conversion
-                red_val * 4095 / 3.3,
+                self.engine.get_current_raw_ir(),
+                self.engine.get_current_raw_red(),
                 p.heart_rate, p.spo2, p.resp_rate, p.perfusion_index, CONDITION_NAMES[p.condition]
             )
             
-        # Map values to y coordinates
-        # Assume values are roughly -0.5 to 3.5
-        v_min, v_max = -0.5, 3.5
+        # Calculate and update AC amplitudes in mV based on the live simulated waveform
+        ac_ir_v = self.engine.ppg_model.measured_peak - self.engine.ppg_model.measured_valley
+        if ac_ir_v < 0 or ac_ir_v > 5.0:  # Fallback if measurement is not yet stable
+            ac_ir_v = 0.0
+            
+        spo2 = self.engine.ppg_model.params.spo2
+        r_val = max(0.4, min(1.6, (110.0 - spo2) / 25.0))
+        ac_red_v = ac_ir_v * r_val
+        
+        self.amp_label.configure(text=f"IR: {ac_ir_v*1000:.1f} mV | RED: {ac_red_v*1000:.1f} mV")
+            
+        # Map values to y coordinates (AC component only)
+        v_min, v_max = -0.4, 0.4
         h = self.canvas_height
         
         def map_y(val):

@@ -15,20 +15,27 @@ References:
 import math
 import random
 
-# ─── PPG Model Constants (Allen 2007) ───
-PPG_SYSTOLIC_POS    = 0.15
-PPG_NOTCH_POS       = 0.28
-PPG_DIASTOLIC_POS   = 0.35
+# ─── PPG Model Constants (Allen 2007, aligned with ppg_model.cpp) ───
+# --- Temporal positions (fraction of RR cycle) ---
+PPG_SYSTOLIC_POS    = 0.15    # Systolic peak: ~15% of cycle
+PPG_NOTCH_POS       = 0.30    # Dicrotic notch: ~30% (aortic valve closure)
+PPG_DIASTOLIC_POS   = 0.40    # Diastolic peak: ~40% (reflected wave)
 
-PPG_SYSTOLIC_WIDTH  = 0.08
-PPG_DIASTOLIC_WIDTH = 0.12
-PPG_NOTCH_WIDTH     = 0.04
+# --- Gaussian widths (normalized std deviation) ---
+PPG_SYSTOLIC_WIDTH  = 0.055   # σ systolic (sharp peak)
+PPG_DIASTOLIC_WIDTH = 0.10    # σ diastolic (broader)
+PPG_NOTCH_WIDTH     = 0.02    # σ notch (fast valvular event)
 
-PPG_BASE_SYSTOLIC_AMPL   = 1.0
-PPG_BASE_DIASTOLIC_RATIO = 0.3
-PPG_BASE_DICROTIC_DEPTH  = 0.18
+# --- Base normalized amplitudes ---
+PPG_BASE_SYSTOLIC_AMPL   = 1.0    # Systolic amplitude (reference)
+PPG_BASE_DIASTOLIC_RATIO = 0.4    # Diastolic/systolic ratio (Allen 2007)
+PPG_BASE_DICROTIC_DEPTH  = 0.25   # Notch depth (≥20% for normal)
 
-PPG_AC_SCALE_PER_PI = 0.35     # AC = PI × 0.35 V  (1.05V peak at PI=3.0, headroom for AM/BW/PI increase)
+# --- AC scaling (strict clinical PI formula) ---
+# Clinical: PI = (AC / DC) × 100%  →  AC = PI × DC / 100
+# With DC = 1.5 V:  AC = PI × 1.5 / 100 = PI × 0.015 V
+# Examples: PI=3% → AC=45mV, PI=10% → AC=150mV, PI=20% → AC=300mV
+PPG_AC_SCALE_PER_PI = 0.015    # = DC / 100 = 1.5 / 100  (Volts per PI%)
 
 PPG_SYSTOLE_BASE_MS = 300.0
 PPG_SYSTOLE_MIN_MS  = 250.0
@@ -57,9 +64,9 @@ class ConditionRanges:
         "systolic_ampl", "diastolic_ampl", "dicrotic_depth",
     )
 
-    def __init__(self, hr_min=60, hr_max=120, hr_cv=0.02,
+    def __init__(self, hr_min=60, hr_max=100, hr_cv=0.02,
                  pi_min=2.9, pi_max=6.1, pi_cv=0.10,
-                 systolic_ampl=1.0, diastolic_ampl=0.3, dicrotic_depth=0.18):
+                 systolic_ampl=1.0, diastolic_ampl=0.4, dicrotic_depth=0.25):
         self.hr_min = hr_min; self.hr_max = hr_max; self.hr_cv = hr_cv
         self.pi_min = pi_min; self.pi_max = pi_max; self.pi_cv = pi_cv
         self.systolic_ampl = systolic_ampl
@@ -160,6 +167,10 @@ class PPGModel:
         self._gauss_has_spare = False
         self._gauss_spare = 0.0
 
+        # Physiological coupling options (can be toggled at runtime)
+        self.hr_amplitude_enabled = True    # HR → pulse amplitude reduction
+        self.spo2_coupling_enabled = True   # SpO2 → vasoconstriction (notch loss)
+
         self.params = PPGParameters()
         self.cond_ranges = ConditionRanges()
         self.reset()
@@ -177,7 +188,7 @@ class PPGModel:
 
         self.current_hr = 75.0
         self.current_pi = 3.0
-        self.dc_baseline = 0.5          # 0.5 V  (0.5V DC baseline)
+        self.dc_baseline = 1.5          # 1.5 V  (clinical: PI = AC/DC × 100%)
 
         self.last_sample_value = self.dc_baseline
         self.last_ac_value = 0.0
@@ -223,12 +234,12 @@ class PPGModel:
     def _init_condition_ranges(self):
         c = self.params.condition
         _MAP = {
-            COND_NORMAL:           ConditionRanges(60, 120, 0.02, 2.9, 6.1, 0.10, 1.0, 0.3, 0.18),
+            COND_NORMAL:           ConditionRanges(60, 100, 0.02, 2.9, 6.1, 0.10, 1.0, 0.4, 0.25),
             COND_ARRHYTHMIA:       ConditionRanges(60, 180, 0.15, 1.0, 5.0, 0.20, 1.0, 0.4, 0.20),
             COND_WEAK_PERFUSION:   ConditionRanges(70, 120, 0.02, 0.5, 2.1, 0.15, 1.0, 0.3, 0.05),
             COND_VASOCONSTRICTION: ConditionRanges(65, 110, 0.02, 0.7, 0.8, 0.10, 1.0, 0.25, 0.05),
-            COND_STRONG_PERFUSION: ConditionRanges(60,  90, 0.02, 7.0, 20.0, 0.10, 1.0, 0.5, 0.25),
-            COND_VASODILATION:     ConditionRanges(60,  90, 0.02, 5.0, 10.0, 0.10, 1.0, 0.5, 0.25),
+            COND_STRONG_PERFUSION: ConditionRanges(60,  90, 0.02, 7.0, 20.0, 0.10, 1.0, 0.6, 0.35),
+            COND_VASODILATION:     ConditionRanges(60,  90, 0.02, 5.0, 10.0, 0.10, 1.0, 0.5, 0.30),
         }
         self.cond_ranges = _MAP.get(c, _MAP[COND_NORMAL])
 
@@ -349,7 +360,14 @@ class PPGModel:
         return rr
 
     # ─────────────────────── PULSE SHAPE ───────────────────────
-    def _compute_pulse_shape(self, phase: float) -> float:
+    def _compute_pulse_shape(self, phase: float, dicrotic_factor: float = 1.0) -> float:
+        """Compute normalized pulse shape [0, 1].
+
+        Args:
+            phase: Current phase in cardiac cycle (0-1).
+            dicrotic_factor: Multiplier for dicrotic notch depth (1.0 = normal,
+                <1.0 = reduced notch e.g. due to hypoxia/vasoconstriction).
+        """
         phase = phase % 1.0
         if phase < 0:
             phase += 1.0
@@ -358,7 +376,7 @@ class PPGModel:
             -(phase - PPG_SYSTOLIC_POS) ** 2 / (2.0 * self.systolic_width ** 2))
         diastolic = self.diastolic_amplitude * math.exp(
             -(phase - PPG_DIASTOLIC_POS) ** 2 / (2.0 * self.diastolic_width ** 2))
-        notch = self.dicrotic_depth * self.systolic_amplitude * math.exp(
+        notch = self.dicrotic_depth * dicrotic_factor * self.systolic_amplitude * math.exp(
             -(phase - PPG_NOTCH_POS) ** 2 / (2.0 * self.dicrotic_width ** 2))
 
         pulse = systolic + diastolic - notch
@@ -386,20 +404,29 @@ class PPGModel:
         """
         Generate dual-channel PPG samples (IR and Red).
 
-        Uses Beer-Lambert law for Red/IR ratio:
-            R = (110 - SpO2) / 25  → SpO2=98% gives R=0.48, SpO2=88% gives R=0.88
+        Signal composition (strict clinical PI):
+            DC baseline = 1.5 V (tissue + venous absorption)
+            AC = PI × DC / 100 = PI × 0.015 V (pulsatile arterial)
+            PI = 3% → AC = 45 mV;  PI = 10% → AC = 150 mV
+
+        Beer-Lambert law for Red/IR ratio:
+            R = (110 - SpO2) / 25  → SpO2=98% gives R=0.48
             AC_red = AC_ir × R
 
-        Respiratory modulations:
-            BW: Baseline wander = 2% of DC baseline × sin(resp_phase)
+        Respiratory modulations (Charlton 2018):
+            BW: Baseline wander ≈ 0.2% of DC × sin(resp_phase)
             AM: Amplitude modulation = 1 + 0.25 × sin(resp_phase)
-            FM: RSA applied in _generate_next_rr()
+            FM: RSA applied in _generate_next_rr() (±5%)
+
+        Optional physiological couplings:
+            HR → amplitude: -3.2% per 10 BPM above 60 (research-based)
+            SpO2 → vasoconstriction: reduced dicrotic notch when SpO2 < 94%
 
         Args:
             delta_time: Time step in seconds (typically MODEL_DT_PPG = 0.01s).
 
         Returns:
-            Tuple (signal_ir_mv, signal_red_mv, display_ir_mv, display_red_mv).
+            Tuple (signal_ir_V, signal_red_V, display_ir_V, display_red_V).
         """
         # Advance phase
         self.phase_in_cycle += delta_time / self.current_rr
@@ -408,8 +435,16 @@ class PPGModel:
             self.phase_in_cycle = self.phase_in_cycle % 1.0
             self._detect_beat_and_apply_pending()
 
-        # Pulse shape
-        pulse = self._compute_pulse_shape(self.phase_in_cycle)
+        # SpO2 → vasoconstriction coupling (optional)
+        # Hypoxia (SpO2 < 94%) reduces dicrotic notch visibility
+        # Ref: Li et al. 2022, K-value increases with vasoconstriction
+        dicrotic_factor = 1.0
+        if self.spo2_coupling_enabled and self.params.spo2 < 94.0:
+            hypoxia = min(1.0, (94.0 - self.params.spo2) / 10.0)
+            dicrotic_factor = 1.0 - 0.6 * hypoxia  # 0→no change, 1→60% reduction
+
+        # Pulse shape (normalized [0, 1])
+        pulse = self._compute_pulse_shape(self.phase_in_cycle, dicrotic_factor)
 
         # Dual channel: Beer-Lambert law
         # R = (110 - SpO2) / 25, clamped to physiological range [0.4, 1.6]
@@ -417,30 +452,40 @@ class PPGModel:
         ac_ir = self.current_pi * PPG_AC_SCALE_PER_PI
         ac_red = ac_ir * r_value
 
+        # HR → amplitude coupling (optional)
+        # Research: pulse amplitude decreases ~3.2% per 10 BPM above 60
+        # Ref: effect of increasing heart rate on finger PPG (PMC6261569)
+        if self.hr_amplitude_enabled:
+            hr_amp_factor = 1.0 - 0.0032 * max(0.0, self.current_hr - 60.0)
+            hr_amp_factor = max(0.7, hr_amp_factor)  # clamp to ≥70%
+            ac_ir *= hr_amp_factor
+            ac_red *= hr_amp_factor
+
         ac_val_ir = pulse * ac_ir
         ac_val_red = pulse * ac_red
 
         self.last_ac_ir = ac_val_ir
         self.last_ac_red = ac_val_red
 
-        # Respiratory modulations — matches HTML reference exactly:
+        # Respiratory modulations (Charlton 2018)
         # simRespPh += dt * (RR / 60)  → phase in cycles
-        # respRad = simRespPh * 2π     → convert to radians when needed
+        # respRad = simRespPh * 2π     → convert to radians
         self.resp_phase_cycles += delta_time * (self.params.resp_rate / 60.0)
         resp_rad = self.resp_phase_cycles * 2.0 * math.pi
 
-        # Baseline wander (BW) — scaled proportionally with AC amplitude
-        wander = 0.03 * math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi) \
-               + 0.06 * math.sin(resp_rad)
+        # Baseline wander (BW) — proportional to DC baseline
+        # ~0.2% DC slow drift + ~0.4% DC respiratory component
+        bw_slow = 0.002 * self.dc_baseline * math.sin(
+            self.simulated_time_s * 0.3 * 2.0 * math.pi)
+        bw_resp = 0.004 * self.dc_baseline * math.sin(resp_rad)
+        wander = bw_slow + bw_resp
 
         # AM (amplitude modulation by respiration)
-        # Matches HTML: amFactor = 1 + 0.25 * sin(respRad)
         am_factor = 1.0 + 0.25 * math.sin(resp_rad)
         ac_val_ir *= am_factor
         ac_val_red *= am_factor
 
-        # Noise — matches HTML: (rand-0.5) * 2.5 * (NOISE/100) * pi * AC
-        # In Python, noise_level is already 0-0.10 (equivalent to NOISE/100)
+        # Noise — proportional to AC amplitude
         noise_ir = 0.0
         noise_red = 0.0
         if self.params.noise_level > 0:
@@ -455,13 +500,13 @@ class PPGModel:
         self.last_display_ir = ac_val_ir + wander + noise_ir
         self.last_display_red = ac_val_red + wander + noise_red
 
-        # Raw signals for DAC
+        # Raw signals for DAC (DC + AC + wander + noise)
         signal_ir = self.dc_baseline + self.last_display_ir
         signal_red = self.dc_baseline + self.last_display_red
 
-        if self.dc_baseline > 0:
-            signal_ir = max(signal_ir, 0.0)
-            signal_red = max(signal_red, 0.0)
+        # Clamp to DAC voltage range [0, 3.3V]
+        signal_ir = _clamp(signal_ir, 0.0, 3.3)
+        signal_red = _clamp(signal_red, 0.0, 3.3)
 
         # Measurement tracking
         dt_ms = delta_time * 1000.0
@@ -535,8 +580,14 @@ class PPGModel:
     # ─────────────────────── DAC CONVERSION (Volts → 12-bit) ───────────────────────
     @staticmethod
     def ac_value_to_dac_12bit(ac_v: float) -> int:
-        """Convert AC amplitude in Volts to 12-bit DAC value."""
-        AC_MAX_V = 3.0   # 3.0 V full-scale (accommodates PI up to 6 at 0.5 V/PI)
+        """Convert AC amplitude in Volts to 12-bit DAC value.
+
+        With strict PI scaling (DC=1.5V):
+            PI=3%  → AC=0.045V → DAC ≈  56
+            PI=10% → AC=0.150V → DAC ≈ 186
+            PI=20% → AC=0.300V → DAC ≈ 372
+        """
+        AC_MAX_V = 0.45   # 0.45 V max (PI~30% × 0.015, generous headroom)
         normalized = _clamp(ac_v / AC_MAX_V, 0.0, 1.0)
         return int(normalized * 4095.0)
 
@@ -566,3 +617,23 @@ class PPGModel:
 
     def is_in_systole(self) -> bool:
         return self.phase_in_cycle < self.systole_fraction
+
+    # ─────────────────────── COUPLING CONTROLS ───────────────────────
+    def set_hr_amplitude_coupling(self, enabled: bool):
+        """Enable/disable HR → pulse amplitude reduction.
+        When enabled, amplitude decreases ~3.2% per 10 BPM above 60.
+        """
+        self.hr_amplitude_enabled = enabled
+
+    def set_spo2_coupling(self, enabled: bool):
+        """Enable/disable SpO2 → vasoconstriction coupling.
+        When enabled, dicrotic notch fades when SpO2 < 94%.
+        """
+        self.spo2_coupling_enabled = enabled
+
+    def get_measured_pi(self) -> float:
+        """Return measured PI = (AC / DC) × 100% from model output."""
+        if self.dc_baseline > 0 and self.measured_peak > 0:
+            ac = self.measured_peak - self.measured_valley
+            return (ac / self.dc_baseline) * 100.0
+        return self.current_pi

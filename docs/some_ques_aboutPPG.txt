@@ -1,0 +1,5 @@
+- tín hiệu PPG được cấu tạo bởi các thành phần nào?
+- PPG được đo bởi LED đơn lẻ hoặc đèn IR hay là kết hợp cả 2 loại LED và IR?
+- tại sao số IR, LED lại có thể ra được tín hiệu PPG? 
+- làm cách nào mà tín hiệu PPG có thể đo được nhịp tim?
+

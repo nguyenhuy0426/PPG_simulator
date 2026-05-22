@@ -144,8 +144,11 @@ class SignalEngine:
         """Convert signal in Volts to 12-bit DAC value.
 
         Linear mapping: 0 V → 0, 3.3 V → 4095.
-        PPG signals: DC baseline = 0.5 V, AC peak = 1.05 V (PI=3.0).
-        Signal range: ~0.5 V (diastolic valley) to ~1.55 V (systolic peak) at PI=3.
+        PPG signals (strict clinical PI = AC/DC × 100%):
+            DC baseline = 1.5 V → DAC ≈ 1861
+            PI=3%:  AC=45mV  → signal 1.5±0.045 V → DAC ≈ 1805–1917
+            PI=10%: AC=150mV → signal 1.5±0.15 V  → DAC ≈ 1675–2047
+            PI=20%: AC=300mV → signal 1.5±0.30 V  → DAC ≈ 1489–2234
         """
         dac_val = int((signal_v / 3.3) * 4095.0)
         return max(0, min(4095, dac_val))
