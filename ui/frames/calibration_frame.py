@@ -78,7 +78,6 @@ class CalibrationFrame(ctk.CTkFrame):
             self.canvas.create_line(x, 0, x, self.canvas_height, fill="#002010", tags="grid")
 
     def periodic_update(self):
-        # Generate Sine wave
         now = time.time()
         dt = now - self.cal_last_time
         self.cal_last_time = now
@@ -89,24 +88,25 @@ class CalibrationFrame(ctk.CTkFrame):
         self.cal_phase += dt * 2.0 * math.pi * freq
         self.cal_phase %= (2.0 * math.pi)
         
-        val_mv = amp * math.sin(self.cal_phase)
+        # ✅ Sóng sin từ 0 → amp, trục tự dịch theo biên độ
+        # val_mv ∈ [0, amp], offset = amp/2
+        val_mv = (amp / 2.0) * (1.0 + math.sin(self.cal_phase))
         
-        # Send to DAC if engine is accessible (direct write for calibration)
-        # Assuming DAC is available
-        dac_val = int((val_mv + 1650) / 3300.0 * 4095) # simple offset
+        # DAC: map [0, 3300] → [0, 4095]
+        dac_val = int(val_mv / 3300.0 * 4095)
         dac_val = max(0, min(4095, dac_val))
         self.engine.dac_manager.set_values(dac_val, dac_val)
         
-        # Draw
-        v_min, v_max = -3300, 3300
+        # Draw: vẽ trong range [0, 3300] để canvas luôn hiển thị đúng tỉ lệ
+        v_min, v_max = 0, 3300
         h = self.canvas_height
         norm = (val_mv - v_min) / (v_max - v_min)
         y = h - (norm * h)
         
         x = self.sweep_x
         if self.last_y is not None:
-            self.canvas.create_line(x-5, self.last_y, x, y, fill="#00ff80", width=2, tags="trace")
-            
+            self.canvas.create_line(x-5, self.last_y, x, y,
+                                    fill="#00ff80", width=2, tags="trace")
         self.last_y = y
         self.sweep_x += 5
         

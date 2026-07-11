@@ -9,7 +9,7 @@
 
 **Group #2:** HuyNN, VyPT
 **Institution:** Industrial University of Ho Chi Minh City (IUH) — Faculty of Electronic Technology
-**Version:** 4.0.0 — CustomTkinter Migration with Sidebar Navigation & Dataset Recording
+**Version:** 4.1.0 — CustomTkinter Migration & Improved Signal Fidelity
 
 ---
 
@@ -22,14 +22,15 @@ Featuring a modern **CustomTkinter** UI, this version introduces a structured na
 ### Key Features
 
 - ✅ **CustomTkinter GUI** — Professional sidebar-based navigation (Pathology, Calibration, Playback).
-- ✅ **Real-time Recording** — Save PPG waveform segments to `dataset/data_N.csv` with a confirmation dialog.
+- ✅ **Real-time Recording** — Save PPG waveform segments to `dataset/data_N.csv` with a confirmation dialog, ensuring strict positive DAC integer outputs.
+- ✅ **Enhanced Visualization** — UI Refactored to exclusively display the AC component for better clinical clarity, while dynamically tracking real-time amplitude scaling.
 - ✅ **Playback Mode** — Browse and visualize recorded datasets directly within the app.
 - ✅ **Physiological Couplings** — Real-time HR → amplitude attenuation and SpO₂ → dicrotic notch fading.
 - ✅ **Beer-Lambert law physics** — Accurate R = (110 − SpO₂) / 25 for Red/IR amplitude ratio.
 - ✅ **Clinical Perfusion Index (PI)** — Strict mathematical mapping: `AC = PI * DC / 100` at a `1.5V` DC baseline for high-fidelity sensor testing.
 - ✅ **6 clinical conditions** — Normal, Arrhythmia, Weak perfusion, Vasoconstriction, Strong perfusion, Vasodilation.
 - ✅ **Calibration mode** — Dedicated tab for sine wave output (adjustable freq/amp) for hardware verification.
-- ✅ **Dual 12-bit DAC outputs** — IR and Red channels via two MCP4725 (I2C).
+- ✅ **Hardware-Safe DAC Output** — Signal strictly clamped to positive integers (0-4095) for the dual MCP4725 (I2C) outputs, preventing negative dataset artifacts.
 - ✅ **Config persistence** — Parameters saved to JSON, restored on reboot.
 - ✅ **Dry-run mode** — Run on any Linux PC without Raspberry Pi hardware.
 
