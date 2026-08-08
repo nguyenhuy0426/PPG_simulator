@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from core.signal_engine import SignalEngine
 from models.ppg_model import CONDITION_NAMES
+from calibration import r_target_from_spo2, ac_red_from_target, R_CLAMP_MIN, R_CLAMP_MAX
 
 class PathologyFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -239,9 +240,16 @@ class PathologyFrame(ctk.CTkFrame):
         if ac_ir_v < 0 or ac_ir_v > 5.0:  # Fallback if measurement is not yet stable
             ac_ir_v = 0.0
             
-        spo2 = self.engine.ppg_model.params.spo2
-        r_val = max(0.4, min(1.6, (110.0 - spo2) / 25.0))
-        ac_red_v = ac_ir_v * r_val
+        # R_target from the shared, configurable SpO2 calibration (default 110/25)
+        # — no longer a duplicated hardcoded formula.
+        p = self.engine.ppg_model.params
+        r_val = max(R_CLAMP_MIN, min(R_CLAMP_MAX,
+                    r_target_from_spo2(p.spo2, p.spo2_coeff_a, p.spo2_coeff_b)))
+        # Full ratio-of-ratios: AC_red = R · AC_ir · (DC_red/DC_ir). Uses the
+        # model's live per-channel DC so the label matches unequal-DC setups.
+        # At the default equal DC this reduces to AC_red = R · AC_ir.
+        m = self.engine.ppg_model
+        ac_red_v = ac_red_from_target(r_val, ac_ir_v, m.dc_red, m.dc_ir)
         
         self.amp_label.configure(text=f"IR: {ac_ir_v*1000:.1f} mV | RED: {ac_red_v*1000:.1f} mV")
             

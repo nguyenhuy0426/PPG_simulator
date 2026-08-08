@@ -13,10 +13,11 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
-    SIGNAL_BUFFER_SIZE, DAC_CENTER_VALUE, FS_TIMER_HZ,
+    SIGNAL_BUFFER_SIZE, DAC_CENTER_VALUE, DAC_IDLE_VALUE, FS_TIMER_HZ,
 )
 from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL
 from hw.dac_manager import DACManager
+from calibration import dac_voltage_to_code
 from comm.logger import log
 
 # Signal states
@@ -72,7 +73,9 @@ class SignalEngine:
         dac_ok = self.dac_manager.begin()
         if not dac_ok:
             log.warning("[SignalEngine] DAC not available — continuing without analog output")
-        self.dac_manager.set_values(DAC_CENTER_VALUE, DAC_CENTER_VALUE)
+        # Park outputs at the safe idle level (0 V → LEDs off) until a
+        # simulation starts; never idle at mid-scale (would half-drive LEDs).
+        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
         log.info("[SignalEngine] Initialized")
         return True
 
@@ -117,9 +120,16 @@ class SignalEngine:
         with self._lock:
             self.state = SIG_STOPPED
         self._stop_thread()
-        self.dac_manager.set_values(DAC_CENTER_VALUE, DAC_CENTER_VALUE)
+        # Safe stop: 0 V on both channels (LEDs off in the driver concept).
+        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
         log.info("[SignalEngine] Simulation stopped")
         return True
+
+    def shutdown(self):
+        """Final shutdown at process exit: stop generation, park both DACs at
+        the safe idle level (0 V → LEDs off), and refuse further HW writes."""
+        self.stop_simulation()
+        self.dac_manager.shutdown()
 
     def pause_simulation(self) -> bool:
         if self.state == SIG_RUNNING:
@@ -143,15 +153,15 @@ class SignalEngine:
     def _v_to_dac(signal_v: float) -> int:
         """Convert signal in Volts to 12-bit DAC value.
 
-        Linear mapping: 0 V → 0, 3.3 V → 4095.
-        PPG signals (strict clinical PI = AC/DC × 100%):
-            DC baseline = 1.5 V → DAC ≈ 1861
-            PI=3%:  AC=45mV  → signal 1.5±0.045 V → DAC ≈ 1805–1917
-            PI=10%: AC=150mV → signal 1.5±0.15 V  → DAC ≈ 1675–2047
-            PI=20%: AC=300mV → signal 1.5±0.30 V  → DAC ≈ 1489–2234
+        Delegates to calibration.dac_voltage_to_code, the single source of truth
+        for DAC scaling. Linear mapping: 0 V → 0, DAC_FULLSCALE_V (3.28 V) → 4095.
+        PPG signals (strict clinical PI = AC/DC × 100%), at 3.28 V full-scale:
+            DC baseline = 1.5 V → DAC = 1872
+            PI=3%:  AC=45mV  → signal 1.5±0.045 V → DAC 1816–1928
+            PI=10%: AC=150mV → signal 1.5±0.15 V  → DAC 1685–2059
+            PI=20%: AC=300mV → signal 1.5±0.30 V  → DAC 1498–2247
         """
-        dac_val = int((signal_v / 3.3) * 4095.0)
-        return max(0, min(4095, dac_val))
+        return dac_voltage_to_code(signal_v)
 
     # ─── Generation Loop (background thread) ───
     def _generation_loop(self):
@@ -180,7 +190,7 @@ class SignalEngine:
                 ir_mv, red_mv, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
 
                 dc = self.ppg_model.dc_baseline
-                # DAC voltage mapping: 0 V → 0, 3.3 V → 4095 (12-bit)
+                # DAC voltage mapping: 0 V → 0, 3.28 V → 4095 (12-bit)
                 self._curr_ir = self._v_to_dac(ir_mv)
                 self._curr_red = self._v_to_dac(red_mv)
                 self._curr_disp_ir = disp_ir
@@ -229,6 +239,34 @@ class SignalEngine:
     def update_perfusion_index(self, pi: float):
         self.ppg_model.set_perfusion_index(pi)
         self.ppg_params.perfusion_index = pi
+
+    def update_dc_levels(self, dc_ir_mv: float, dc_red_mv: float = None):
+        """Set independent per-channel DC levels (mV). Red defaults to IR.
+
+        Delegates validation/state to PPGModel.set_dc_levels, then mirrors the
+        (possibly clamped) values back onto the engine's ppg_params so save/
+        restore stays consistent. Raises ValueError on out-of-range DC.
+        """
+        self.ppg_model.set_dc_levels(dc_ir_mv, dc_red_mv)
+        self.ppg_params.dc_ir_mv = self.ppg_model.params.dc_ir_mv
+        self.ppg_params.dc_red_mv = self.ppg_model.params.dc_red_mv
+
+    def update_ac_dc(self, ac_ir_mv: float, dc_ir_mv: float, dc_red_mv: float = None):
+        """Master AC/DC entry point (Phase 3): IR AC amplitude + per-channel DC.
+
+        PI is DERIVED (PI = AC_ir/DC_ir × 100) by the model; mirror the derived
+        PI and DC levels back onto ppg_params. Raises ValueError if the AC/DC
+        envelope exceeds the DAC headroom.
+        """
+        self.ppg_model.set_ac_dc(ac_ir_mv, dc_ir_mv, dc_red_mv)
+        self.ppg_params.dc_ir_mv = self.ppg_model.params.dc_ir_mv
+        self.ppg_params.dc_red_mv = self.ppg_model.params.dc_red_mv
+        self.ppg_params.perfusion_index = self.ppg_model.params.perfusion_index
+
+    def update_polarity(self, polarity: int):
+        """Select AC-above-DC (0, default/legacy) or AC-below-DC (1)."""
+        self.ppg_model.set_polarity(polarity)
+        self.ppg_params.ac_polarity = self.ppg_model.params.ac_polarity
 
     def update_spo2(self, spo2: float):
         self.ppg_params.spo2 = spo2

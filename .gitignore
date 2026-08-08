@@ -1,3 +1,23 @@
 dataset/
 BioSignalSimulatorPro-main/
 
+# Virtual environments.
+# A venv must never be committed: its wheels are architecture-specific (the
+# laptop is x86_64, the Raspberry Pi 4 is aarch64) and the shebangs in .venv/bin
+# hardcode absolute paths. Each machine recreates its own with
+# scripts/setup_laptop_venv.sh or scripts/setup_rpi_ubuntu24.sh.
+.venv/
+venv/
+env/
+
+# Python bytecode / build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# PlatformIO / editor / tooling caches
+.pio/
+.codegraph/

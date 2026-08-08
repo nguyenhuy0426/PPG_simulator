@@ -23,6 +23,7 @@ from config import DEVICE_NAME, FIRMWARE_VERSION, FIRMWARE_DATE, DRY_RUN
 from comm.logger import log
 from config_store import load_config, save_config, config_from_ppg_params, apply_config_to_params
 from core.signal_engine import SignalEngine
+from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
 
 def main():
@@ -34,7 +35,15 @@ def main():
 
     engine = SignalEngine.get_instance()
     engine.begin()
-    
+
+    # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, IR=A0 / Red=A2).
+    # RX failure must not block TX/UI — the app degrades to TX-only.
+    rx = OPT101Receiver.get_instance()
+    if rx.begin():
+        rx.start()
+    else:
+        log.error("RX unavailable — continuing TX-only (no OPT101 acquisition)")
+
     # Load config
     config = load_config()
     p = engine.get_ppg_params()
@@ -59,7 +68,8 @@ def main():
         except Exception as e:
             log.error(f"Failed to save config: {e}")
             
-        engine.stop_simulation()
+        rx.shutdown()
+        engine.shutdown()
         log.info("Shutdown complete.")
 
 if __name__ == "__main__":

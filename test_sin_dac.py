@@ -8,7 +8,7 @@ The sine wave is centered at mid-scale (2048) with full-scale amplitude.
 Wiring:
     MCP4725 SDA -> Raspberry Pi GPIO 2 (SDA)
     MCP4725 SCL -> Raspberry Pi GPIO 3 (SCL)
-    MCP4725 VCC -> 3.3V or 5V
+    MCP4725 VCC -> 3.28 V on this build (measured); 5 V also supported
     MCP4725 GND -> GND
     Analog output -> Oscilloscope or multimeter
 """
@@ -26,7 +26,9 @@ DAC_CENTER    = 2048     # Mid-scale (zero-crossing of sine)
 AMPLITUDE     = 2047     # Peak amplitude in DAC counts (full swing)
 FREQUENCY_HZ  = 1.0      # Sine wave frequency in Hz
 SAMPLES       = 200      # Number of points per cycle (higher = smoother)
-VDD           = 3.3      # DAC supply voltage (change to 5.0 if using 5V)
+VDD           = 3.28     # MCP4725 supply on this build [VERIFIED-USER];
+                         # mirrors config.DAC_FULLSCALE_V (MCP4725 is
+                         # ratiometric to VDD). Change if the supply changes.
 
 # ----- Initialize I2C & DAC -----
 print("=" * 50)

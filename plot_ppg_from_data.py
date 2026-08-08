@@ -2,7 +2,7 @@
 """
 plot_ppg_from_csv.py
 
-Đọc file data_2.csv, chuyển raw 12-bit sang điện áp (0-3.3V),
+Đọc file data_2.csv, chuyển raw 12-bit sang điện áp (0-3.28V),
 vẽ đồ thị IR và Red, hỗ trợ zoom chuột để xem chi tiết AC.
 
 Cách dùng:
@@ -17,7 +17,9 @@ import numpy as np
 
 # --- Tham số chuyển đổi ---
 DAC_MAX = 4095      # 12-bit
-V_REF = 3.3         # 3.3V
+# Grove ADC reference [VERIFIED-USER]. Mirrors config.ADC_VOLTAGE_REF; this
+# script stays standalone so it can run on a machine without the project deps.
+V_REF = 3.28        # Volts
 
 def raw_to_voltage(raw):
     return raw / DAC_MAX * V_REF

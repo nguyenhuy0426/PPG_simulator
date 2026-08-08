@@ -10,7 +10,20 @@ import os
 from typing import Optional
 
 from config import CONFIG_JSON_PATH
+from calibration import (
+    SPO2_COEFF_A_DEFAULT,
+    SPO2_COEFF_B_DEFAULT,
+    validate_coefficients,
+    validate_ac_dc,
+)
 from comm.logger import log
+
+# Phase 3 AC/DC/polarity defaults. Sourced from the model so there is a single
+# source of truth for the default per-channel DC and polarity. models.ppg_model
+# does not import config_store, so this module-level import introduces no cycle.
+from models.ppg_model import DEFAULT_DC_BASELINE_V, POLARITY_ABOVE_DC, POLARITY_BELOW_DC
+
+_DEFAULT_DC_MV = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
 
 
 # Default configuration values
@@ -24,6 +37,17 @@ _DEFAULTS = {
     "dicrotic_notch": 0.25,
     "amplification": 1.0,
     "edit_mode": 0,
+    # SpO2 calibration coefficients (SpO2 = A - B*R). Added in Phase 2.
+    # Older config.json files lack these keys; load_config merges defaults,
+    # so they load as 110/25 — backward compatible.
+    "spo2_coeff_a": SPO2_COEFF_A_DEFAULT,
+    "spo2_coeff_b": SPO2_COEFF_B_DEFAULT,
+    # Phase 3: independent per-channel DC (mV) and AC polarity. Older config.json
+    # files lack these; merge yields DC_ir = DC_red = 1500 mV and above-DC
+    # polarity — the legacy equal-DC pulse-up model — backward compatible.
+    "dc_ir_mv": _DEFAULT_DC_MV,
+    "dc_red_mv": _DEFAULT_DC_MV,
+    "ac_polarity": POLARITY_ABOVE_DC,
 }
 
 
@@ -89,6 +113,13 @@ def config_from_ppg_params(params) -> dict:
         "noise_level": params.noise_level,
         "dicrotic_notch": params.dicrotic_notch,
         "amplification": params.amplification,
+        "spo2_coeff_a": getattr(params, "spo2_coeff_a", SPO2_COEFF_A_DEFAULT),
+        "spo2_coeff_b": getattr(params, "spo2_coeff_b", SPO2_COEFF_B_DEFAULT),
+        # Phase 3: per-channel DC (mV) + polarity. getattr defaults keep this
+        # working for params-like objects without the Phase 3 fields.
+        "dc_ir_mv": getattr(params, "dc_ir_mv", _DEFAULT_DC_MV),
+        "dc_red_mv": getattr(params, "dc_red_mv", _DEFAULT_DC_MV),
+        "ac_polarity": getattr(params, "ac_polarity", POLARITY_ABOVE_DC),
     }
 
 
@@ -108,3 +139,43 @@ def apply_config_to_params(config: dict, params):
     params.noise_level = config.get("noise_level", 0.0)
     params.dicrotic_notch = config.get("dicrotic_notch", 0.25)
     params.amplification = config.get("amplification", 1.0)
+
+    # SpO2 calibration coefficients: validate on load; fall back to defaults on
+    # corrupted/invalid persisted values rather than crashing or storing a
+    # non-invertible mapping (B <= 0 / non-finite).
+    a = config.get("spo2_coeff_a", SPO2_COEFF_A_DEFAULT)
+    b = config.get("spo2_coeff_b", SPO2_COEFF_B_DEFAULT)
+    try:
+        a, b = validate_coefficients(a, b)
+    except ValueError as e:
+        log.warning(f"Invalid persisted SpO2 coefficients ({e}); using defaults "
+                    f"{SPO2_COEFF_A_DEFAULT}/{SPO2_COEFF_B_DEFAULT}")
+        a, b = SPO2_COEFF_A_DEFAULT, SPO2_COEFF_B_DEFAULT
+    if hasattr(params, "spo2_coeff_a"):
+        params.spo2_coeff_a = a
+        params.spo2_coeff_b = b
+
+    # Phase 3: per-channel DC (mV) + polarity. Validate each DC against the DAC
+    # headroom (0 < DC <= full-scale) via validate_ac_dc with AC=0; fall back to
+    # the default DC on invalid/corrupt values rather than crashing. Polarity
+    # must be a known enum value, else fall back to above-DC.
+    dc_ir = config.get("dc_ir_mv", _DEFAULT_DC_MV)
+    dc_red = config.get("dc_red_mv", _DEFAULT_DC_MV)
+    try:
+        _, dc_ir = validate_ac_dc(0.0, dc_ir)
+    except ValueError as e:
+        log.warning(f"Invalid persisted dc_ir_mv ({e}); using default {_DEFAULT_DC_MV}")
+        dc_ir = _DEFAULT_DC_MV
+    try:
+        _, dc_red = validate_ac_dc(0.0, dc_red)
+    except ValueError as e:
+        log.warning(f"Invalid persisted dc_red_mv ({e}); using default {_DEFAULT_DC_MV}")
+        dc_red = _DEFAULT_DC_MV
+    polarity = config.get("ac_polarity", POLARITY_ABOVE_DC)
+    if polarity not in (POLARITY_ABOVE_DC, POLARITY_BELOW_DC):
+        log.warning(f"Invalid persisted ac_polarity ({polarity!r}); using above-DC")
+        polarity = POLARITY_ABOVE_DC
+    if hasattr(params, "dc_ir_mv"):
+        params.dc_ir_mv = dc_ir
+        params.dc_red_mv = dc_red
+        params.ac_polarity = polarity

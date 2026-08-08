@@ -15,6 +15,19 @@ References:
 import math
 import random
 
+from config import DAC_FULLSCALE_V
+from calibration import (
+    r_target_from_spo2,
+    validate_coefficients,
+    validate_ac_dc,
+    ac_red_from_target,
+    perfusion_index_from_ac_dc,
+    R_CLAMP_MIN,
+    R_CLAMP_MAX,
+    SPO2_COEFF_A_DEFAULT,
+    SPO2_COEFF_B_DEFAULT,
+)
+
 # ─── PPG Model Constants (Allen 2007, aligned with ppg_model.cpp) ───
 # --- Temporal positions (fraction of RR cycle) ---
 PPG_SYSTOLIC_POS    = 0.15    # Systolic peak: ~15% of cycle
@@ -31,11 +44,26 @@ PPG_BASE_SYSTOLIC_AMPL   = 1.0    # Systolic amplitude (reference)
 PPG_BASE_DIASTOLIC_RATIO = 0.4    # Diastolic/systolic ratio (Allen 2007)
 PPG_BASE_DICROTIC_DEPTH  = 0.25   # Notch depth (≥20% for normal)
 
-# --- AC scaling (strict clinical PI formula) ---
-# Clinical: PI = (AC / DC) × 100%  →  AC = PI × DC / 100
-# With DC = 1.5 V:  AC = PI × 1.5 / 100 = PI × 0.015 V
-# Examples: PI=3% → AC=45mV, PI=10% → AC=150mV, PI=20% → AC=300mV
-PPG_AC_SCALE_PER_PI = 0.015    # = DC / 100 = 1.5 / 100  (Volts per PI%)
+# --- AC/DC ownership (Phase 3) ---
+# AC and DC are the master parameters; PI is DERIVED, not the driver:
+#     PI = AC / DC × 100   ⇔   AC = PI × DC / 100   (strict clinical relation)
+# There is no longer a fixed global "Volts-per-PI" scale. Each channel carries
+# its own DC level (DC_ir, DC_red); the IR AC is set (directly, or via the PI
+# convenience input as AC_ir = PI/100 · DC_ir) and the Red AC is DERIVED from
+# the SpO2 target through the full ratio-of-ratios (see calibration.ac_red_from_
+# target). Default DC_ir = DC_red = 1.5 V reproduces the legacy equal-DC model
+# exactly: with DC = 1.5 V, AC_ir = PI/100 · 1.5 = PI × 0.015 V.
+
+# -
+# -- AC/DC polarity (Phase 1 §22 / E9) ---
+# AECG100 supports the pulsatile AC riding ABOVE or BELOW the DC baseline.
+# Default is ABOVE-DC, which preserves the existing (pulse-up) morphology
+# required by Phase 3 §57; BELOW-DC is selectable (physically matches a
+# transmission pulse oximeter, where systolic absorption dips the signal).
+POLARITY_ABOVE_DC = 0    # signal = DC + AC·pulse  (legacy default, pulse-up)
+POLARITY_BELOW_DC = 1    # signal = DC − AC·pulse  (pulse-down)
+
+DEFAULT_DC_BASELINE_V = 1.5    # default per-channel DC (V); legacy shared baseline
 
 PPG_SYSTOLE_BASE_MS = 300.0
 PPG_SYSTOLE_MIN_MS  = 250.0
@@ -130,7 +158,9 @@ def get_ppg_limits(condition: int) -> PPGLimits:
 class PPGParameters:
     """Mutable PPG parameter container."""
     __slots__ = ("condition", "heart_rate", "perfusion_index", "spo2",
-                 "resp_rate", "noise_level", "dicrotic_notch", "amplification")
+                 "resp_rate", "noise_level", "dicrotic_notch", "amplification",
+                 "spo2_coeff_a", "spo2_coeff_b",
+                 "dc_ir_mv", "dc_red_mv", "ac_polarity")
 
     def __init__(self):
         self.condition = COND_NORMAL
@@ -141,6 +171,19 @@ class PPGParameters:
         self.noise_level = 0.0
         self.dicrotic_notch = 0.25
         self.amplification = 1.0
+        # SpO2 calibration coefficients (SpO2 = A - B*R). Configurable/persisted
+        # (Phase 2); consumed by the R_target derivation below and, later, by the
+        # measured-SpO2 path (Phase 6). Defaults reproduce SpO2 = 110 - 25*R.
+        self.spo2_coeff_a = SPO2_COEFF_A_DEFAULT
+        self.spo2_coeff_b = SPO2_COEFF_B_DEFAULT
+        # AC/DC master state (Phase 3). Per-channel DC levels in mV (independent
+        # Red/IR) and the AC polarity. Defaults keep DC_ir == DC_red == 1500 mV
+        # (1.5 V) so the equal-DC legacy behavior is reproduced exactly. AC is
+        # not stored here: IR AC follows the PI convenience input (AC_ir =
+        # PI/100 · DC_ir) and Red AC is derived via the ratio-of-ratios.
+        self.dc_ir_mv = DEFAULT_DC_BASELINE_V * 1000.0     # 1500.0 mV
+        self.dc_red_mv = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
+        self.ac_polarity = POLARITY_ABOVE_DC               # legacy pulse-up default
 
     def copy(self):
         p = PPGParameters()
@@ -188,7 +231,13 @@ class PPGModel:
 
         self.current_hr = 75.0
         self.current_pi = 3.0
-        self.dc_baseline = 1.5          # 1.5 V  (clinical: PI = AC/DC × 100%)
+        # Per-channel DC working state in Volts (Phase 3). Independent Red/IR.
+        # dc_baseline is retained as a legacy alias equal to dc_ir (the primary
+        # channel) for external readers (get_measured_pi, hw.dac_manager helper).
+        self.dc_ir = DEFAULT_DC_BASELINE_V      # 1.5 V (clinical: PI = AC/DC × 100%)
+        self.dc_red = DEFAULT_DC_BASELINE_V     # 1.5 V (independent Red DC)
+        self.ac_polarity = POLARITY_ABOVE_DC    # pulse-up (legacy default)
+        self.dc_baseline = self.dc_ir           # legacy alias == dc_ir
 
         self.last_sample_value = self.dc_baseline
         self.last_ac_value = 0.0
@@ -244,8 +293,22 @@ class PPGModel:
         self.cond_ranges = _MAP.get(c, _MAP[COND_NORMAL])
 
     # ─────────────────────── PARAMETER SETTING ───────────────────────
+    def _sync_ac_dc_from_params(self):
+        """Refresh the DC (Volts) / polarity working state from self.params.
+
+        The persisted master state lives on PPGParameters in user-facing mV;
+        the generator works in Volts. Kept defensive (getattr) so a params-like
+        object without the Phase 3 fields falls back to the legacy 1.5 V shared
+        DC and above-DC polarity.
+        """
+        self.dc_ir = getattr(self.params, "dc_ir_mv", DEFAULT_DC_BASELINE_V * 1000.0) / 1000.0
+        self.dc_red = getattr(self.params, "dc_red_mv", DEFAULT_DC_BASELINE_V * 1000.0) / 1000.0
+        self.ac_polarity = getattr(self.params, "ac_polarity", POLARITY_ABOVE_DC)
+        self.dc_baseline = self.dc_ir    # keep legacy alias in sync
+
     def set_parameters(self, params: PPGParameters):
         self.params = params.copy()
+        self._sync_ac_dc_from_params()
         self._init_condition_ranges()
         self._apply_condition_modifiers()
         self.current_hr = self._generate_dynamic_hr()
@@ -282,6 +345,14 @@ class PPGModel:
         self.diastole_time = self.current_rr * 1000.0 * (1.0 - self.systole_fraction)
 
     def set_perfusion_index(self, pi: float):
+        """PI convenience input (backward-compatible).
+
+        PI is a derived quantity in the Phase 3 model, but the UI/BLE still
+        expose a PI slider and the condition presets drive PI. Setting PI fixes
+        the IR AC magnitude for the waveform via AC_ir = PI/100 · DC_ir (applied
+        in generate_both_samples). With the default DC_ir = 1.5 V this reproduces
+        the legacy AC_ir = PI × 0.015 V exactly. DC levels are unchanged here.
+        """
         pi = _clamp(pi, 0.5, 20.0)
         self.params.perfusion_index = pi
         self.current_pi = pi
@@ -289,8 +360,83 @@ class PPGModel:
     def set_noise_level(self, noise: float):
         self.params.noise_level = _clamp(noise, 0.0, 1.0)
 
+    def set_dc_levels(self, dc_ir_mv: float, dc_red_mv: float = None):
+        """Set independent per-channel DC levels (mV). Red defaults to IR.
+
+        Validates each channel against the DAC headroom (DC > 0, DC <= full-scale)
+        by reusing calibration.validate_ac_dc with AC = 0. Updates both the
+        persisted params (mV) and the Volts working state.
+        """
+        if dc_red_mv is None:
+            dc_red_mv = dc_ir_mv
+        # AC=0 here → validate_ac_dc only checks the DC constraints (0 < DC <= FS).
+        _, dc_ir_mv = validate_ac_dc(0.0, dc_ir_mv)
+        _, dc_red_mv = validate_ac_dc(0.0, dc_red_mv)
+        self.params.dc_ir_mv = dc_ir_mv
+        self.params.dc_red_mv = dc_red_mv
+        self.dc_ir = dc_ir_mv / 1000.0
+        self.dc_red = dc_red_mv / 1000.0
+        self.dc_baseline = self.dc_ir
+
+    def set_ac_dc(self, ac_ir_mv: float, dc_ir_mv: float, dc_red_mv: float = None):
+        """Master AC/DC entry point (Phase 3): set IR AC amplitude and per-channel DC.
+
+        AC and DC are the master parameters; PI is DERIVED here as
+        PI = AC_ir / DC_ir × 100 and stored on params so the existing PI-driven
+        generator (presets, beat-to-beat variability, HR coupling) uses it. The
+        Red AC is derived downstream from the SpO2 target via the ratio-of-ratios.
+
+        Both channels are validated against the DAC headroom (envelope
+        [DC-AC, DC+AC] within [0, full-scale]) via calibration.validate_ac_dc.
+
+        Args:
+            ac_ir_mv:  IR AC amplitude in mV (peak, one-sided).
+            dc_ir_mv:  IR DC level in mV.
+            dc_red_mv: Red DC level in mV (defaults to dc_ir_mv → equal-DC).
+        """
+        if dc_red_mv is None:
+            dc_red_mv = dc_ir_mv
+        ac_ir_mv, dc_ir_mv = validate_ac_dc(ac_ir_mv, dc_ir_mv)
+        # Red channel uses the same AC envelope check for headroom safety.
+        validate_ac_dc(ac_ir_mv, dc_red_mv)
+        self.params.dc_ir_mv = dc_ir_mv
+        self.params.dc_red_mv = dc_red_mv
+        self.dc_ir = dc_ir_mv / 1000.0
+        self.dc_red = dc_red_mv / 1000.0
+        self.dc_baseline = self.dc_ir
+        # PI derived from AC/DC (units cancel; mV/mV). Clamped to the same PI
+        # slider range so the derived value stays consistent with set_perfusion_index.
+        pi = _clamp(perfusion_index_from_ac_dc(ac_ir_mv, dc_ir_mv), 0.5, 20.0)
+        self.params.perfusion_index = pi
+        self.current_pi = pi
+
+    def set_polarity(self, polarity: int):
+        """Select AC-above-DC (0, default/legacy) or AC-below-DC (1)."""
+        if polarity not in (POLARITY_ABOVE_DC, POLARITY_BELOW_DC):
+            raise ValueError(
+                f"ac_polarity must be {POLARITY_ABOVE_DC} (above) or "
+                f"{POLARITY_BELOW_DC} (below), got {polarity!r}")
+        self.ac_polarity = polarity
+        self.params.ac_polarity = polarity
+
     def set_dc_baseline(self, dc: float):
-        self.dc_baseline = dc
+        """Legacy single-DC setter: sets BOTH channels to the same DC (Volts).
+
+        Preserved for backward compatibility; equivalent to
+        set_dc_levels(dc*1000, dc*1000). Kept in Volts to match old callers.
+        """
+        self.set_dc_levels(dc * 1000.0, dc * 1000.0)
+
+    def set_spo2_coefficients(self, a: float, b: float):
+        """Set the SpO2 calibration coefficients (SpO2 = A - B*R).
+
+        Validates that A/B are finite and B > 0 (via calibration.validate_
+        coefficients); raises ValueError on invalid input rather than storing
+        a broken mapping.
+        """
+        a, b = validate_coefficients(a, b)
+        self.params.spo2_coeff_a = a
+        self.params.spo2_coeff_b = b
 
     # ─────────────────────── DYNAMIC HR/PI ───────────────────────
     def _generate_dynamic_hr(self) -> float:
@@ -404,17 +550,26 @@ class PPGModel:
         """
         Generate dual-channel PPG samples (IR and Red).
 
-        Signal composition (strict clinical PI):
-            DC baseline = 1.5 V (tissue + venous absorption)
-            AC = PI × DC / 100 = PI × 0.015 V (pulsatile arterial)
-            PI = 3% → AC = 45 mV;  PI = 10% → AC = 150 mV
+        Signal composition (Phase 3 — per-channel DC, full ratio-of-ratios):
+            AC and DC are the master parameters; PI is DERIVED. Each channel
+            carries its own DC (DC_ir, DC_red).
+              AC_ir  = PI/100 · DC_ir          (PI drives IR AC magnitude)
+              AC_red = R · AC_ir · (DC_red/DC_ir)   (calibration.ac_red_from_target)
+            With the default equal DC (DC_ir = DC_red = 1.5 V) these reduce to the
+            legacy model: AC_ir = PI × 0.015 V and AC_red = R × AC_ir.
 
-        Beer-Lambert law for Red/IR ratio:
-            R = (110 - SpO2) / 25  → SpO2=98% gives R=0.48
-            AC_red = AC_ir × R
+        Ratio-of-ratios (A/B configurable, default 110/25):
+            R = (A - SpO2) / B, clamped to [0.4, 1.6]. Because AC_red carries the
+            (DC_red/DC_ir) correction, the reconstructed
+            R = (AC_red/DC_red)/(AC_ir/DC_ir) equals the target R for ANY DC pair.
 
-        Respiratory modulations (Charlton 2018):
-            BW: Baseline wander ≈ 0.2% of DC × sin(resp_phase)
+        Polarity (Phase 1 §22 / E9):
+            ABOVE_DC (default, legacy): signal = DC + AC·pulse (pulse rides up).
+            BELOW_DC:                   signal = DC − AC·pulse (pulse dips down).
+
+        Respiratory modulations (Charlton 2018) — per channel, scaled by that
+        channel's DC:
+            BW: Baseline wander ≈ 0.2% (slow) + 0.4% (resp) of DC × sin(phase)
             AM: Amplitude modulation = 1 + 0.25 × sin(resp_phase)
             FM: RSA applied in _generate_next_rr() (±5%)
 
@@ -446,11 +601,21 @@ class PPGModel:
         # Pulse shape (normalized [0, 1])
         pulse = self._compute_pulse_shape(self.phase_in_cycle, dicrotic_factor)
 
-        # Dual channel: Beer-Lambert law
-        # R = (110 - SpO2) / 25, clamped to physiological range [0.4, 1.6]
-        r_value = _clamp((110.0 - self.params.spo2) / 25.0, 0.4, 1.6)
-        ac_ir = self.current_pi * PPG_AC_SCALE_PER_PI
-        ac_red = ac_ir * r_value
+        # Dual channel: full ratio-of-ratios.
+        # R_target = (A - SpO2) / B, clamped to physiological range [0.4, 1.6].
+        # A/B come from the configurable SpO2 calibration (default 110/25) — the
+        # single source of truth in calibration.py (no longer hardcoded here).
+        r_value = _clamp(
+            r_target_from_spo2(self.params.spo2,
+                               self.params.spo2_coeff_a,
+                               self.params.spo2_coeff_b),
+            R_CLAMP_MIN, R_CLAMP_MAX)
+        # IR AC magnitude from the (possibly beat-varied) PI and the IR DC:
+        #     AC_ir = PI/100 · DC_ir   (strict clinical PI = AC/DC × 100).
+        ac_ir = self.current_pi / 100.0 * self.dc_ir
+        # Red AC derived so the reconstructed ratio-of-ratios equals R_target for
+        # any DC pair:  AC_red = R · AC_ir · (DC_red/DC_ir).
+        ac_red = ac_red_from_target(r_value, ac_ir, self.dc_red, self.dc_ir)
 
         # HR → amplitude coupling (optional)
         # Research: pulse amplitude decreases ~3.2% per 10 BPM above 60
@@ -473,14 +638,16 @@ class PPGModel:
         self.resp_phase_cycles += delta_time * (self.params.resp_rate / 60.0)
         resp_rad = self.resp_phase_cycles * 2.0 * math.pi
 
-        # Baseline wander (BW) — proportional to DC baseline
-        # ~0.2% DC slow drift + ~0.4% DC respiratory component
-        bw_slow = 0.002 * self.dc_baseline * math.sin(
-            self.simulated_time_s * 0.3 * 2.0 * math.pi)
-        bw_resp = 0.004 * self.dc_baseline * math.sin(resp_rad)
-        wander = bw_slow + bw_resp
+        # Baseline wander (BW) — proportional to EACH channel's DC.
+        # ~0.2% DC slow drift + ~0.4% DC respiratory component. Both channels
+        # share the same phases; only the DC scale differs (independent DC).
+        bw_slow_phase = math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi)
+        bw_resp_phase = math.sin(resp_rad)
+        wander_ir = 0.002 * self.dc_ir * bw_slow_phase + 0.004 * self.dc_ir * bw_resp_phase
+        wander_red = 0.002 * self.dc_red * bw_slow_phase + 0.004 * self.dc_red * bw_resp_phase
 
-        # AM (amplitude modulation by respiration)
+        # AM (amplitude modulation by respiration) — multiplies both channels
+        # equally, so the ratio-of-ratios is preserved.
         am_factor = 1.0 + 0.25 * math.sin(resp_rad)
         ac_val_ir *= am_factor
         ac_val_red *= am_factor
@@ -496,17 +663,22 @@ class PPGModel:
             noise_ir = (noise_seed_ir - 0.5) * 2.5 * self.params.noise_level * ac_ir
             noise_red = (noise_seed_red - 0.5) * 2.5 * self.params.noise_level * ac_red
 
+        # Polarity: pulse rides ABOVE the DC (default/legacy) or BELOW it.
+        # Only the pulsatile AC term carries the sign; the (slow) baseline wander
+        # is a DC drift and stays additive.
+        sign = 1.0 if self.ac_polarity == POLARITY_ABOVE_DC else -1.0
+
         # Display signals (AC + wander + noise, no DC) — for GUI rendering
-        self.last_display_ir = ac_val_ir + wander + noise_ir
-        self.last_display_red = ac_val_red + wander + noise_red
+        self.last_display_ir = sign * ac_val_ir + wander_ir + noise_ir
+        self.last_display_red = sign * ac_val_red + wander_red + noise_red
 
-        # Raw signals for DAC (DC + AC + wander + noise)
-        signal_ir = self.dc_baseline + self.last_display_ir
-        signal_red = self.dc_baseline + self.last_display_red
+        # Raw signals for DAC (per-channel DC + AC + wander + noise)
+        signal_ir = self.dc_ir + self.last_display_ir
+        signal_red = self.dc_red + self.last_display_red
 
-        # Clamp to DAC voltage range [0, 3.3V]
-        signal_ir = _clamp(signal_ir, 0.0, 3.3)
-        signal_red = _clamp(signal_red, 0.0, 3.3)
+        # Clamp to DAC voltage range [0, DAC_FULLSCALE_V] (3.28 V)
+        signal_ir = _clamp(signal_ir, 0.0, DAC_FULLSCALE_V)
+        signal_red = _clamp(signal_red, 0.0, DAC_FULLSCALE_V)
 
         # Measurement tracking
         dt_ms = delta_time * 1000.0
@@ -608,7 +780,8 @@ class PPGModel:
         return "Unknown"
 
     def get_ac_amplitude(self) -> float:
-        return self.current_pi * PPG_AC_SCALE_PER_PI
+        """IR AC amplitude (V) = PI/100 · DC_ir. Legacy 0.015·PI at DC_ir=1.5 V."""
+        return self.current_pi / 100.0 * self.dc_ir
 
     def get_measured_hr(self) -> float:
         if self.measured_rr_ms > 0:

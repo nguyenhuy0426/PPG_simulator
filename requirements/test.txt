@@ -1,0 +1,37 @@
+# requirements/test.txt
+# -----------------------------------------------------------------------------
+# Everything needed to run the full test suite on a laptop, with no Raspberry Pi
+# hardware and no /dev/i2c-1.
+#
+# Run the suite with:
+#   PPG_DRY_RUN=1 .venv/bin/python -m unittest \
+#       tests.test_calibration tests.test_phase3_acdc tests.test_phase4_dac \
+#       tests.test_phase5_rx tests.test_led_driver_dac \
+#       tests.test_led_driver_compliance tests.test_led_driver_power \
+#       tests.test_led_driver_error_budget
+#
+# (`python -m unittest discover -s tests -t .` does NOT work: tests/ has no
+#  __init__.py, so the modules must be named explicitly. Not changed here —
+#  adding one would be an unrelated edit.)
+# -----------------------------------------------------------------------------
+
+-r base.txt
+
+# -----------------------------------------------------------------------------
+# NO ADDITIONAL TEST DEPENDENCIES ARE REQUIRED. This is deliberate, not an
+# oversight:
+#
+#   * The test framework is the standard library's `unittest`. Every file under
+#     tests/ does `import unittest`; none imports pytest.
+#   * The led_driver/ theoretical tests are pure arithmetic over the standard
+#     library only. tests/test_led_driver_dac.py contains a static AST guard
+#     that FAILS if any module in led_driver/ ever imports RPi, gpiod, gpiozero,
+#     lgpio, smbus, smbus2, board, busio, digitalio, adafruit_mcp4725,
+#     adafruit_blinka, grove, serial, spidev or periphery.
+#   * The hw/ tests run under PPG_DRY_RUN=1, which makes hw/dac_manager.py and
+#     hw/opt101_rx.py take their simulated path and never import a hardware
+#     library. No mocking package is needed; where a double is required the
+#     tests use unittest.mock from the standard library.
+#
+# Adding pytest here would install a second test runner that nothing uses.
+# -----------------------------------------------------------------------------

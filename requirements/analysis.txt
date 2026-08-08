@@ -1,0 +1,20 @@
+# requirements/analysis.txt
+# -----------------------------------------------------------------------------
+# OPTIONAL. Offline data-analysis extras. Not part of the runtime and not part
+# of the test suite.
+#
+#   .venv/bin/python -m pip install -r requirements/analysis.txt
+#   # or:  scripts/setup_laptop_venv.sh --with-analysis
+#
+# These exist for exactly one script, plot_ppg_from_data.py, which reads a
+# recorded CSV and plots it. Nothing under comm/, core/, hw/, models/, ui/,
+# led_driver/ or tests/ imports them, so they are kept out of base.txt to keep
+# the Raspberry Pi install small (numpy/pandas/matplotlib on aarch64 are a slow,
+# large install for a laptop-side plotting tool).
+# -----------------------------------------------------------------------------
+
+-r base.txt
+
+numpy         # plot_ppg_from_data.py:16
+pandas        # plot_ppg_from_data.py:13
+matplotlib    # plot_ppg_from_data.py:14-15 (also matplotlib.widgets)

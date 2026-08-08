@@ -1,0 +1,103 @@
+# requirements/rpi.txt
+# -----------------------------------------------------------------------------
+# Raspberry Pi 4 / Ubuntu 24.04 LTS (aarch64) hardware dependencies.
+#
+# Install ONLY on the Pi, inside the Pi's own .venv:
+#   .venv/bin/python -m pip install -r requirements/rpi.txt
+# then add grove.py separately (see the bottom of this file).
+#
+# Do NOT install this on the laptop. Do NOT copy a .venv between the laptop
+# (x86_64) and the Pi (aarch64) — the wheels are architecture-specific and the
+# venv's bin/ shebangs hardcode absolute paths.
+#
+# Full setup: scripts/setup_rpi_ubuntu24.sh
+# Full guide: docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md
+# -----------------------------------------------------------------------------
+
+-r base.txt
+
+# --- I2C -------------------------------------------------------------------
+# Pure-Python SMBus/I2C access over /dev/i2c-1. Required by the official Seeed
+# grove.py: grove/i2c.py builds its Bus on smbus2. Installed explicitly because
+# grove.py is installed with --no-deps (see below).
+smbus2
+
+# --- MCP4725 DAC path (hw/dac_manager.py) ----------------------------------
+# hw/dac_manager.py lazily does `import board`, `import busio`,
+# `import adafruit_mcp4725` when PPG_DRY_RUN is not set.
+# Blinka is what provides `board` and `busio` on a Linux SBC.
+adafruit-blinka>=8.0.0
+adafruit-circuitpython-mcp4725>=1.4.0
+
+# --- GPIO (hw/button_handler.py) -------------------------------------------
+# button_handler.begin() tries `import RPi.GPIO as GPIO` first and falls back to
+# `import lgpio`. On Ubuntu 24.04 the correct way to satisfy the first import is
+# the rpi-lgpio SHIM, which presents the RPi.GPIO API on top of the lgpio
+# character-device backend. It works with the /dev/gpiochip* interface that this
+# kernel actually exposes.
+#
+# rpi-lgpio depends on lgpio, so lgpio arrives with it and the fallback path
+# works too.
+#
+# HARD CONSTRAINT: rpi-lgpio and the classic RPi.GPIO both provide the module
+# name `RPi.GPIO`. Installing BOTH corrupts the environment. This file installs
+# rpi-lgpio ONLY. Never add RPi.GPIO alongside it.
+rpi-lgpio
+
+# -----------------------------------------------------------------------------
+# INSTALLED SEPARATELY, NOT VIA THIS FILE
+# -----------------------------------------------------------------------------
+# grove.py — official Seeed Studio source repository, installed with --no-deps:
+#
+#   .venv/bin/python -m pip install --no-deps \
+#       "git+https://github.com/Seeed-Studio/grove.py.git"
+#
+# Why --no-deps: grove.py's setup.py inspects /proc/cpuinfo and, when it sees a
+# Raspberry Pi, APPENDS RPi.GPIO and rpi_ws281x to install_requires. Letting pip
+# resolve that would drag the classic RPi.GPIO into an environment that already
+# has rpi-lgpio, which is exactly the collision forbidden above. rpi_ws281x is a
+# NeoPixel driver this project has no use for. The only grove.py dependency this
+# project's code path actually needs is smbus2, pinned above.
+#
+# What this project uses from grove.py: `from grove.adc import ADC`, in
+# hw/opt101_rx.py:160 and hw/adc_reader.py:44.
+#
+# MM32 ADDRESS 0x08 — no adaptation is required. The official grove/adc.py
+# declares `def __init__(self, address = 0x04)`, i.e. the address is a
+# constructor keyword with 0x04 merely as its default. hw/opt101_rx.py:161
+# already passes `ADC(address=GROVE_ADC_ADDR)` with GROVE_ADC_ADDR = 0x08
+# (config.py:60), and grove/i2c.py's `Bus(bus=1)` already defaults to
+# /dev/i2c-1. Nothing in the installed package is patched, and nothing needs to
+# be. scripts/verify_rpi_env.py re-checks this by introspecting the ACTUALLY
+# INSTALLED grove.adc.ADC signature rather than trusting this comment.
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# DELIBERATELY NOT INSTALLED, with the reason for each
+# -----------------------------------------------------------------------------
+# RPi.GPIO      Collides with rpi-lgpio (same module name). See above.
+#
+# gpiozero      Not imported anywhere in this project. `grep -rn "gpiozero"`
+#               over comm/ core/ hw/ models/ ui/ led_driver/ tests/ scripts/ and
+#               the top-level .py files returns nothing. hw/button_handler.py
+#               talks to RPi.GPIO / lgpio directly. Installing gpiozero would
+#               add an unused abstraction layer and a second backend-selection
+#               mechanism to keep consistent with button_handler's own.
+#
+# lgpio         Not listed explicitly because rpi-lgpio already requires it.
+#               Listing it twice risks a version disagreement between the two.
+#
+# libgpiod /    Not imported anywhere. The character-device access this project
+# gpiod         needs already comes through lgpio. libgpiod-dev is only worth
+#               installing if you later add code that imports `gpiod`.
+#
+# pyserial      Not imported anywhere. There is no UART path in this project;
+#               every peripheral is on I2C.
+#
+# numpy /       Offline analysis only (plot_ppg_from_data.py). Building these
+# pandas /      on aarch64 is slow and none of them is on the runtime path.
+# matplotlib    See requirements/analysis.txt.
+#
+# pygame /      Dead code (ui/sliders.py, comm/ble_server.py). See
+# bless         requirements/base.txt.
+# -----------------------------------------------------------------------------

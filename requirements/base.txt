@@ -1,0 +1,44 @@
+# requirements/base.txt
+# -----------------------------------------------------------------------------
+# Host-portable runtime dependencies for the PPG simulator.
+#
+# "Host-portable" means: importable on an x86_64 laptop and on a Raspberry Pi 4
+# aarch64, with no Raspberry Pi hardware present. Everything Pi-specific lives
+# in requirements/rpi.txt.
+#
+# This list was derived by scanning the ACTUAL imports of the runtime path
+# reachable from main.py:
+#   main.py -> config, comm.logger, config_store, core.signal_engine,
+#              hw.opt101_rx, ui.ctk_app
+# Third-party imports found on that path: customtkinter (and stdlib tkinter).
+# All hardware libraries are imported LAZILY inside hw/ and are therefore listed
+# in requirements/rpi.txt, not here.
+# -----------------------------------------------------------------------------
+
+# GUI. ui/ctk_app.py and every module under ui/frames/ do `import customtkinter`.
+# Needs the stdlib `tkinter` module, which on Debian/Ubuntu comes from the OS
+# package `python3-tk`, NOT from pip. See scripts/setup_laptop_venv.sh.
+customtkinter
+
+
+# -----------------------------------------------------------------------------
+# DELIBERATELY NOT LISTED, with the reason for each
+# -----------------------------------------------------------------------------
+# pygame        Imported only by ui/sliders.py, which nothing on the runtime
+#               path imports (grep: no module imports `ui.sliders`). Dead code
+#               left over from the pre-CustomTkinter UI.
+#
+# bless         Imported only by comm/ble_server.py, which nothing imports.
+#               Dead code. Installing it would also pull dbus/BlueZ stacks.
+#
+# numpy         Used only by plot_ppg_from_data.py, an offline analysis script
+# pandas        that is not imported by main.py or by any test. See
+# matplotlib    requirements/analysis.txt — opt-in, not part of the runtime.
+#
+# RPi.GPIO      Pi-only, and superseded on Ubuntu 24.04 by the rpi-lgpio shim.
+# smbus2        See requirements/rpi.txt for the full hardware set and for why
+# grove.py      each one is or is not installed.
+# adafruit-*
+#
+# pytest        The project's tests are stdlib `unittest`
+#               (`python3 -m unittest tests.test_...`). See requirements/test.txt.

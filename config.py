@@ -46,9 +46,23 @@ DAC_ADDR_RED = 0x61     # MCP4725 address for Red channel
 # ============================================================================
 # PIN CONFIGURATION — GROVE BASE HAT ADC (I2C)
 # ============================================================================
-# Grove Base Hat uses STM32 MCU at I2C address 0x04
-# Potentiometer connected to analog port A0
-GROVE_ADC_CHANNEL = 0   # A0 port on Grove Base Hat
+# The Grove Base Hat on this system uses the MM32 MCU, which answers at I2C
+# address 0x08 [VERIFIED-USER; corroborated by grove_base_hat.pdf p.3: "the IIC
+# address of MM32 is 0x08, while the STM32 is 0x04"]. It shares /dev/i2c-1 with
+# both MCP4725 DACs at 0x60/0x61. Do NOT revert to 0x04 — that is the STM32
+# revision of the same HAT, which is not the board installed here.
+# Verified RX mapping [VERIFIED-USER 2026-07-12, fixed — never swap]:
+#     OPT101 (IR)  -> A0  (Grove ADC channel 0)
+#     OPT101 (Red) -> A2  (Grove ADC channel 2)
+#     A1 is NOT used for OPT101.
+# (Earlier phase docs stated A1 = Red; that mapping is stale and superseded.)
+# OPT101 acquisition is implemented in Phase 5 (hw/opt101_rx.py).
+GROVE_ADC_ADDR = 0x08   # Grove Base Hat MM32 ADC I2C address [VERIFIED-USER]
+ADC_CHANNEL_IR = 0      # A0 — OPT101 IR photodiode channel
+ADC_CHANNEL_RED = 2     # A2 — OPT101 Red photodiode channel
+# GROVE_ADC_CHANNEL below is only referenced by the deprecated
+# hw/adc_reader.py (legacy potentiometer input); do not use for OPT101 RX.
+GROVE_ADC_CHANNEL = 0   # A0 port on Grove Base Hat (legacy adc_reader only)
 
 # ============================================================================
 # PIN CONFIGURATION — PUSH BUTTON (BCM numbering, active LOW, internal pull-up)
@@ -85,8 +99,27 @@ UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 10
 DAC_RESOLUTION_BITS = 12
 DAC_MAX_VALUE = 4095
 DAC_CENTER_VALUE = 2048
-DAC_VOLTAGE_MAX = 3.3            # Volts (MCP4725 VDD = 3.3V)
-DAC_V_PER_STEP = DAC_VOLTAGE_MAX / 4096.0     # ~0.000806 V per step
+
+# Safe idle/shutdown code — 0 → 0 V at the DAC output.
+# In the LED-driver concept (I_LED proportional to V_DAC across the sense
+# resistor), 0 V commands the LEDs OFF. Init, stop, and process exit must park
+# the outputs here; never park at mid-scale (2048 ≈ 1.6 V would hold the LEDs
+# at ~half drive indefinitely).
+DAC_IDLE_VALUE = 0
+
+# MCP4725 full-scale output voltage — SINGLE SOURCE OF TRUTH for the TX path.
+# The MCP4725 supply on this hardware is 3.28 V and, since the MCP4725 is
+# ratiometric to VDD, its full-scale output is 3.28 V [VERIFIED-USER]. Every DAC
+# voltage->code conversion and every waveform clamp MUST reference this constant
+# (or DAC_FULLSCALE_MV) — do not re-hardcode 3.2 / 3.3 / 3200 / 3300 anywhere.
+# See calibration.dac_voltage_to_code().
+# NOTE: ADC_VOLTAGE_REF (below) currently holds the same 3.28 V number, but it
+# describes a physically different quantity on the RX path. Keep the two symbols
+# independent; never define one in terms of the other.
+DAC_FULLSCALE_V = 3.28                         # Volts (MCP4725 full-scale = VDD)
+DAC_FULLSCALE_MV = DAC_FULLSCALE_V * 1000.0    # 3280.0 mV (user-facing convenience)
+DAC_VOLTAGE_MAX = DAC_FULLSCALE_V              # Backward-compatible alias (deprecated name)
+DAC_V_PER_STEP = DAC_FULLSCALE_V / (DAC_MAX_VALUE + 1)  # ~0.000781 V per step
 
 # ============================================================================
 # DISPLAY CONFIGURATION — Auto-detect resolution
@@ -117,10 +150,27 @@ METRICS_UPDATE_MS = 250         # 4 Hz text metrics update
 WAVEFORM_UPDATE_MS = 20         # 50 Hz waveform drawing
 
 # ============================================================================
-# ADC CONFIGURATION (Grove Base Hat — 12-bit STM32 ADC)
+# ADC CONFIGURATION (Grove Base Hat — 12-bit MM32 ADC)
 # ============================================================================
-ADC_MAX_VALUE = 4095            # 12-bit
-ADC_VOLTAGE_REF = 3.3           # Volts
+ADC_MAX_VALUE = 4095            # 12-bit [VERIFIED-USER / grove_base_hat.pdf]
+# Grove ADC full-scale/reference used by this project [VERIFIED-USER].
+# This is the RX-path scale factor (Grove Base HAT MM32 ADC). It is a separate
+# quantity from DAC_FULLSCALE_V (TX path, MCP4725) even though both are 3.28 V
+# on this build — do not merge them or alias one to the other.
+ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
+
+# ============================================================================
+# RX ACQUISITION (Phase 5 — OPT101 via Grove ADC, hw/opt101_rx.py)
+# ============================================================================
+# RX runs on its own thread, decoupled from the 1 kHz TX rate. Phase 4 timing
+# budget [INFERENCE]: at 100 kHz I2C each Grove register read costs ~0.45 ms,
+# so per-tick RX at 1 kHz does not fit; PPG bandwidth is 0.5–10 Hz, so 100 Hz
+# per channel gives 10x Nyquist margin while adding only ~2 ADC transactions
+# per 10 ms to the shared bus.
+RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
+RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
+RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
+RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disconnected
 
 # ============================================================================
 # COLOR PALETTE (RGB tuples for Pygame) matching Android UI

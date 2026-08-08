@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PPG_DRY_RUN=1 .venv/bin/python -m unittest tests.test_led_driver_power)",
+      "Bash(PPG_DRY_RUN=1 .venv/bin/python -m unittest tests.test_led_driver_error_budget)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(PPG_DRY_RUN=1 .venv/bin/python scripts/verify_laptop_env.py)",
+      "Bash(PPG_DRY_RUN=1 /tmp/claude-1000/-home-huynn-final-project-PPG-simulator-raspi/9efbf1e3-1d6a-463c-8378-f1488779d157/scratchpad/proj/.venv/bin/python -m unittest tests.test_calibration tests.test_phase3_acdc tests.test_phase4_dac tests.test_phase5_rx tests.test_led_driver_dac tests.test_led_driver_compliance tests.test_led_driver_power tests.test_led_driver_error_budget)",
+      "Bash(bash -n scripts/setup_laptop_venv.sh)",
+      "Bash(bash -n scripts/setup_rpi_ubuntu24.sh)",
+      "Bash(bash scripts/setup_laptop_venv.sh --help)",
+      "Bash(bash scripts/setup_rpi_ubuntu24.sh --help)",
+      "Bash(/tmp/claude-1000/-home-huynn-final-project-PPG-simulator-raspi/9efbf1e3-1d6a-463c-8378-f1488779d157/scratchpad/proj/.venv/bin/python -m pip install -q shellcheck-py)",
+      "Bash(pdfinfo /home/huynn/final_project/PPG_simulator_raspi/docs/ds_linhkien/MCP4725-Data-Sheet.pdf)",
+      "Bash(PPG_DRY_RUN=1 .venv/bin/python -m unittest tests.test_led_driver_faults tests.test_led_driver_startup tests.test_led_driver_filters)",
+      "Bash(PPG_DRY_RUN=1 .venv/bin/python -m unittest discover -s tests)"
+    ]
+  }
+}

@@ -2,6 +2,8 @@ import customtkinter as ctk
 import math
 import time
 from core.signal_engine import SignalEngine
+from config import DAC_FULLSCALE_MV
+from calibration import dac_voltage_to_code
 
 class CalibrationFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -53,7 +55,7 @@ class CalibrationFrame(ctk.CTkFrame):
         self.amp_lbl = ctk.CTkLabel(a_frame, text="2000 mV")
         self.amp_lbl.pack(side="right")
         def update_a(v): self.amp_lbl.configure(text=f"{v:.0f} mV")
-        ctk.CTkSlider(a_frame, from_=100, to=3300, variable=self.amp_var, command=update_a).pack(side="left", fill="x", expand=True, padx=10)
+        ctk.CTkSlider(a_frame, from_=100, to=DAC_FULLSCALE_MV, variable=self.amp_var, command=update_a).pack(side="left", fill="x", expand=True, padx=10)
         
         self.cal_phase = 0.0
         self.cal_last_time = time.time()
@@ -92,13 +94,13 @@ class CalibrationFrame(ctk.CTkFrame):
         # val_mv ∈ [0, amp], offset = amp/2
         val_mv = (amp / 2.0) * (1.0 + math.sin(self.cal_phase))
         
-        # DAC: map [0, 3300] → [0, 4095]
-        dac_val = int(val_mv / 3300.0 * 4095)
-        dac_val = max(0, min(4095, dac_val))
+        # DAC: map [0, DAC_FULLSCALE_MV] → [0, 4095] via the shared converter
+        # (explicit mV→V conversion; full-scale is 3.28 V).
+        dac_val = dac_voltage_to_code(val_mv / 1000.0)
         self.engine.dac_manager.set_values(dac_val, dac_val)
-        
-        # Draw: vẽ trong range [0, 3300] để canvas luôn hiển thị đúng tỉ lệ
-        v_min, v_max = 0, 3300
+
+        # Draw: vẽ trong range [0, DAC_FULLSCALE_MV] để canvas luôn hiển thị đúng tỉ lệ
+        v_min, v_max = 0, DAC_FULLSCALE_MV
         h = self.canvas_height
         norm = (val_mv - v_min) / (v_max - v_min)
         y = h - (norm * h)
