@@ -21,3 +21,6 @@ dist/
 # PlatformIO / editor / tooling caches
 .pio/
 .codegraph/
+
+# CAD virtual environment (trimesh/manifold3d — 190 MB, tạo lại bằng pip)
+.cad_venv/
