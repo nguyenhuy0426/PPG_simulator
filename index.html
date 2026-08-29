@@ -1253,12 +1253,14 @@ function axisLine(z,col,label,lane){
   ctx.fillText(label,6,42);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));
   sp.scale.set(52,6.5,1);sp.position.set(148,42,z);axesGroup.add(sp);
-  if(lane)axisLbl[lane]={cv,ctx,sp,col,label};
+  if(lane)axisLbl[lane]={cv,ctx,sp,col,
+    text:d=>(lane==='red'?'Đỏ 622nm':'IR 875nm')+' → OPT101 → '
+            +(lane==='red'?'A2':'A0')+' (d='+Math.round(d)+'mm)'};
 }
 function updAxisLabel(lane,d){const a=axisLbl[lane];if(!a)return;
   a.ctx.clearRect(0,0,512,64);a.ctx.font='bold 30px system-ui';
   a.ctx.fillStyle='#'+a.col.toString(16).padStart(6,'0');
-  a.ctx.fillText(a.label(d),6,42);a.sp.material.map.needsUpdate=true;}
+  a.ctx.fillText(a.text(d),6,42);a.sp.material.map.needsUpdate=true;}
 axisLine(-19.25,0xff5555,'Đỏ 622nm → OPT101 → A2 (d=25mm)','red');
 axisLine(19.25,0x6688ff,'IR 875nm → OPT101 → A0 (d=85mm)','ir');
 const grid=new THREE.GridHelper(560,56,0x223,0x1a2030);
