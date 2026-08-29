@@ -25,6 +25,8 @@
   .hint{color:var(--dim);font-size:11.5px;margin-top:10px;line-height:1.5}
   select.sel{flex:1.4;background:#232a38;color:var(--ink);border:1px solid #35405a;
     border-radius:8px;padding:4px 6px;font-size:12.5px}
+  .dv{flex:none;width:54px;text-align:right;font-size:12.5px;color:var(--acc);
+    font-variant-numeric:tabular-nums}
  #hud{position:fixed;right:14px;bottom:12px;color:var(--dim);font-size:12px}
 </style>
 </head>
@@ -54,6 +56,15 @@
     <button data-v="inIR">Trong làn IR</button><button data-v="inRed">Trong làn Đỏ</button>
   </div>
   <div class="row"><button data-v="elec">Khối điện tử</button><button data-v="top2">Nhìn hộp từ nóc</button></div>
+  <fieldset><legend>Vị trí LED trên trục trượt (d = chóp LED → OPT101)</legend>
+    <div class="row"><label>LED Đỏ (A2)</label><input id="dRed" type="range" min="15" max="90" step="0.5" value="25"><span class="dv" id="dRedV">25 mm</span></div>
+    <div class="row"><label>LED IR (A0)</label><input id="dIR" type="range" min="15" max="90" step="0.5" value="85"><span class="dv" id="dIRV">85 mm</span></div>
+    <div class="row"><button id="bSept">🧱 Vách ngăn quang</button></div>
+    <div class="hint">Kéo slider: carrier LED trượt dọc trục D trong lòng hộp (đúng cơ cấu
+    vật lý d=15..90 mm). <b>Vách ngăn quang</b> (z=0, 3&nbsp;mm) chạy dọc theo toàn bộ
+    hành trình đó — nó tách 2 bước sóng thành 2 kênh riêng và <u>không</u> che đường
+    nhìn của OPT101 vì nằm song song với trục quang.</div>
+  </fieldset>
   <fieldset><legend>Mô phỏng quang học — mô hình PPG (Allen 2007)</legend>
     <div class="row"><button id="bSim">🔦 Bật LED phát sáng</button><button id="bLbl">🏷️ Nhãn linh kiện</button></div>
     <div class="row"><label>Nhịp tim (BPM)</label><input id="hr" type="range" min="40" max="180" value="75"></div>
@@ -72,7 +83,8 @@
     <b>Mặt cắt</b>: trượt để cắt mô hình theo phương X.<br>
     <b>Tách rời</b>: kéo để xem thứ tự lắp ráp.<br>
     Kích thước đế tổng thể <b>198 × 77 × 286 mm</b> (đơn vị mô hình: mm).<br>
-    Khoảng cách mặc định: Đỏ d=25mm • IR d=85mm (chóp LED → cửa sổ OPT101).
+    Khoảng cách LED→OPT101: Đỏ d=25mm • IR d=85mm — chỉnh bằng slider
+    <b>Vị trí LED</b> ở trên (cơ cấu trượt D thật: d=15..90 mm).
   </div>
 </div>
 <div id="hud">docs/system_3d / build_system.py</div>
@@ -1231,7 +1243,8 @@ MODEL.parts.forEach(p=>{
 });
 // optical axis helpers (lanes at z = ±19.25, optical axis y = 32)
 const axesGroup=new THREE.Group();scene.add(axesGroup);axesGroup.visible=false;
-function axisLine(z,col,label){
+const axisLbl={};
+function axisLine(z,col,label,lane){
   const g=new THREE.BufferGeometry().setFromPoints(
     [new THREE.Vector3(3,32,z),new THREE.Vector3(121,32,z)]);
   axesGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:col})));
@@ -1240,9 +1253,14 @@ function axisLine(z,col,label){
   ctx.fillText(label,6,42);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));
   sp.scale.set(52,6.5,1);sp.position.set(148,42,z);axesGroup.add(sp);
+  if(lane)axisLbl[lane]={cv,ctx,sp,col,label};
 }
-axisLine(-19.25,0xff5555,'Đỏ 622nm → OPT101 → A2 (d=25mm)');
-axisLine(19.25,0x6688ff,'IR 875nm → OPT101 → A0 (d=85mm)');
+function updAxisLabel(lane,d){const a=axisLbl[lane];if(!a)return;
+  a.ctx.clearRect(0,0,512,64);a.ctx.font='bold 30px system-ui';
+  a.ctx.fillStyle='#'+a.col.toString(16).padStart(6,'0');
+  a.ctx.fillText(a.label(d),6,42);a.sp.material.map.needsUpdate=true;}
+axisLine(-19.25,0xff5555,'Đỏ 622nm → OPT101 → A2 (d=25mm)','red');
+axisLine(19.25,0x6688ff,'IR 875nm → OPT101 → A0 (d=85mm)','ir');
 const grid=new THREE.GridHelper(560,56,0x223,0x1a2030);
 grid.position.set(75,-10.5,0);scene.add(grid);
 function setView(v){
@@ -1261,8 +1279,13 @@ function setView(v){
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>setView(b.dataset.v));
 setView('iso');
 const $=id=>document.getElementById(id);
+// vị trí mỗi part = base + explode*k + slideOff (offset do slider vị trí LED)
+const slideOff={};MODEL.parts.forEach(p=>slideOff[p.name]=new THREE.Vector3());
+function applyXf(n){meshes[n].position.copy(basePos[n])
+  .addScaledVector(meshes[n].userData.explode,$('explode').value/100)
+  .add(slideOff[n]);}
 $('explode').oninput=e=>{const k=e.target.value/100;
-  for(const n in meshes)meshes[n].position.copy(basePos[n]).addScaledVector(meshes[n].userData.explode,k);};
+  for(const n in meshes)applyXf(n);};
 $('clip').oninput=e=>{clipPlane.constant=-24+e.target.value/100*(174+24);};
 function wireAll(on){MODEL.parts.forEach(p=>meshes[p.name].children.forEach(m=>m.material.wireframe=on));}
 $('bWire').onclick=e=>{const on=!meshes[MODEL.parts[0].name].children[0].material.wireframe;
@@ -1328,6 +1351,49 @@ ledLights.ir=new THREE.PointLight(0x8a5cff,0,500,2);ledLights.ir.position.set(35
 // chùm sáng: ẩn mặc định, hiện khi mô phỏng
 if(meshes['beam_red'])meshes['beam_red'].visible=false;
 if(meshes['beam_ir'])meshes['beam_ir'].visible=false;
+/* ---- TRƯỢT CARRIER LED THEO TRỤC D (mô phỏng đúng cơ cấu vật lý d=15..90) ----
+   Carrier + LED + chùm sáng di chuyển cùng nhau theo X. Chùm sáng được scale
+   ĐỀU quanh chóp LED (giữ nguyên góc mở theo datasheet) và ghim đầu xa tại
+   cửa sổ OPT101 (x=120). Đèn điểm + nhãn trục quang cập nhật theo d. */
+const D_DEF={red:25,ir:85}, LANE_Z={red:-19.25,ir:19.25}, X_WIN_MM=120;
+const beamGeom={};
+MODEL.parts.forEach(p=>{if(p.name.startsWith('beam_'))
+  beamGeom[p.name.slice(5)]={x0:p.bounds[0],x1:p.bounds[3]};});
+function setLaneD(lane,dIn){
+  const d=Math.max(15,Math.min(90,dIn));
+  const dx=D_DEF[lane]-d;                        // d nhỏ hơn -> carrier tiến về sensor
+  ['led_carrier_'+lane,'led_'+lane].forEach(n=>{
+    if(meshes[n]){slideOff[n].x=dx;applyXf(n);}});
+  if(ledLights[lane])ledLights[lane].position.x=X_WIN_MM-d;
+  const bn='beam_'+lane,bg=beamGeom[lane];
+  if(meshes[bn]&&bg){
+    const s=d/(bg.x1-bg.x0);                     // scale đều = d/d0 -> góc mở không đổi
+    meshes[bn].scale.set(s,s,s);
+    slideOff[bn].set((X_WIN_MM-d)-bg.x0*s, 32*(1-s), LANE_Z[lane]*(1-s));
+    applyXf(bn);
+  }
+  const vEl=$(lane==='red'?'dRedV':'dIRV');
+  if(vEl)vEl.textContent=(Math.round(d*10)/10)+' mm';
+  updAxisLabel(lane,d);
+}
+$('dRed').oninput=e=>setLaneD('red',+e.target.value);
+$('dIR').oninput=e=>setLaneD('ir',+e.target.value);
+setLaneD('red',25);setLaneD('ir',85);
+/* ---- LỚP PHỦ MINH HOẠ VÁCH NGĂN QUANG (z=0, dày 3 mm, dọc trục quang) ----
+   Không phải hình học in — chỉ để thấy rõ: vách chạy song song với trục quang,
+   phủ TRÙM hành trình trượt x=3..147, nên không bao giờ cắt đường nhìn sensor. */
+const septGroup=new THREE.Group();septGroup.visible=false;scene.add(septGroup);
+const septGeo=new THREE.BoxGeometry(144,61,3);           // x 3..147 · y 3..64 · z ±1.5
+const sept=new THREE.Mesh(septGeo,new THREE.MeshBasicMaterial(
+  {color:0xff5544,transparent:true,opacity:.20,depthWrite:false,
+   side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));
+sept.position.set(75,33.5,0);septGroup.add(sept);
+const septEdge=new THREE.LineSegments(new THREE.EdgesGeometry(septGeo),
+  new THREE.LineBasicMaterial({color:0xff8877,transparent:true,opacity:.9,
+   clippingPlanes:[clipPlane]}));
+septEdge.position.copy(sept.position);septGroup.add(septEdge);
+$('bSept').onclick=e=>{septGroup.visible=!septGroup.visible;
+  e.target.classList.toggle('on',septGroup.visible);};
 // ---- điện trở cảm biến: 4 vòng màu theo mã 4 vạch (E12, ±5%) ----
 const DIG=['#1a1a1e','#7a4426','#c62828','#e07b1f','#e8c72e','#3d8b37','#2456a8','#7b3fb5','#8a8f98','#f2f0e6'];
 const GOLD='#c9a227';
