@@ -8,6 +8,9 @@ Sinh ra:
   out/model.json  — toàn bộ hình học (float32/uint32 base64) cho viewer
   viewer.html     — trình duyệt 3D offline (three.js nhúng sẵn)
 
+v2 (2026-08-30): cơ cấu chỉnh d bằng cần trượt nam châm ngoài nắp (bỏ cửa
+hatch), chụp bắt vít xuyên từ mặt ngoài, 5 mộng nối đế.
+
 HỆ TRỤC (mm):
   +X = trục quang, hướng từ đầu LED  ->  board cảm biến
   +Y = lên trên
@@ -29,6 +32,24 @@ from trimesh.transformations import translation_matrix, rotation_matrix
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
 STL_DIR = os.path.join(OUT, "stl")
+
+# ============================================================================
+# 0. CHẾ ĐỘ BUILD  (đặt bằng dòng lệnh — xem main()/argparse)
+# ============================================================================
+# DETAIL:
+#   "full"   — đầy đủ chi tiết thẩm mỹ (vát góc, chỉ bóng, rãnh cầm tay, khắc mã).
+#              Dùng cho viewer trình diễn / render đẹp.
+#   "simple" — CHỈ giữ chi tiết chức năng: mọi bề mặt phẳng, không vát, không
+#              khắc. STL gọn hơn, ít boolean hơn, in 3D dễ và chắc hơn. Dùng
+#              khi muốn xuất file in hoặc chỉnh sửa cơ khí.
+DETAIL = "full"
+STL_ONLY = False        # True: chỉ xuất STL in 3D (bỏ model.json + viewer.html)
+INCLUDE_VISUAL = True   # False: bỏ toàn bộ chi tiết mua sẳn/dây/chùm sáng
+ONLY = None             # list tên (con-chuỗi): chỉ build các phần khớp
+SCALE = 1.0             # thu nhỏ đều mô hình (--scale; 0.85 -> hộp ~12.7cm).
+                        # Các cặp lắp ghép (nắp-thân, khẩu độ-khe, hood-bệ)
+                        # vẫn khớp nhau vì cùng tỉ lệ; lỗ vít/linh kiện ngoài
+                        # (M3, Ø8 shaft) sẽ nhỏ theo — xem ghi chú --scale.
 
 # ============================================================================
 # 1. THAM SỐ HÌNH HỌC  (đơn vị mm)
@@ -75,7 +96,7 @@ D_DEFAULT = {"red": 25.0, "ir": 85.0}
 
 # --- khe khẩu độ (aperture) --------------------------------------------------
 AP_T = 1.6
-AP_X0, AP_X1 = 113.3, 115.1                # rãnh trượt (rộng 1.8 mm)
+AP_X0, AP_X1 = 113.2, 115.2                # rãnh trượt (rộng 2.0 mm cho tấm 1.6 -> 0.2/cạnh)
 AP_RIB_T = 1.6                             # gân dẫn hướng nhô vào làn
 AP_Y0, AP_Y1 = 1.9, 60.0                   # tấm cắm xuống rãnh sàn 1.1 mm
 
@@ -100,8 +121,6 @@ BRD_Y0, BRD_Y1 = Y_AX - BRD_Y / 2, Y_AX + BRD_Y / 2   # 7 .. 57
 # --- lỗ ra cáp + chụp che sáng ------------------------------------------------
 EX_Y0, EX_Y1 = 6.0, 16.0                   # lỗ xuyên vách
 EX_ZW = 20.0                               # bề rộng lỗ theo Z
-HOOD_D = 10.0                              # chiều sâu chụp ra ngoài vách
-HOOD_T = 2.5                               # bề dày chụp
 HOOD_Y0, HOOD_Y1 = 3.0, 24.0
 
 # --- đế chung + khối điện tử ngoài --------------------------------------------
@@ -469,19 +488,22 @@ BODY_CHAM = 2.5          # vát 4 góc đứng thân hộp (còn 2.47 mm thành 
 BODY_CHAM_Y1 = 57.0      # dừng dưới vùng rãnh labyrinth -> không ảnh hưởng kín sáng
 SHADOW_Y0, SHADOW_Y1 = 46.0, 48.5     # chỉ bóng ngang quanh 4 thành
 SHADOW_D = 0.8                        # chiều sâu chỉ bóng (thành còn 2.2 mm)
-PAD_CHAM = 2.0           # vát góc bệ bắt chụp
-PAD_T, PAD_HW = 5.0, 18.0             # bề dày / nửa bề rộng bệ bắt chụp
-HOOD_BOLT_Y = (5.5, 21.0)             # 2 hàng vít M3 giữ chụp (nằm trong y 3..24)
-HOOD_BOLT_Z = (-14.5, 14.5)
-HOOD_SLOT_L, HOOD_SLOT_HW = 7.0, 6.0  # khe luồn cáp ở sàn chụp (đủ cho bẹ 3 sợi)
-HOOD_CHAM = 2.0          # vát góc chụp che sáng
 BASE_CHAM = 8.0          # vát 2 góc ngoài mỗi nửa đế
 LID_CHAM = 1.5                        # vát vành mép trên nắp
-LID_PANEL_X0, LID_PANEL_X1 = 24.0, 126.0
-LID_PANEL_Z0, LID_PANEL_Z1 = -30.0, 30.0
+LID_PANEL_X0, LID_PANEL_X1 = 8.0, 142.0    # panel giữa thụt trên nắp (chức năng:
+LID_PANEL_Z0, LID_PANEL_Z1 = -34.0, 34.0   # ray + chặn đứng trên mặt recess)
 LID_PANEL_D = 0.8                     # panel giữa thụt xuống
-LID_GRIP_X = (8.0, 130.0)             # 2 cụm rãnh cầm tay (âm, không phải gân nổi)
-LID_GRIP_N, LID_GRIP_W, LID_GRIP_P, LID_GRIP_D = 4, 2.2, 3.6, 1.0
+
+# --- cần trượt nam châm (chỉnh d từ NGOÀI hộp, không mở nắp) ---
+MAG_D, MAG_T = 10.0, 3.0          # [BOM] nam châm đĩa Ø10×3 N35 (mua ngoài, 4 cái)
+MAG_POCKET = MAG_D + 0.3          # hốc nhựa giữ nam châm
+TWR_X0, TWR_X1 = -18.0, -6.0      # cột nam châm trên carrier (local x, tâm -12)
+TWR_TOP = 63.5                    # đỉnh cột (khe 0.5 mm tới nóc buồng y=64)
+SLIDER_HW = 7.2                   # nửa rộng cần trượt (ray trên nắp ±7.5..9.5)
+SLIDER_TOP = 71.5                 # đỉnh cần: 0.8 chìm recess + 4.5 trên nắp
+RAIL_X0, RAIL_X1 = 8.0, 101.0     # 2 ray dẫn cần trên mặt nắp
+RAIL_TOP = 68.4                   # đỉnh ray
+SL_X_MIN, SL_X_MAX = 17.0, 92.0   # hành trình TÂM cần = 107 - d (d=90..15)
 
 LID_GROOVE_W = 2.0          # bề rộng rãnh labyrinth trên đỉnh thành
 LID_GROOVE_D = 4.0          # chiều sâu rãnh (Y_TOP-4 .. Y_TOP)
@@ -541,24 +563,16 @@ def build_body():
         cuts.append(box(4.0, 104.0, Y_FL - 1.4, Y_FL + 0.05, zw - 3.0, zw + 3.0))
     m = dif(m, cuts)
 
-    # bệ dày cục bộ để bắt vít M3 mù cho 4 chụp che sáng
-    pads, holes = [], []
+    # lỗ ra cáp xuyên vách + mồi vít cho chụp: 2 vít M3×8 tự khoan vào mồi
+    # Ø2.5 sâu 2.6 mm — lỗ vít trên chụp XUYÊN bích, vặn từ mặt ngoài
+    holes = []
     for zc in LANE_Z.values():
         for xs, sgn in ((X0, -1.0), (X_TOT, 1.0)):
-            pads.append(dif(box(xs, xs + sgn * PAD_T, Y0, HOOD_Y1,
-                                zc - PAD_HW, zc + PAD_HW),
-                            chamfer_box_v(min(xs, xs + sgn * PAD_T),
-                                          max(xs, xs + sgn * PAD_T),
-                                          zc - PAD_HW, zc + PAD_HW,
-                                          PAD_CHAM, Y0 - 0.5, HOOD_Y1 + 0.5)))
-            # Lối ra cáp phải khoan SAU khi đắp bệ, nếu không bệ bịt kín cổng.
-            holes.append(box(xs + sgn * (PAD_T + 0.5), xs - sgn * (X_IN0 + 0.5),
+            holes.append(box(xs - sgn * (WALL + 0.5), xs + sgn * 0.5,
                              EX_Y0, EX_Y1, zc - EX_ZW / 2, zc + EX_ZW / 2))
-            for dy in HOOD_BOLT_Y:
-                for dz in HOOD_BOLT_Z:
-                    holes.append(_tube("x", xs + sgn * (PAD_T + 0.3),
-                                       xs - sgn * 1.5, dy, zc + dz, 1.35, 16))
-    m = uni([m] + pads)
+            for dz in (-16.5, 16.5):
+                holes.append(_tube("x", xs + sgn * 0.3, xs - sgn * 2.6,
+                                   10.5, zc + dz, 1.25, 12))
 
     # tai bắt vít xuống đế
     ears = []
@@ -571,39 +585,71 @@ def build_body():
             holes.append(cyl_y(Y0 - 0.5, Y0 + 4.5, xc, zs + sg * 5.5, 1.75, 20))
     m = uni([m] + ears)
 
-    # --- xử lý tạo hình (thẩm mỹ): vát 4 góc đứng phần thân dưới, chỉ bóng
-    #     ngang, vát vành mép trên. Tất cả đều NẰM NGOÀI vùng rãnh labyrinth
-    #     (y = Y_TOP-LID_GROOVE_D .. Y_TOP) nên không đụng tới kín sáng.
-    style = chamfer_box_v(X0, X_TOT, Z0, Z1, BODY_CHAM, Y0 - 0.5, BODY_CHAM_Y1)
-    style += chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_TOP, 1.0)
-    for a, b in ((Z0 - 0.5, Z0 + SHADOW_D), (Z1 - SHADOW_D, Z1 + 0.5)):
-        style.append(box(8.0, X_TOT - 8.0, SHADOW_Y0, SHADOW_Y1, a, b))
-    for a, b in ((X0 - 0.5, X0 + SHADOW_D), (X_TOT - SHADOW_D, X_TOT + 0.5)):
-        style.append(box(a, b, SHADOW_Y0, SHADOW_Y1, Z0 + 8.0, Z1 - 8.0))
+    # --- xử lý tạo hình (thẩm mỹ, chỉ DETAIL="full"): vát 4 góc đứng phần thân
+    #     dưới, chỉ bóng ngang, vát vành mép trên. Tất cả đều NẰM NGOÀI vùng
+    #     rãnh labyrinth (y = Y_TOP-LID_GROOVE_D .. Y_TOP) nên không đụng kín sáng.
+    if DETAIL == "full":
+        style = chamfer_box_v(X0, X_TOT, Z0, Z1, BODY_CHAM, Y0 - 0.5, BODY_CHAM_Y1)
+        style += chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_TOP, 1.0)
+        for a, b in ((Z0 - 0.5, Z0 + SHADOW_D), (Z1 - SHADOW_D, Z1 + 0.5)):
+            style.append(box(8.0, X_TOT - 8.0, SHADOW_Y0, SHADOW_Y1, a, b))
+        for a, b in ((X0 - 0.5, X0 + SHADOW_D), (X_TOT - SHADOW_D, X_TOT + 0.5)):
+            style.append(box(a, b, SHADOW_Y0, SHADOW_Y1, Z0 + 8.0, Z1 - 8.0))
+    else:
+        style = []
     return dif(m, holes + style)
 
 
 def build_lid():
-    """Nắp labyrinth: tấm + gờ cắm vào rãnh (kể cả trên vách ngăn) + vấu chặn khung."""
+    """Nắp labyrinth: tấm + gờ cắm vào rãnh (kể cả trên vách ngăn) + vấu chặn khung.
+    Mặt trên có 2 KÊNH CẦN TRƯỢT NAM CHÂM (mỗi làn 1 kênh): panel giữa mỏng còn
+    2.2 mm (vùng cộng hưởng nam châm), 2 ray dẫn cần + 2 chặn đầu hành trình +
+    thước khắc d=15..90. Cần trượt chỉnh carrier LED từ NGOÀI hộp — KHÔNG còn
+    cửa hatch nào trên nắp (kín sáng tuyệt đối, không thêm khe hở)."""
     m = box(X0, X_TOT, Y_TOP, Y_LID, Z0, Z1)
     m = uni([m] + _lid_groove_boxes(shrink=CLR / 2))
     tabs = [box(FRM_X0 - 2.4, FRM_X0 - 0.6, 56.0, Y_TOP, zc - 14.0, zc + 14.0)
             for zc in LANE_Z.values()]
     m = uni([m] + tabs)
 
-    # --- xử lý tạo hình: vát vành mép trên, panel giữa thụt 0.8 mm, hai cụm
-    #     rãnh cầm tay ÂM (thay cho 3 gân nổi cũ — gân nổi vừa xấu vừa vướng).
-    cuts = chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_LID, LID_CHAM)
-    cuts.append(box(LID_PANEL_X0, LID_PANEL_X1, Y_LID - LID_PANEL_D, Y_LID + 0.6,
-                    LID_PANEL_Z0, LID_PANEL_Z1))
-    cuts += chamfer_edge_top(LID_PANEL_X0, LID_PANEL_X1, LID_PANEL_Z0, LID_PANEL_Z1,
-                             Y_LID, LID_PANEL_D, out=True)
-    for gx in LID_GRIP_X:
-        for i in range(LID_GRIP_N):
-            a = gx + i * LID_GRIP_P
-            cuts.append(box(a, a + LID_GRIP_W, Y_LID - LID_GRIP_D, Y_LID + 0.6,
-                            LID_PANEL_Z0, LID_PANEL_Z1))
-    return dif(m, cuts)
+    # panel giữa thụt 0.8 mm — mặt recess chức năng: ray/chặn đứng trên đó,
+    # vùng mỏng 2.2 mm đúng vị trí cộng hưởng nam châm carrier ↔ cần trượt
+    m = dif(m, [box(LID_PANEL_X0, LID_PANEL_X1, Y_LID - LID_PANEL_D, Y_LID + 0.6,
+                    LID_PANEL_Z0, LID_PANEL_Z1)])
+
+    # 2 kênh cần trượt: ray dẫn 2 bên mỗi làn + chặn trước/sau hành trình
+    add = []
+    for zc in LANE_Z.values():
+        add.append(box(RAIL_X0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
+                       zc - 9.5, zc - 7.5))
+        add.append(box(RAIL_X0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
+                       zc + 7.5, zc + 9.5))
+        add.append(box(RAIL_X0, 9.0, Y_LID - 0.8, RAIL_TOP,
+                       zc - 7.5, zc + 7.5))          # chặn trước (d=90)
+        add.append(box(100.0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
+                       zc - 7.5, zc + 7.5))          # chặn sau (d=15)
+    m = uni([m] + add)
+
+    # thước khắc d=15..90 trên sàn recess, NGOÀI ray — tâm vạch c = 107 - d;
+    # vạch to: Đỏ d=25 / IR d=85 (vị trí mặc định)
+    cuts = []
+    for ch, zc in LANE_Z.items():
+        s = LANE_SIGN[ch]
+        for d in range(15, 91, 5):
+            c = 107.0 - d
+            big = (d == 25) if ch == "red" else (d == 85)
+            w = 0.6 if big else 0.3
+            dep = 0.8 if big else 0.4
+            cuts.append(box(c - w, c + w, Y_LID - 0.8 - dep, Y_LID - 0.8 + 0.05,
+                            zc + s * 9.9, zc + s * 11.1))
+    m = dif(m, cuts)
+
+    if DETAIL == "full":
+        cuts = chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_LID, LID_CHAM)
+        cuts += chamfer_edge_top(LID_PANEL_X0, LID_PANEL_X1, LID_PANEL_Z0, LID_PANEL_Z1,
+                                 Y_LID, LID_PANEL_D, out=True)
+        return dif(m, cuts)
+    return m
 
 
 def build_shaft():
@@ -621,10 +667,17 @@ def build_shaft():
 
 
 def build_carrier():
-    """Khối trượt mang LED: lỗ D ôm trục, kẹp xẻ rãnh + vít M3, loa che sáng 45°.
+    """Khối trượt mang LED: lỗ D ôm trục, TRƯỢT TỰ DO (bỏ kẹp xẻ + vít M3),
+    loa che sáng 45°. Dẫn động từ NGOÀI hộp bằng cần trượt nam châm: trên lưng
+    carrier có CỘT NAM CHÂM (tâm local x=-12 -> tâm cột thế giới = x_front - 12,
+    đỉnh y=TWR_TOP, khe 0.5 mm tới nóc buồng) chứa nam châm đĩa Ø10×3 N35 ép
+    khít vào hốc mù mở trên đỉnh cột (60.3..63.3, môi 0.2 mm giữ) + 1 giọt keo.
     Hệ cục bộ: mặt trước carrier x=0; trục trượt y=SH_Y,z=0; trục quang y=Y_AX,z=0."""
     m = box(-CAR_L, 0.0, CAR_Y0, CAR_Y1, -CAR_ZW / 2, CAR_ZW / 2)
     m = uni([m, frustum_x(0.0, COLLAR_L, Y_AX, 0.0, 5.2, 2.1, 40)])
+    # cột nam châm trên lưng carrier + hốc mù giữ nam châm Ø10×3 (mở trên đỉnh)
+    m = uni([m, box(TWR_X0, TWR_X1, CAR_Y1, TWR_TOP, -6.0, 6.0)])
+    m = dif(m, [cyl_y(60.3, TWR_TOP + 0.1, -12.0, 0.0, MAG_POCKET / 2, 32)])
     dbore = dif(cyl_x(-CAR_L - 0.5, 0.5, SH_Y, 0.0, SH_R + CLR, 40),
                 [box(-CAR_L - 1, 1, SH_FLAT_Y + CLR, SH_Y + SH_R + 2,
                      -SH_R - 2, SH_R + 2)])
@@ -632,12 +685,31 @@ def build_carrier():
             cyl_x(-9.0, COLLAR_L + 0.2, Y_AX, 0.0, 1.65, 32),        # thân LED Ø3.0 +0.3
             cyl_x(-10.4, -9.0, Y_AX, 0.0, 2.05, 32),                 # hốc vành LED Ø3.8
             cyl_x(-CAR_L - 0.5, -10.4, Y_AX, 0.0, 2.8, 32),          # khoang chân/dây
-            box(-18.0, -4.0, CAR_Y0 - 0.5, SH_Y, -0.9, 0.9),         # rãnh xẻ kẹp
-            cyl_z(-CAR_ZW / 2 - 0.5, CAR_ZW / 2 + 0.5, -11.0, 9.4, 1.75, 20),
-            cyl_z(2.4, CAR_ZW / 2 + 0.5, -11.0, 9.4, 3.3, 20),       # hốc đầu vít M3
-            box(-CAR_L - 0.5, -CAR_L + 5.0, CAR_Y0 + 1.0, CAR_Y0 + 5.0, -3.0, 3.0),
-            box(-2.2, -0.6, CAR_Y1 - 1.4, CAR_Y1 + 0.5, -1.2, 1.2)]  # vạch chỉ vị trí
+            box(-CAR_L - 0.5, -CAR_L + 5.0, CAR_Y0 + 1.0, CAR_Y0 + 5.0, -3.0, 3.0)]
     return dif(m, cuts)
+
+
+def build_mag_slider():
+    """Cần trượt nam châm — chỉnh d từ NGOÀI hộp, KHÔNG mở nắp (thay 2 cửa hatch).
+    Nam châm đĩa Ø10×3 N35 trong cần ↔ nam châm trong cột carrier cộng hưởng
+    XUYÊN nắp 2.2 mm (vùng recess mỏng trên nắp) — hộp vẫn KÍN SÁNG tuyệt đối
+    vì cơ cấu không thêm khe hở nào. Hệ cục bộ: z=0 = tâm làn quang, x=0 = TÂM
+    cần; đặt thế giới: tâm cần x = 107 - d (d=15..90 -> x=92..17, trùng thước
+    khắc trên nắp). Khối 16×14×5.3 trượt giữa 2 ray (khe 0.3/ray), đáy có hốc
+    mù giữ nam châm (nam châmflush mặt đáy, nóc hốc dày 0.3 mm), mặt trên khắc
+    vạch chỉ dọc tim + 2 rãnh ngón tay để kéo."""
+    m = box(-8, 8, Y_LID - 0.8, SLIDER_TOP, -SLIDER_HW, SLIDER_HW)
+    # hốc nam châm đục từ ĐÁY (nam châmflush mặt đáy, nóc 0.3 mm giữ)
+    m = dif(m, [cyl_y(Y_LID - 0.8, Y_LID - 0.8 + MAG_T + 0.3,
+                      0, 0, MAG_POCKET / 2, 32)])
+    # vạch chỉ dọc tim + 2 rãnh ngón tay (khắc trên mặt trên)
+    m = dif(m, [box(-0.4, 0.4, SLIDER_TOP - 0.4, SLIDER_TOP + 0.05,
+                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1),
+                box(-5, -3, SLIDER_TOP - 0.8, SLIDER_TOP + 0.05,
+                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1),
+                box(3, 5, SLIDER_TOP - 0.8, SLIDER_TOP + 0.05,
+                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1)])
+    return m
 
 
 def x_front(ch, d=None):
@@ -680,34 +752,42 @@ def build_aperture(kind):
         m = dif(m, [cyl_x(-0.5, AP_T + 0.5, Y_AX, 0.0, r, 48)])
     n = {"blank": 0, "d2": 1, "d5": 2, "d16": 3}[kind]                # khắc mã nhận dạng
     marks = [box(-0.1, 0.7, 61.0, 62.2, -8.0 + 3.0 * i, -6.8 + 3.0 * i) for i in range(n)]
-    return dif(m, marks) if marks else m
+    if DETAIL != "full" or not marks:
+        return m
+    return dif(m, marks)
 
 
 def build_hood(sgn):
-    """Chụp che sáng lối ra cáp: ánh sáng phải quay 90° hai lần mới tới lỗ vách.
+    """Chụp che sáng lối ra cáp — bản lắp bằng VÍT NGOÀI (bản cũ có lỗi:
+    lỗ vít chỉ thông từ ruột chụp, mặt ngoài bịt kín nên không vặn được).
+
+    Cấu trúc: BÍCH PHẲNG áp mặt ngoài vách (có 2 lỗ vít M3 xuyên, mặt ngoài
+    bích luôn tự do để vặn) + ỐNG nhô ra ngoài che lỗ cáp. Cáp luồn qua KHE
+    SÀN ở đầu xa ống — ánh sáng ngoài phải quay 90° hai lần mới tới lỗ vách.
     sgn=+1 lắp ở thành +X (cáp OPT101); sgn=-1 ở thành -X (cáp LED)."""
-    HW = EX_ZW / 2 + 8.0
-    a0 = 5.0                       # mặt ngoài bệ trên thân hộp
-    a1 = a0 + 4.0                  # mặt bích
-    a2 = a1 + HOOD_D + HOOD_T
+    BRIM_T, TUBE_T, TUBE_D = 3.0, 2.5, 12.5   # bích / tường ống / sâu ống
+    HW = EX_ZW / 2 + 8.0                       # 18 — nửa rộng chụp
+    VW = 10.5                                  # nửa rộng lỗ giữa bích (⊇ lỗ cáp ±10)
 
     def bx(u0, u1, y0, y1, z0, z1):
         return box(sgn * u0, sgn * u1, y0, y1, z0, z1)
 
-    m = bx(a0, a2, HOOD_Y0, HOOD_Y1, -HW, HW)
-    # Lối cáp là KHE Ở SÀN đầu xa, không phải cửa mặt ngoài: ánh sáng ngoài muốn
-    # tới lỗ vách phải qua khe hở 3 mm dưới chụp -> ngoặt 90 độ lên -> ngoặt 90
-    # độ theo +X. Ít cửa hơn và bẻ góc nhiều hơn so với cửa mặt ngoài trước đây.
-    cuts = [bx(a0 - 0.5, a2 - HOOD_T, HOOD_Y0 + HOOD_T, HOOD_Y1 - HOOD_T,
-               -HW + HOOD_T, HW - HOOD_T),
-            bx(a2 - HOOD_T - HOOD_SLOT_L, a2 - HOOD_T, HOOD_Y0 - 0.5,
-               HOOD_Y0 + HOOD_T + 0.5, -HOOD_SLOT_HW, HOOD_SLOT_HW)]
-    for dy in HOOD_BOLT_Y:
-        for dz in HOOD_BOLT_Z:
-            cuts.append(_tube("x", sgn * (a0 - 0.5), sgn * (a1 + 0.5), dy, dz, 1.75, 16))
-    u0, u1 = sorted((sgn * a1, sgn * a2))            # phần nhô ra ngoài bệ
-    cuts += chamfer_box_v(u0, u1, -HW, HW, HOOD_CHAM, HOOD_Y0 - 0.5, HOOD_Y1 + 0.5)
-    cuts += chamfer_edge_top(u0, u1, -HW, HW, HOOD_Y1, HOOD_CHAM)
+    # lỗ vít: y=10.5 (giữa lỗ cáp 6..16), z=±16.5 (vành bích z 10.5..18)
+    bolt_y, bolt_z = 10.5, HW - 1.5
+
+    m = bx(0.0, BRIM_T + TUBE_D, HOOD_Y0, HOOD_Y1, -HW, HW)
+    cuts = [
+        # ruột ống (phủ lỗ cáp vách y 6..16, z ±10)
+        bx(-0.5, BRIM_T + TUBE_D - TUBE_T, 5.5, 21.5, -VW - 5.0, VW + 5.0),
+        # lỗ giữa bích thông xuống ruột (⊇ lỗ cáp)
+        bx(-0.5, BRIM_T + 0.5, 5.5, 16.5, -VW, VW),
+        # khe sàn đầu ống — cáp luồn xuống, ánh sáng ngoài phải gập 2 lần góc
+        bx(BRIM_T + TUBE_D - 5.0, BRIM_T + TUBE_D + 0.5,
+           HOOD_Y0 - 0.5, 6.0, -6.5, 6.5),
+        # 2 lỗ vít M3 xuyên bích — vặn từ MẶT NGOÀI (z=±16.5 là vành bích đặc)
+        _tube("x", sgn * -0.5, sgn * (BRIM_T + 0.5), bolt_y, bolt_z, 1.7, 16),
+        _tube("x", sgn * -0.5, sgn * (BRIM_T + 0.5), bolt_y, -bolt_z, 1.7, 16),
+    ]
     return dif(m, cuts)
 
 
@@ -719,9 +799,13 @@ def build_base(half):
     z0, z1 = (BASE_Z0, 0.0) if neg else (0.0, BASE_Z1)
     m = box(BASE_X0, BASE_X1, -BASE_T, 0.0, z0, z1)
     zr = (z0, z0 + 5.0) if neg else (z1 - 5.0, z1)
-    add = [box(BASE_X0, BASE_X0 + 5.0, -BASE_T - RIB_H, -BASE_T, z0, z1),
-           box(BASE_X1 - 5.0, BASE_X1, -BASE_T - RIB_H, -BASE_T, z0, z1),
-           box(BASE_X0, BASE_X1, -BASE_T - RIB_H, -BASE_T, zr[0], zr[1])]
+    # Gân chu vi dưới đế (chỉ DETAIL="full"): bỏ ở simple để đế là tấm phẳng
+    # 4 mm — in không phải bridge qua khoảng trống giữa các gân.
+    add = []
+    if DETAIL == "full":
+        add = [box(BASE_X0, BASE_X0 + 5.0, -BASE_T - RIB_H, -BASE_T, z0, z1),
+               box(BASE_X1 - 5.0, BASE_X1, -BASE_T - RIB_H, -BASE_T, z0, z1),
+               box(BASE_X0, BASE_X1, -BASE_T - RIB_H, -BASE_T, zr[0], zr[1])]
     holes = []
     if neg:                                    # trụ đỡ Pi 4B (M2.5) + driver (M3)
         for dx in (0.0, PI_HOLE_PX):
@@ -738,17 +822,19 @@ def build_base(half):
         zs, sg = (Z0, -1.0) if neg else (Z1, 1.0)
         add.append(cyl_y(-BASE_T - RIB_H, -BASE_T, xc, zs + sg * 5.5, 4.6, 24))
         holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, zs + sg * 5.5, 1.4, 16))
-    for xc in (10.0, 77.0, 144.0):             # mộng vuông nối 2 nửa
+    for xc in (10.0, 43.0, 77.0, 111.0, 144.0):
+        # 5 mộng vuông nối 2 nửa (vít dọc Y không thể bắt chéo đường nối z=0 —
+        # đã bỏ 2 lỗ vít vô dụng); 4 vít M3 bắt hộp xuống đế kẹp chốt cụm
         if neg:
             add.append(box(xc - 11.0, xc + 11.0, -BASE_T + 0.8, -0.8, 0.0, 9.0))
         else:
             holes.append(box(xc - 11.3, xc + 11.3, -BASE_T + 0.5, -0.5, -0.2, 9.3))
-    for xc in (43.0, 111.0):                   # 2 vít M3 xiết mối nối
-        holes.append(cyl_y(-BASE_T - 0.5, 0.5, xc, -6.0 if neg else 6.0, 1.75, 16))
     m = uni([m] + add)
 
-    # --- xử lý tạo hình: vát 2 góc ngoài + vành mép trên (mép z=0 để vuông
-    #     vì đó là mặt ghép 2 nửa).
+    # --- xử lý tạo hình (chỉ DETAIL="full"): vát 2 góc ngoài + vành mép trên
+    #     (mép z=0 để vuông vì đó là mặt ghép 2 nửa).
+    if DETAIL != "full":
+        return dif(m, holes)
     ze = z0 if neg else z1
     sz = 1.0 if neg else -1.0                  # hướng vào trong tấm đế
     style = [chamfer_v(BASE_X0, ze, 1.0, sz, BASE_CHAM, -BASE_T - RIB_H - 0.5, 0.5),
@@ -1187,20 +1273,30 @@ def collect_parts():
                           label=label or name, subs=subs, printable=printable))
 
     add("body", build_body(), C_BODY, [0, 0, 0], label="Thân hộp tối (2 làn quang)")
-    add("lid", build_lid(), C_LID, [0, 42, 0], flip=True, label="Nắp labyrinth")
+    add("lid", build_lid(), C_LID, [0, 42, 0], flip=True,
+        label="Nắp labyrinth (2 ray cần trượt nam châm)")
     for ch, cc, vn in (("red", C_CAR_R, "Đỏ"), ("ir", C_CAR_I, "IR")):
         add(f"slide_shaft_{ch}", _place_shaft(ch), C_SHAFT, [-60, 0, 0],
-            label=f"Trục trượt D Ø8 — làn {vn}")
-        add(f"led_carrier_{ch}", _place_carrier(ch), cc, [-46, 0, 0], flip=True,
-            label=f"Carrier LED {vn}")
+            printable=(ch == "red"),
+            label="Trục trượt D Ø8 — in 2 bản (dùng file bản đỏ)")
+        add(f"led_carrier_{ch}", _place_carrier(ch), cc, [-46, 0, 0],
+            printable=(ch == "red"),
+            label=f"Carrier LED {vn} (trượt tự do, chỉnh từ ngoài bằng cần trượt nam châm)")
         add(f"led_{ch}", None, C_LEDR if ch == "red" else C_LEDI, [-46, 0, 0],
             label=("LED Đỏ 622nm" if ch == "red" else "LED IR 875nm"),
             printable=False, subs=_vis_subs(led_vis, ch, x_front(ch)))
+    for ch, vn in (("red", "Đỏ"), ("ir", "IR")):
+        m = build_mag_slider()
+        m.apply_transform(translation_matrix(
+            [107.0 - D_DEFAULT[ch], 0.0, LANE_Z[ch]]))
+        add(f"mag_slider_{ch}", m, 0x5a6a7c, [0, 30, 0],
+            printable=(ch == "red"),
+            label=f"Cần trượt nam châm — làn {vn} (kèm nam châm Ø10×3 N35)")
     add("frame", build_frame(), C_FRAME, [26, 0, 0], label="Khung giữ board 5×7")
     for kind, kl in (("blank", "bịt kín"), ("d2", "Ø2 mm"), ("d5", "Ø5 mm"), ("d16", "Ø16 mm")):
         for ch in ("red", "ir"):
             m = build_aperture(kind)
-            m.apply_transform(translation_matrix([AP_X0, 0.0, LANE_Z[ch]]))
+            m.apply_transform(translation_matrix([AP_X0 + 0.2, 0.0, LANE_Z[ch]]))
             add(f"aperture_{ch}_{kind}", m, C_APER, [0, 26, 0], printable=(ch == "red"),
                 label=f"Khẩu độ {'Đỏ' if ch == 'red' else 'IR'} {kl}")
     for ch in ("red", "ir"):
@@ -1217,7 +1313,11 @@ def collect_parts():
     add("base_pos", build_base("pos"), C_BASE, [0, -26, 10],
         label="Đế — nửa đối diện (dưới hộp tối)")
 
-    # ---- mua sẵn / chỉ để nhìn (không xuất STL) ----
+    # ---- mua sẳn / chỉ để nhìn (không xuất STL) ----
+    # Mọi phần dưới đây đều là hình minh hoạ (printable=False) — bỏ hẳn khi
+    # INCLUDE_VISUAL=False để build nhanh và model.json gọn (chỉ hình in).
+    if not INCLUDE_VISUAL:
+        return parts
     for ch, lbl in (("ir", "OPT101 #1 — IR → A0"), ("red", "OPT101 #2 — Đỏ → A2")):
         add(f"opt101_{ch}", None, C_PCB_PU, [40, 0, 0], label=lbl,
             printable=False, subs=_vis_subs(opt101_vis, ch))
@@ -1289,9 +1389,16 @@ DRVLABELS = [
 ]
 
 
-def export(parts):
+def export(parts, write_model=True):
     os.makedirs(STL_DIR, exist_ok=True)
     model = dict(units="mm", parts=[])
+    for p in parts:
+        if SCALE != 1.0:
+            if p.get("explode"):
+                p["explode"] = [v * SCALE for v in p["explode"]]
+            for s in (p.get("subs") or [{"mesh": p["mesh"]}]):
+                if s.get("mesh") is not None:
+                    s["mesh"].apply_scale(SCALE)
     for p in parts:
         subs = p.get("subs") or [dict(mesh=p["mesh"], color=p["color"])]
         if p.get("printable", True):
@@ -1325,321 +1432,29 @@ def export(parts):
             ok = "watertight" if m0.is_watertight else "!! NOT WATERTIGHT"
             print(f"  {p['name']:<22} tris={len(m0.faces):>6}  {ok}")
         else:
-            print(f"  {p['name']:<22} (visual, {len(subs)} sub-materials)  — not exported to STL")
-    with open(os.path.join(OUT, "model.json"), "w") as fh:
-        json.dump(model, fh)
-    print(f"  model.json: {os.path.getsize(os.path.join(OUT, 'model.json'))/1e6:.1f} MB")
+            # bản _ir của chi tiết in dùng chung STL bản _red (dedup) -> ghi rõ
+            twin = p["name"][:-3] + "_red" if p["name"].endswith("_ir") else None
+            named = {q["name"]: q for q in parts}
+            dedup = (twin is not None and twin in named
+                     and named[twin].get("printable", True))
+            note = (" — không xuất STL (dùng chung file bản _red, in 2 bản)"
+                    if dedup else "  — not exported to STL")
+            print(f"  {p['name']:<22} (visual, {len(subs)} sub-materials){note}")
+    if write_model:
+        with open(os.path.join(OUT, "model.json"), "w") as fh:
+            json.dump(model, fh)
+        print(f"  model.json: {os.path.getsize(os.path.join(OUT, 'model.json'))/1e6:.1f} MB")
 
 
 # ============================================================================
 # 7. VIEWER (three.js offline, nhúng sẵn vendor/*.js)
 # ============================================================================
-VIEWER_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="utf-8">
-<title>PPG Simulator — mô hình 3D toàn hệ thống</title>
-<style>
- :root{--bg:#0d0f13;--panel:#161a22;--ink:#dfe5ee;--dim:#8b94a6;--acc:#e8b64c;}
- *{box-sizing:border-box}
- body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,'Segoe UI',Roboto,sans-serif;overflow:hidden}
- #view{position:fixed;inset:0}
- .panel{position:fixed;top:12px;left:12px;width:300px;max-height:calc(100vh - 24px);overflow:auto;
-   background:var(--panel);border:1px solid #2a3140;border-radius:12px;padding:14px 16px;
-   box-shadow:0 8px 30px rgba(0,0,0,.5)}
- h1{font-size:15px;margin:0 0 2px} .sub{color:var(--dim);font-size:12px;margin-bottom:10px}
- .row{display:flex;align-items:center;gap:8px;margin:8px 0}
- .row label{flex:1;font-size:13px}
- input[type=range]{flex:1.4;accent-color:var(--acc)}
- button{background:#232a38;border:1px solid #35405a;color:var(--ink);border-radius:8px;
-   padding:5px 10px;cursor:pointer;font-size:12.5px;margin:2px}
- button:hover{background:#2c3549} button.on{background:var(--acc);color:#111;border-color:var(--acc)}
- fieldset{border:1px solid #2a3140;border-radius:10px;margin:10px 0;padding:8px 10px}
- legend{color:var(--dim);font-size:12px;padding:0 4px}
- .part{display:flex;align-items:center;gap:8px;padding:2.5px 0;font-size:13px}
- .sw{width:13px;height:13px;border-radius:4px;border:1px solid #0008;flex:none}
-  .hint{color:var(--dim);font-size:11.5px;margin-top:10px;line-height:1.5}
-  select.sel{flex:1.4;background:#232a38;color:var(--ink);border:1px solid #35405a;
-    border-radius:8px;padding:4px 6px;font-size:12.5px}
- #hud{position:fixed;right:14px;bottom:12px;color:var(--dim);font-size:12px}
-</style>
-</head>
-<body>
-<div id="view"></div>
-<div class="panel">
-  <h1>PPG Simulator — mô hình 3D toàn hệ thống</h1>
-  <div class="sub">Hộp tối 2 làn quang (Đỏ -Z / IR +Z) · board 5×7 + 2× OPT101 ·
-  đế chung Pi 4 + Grove HAT + driver + 2× MCP4725<br>
-  <span style="color:#ff6060">■</span> LED Đỏ &nbsp;
-  <span style="color:#8a5cf0">■</span> LED IR &nbsp;
-  <span style="color:#66ccff">■</span> cửa sổ OPT101 &nbsp;
-  <span style="color:#e8e4d8">■</span> cáp Grove</div>
-  <div class="row"><label>Tách rời (exploded)</label><input id="explode" type="range" min="0" max="100" value="0"></div>
-  <div class="row"><label>Mặt cắt theo X</label><input id="clip" type="range" min="0" max="100" value="100"></div>
-  <div class="row">
-    <button id="bTrans">Trong suốt thân</button>
-    <button id="bWire">Khung lưới</button>
-    <button id="bAxes">Trục quang</button>
-  </div>
-  <div class="row">
-    <button id="bAuto">Tự xoay</button>
-    <button data-v="iso">Góc iso</button><button data-v="front">Trước</button>
-  </div>
-  <div class="row">
-    <button data-v="top">Trên</button>
-    <button data-v="inIR">Trong làn IR</button><button data-v="inRed">Trong làn Đỏ</button>
-  </div>
-  <div class="row"><button data-v="elec">Khối điện tử</button><button data-v="top2">Nhìn hộp từ nóc</button></div>
-  <fieldset><legend>Mô phỏng quang học — mô hình PPG (Allen 2007)</legend>
-    <div class="row"><button id="bSim">🔦 Bật LED phát sáng</button><button id="bLbl">🏷️ Nhãn linh kiện</button></div>
-    <div class="row"><label>Nhịp tim (BPM)</label><input id="hr" type="range" min="40" max="180" value="75"></div>
-    <div class="row"><label>Chỉ số tưới PI (%)</label><input id="pi" type="range" min="5" max="200" value="30"></div>
-    <div class="row"><label>SpO₂ (%)</label><input id="spo2" type="range" min="85" max="100" value="98"></div>
-    <div class="row"><label>Nhịp thở (/phút)</label><input id="rr" type="range" min="8" max="30" value="16"></div>
-    <div class="row"><label>Độ sáng hiển thị</label><input id="ledPow" type="range" min="0" max="100" value="60"></div>
-    <div class="row"><label>R cảm biến IR (E→GND)</label><select id="rsIr" class="sel"></select></div>
-    <div class="row"><label>R cảm biến Đỏ (E→GND)</label><select id="rsRed" class="sel"></select></div>
-    <canvas id="ppgPrev" width="268" height="64" style="width:100%;background:#0b0e13;border:1px solid #2a3140;border-radius:6px;margin-top:4px"></canvas>
-    <div id="iInfo" class="hint" style="margin-top:4px"></div>
-  </fieldset>
-  <fieldset><legend>Bộ phận (bấm để ẩn/hiện)</legend><div id="parts"></div></fieldset>
-  <div class="hint">
-    Kéo chuột: xoay • Lăn chuột: thu phóng • Chuột phải: di chuyển.<br>
-    <b>Mặt cắt</b>: trượt để cắt mô hình theo phương X.<br>
-    <b>Tách rời</b>: kéo để xem thứ tự lắp ráp.<br>
-    Kích thước đế tổng thể <b>__DIM__ mm</b> (đơn vị mô hình: mm).<br>
-    Khoảng cách mặc định: Đỏ d=25mm • IR d=85mm (chóp LED → cửa sổ OPT101).
-  </div>
-</div>
-<div id="hud">docs/system_3d / build_system.py</div>
-<script>/* three.js (inlined, MIT) */__THREE__</script>
-<script>/* OrbitControls (inlined, MIT) */__ORBIT__</script>
-<script>const MODEL = __MODEL__;</script>
-<script>
-/* base64 -> ArrayBuffer, roi DIEN GIAI LAI bit-pattern (khong duoc ghep so hoc:
-   ghep 4 byte thanh so nguyen se bien float 25.0 thanh 1103101952). */
-function b64buf(b){const s=atob(b),n=s.length,u=new Uint8Array(n);
- for(let i=0;i<n;i++)u[i]=s.charCodeAt(i);return u.buffer}
-function b64f32(b){return new Float32Array(b64buf(b))}
-function b64u32(b){return new Uint32Array(b64buf(b))}
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x12151b);
-const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.5,4000);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
-renderer.outputEncoding=THREE.sRGBEncoding;
-renderer.localClippingEnabled=true;document.getElementById('view').appendChild(renderer.domElement);
-const key=new THREE.DirectionalLight(0xffffff,1.2);key.position.set(160,260,180);scene.add(key);
-const fill=new THREE.DirectionalLight(0x9db4ff,.55);fill.position.set(-200,-80,-160);scene.add(fill);
-const rim=new THREE.DirectionalLight(0xffc46a,.4);rim.position.set(-120,180,-140);scene.add(rim);
-scene.add(new THREE.AmbientLight(0xffffff,.6));
-const controls=new THREE.OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true;controls.dampingFactor=.08;
-const bb=new THREE.Box3();
-MODEL.parts.forEach(p=>{bb.expandByPoint(new THREE.Vector3(p.bounds[0],p.bounds[1],p.bounds[2]));
-  bb.expandByPoint(new THREE.Vector3(p.bounds[3],p.bounds[4],p.bounds[5]))});
-const ctr=bb.getCenter(new THREE.Vector3()),rad=bb.getSize(new THREE.Vector3()).length()/2;
-const partsGroup=new THREE.Group();scene.add(partsGroup);
-const meshes={},basePos={};
-const clipPlane=new THREE.Plane(new THREE.Vector3(-1,0,0),1e6);
-MODEL.parts.forEach(p=>{
-  const grp=new THREE.Group();
-  (p.subs||[{color:p.color,vbase64:p.vbase64,fbase64:p.fbase64}]).forEach(s=>{
-    const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.BufferAttribute(b64f32(s.vbase64),3));
-    g.setIndex(new THREE.BufferAttribute(b64u32(s.fbase64),1));
-    g.computeVertexNormals();
-    const trans=!!s.opacity&&s.opacity<1;
-    const mp={color:new THREE.Color(s.color),roughness:.75,metalness:.15,
-      side:trans?THREE.FrontSide:THREE.DoubleSide,clippingPlanes:[clipPlane],
-      transparent:trans,opacity:s.opacity||1,depthWrite:!trans};
-    const mat=new THREE.MeshStandardMaterial(mp);
-    grp.add(new THREE.Mesh(g,mat));
-  });
-  grp.userData.explode=new THREE.Vector3(...p.explode);
-  partsGroup.add(grp);meshes[p.name]=grp;basePos[p.name]=new THREE.Vector3();
-});
-// optical axis helpers (lanes at z = ±19.25, optical axis y = 32)
-const axesGroup=new THREE.Group();scene.add(axesGroup);axesGroup.visible=false;
-function axisLine(z,col,label){
-  const g=new THREE.BufferGeometry().setFromPoints(
-    [new THREE.Vector3(3,32,z),new THREE.Vector3(121,32,z)]);
-  axesGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:col})));
-  const cv=document.createElement('canvas');cv.width=512;cv.height=64;const ctx=cv.getContext('2d');
-  ctx.font='bold 30px system-ui';ctx.fillStyle='#'+col.toString(16).padStart(6,'0');
-  ctx.fillText(label,6,42);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));
-  sp.scale.set(52,6.5,1);sp.position.set(148,42,z);axesGroup.add(sp);
-}
-axisLine(-19.25,0xff5555,'Đỏ 622nm → OPT101 → A2 (d=25mm)');
-axisLine(19.25,0x6688ff,'IR 875nm → OPT101 → A0 (d=85mm)');
-const grid=new THREE.GridHelper(560,56,0x223,0x1a2030);
-grid.position.set(75,-10.5,0);scene.add(grid);
-function setView(v){
-  const d=rad*1.4;
-  if(v==="inIR"){camera.position.set(6,32,19.25);controls.target.set(118,32,19.25);}
-  else if(v==="inRed"){camera.position.set(6,32,-19.25);controls.target.set(118,32,-19.25);}
-  else if(v==="elec"){camera.position.set(75,190,175);controls.target.set(75,8,0);}
-  else if(v==="top2"){camera.position.set(75,190,0.5);controls.target.set(75,10,0);}
-  else{
-    const P={iso:[ctr.x+d*.8,ctr.y+d*.65,ctr.z+d*.9],
-             front:[ctr.x+d*1.05,ctr.y,ctr.z+d*1.25],
-             top:[ctr.x,ctr.y+d*1.7,ctr.z+1]};
-    camera.position.set(...P[v]);controls.target.copy(ctr);}
-  controls.update();
-}
-document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>setView(b.dataset.v));
-setView('iso');
-const $=id=>document.getElementById(id);
-$('explode').oninput=e=>{const k=e.target.value/100;
-  for(const n in meshes)meshes[n].position.copy(basePos[n]).addScaledVector(meshes[n].userData.explode,k);};
-$('clip').oninput=e=>{clipPlane.constant=-24+e.target.value/100*(174+24);};
-function wireAll(on){MODEL.parts.forEach(p=>meshes[p.name].children.forEach(m=>m.material.wireframe=on));}
-$('bWire').onclick=e=>{const on=!meshes[MODEL.parts[0].name].children[0].material.wireframe;
-  wireAll(on);e.target.classList.toggle('on',on);};
-let bodyX=true;
-function bodyOpacity(o){const m=meshes['body'].children[0].material;m.transparent=true;
-  m.opacity=o;m.depthWrite=o>.9;m.side=o<1?THREE.FrontSide:THREE.DoubleSide;}
-bodyOpacity(.55);
-$('bTrans').onclick=e=>{bodyX=!bodyX;bodyOpacity(bodyX?.55:1);e.target.classList.toggle('on',bodyX);};
-$('bTrans').classList.add('on');
-let auto=false;$('bAuto').onclick=e=>{auto=!auto;e.target.classList.toggle('on',auto);};
-$('bAxes').onclick=e=>{axesGroup.visible=!axesGroup.visible;e.target.classList.toggle('on',axesGroup.visible);};
-const list=$('parts');
-MODEL.parts.forEach(p=>{
-  const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;
-  cb.onchange=()=>meshes[p.name].visible=cb.checked;
-  const sw=document.createElement('span');sw.className='sw';
-  sw.style.background='#'+p.color.toString(16).padStart(6,'0');
-  const lab=document.createElement('span');lab.textContent=p.label||p.name;lab.style.flex='1';
-  const row=document.createElement('div');row.className='part';row.append(cb,sw,lab);
-  list.append(row);
-});
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-/* ========== MÔ PHỎNG QUANG HỌC — PORT TỪ models/ppg_model.py ==========
-   Mô hình 3 thành phần Gaussian (Allen 2007):
-     đỉnh tâm thu  tại 15% chu kỳ (σ=0.055)
-     chỗ cắt dicrotic tại 30%      (σ=0.020, bị TRỪ)
-     đỉnh tâm trương tại 40%       (σ=0.100, biên 0.4)
-   Chuẩn hoá (raw)/1.4 kẹp [0,1].  Ratio-of-ratios SpO2: R=(110−SpO2)/25 ∈[0.4,1.6],
-   AC_Đỏ = R·AC_IR (DC hai kênh bằng nhau). Điều biến hô hấp AM ±25%, BW ±0.6%.
-   Liên hệ nhịp: biên độ giảm ~3.2%/10 BPM trên 60. SpO2<94% làm mờ chỗ cắt. */
-const P={SYST_POS:.15,NOTCH_POS:.30,DIAS_POS:.40,SYST_W:.055,DIAS_W:.10,NOTCH_W:.02,
-         DIAS_RATIO:.4,NOTCH_DEPTH:.25,PULSE_MAX:1.4,FS:3.28,DC:1.5};
-const SIM={on:false,hr:75,pi:3.0,spo2:98,rr:16,pow:0.6,t:0,_sec:-1};
-const RSENSE={ir:82,red:100};
-function pulseShape(ph,df){ph=((ph%1)+1)%1;
-  const s=Math.exp(-((ph-P.SYST_POS)**2)/(2*P.SYST_W**2));
-  const d=P.DIAS_RATIO*Math.exp(-((ph-P.DIAS_POS)**2)/(2*P.DIAS_W**2));
-  const n=P.NOTCH_DEPTH*df*Math.exp(-((ph-P.NOTCH_POS)**2)/(2*P.NOTCH_W**2));
-  return Math.max(0,Math.min(1,(s+d-n)/P.PULSE_MAX));}
-function ppgAt(t){ // tín hiệu DAC (V) tại thời gian t (giây) — hàm thuần
-  const beat=60/SIM.hr, ph=(t%beat)/beat;
-  let df=1; if(SIM.spo2<94) df=1-0.6*Math.min(1,(94-SIM.spo2)/10);
-  const pulse=pulseShape(ph,df);
-  const R=Math.max(0.4,Math.min(1.6,(110-SIM.spo2)/25));
-  let acIr=SIM.pi/100*P.DC, acRed=R*acIr;
-  const hrF=Math.max(.7,1-.0032*Math.max(0,SIM.hr-60)); acIr*=hrF; acRed*=hrF;
-  const respRad=t*SIM.rr/60*2*Math.PI;
-  const am=1+.25*Math.sin(respRad);
-  const bw=.006*P.DC*(.33*Math.sin(t*.3*2*Math.PI)+.67*Math.sin(respRad));
-  const cl=v=>Math.max(0,Math.min(P.FS,v));
-  return {ir:cl(P.DC+acIr*pulse*am+bw), red:cl(P.DC+acRed*pulse*am+bw),
-          acIr:acIr*pulse*am, acRed:acRed*pulse*am};}
-// LED phát sáng: emissive trên thân LED (đỏ/IR)
-['led_red','led_ir'].forEach(n=>{const col=n==='led_red'?0xff3020:0x8a5cff;
-  meshes[n].children.forEach(m=>{m.material.emissive=new THREE.Color(col);
-    m.material.emissiveIntensity=0;});});
-// đèn điểm tại chóp LED chiếu sáng lòng hộp
-const ledLights={};
-ledLights.red=new THREE.PointLight(0xff3020,0,500,2);ledLights.red.position.set(95,32,-19.25);scene.add(ledLights.red);
-ledLights.ir=new THREE.PointLight(0x8a5cff,0,500,2);ledLights.ir.position.set(35,32,19.25);scene.add(ledLights.ir);
-// chùm sáng: ẩn mặc định, hiện khi mô phỏng
-if(meshes['beam_red'])meshes['beam_red'].visible=false;
-if(meshes['beam_ir'])meshes['beam_ir'].visible=false;
-// ---- điện trở cảm biến: 4 vòng màu theo mã 4 vạch (E12, ±5%) ----
-const DIG=['#1a1a1e','#7a4426','#c62828','#e07b1f','#e8c72e','#3d8b37','#2456a8','#7b3fb5','#8a8f98','#f2f0e6'];
-const GOLD='#c9a227';
-const E12=[10,12,15,18,22,27,33,39,47,56,68,82,100,120,150,180,220,270,330,390,470,560,680,1000];
-function bandCols(R){let m=0,v=R;while(v>=100){v/=10;m++;}
-  const d1=Math.floor(v/10),d2=Math.round(v-d1*10);
-  return [DIG[d1],DIG[d2],DIG[Math.min(9,m)],GOLD];}
-function updRsense(){for(const lane of['ir','red']){const c=bandCols(RSENSE[lane]);
-  meshes['rsense_'+lane].children.forEach((m,i)=>{if(i>=1&&i<=4)m.material.color.set(c[i-1]);});}
-  updIInfo();}
-// ---- nhãn linh kiện (sprite) ----
-const DRVLABELS=__DRVLABELS__;
-const lblGroup=new THREE.Group();lblGroup.visible=false;scene.add(lblGroup);
-DRVLABELS.forEach(L=>{const cv=document.createElement('canvas');cv.width=320;cv.height=52;
-  const c2=cv.getContext('2d');c2.fillStyle='rgba(13,15,19,.88)';c2.fillRect(2,2,316,48);
-  c2.strokeStyle='#e8b64c';c2.lineWidth=2;c2.strokeRect(2,2,316,48);
-  c2.fillStyle='#dfe5ee';c2.font='bold 21px system-ui';c2.fillText(L.text,14,33);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));
-  sp.scale.set(34,5.5,1);sp.position.set(L.pos[0],L.pos[1],L.pos[2]);lblGroup.add(sp);});
-$('bLbl').onclick=e=>{lblGroup.visible=!lblGroup.visible;
-  e.target.classList.toggle('on',lblGroup.visible);};
-// ---- đồ thị PPG 2 kênh trên canvas ----
-const pcv=$('ppgPrev'),pctx=pcv.getContext('2d');
-function drawPPG(){
-  const W=pcv.width,H=pcv.height,beat=60/SIM.hr;
-  pctx.clearRect(0,0,W,H);
-  pctx.strokeStyle='#222a38';pctx.lineWidth=1;
-  for(let i=0;i<=4;i++){pctx.beginPath();pctx.moveTo(0,H*i/4);pctx.lineTo(W,H*i/4);pctx.stroke();}
-  const draw=(col,ch)=>{pctx.beginPath();pctx.strokeStyle=SIM.on?col:'#4a5566';
-    pctx.lineWidth=1.8;
-    for(let i=0;i<W;i++){const s=ppgAt(i/W*beat*2.4);const v=s[ch]/P.FS;
-      const x=i,y=H-(H*0.92*v+2);i?pctx.lineTo(x,y):pctx.moveTo(x,y);}
-    pctx.stroke();};
-  draw('#8a5cff','ir');draw('#e85a4f','red');
-  pctx.fillStyle='#8b94a6';pctx.font='10px system-ui';
-  pctx.fillText(SIM.on?('IR (tím) & Đỏ (đỏ) theo PPG • '+(SIM.hr|0)+' BPM • PI '+SIM.pi.toFixed(1)+
-    '% • SpO2 '+SIM.spo2+'%'):'Bật "LED phát sáng" để xem hiệu ứng ánh sáng',6,12);
-}
-function updIInfo(){
-  const s=ppgAt(SIM.t);
-  $('iInfo').textContent='I_LED = V_DAC / R — IR: '+(s.ir/RSENSE.ir*1000).toFixed(1)+
-    ' mA (R='+RSENSE.ir+' Ω) · Đỏ: '+(s.red/RSENSE.red*1000).toFixed(1)+' mA (R='+RSENSE.red+' Ω)';
-}
-$('bSim').onclick=e=>{SIM.on=!SIM.on;e.target.classList.toggle('on',SIM.on);
-  $('bSim').textContent=SIM.on?'🔦 Tắt LED':'🔦 Bật LED phát sáng';drawPPG();};
-$('hr').oninput=e=>{SIM.hr=+e.target.value;drawPPG();};
-$('pi').oninput=e=>{SIM.pi=+e.target.value/10;drawPPG();};
-$('spo2').oninput=e=>{SIM.spo2=+e.target.value;drawPPG();};
-$('rr').oninput=e=>{SIM.rr=+e.target.value;drawPPG();};
-$('ledPow').oninput=e=>{SIM.pow=+e.target.value/100;};
-const rsSel={ir:$('rsIr'),red:$('rsRed')};
-E12.forEach(v=>{for(const lane of['ir','red']){const o=document.createElement('option');
-  o.value=v;o.textContent=v+' Ω';rsSel[lane].appendChild(o);}});
-rsSel.ir.value='82';rsSel.red.value='100';
-rsSel.ir.onchange=e=>{RSENSE.ir=+e.target.value;updRsense();};
-rsSel.red.onchange=e=>{RSENSE.red=+e.target.value;updRsense();};
-updRsense();drawPPG();
-let lastT=performance.now()/1000;
-(function loop(){requestAnimationFrame(loop);
-  const now=performance.now()/1000, dt=Math.min(.05,now-lastT); lastT=now; SIM.t+=dt;
-  if(auto){const t=Date.now()/3000;
-    camera.position.set(ctr.x+rad*1.5*Math.cos(t),ctr.y+rad*.8,ctr.z+rad*1.5*Math.sin(t));
-    camera.lookAt(ctr);}
-  // độ sáng LED ∝ I_LED = V_DAC / R_sense (chuẩn hoá 15 mA @ 1.5 V / 100 Ω)
-  const sig=SIM.on?ppgAt(SIM.t):null;
-  ['ir','red'].forEach(lane=>{
-    const s=sig?sig[lane]:0;
-    const k=SIM.on?Math.max(.05,Math.min(2.5,(s/RSENSE[lane])/0.015)):0;
-    const I=k*SIM.pow*1.3;
-    meshes['led_'+lane].children.forEach(m=>{m.material.emissiveIntensity=I;});
-    if(meshes['beam_'+lane]){meshes['beam_'+lane].visible=SIM.on&&I>0.02;
-      meshes['beam_'+lane].children.forEach(m=>{m.material.opacity=Math.min(.4,.04+.22*k*SIM.pow);});}
-    ledLights[lane].intensity=SIM.on?Math.min(4,k*SIM.pow*2.2):0;
-  });
-  if((now|0)!==SIM._sec){SIM._sec=now|0;updIInfo();}
-  controls.update();renderer.render(scene,camera);})();
-</script>
-</body>
-</html>
-"""
+
 
 
 def build_viewer():
+    with open(os.path.join(HERE, "viewer_template.html")) as f:
+        template = f.read()
     with open(os.path.join(HERE, "vendor", "three.min.js")) as f:
         three = f.read()
     with open(os.path.join(HERE, "vendor", "OrbitControls.js")) as f:
@@ -1648,7 +1463,7 @@ def build_viewer():
         model = f.read()
     dim = (f"{BASE_X1 - BASE_X0:.0f} × {Y_LID + BASE_T + RIB_H:.0f} × "
            f"{BASE_Z1 - BASE_Z0:.0f}")
-    html = (VIEWER_TEMPLATE
+    html = (template
             .replace("__THREE__", three)
             .replace("__ORBIT__", orbit)
             .replace("__MODEL__", model)
@@ -1660,20 +1475,241 @@ def build_viewer():
     print(f"  viewer.html: {os.path.getsize(path)/1e6:.1f} MB")
 
 
+# ============================================================================
+# 7b. GÓI IN BAMBU A1 (--bambu)
+# ============================================================================
+# Chỉ xuất CÁC CHI TIẾT HỘP TỐI cho máy in 3D (Bambu Lab A1, bàn 256x256):
+#   thân hộp (có sẵn lỗ luồn dây qua vách + khe khẩu độ + máng dây LED)
+#   + nắp labyrinth (2 ray cần trượt)  + trục + carrier + CẦN TRƯỢT NAM CHÂM
+#   + 4 tấm khẩu độ  + 2 chụp luồn dây chống sáng. BỎ phần đế/khung board —
+#   thêm lại khi cần bằng build thường (--stl-only).
+#   [BOM] mua ngoài 4 nam châm đĩa Ø10×3 N35 (2 vào carrier, 2 vào cần trượt).
+PRINT_SET = [  # (tên part, tên file xuất, xoay tư thế in)
+    ("body",              "01_than_hop_toi.stl",          None),
+    ("lid",               "02_nap_labyrinth.stl",         None),
+    ("slide_shaft_red",   "03_truc_truot_D.stl",          "shaft"),      # in 2
+    ("led_carrier_red",   "04_carrier_led.stl",           None),         # in 2 — đáy xuống bàn, cột nam châm hướng lên
+    ("mag_slider_red",    "05_can_truot_nam_cham.stl",    "slider"),     # in 2 — lật ngửa: hốc nam châm hở lên
+    ("hood_l_red",        "06_chup_luon_day_trai.stl",    None),
+    ("hood_r_red",        "07_chup_luon_day_phai.stl",    None),
+    ("aperture_red_blank","08_khau_do_biet.stl",          "lay_flat"),
+    ("aperture_red_d2",   "09_khau_do_lo2mm.stl",         "lay_flat"),
+    ("aperture_red_d5",   "10_khau_do_lo5mm.stl",         "lay_flat"),
+    ("aperture_red_d16",  "11_khau_do_lo16mm.stl",        "lay_flat"),
+]
+A1_PLATE = 256.0
+
+
+def _orient_print(mesh, mode):
+    """Chuyển từ hệ THẾ GIỚI (Y=lên trời) sang hệ SLICER (Z=lên trời, Bambu
+    Studio): R_x(+90°) — world Y -> print Z (chiều cao in), world Z -> print Y.
+    Không chuyển đổi này, mọi file đều NẰM NGHIÊNG khi mở bằng slicer.
+    Chuẩn hoá về gốc TRƯỚC khi xoay (mesh từ collect_parts đã ở toạ độ thế giới).
+      - body/hood : in nguyên tư thế lắp — mặt đáy xuống bàn, không cần support.
+      - lid       : in nguyên tư thế lắp — mặt recess + ray hướng lên.
+      - shaft     : D-flat quay xuống làm mặt bám bàn (in trục không support).
+      - carrier   : in nguyên tư thế lắp — đáy xuống bàn, cột nam châm hướng lên
+                    (hốc nam châm mở trên đỉnh cột, không cần support).
+      - slider    : lật ngửa (R_x 180°) — hốc nam châm HỞ LÊN, mặt khắc áp bàn.
+      - aperture 'lay_flat': mặt tấm 35×58 áp bàn (bề dày 1.6 = chiều cao),
+                    cắt phần tay cầm lún dưới mặt bàn (tab 1.4mm còn lại)."""
+    m = mesh.copy()
+    lo, _ = m.bounds
+    m.apply_translation([-lo[0], -lo[1], -lo[2]])   # góc bbox về (0,0,0)
+    if mode == "flip":                       # nắp: mặt trên (rãnh hatch) xuống bàn
+        m.apply_transform(rotation_matrix(-math.pi / 2, [1, 0, 0]))
+    elif mode == "shaft":                    # trục D: flat quay xuống
+        lo, hi = m.bounds
+        c = (lo + hi) / 2
+        m.apply_translation([-c[0], -c[1], -c[2]])
+        m.apply_transform(rotation_matrix(math.pi, [1, 0, 0]))
+    elif mode == "slider":                   # cần trượt: lật ngửa R_x(-90°) —
+        m.apply_transform(rotation_matrix(-math.pi / 2, [1, 0, 0]))  # hốc nam châm hở lên
+    elif mode == "lay_flat":   # (x,y,z) -> (-y, -z, x): mặt 35×58 áp bàn,
+        m.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))   # bề dày 1.6 = Z
+        m.apply_transform(rotation_matrix(math.pi / 2, [1, 0, 0]))
+        # Tay cầm quấn quanh 2 mặt tấm (±1.4mm): cắt phần lún dưới mặt bàn,
+        # còn tab nhô 1.4mm phía trên để nhấc bằng tay.
+        m = dif(m, [box(-500, 500, -500, 500, -500, 1.4)])
+        if m is None or len(m.faces) == 0:
+            raise RuntimeError("Cắt tay cầm khẩu độ dưới mặt bàn thất bại")
+    else:
+        m.apply_transform(rotation_matrix(math.pi / 2, [1, 0, 0]))
+    lo, _ = m.bounds
+    m.apply_translation([-lo[0], -lo[1], -lo[2]])   # đáy chạm bàn, góc tại 0,0
+    return m
+
+
+def _pack_plate(placed, plate=A1_PLATE, margin=8.0, gap=6.0):
+    """Xếp shelf theo footprint TRÊN MẶT BÀN (mặt XY của STL — Z là chiều cao
+    in). Nếu hàng không đủ chỗ, thử XOAY 90° quanh Z (an toàn khi in) trước
+    khi sang shelf mới. Trả list [(tên, mesh, x, y)]."""
+    out, x, y, shelf_h = [], margin, margin, 0.0
+    lim = plate - margin
+    for name, m in placed:
+        b = m.bounds
+        w, d = b[1][0] - b[0][0], b[1][1] - b[0][1]    # rộng × sâu TRÊN BÀN
+        mm = m
+
+        def fits(ww, dd):
+            return x + ww <= lim and y + dd <= lim
+
+        if not fits(w, d) and fits(d, w):              # xoay 90° quanh Z
+            mm = m.copy()
+            mm.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))
+            b2 = mm.bounds
+            mm.apply_translation([-b2[0][0], -b2[0][1], 0])   # góc về (0,0)
+            w, d = d, w
+        elif not fits(w, d):                           # sang shelf mới
+            y += shelf_h + gap
+            x, shelf_h = margin, 0.0
+            if not fits(w, d) and fits(d, w):
+                mm = m.copy()
+                mm.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))
+                b2 = mm.bounds
+                mm.apply_translation([-b2[0][0], -b2[0][1], 0])
+                w, d = d, w
+        if not fits(w, d):
+            raise RuntimeError(f"Không vừa bàn in {plate:.0f}mm: {name}")
+        out.append((name, mm, x, y))
+        x += w + gap
+        shelf_h = max(shelf_h, d)
+    return out
+
+
+def export_print_package(parts):
+    """Xuất out/print_bambu/: STL từng chi tiết (đúng tư thế in) + 1 file
+    all-in-one xếp sẵn trên bàn 256x256 cho Bambu Studio."""
+    pdir = os.path.join(OUT, "print_bambu")
+    os.makedirs(pdir, exist_ok=True)
+    idx = {p["name"]: p for p in parts}
+    oriented = []
+    print("\nGói in Bambu A1 -> out/print_bambu/"
+          + (f"  [scale = {SCALE:.2f} — hộp ~{X_TOT*SCALE:.0f}×{Y_LID*SCALE:.0f}"
+             f"×{(Z1-Z0)*SCALE:.0f} mm]" if SCALE != 1.0 else ""))
+    if SCALE < 0.8:
+        print(f"  ⚠ scale {SCALE:.2f}: bề dày tường chỉ {WALL*SCALE:.2f} mm "
+              f"(< 2.4 mm khuyến nghị cho kín sáng)")
+    for name, fname, mode in PRINT_SET:
+        if name.startswith("aperture_red_"):
+            # dựng lại ở hệ cục bộ — mesh trong collect_parts đã bị dịch tới
+            # vị trí thế giới (x≈113) nên không dùng được cho phép xoay lay_flat
+            m0 = build_aperture(name.rsplit("_", 1)[-1])
+        else:
+            p = idx[name]
+            m0 = p["mesh"] or p["subs"][0]["mesh"]
+        m = _orient_print(m0, mode)
+        if SCALE != 1.0:
+            m.apply_scale(SCALE)      # min vẫn = 0 (scale quanh gốc)
+        m.export(os.path.join(pdir, fname))
+        b = m.bounds
+        w, d, h = b[1][0] - b[0][0], b[1][1] - b[0][1], b[1][2] - b[0][2]
+        ok = "watertight" if m.is_watertight else "!! NOT WATERTIGHT"
+        print(f"  {fname:<28} {w:6.1f} x {d:6.1f} x cao {h:5.1f} mm  "
+              f"{len(m.faces):>5} tris  {ok}")
+        oriented.append((fname, m))
+    # --- all-in-one: xếp trên 1 bàn (shelf theo bề sâu TRÊN BÀN giảm dần) ---
+    oriented.sort(key=lambda kv: -(kv[1].bounds[1][1] - kv[1].bounds[0][1]))
+    layout = _pack_plate(oriented)
+    combo_parts = []
+    for _, m, x, y in layout:
+        c = m.copy()
+        c.apply_translation([x, y, 0])   # dời trên MẶT BÀN (x,y) — z giữ = chiều cao
+        combo_parts.append(c)
+    combo = cat(combo_parts)
+    combo.export(os.path.join(pdir, "00_ppg_hop_toi_A1_all_in_one.stl"))
+    b = combo.bounds
+    # kiểm tra chồng lấn bbox TRÊN MẶT BÀN (mặt XY — z là chiều cao in, bỏ qua)
+    boxes = []
+    for _, m, x, y in layout:
+        bb = m.bounds
+        boxes.append((bb[0][0] + x, bb[0][1] + y, bb[1][0] + x, bb[1][1] + y))
+    overlap = False
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            a, c = boxes[i], boxes[j]
+            if a[0] < c[2] and c[0] < a[2] and a[1] < c[3] and c[1] < a[3]:
+                overlap = True
+    print(f"  00_ppg_hop_toi_A1_all_in_one.stl  "
+          f"{b[1][0]-b[0][0]:.0f} x {b[1][1]-b[0][1]:.0f} mm trên bàn (cao "
+          f"{b[1][2]-b[0][2]:.0f} mm), {len(layout)} chi tiết, "
+          f"{len(combo.faces)} tris, "
+          f"{'!! CHỒNG LẤN' if overlap else 'không chồng lấn'}")
+    print("  (Bambu Studio: mở file all-in-one -> tách 'Split to objects' "
+          "nếu muốn in riêng từng phần)")
+
+
 def main():
+    global DETAIL, STL_ONLY, INCLUDE_VISUAL, ONLY, SCALE
+    ap = argparse.ArgumentParser(
+        description="Build mô hình 3D PPG Simulator (STL in 3D + viewer web).")
+    ap.add_argument("--detail", choices=("full", "simple"), default="full",
+                    help="full: đủ chi tiết thẩm mỹ (mặc định, viewer đẹp). "
+                         "simple: chỉ chi tiết chức năng — bề mặt phẳng, in 3D dễ hơn.")
+    ap.add_argument("--stl-only", action="store_true",
+                    help="chỉ xuất STL in 3D (bỏ model.json + viewer.html) — build nhanh.")
+    ap.add_argument("--no-visual", action="store_true",
+                    help="bỏ chi tiết mua sẳn/dây/chùm sáng khỏi model.json (STL không đổi).")
+    ap.add_argument("--only", action="append", metavar="NAME",
+                    help="chỉ build phần có tên chứa NAME (dùng nhiều lần, ví dụ "
+                         "--only carrier). Dùng để chỉnh 1 chi tiết nhanh.")
+    ap.add_argument("--bambu", action="store_true",
+                    help="xuất gói in Bambu Lab A1 (out/print_bambu/): chỉ hộp tối + "
+                         "chụp luồn dây + khẩu độ — bỏ phần gắn module.")
+    ap.add_argument("--scale", type=float, default=1.0, metavar="S",
+                    help="thu nhỏ đều toàn bộ mô hình, ví dụ 0.85 -> hộp "
+                         "~127×57×68 mm. Các cặp lắp ghép (nắp-thân, khẩu độ-khe) "
+                         "vẫn khớp nhau vì cùng tỉ lệ; lỗ vít M3 / trục Ø8 nhỏ "
+                         "theo (khoan lại hoặc dán). Khuyến nghị S >= 0.8 để "
+                         "tường >= 2.4 mm kín sáng.")
+    args = ap.parse_args()
+    DETAIL = args.detail
+    STL_ONLY = args.stl_only
+    # --stl-only: visual vô ích (không ghi model.json) -> bỏ luôn cho nhanh.
+    INCLUDE_VISUAL = not args.no_visual and not args.stl_only
+    ONLY = args.only
+    SCALE = max(0.3, min(2.0, args.scale))
+
+    if args.bambu:
+        # Gói in: luôn bản simple (ít boolean, bề mặt phẳng), không đụng viewer
+        DETAIL = "simple"
+        INCLUDE_VISUAL = False
+        print("=" * 78)
+        print(f"PPG SIMULATOR — GÓI IN BAMBU LAB A1 (bàn {A1_PLATE:.0f}×{A1_PLATE:.0f} mm)")
+        print("  Chỉ: hộp tối (lỗ luồn dây + khe khẩu độ + máng dây) · nắp labyrinth"
+              " · trục + carrier + cần trượt nam châm · 4 tấm khẩu độ · 2 chụp"
+              " — KHÔNG đế/khung board")
+        print("=" * 78)
+        print("\nBuilding parts (manifold CSG) ...")
+        parts = collect_parts()
+        export_print_package(parts)
+        print("\nDone. Copy file trong docs/system_3d/out/print_bambu/ vào "
+              "Bambu Studio (đơn vị mm).")
+        return
+
     print("=" * 78)
     print("PPG SIMULATOR — MÔ HÌNH 3D TOÀN HỆ THỐNG (docs/system_3d)")
     print(f"  Hộp tối: {X_TOT:.0f} × {Y_LID:.0f} × {Z1 - Z0:.0f} mm   "
           f"Đế chung: {BASE_X1 - BASE_X0:.0f} × {BASE_Z1 - BASE_Z0:.0f} mm (chia đôi in)")
     print(f"  Khoảng cách mặc định: Đỏ d={D_DEFAULT['red']:.0f} mm, "
           f"IR d={D_DEFAULT['ir']:.0f} mm (chóp LED → cửa sổ OPT101 tại x={X_WIN:.0f})")
+    print(f"  Chế độ: detail={DETAIL}"
+          + (", STL-only" if STL_ONLY else "")
+          + ("" if INCLUDE_VISUAL else ", no-visual")
+          + (f", only={ONLY}" if ONLY else ""))
     print("=" * 78)
     print("\nBuilding parts (manifold CSG) ...")
     parts = collect_parts()
+    if ONLY:
+        parts = [p for p in parts if any(s in p["name"] for s in ONLY)]
+        print(f"  Lọc --only: còn {len(parts)} phần: {[p['name'] for p in parts]}")
     print("Exporting ...")
-    export(parts)
-    build_viewer()
-    print("\nDone. Open docs/system_3d/viewer.html in a browser.")
+    export(parts, write_model=not STL_ONLY)
+    if not STL_ONLY:
+        build_viewer()
+        print("\nDone. Open docs/system_3d/viewer.html in a browser.")
+    else:
+        print(f"\nDone. STL in docs/system_3d/out/stl/ ({DETAIL}).")
 
 
 if __name__ == "__main__":

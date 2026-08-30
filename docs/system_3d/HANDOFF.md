@@ -6,6 +6,21 @@ phiên này, `[SPEC]/[DS]` = theo tài liệu, `[ASSUME]` = giả định, cần
 
 ---
 
+## 0. CẬP NHẬT v2 (2026-08-30) — cơ cấu "cần trượt nam châm"
+
+Ghi đè các mục cũ dưới đây ở những chỗ đụng chạm. Trạng thái mới `[VERIFIED]` (68/68 check geometry pass — script /tmp/verify_ppg3d.py, 12 cặp giao nhau = 0 mm³, 14/14 STL watertight):
+
+1. **Chỉnh d từ NGOÀI hộp**: carrier LED bỏ vít kẹp M3 (trượt tự do trên trục D); trên carrier có **cột nam châm** (tâm local x=−12, đỉnh y=63.5, khe 0.5 mm tới nóc) chứa nam châm Ø10×3 N35; trên nắp có **2 ray dẫn cần trượt** (x 8..101, ray ±7.5..9.5 quanh mỗi làn) + 2 chặn đầu (tâm cần x ∈ 17..92) + thước khắc d=15..90 (vạch to: Đỏ 25 / IR 85); **cần trượt** (mag_slider_red.stl, in 2) chứa nam châm thứ 2 — cộng hưởng xuyên nắp 2.2 mm (vùng recess). Tâm cần x = 107 − d. Hộp giữ kín sáng tuyệt đối (không thêm khe hở nào). [ASSUME] lực kéo nam châm ~3–6 N — chưa đo thật.
+2. **Bỏ 2 cửa hatch + tấm phủ + build_hatch_cover()** — không còn cần mở nắp để chỉnh.
+3. **Chụp che sáng (4 cái)**: lỗ vít M3 XUYÊN bích, vặn từ mặt ngoài (mồi Ø2.5 sâu 2.6 mm) — bản cũ (đang deploy trên web trước hôm nay) bịt kín mặt ngoài, đúng lỗi người dùng báo.
+4. **Đế**: 5 mộng vuông (bỏ 2 lỗ vít vô dụng ở x=43/111 — vít dọc Y không bắt chéo được đường nối z=0).
+5. **Khẩu độ**: khe 1.8→2.0 mm, tấm 1.6 căn giữa (0.2 mm/side).
+6. **STL dedup: 14 file** out/stl/ (bỏ *_ir trùng lặp; in 2 bản từ file _red). Bambu package 12 file (05_can_truot_nam_cham.stl thay 05_tam_hatch.stl).
+7. **BOM mua thêm**: 4× nam châm đĩa Ø10×3 N35, 8× vít M3×8 (chụp), 4× vít M3×16 (tai đế).
+8. **gh-pages đã dọn**: trước đây chứa 4.711 file rác (.cad_venv vendored + __pycache__ + dataset); bản deploy mới = index.html + stl/ + print_bambu/ + README.md + .nojekyll.
+
+---
+
 ## 1. Yêu cầu gốc của người dùng
 
 Dựng mô hình 3D **chân thực nhất có thể** cho toàn hệ PPG simulator:
@@ -162,6 +177,7 @@ Thêm primitive CSG mới (do không có shapely/scipy):
 | Hộp **không đứng phẳng** | pad thụt xuống y = −1 → giao đế 369.3 / 334.6 mm³ | pad bắt đầu từ `Y0 = 0` |
 | Lỗ vít giữ chụp **nửa nằm ngoài chụp** | hàng vít dưới ở y 2.5 trong khi chụp bắt đầu y = 3 | định nghĩa `HOOD_BOLT_Y = (5.5, 21.0)` / `HOOD_BOLT_Z` dùng chung cho `build_body()` và `build_hood()` |
 | Cửa cáp trên mặt ngoài chụp | có đường nhìn thẳng gần như trực tiếp tới lỗ vách | đổi thành **khe ở SÀN chụp** → ánh sáng phải ngoặt 90° hai lần |
+| Chụp che sáng bịt kín mặt ngoài (lỗi bản deployed) | không vặn vít được từ ngoài | lỗ vít xuyên bích + mồi sâu 2.6 (v2, [VERIFIED]) |
 
 ---
 

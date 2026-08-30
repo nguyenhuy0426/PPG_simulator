@@ -1,5 +1,10 @@
 # Buồng tối PPG — Thiết kế in 3D cho hệ PPG Simulator (Raspberry Pi)
 
+> ⚠️ **BẢN THAM CHIẾU (legacy)** — thiết kế buồng đơn này đã được thay thế bởi
+> `docs/system_3d/` (hộp 2 làn quang + **cần trượt nam châm** chỉnh d từ ngoài
+> nắp). Giữ lại làm nguồn **ngân sách quang học (§4)** và đối chiếu. Không
+> khuyến khích in bản này cho hệ thống thật.
+
 > Buồng tối quang học 2 kênh (Red 622 nm / IR 875 nm → 2× OPT101), sinh bằng
 > script tham số `build_chamber.py` (trimesh + Manifold CSG), duyệt mô hình 3D
 > trực tiếp trên trình duyệt tại `viewer.html` (three.js, chạy offline).

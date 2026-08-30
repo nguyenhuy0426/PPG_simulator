@@ -22,7 +22,7 @@ gắn trên một đế chung và bổ sung khối điện tử ngoài hộp t�
 │  │               │  MCP4725 #1 │  MCP4725 #1 (0x60) ─ IR  DAC channel   │  │
 │  │  SignalEngine │  MCP4725 #2 │  MCP4725 #2 (0x61) ─ Red DAC channel   │  │
 │  │  (1 kHz PPG)  │             │  10 kΩ/10 kΩ divider → V_cmd = Vdac/2  │  │
-│  │  param_ctl    │             │  LM358 (op-amp) → 2SC1815 current sink │  │
+│  │  param_ctl    │             │  LM358 (op-amp) → 2×2N4401 current sink│  │
 │  │  state_machine│             │  R_sense: IR R3=82 Ω / Red R6=100 Ω    │  │
 │  └──────┬────────┘             └───────────────────┬────────────────────┘  │
 │         │                                          │ I_LED (V_cmd/R_sense) │
@@ -60,8 +60,10 @@ Hệ lắp ráp (xem thêm header `build_system.py` §1):
 
 - Kích thước hộp tối: **150 × 67 × 80 mm** (X×Y×Z, gồm nắp).
 - Trục quang tại y=32 mm; tâm 2 làn tại z = ±19.25 mm.
-- Đế chung: **198 × 244 mm**, chia đôi tại z=0 (mỗi nửa 190×122 mm — vừa bàn in
-  thông dụng). Nửa `-Z`: Pi 4 + Grove HAT; nửa `+Z`: board driver + 2× MCP4725.
+- Đế chung: **198 × 286 mm**, chia đôi tại z=0 (nửa `-Z` ~198×164 mm, nửa `+Z`
+  ~198×122 mm — vừa bàn in thông dụng). **Nửa `-Z` chứa toàn bộ khối điện tử**:
+  Pi 4 + Grove HAT + board driver (xoay 90°) + 2× MCP4725 cùng nằm một bên;
+  nửa `+Z` chỉ đỡ hộp tối.
 - Khoảng cách mặc định (chóp LED → cửa sổ OPT101 tại x=120): **Đỏ d=25 mm**,
   **IR d=85 mm** — theo ngân sách quang học `chamber_3d/README.md` §4 (Đỏ để gần
   vì LED yếu, IR để xa để tránh bão hòa).
@@ -88,7 +90,8 @@ Bố trí tổng thể theo X:
    (OPT101 nhạy toàn dải 300–1100 nm nên 2 làn phải tách hẳn).
 3. **Nắp labyrinth** — rãnh khóa ngoằn ngoèo trên đỉnh thành + môi nắp khớp khuôn.
 4. **Chụp che sáng (hood)** trước mỗi lỗ ra cáp — ánh sáng phải quay 90° hai lần
-   mới tới lỗ vách; bắt vít M3 mù vào bệ dày trên thân hộp.
+   mới tới lỗ vách; bắt 2 vít M3×8 QUA bích chụp (lỗ xuyên từ mặt ngoài),
+   tự khoan vào mồi Ø2.5 sâu 2.6 mm trên vách.
 5. **Tấm khẩu độ** trượt trong rãnh sàn tại x=113..115, ngay trước sensor:
    `blank` (bịt — đo nền tối), `d2` (Ø2), `d5` (Ø5), `d16` (Ø16).
 6. **Khung giữ board 5×7** bịt kín tiết diện lòng hộp, mang bản vách ngăn nối tiếp
@@ -96,25 +99,40 @@ Bố trí tổng thể theo X:
 
 ---
 
-## 4. Cơ cấu điều chỉnh khoảng cách
+## 4. Cơ cấu điều chỉnh khoảng cách — cần trượt nam châm
 
 - **Trục trượt D-shaft Ø8** mỗi làn (x=1..111), vát phẳng chống xoay; vạch chia
   5 mm (vạch lớn mỗi 25 mm) trên mặt vát, dải d=15..90 mm.
-- **Carrier LED** (khối trượt 22×18 mm) ôm trục bằng lỗ D + kẹp xẻ rãnh xiết vít
-  M3, loa che sáng 45° trước chóp LED; vạch chỉ vị trí phía trên.
-- Vị trí mặc định: **Đỏ d=25 mm**, **IR d=85 mm** — chính là trạng thái ban đầu
-  của model và viewer.
+- **Carrier LED** (khối trượt 22×18 mm) ôm trục bằng lỗ D, **trượt tự do**
+  (bỏ kẹp xẻ + vít M3 của bản v1), loa che sáng 45° trước chóp LED. Trên lưng
+  carrier có **cột nam châm** (đỉnh y=63.5, khe 0.5 mm tới nóc buồng) chứa
+  nam châm đĩa **Ø10×3 N35** ép khít vào hốc mù mở trên đỉnh cột + 1 giọt keo;
+  tâm cột = x_front − 12.
+- **Cần trượt nam châm** (khối 16×14×5.3) chạy trong 2 ray dẫn trên nắp, đáy
+  nằm trên panel recess mỏng 2.2 mm: nam châm trong cần ↔ nam châm trong cột
+  carrier **cộng hưởng xuyên nắp** → kéo carrier dọc trục từ NGOÀI hộp, không
+  cần mở nắp, cơ cấu **không thêm khe hở nào** → kín sáng tuyệt đối.
+- Mapping hành trình: **tâm cần x = 107 − d** (d=15..90 → x=92..17), chặn đầu
+  bởi 2 stop trên nắp (x=9 và x=100..101).
+- **Thước khắc trên nắp**: d=15..90 bước 5 mm, NGOÀI mỗi ray; vạch to tại
+  **Đỏ d=25** (x=82) và **IR d=85** (x=22).
+- [ASSUME] lực kéo ước tính **3–6 N** (cặp nam châm N35 Ø10×3 qua 2.2 mm nhựa)
+  — **chưa đo trên vật thật**. Nếu kéo yếu: dán thêm 1 nam châm vào cần
+  (tăng diện tích cộng hưởng) hoặc nhỏ giọt keo/mối bôi trơn giảm ma sát ray.
+- Vị trí mặc định: **Đỏ d=25 mm** (tâm cần x=82), **IR d=85 mm** (tâm cần
+  x=22) — chính là trạng thái ban đầu của model và viewer.
 
 ---
 
-## 5. Các phần in 3D (16 file STL — out/stl/)
+## 5. Các phần in 3D (14 file STL — out/stl/)
 
 | File | Vai trò | Số lượng in |
 |---|---|---|
-| `body.stl` | Thân hộp tối (2 làn + vách ngăn + máng dây + bệ vít) | 1 |
-| `lid.stl` | Nắp labyrinth + vấu chặn khung | 1 |
-| `slide_shaft_red.stl` | Trục trượt D Ø8 — dùng chung 2 làn (đối xứng) | 1 |
-| `led_carrier_red.stl` | Carrier LED — dùng chung 2 làn | 2 |
+| `body.stl` | Thân hộp tối (2 làn + vách ngăn + máng dây + mồi vít chụp) | 1 |
+| `lid.stl` | Nắp labyrinth + 2 ray cần trượt nam châm + thước khắc d | 1 |
+| `slide_shaft_red.stl` | Trục trượt D Ø8 — dùng chung 2 làn (đối xứng) | 2 |
+| `led_carrier_red.stl` | Carrier LED (trượt tự do + cột nam châm) — dùng chung 2 làn | 2 |
+| `mag_slider_red.stl` | Cần trượt nam châm (kèm nam châm Ø10×3) — dùng chung 2 làn | 2 |
 | `frame.stl` | Khung giữ board 5×7 | 1 |
 | `aperture_red_blank.stl` | Khẩu độ bịt kín (nền tối) | 2 (Đỏ + IR) |
 | `aperture_red_d2.stl` | Khẩu độ Ø2 mm | 2 |
@@ -122,18 +140,19 @@ Bố trí tổng thể theo X:
 | `aperture_red_d16.stl` | Khẩu độ Ø16 mm | 2 |
 | `hood_l_red.stl` | Chụp che sáng trái (thành -X, cáp LED) | 1 |
 | `hood_r_red.stl` | Chụp che sáng phải (thành +X, cáp OPT101) | 1 |
-| `base_neg.stl` | Đế — nửa Pi 4 + Grove HAT | 1 |
-| `base_pos.stl` | Đế — nửa driver + 2× MCP4725 | 1 |
+| `base_neg.stl` | Đế — nửa Pi 4 + Grove HAT + driver | 1 |
+| `base_pos.stl` | Đế — nửa dưới hộp tối | 1 |
 
 > **Một thiết kế dùng cho cả 2 làn**: vì 2 làn quang đối xứng quanh z=0, các chi tiết
-> `slide_shaft`, `led_carrier`, `aperture_*` và `hood_*` chỉ xuất bản `red` làm
-> khuôn mẫu, dùng cho cả làn IR (bản `*_ir` trong `model.json` chỉ để hiển thị).
-> In thêm 1 bản nữa cho mỗi làn theo bảng trên.
+> `slide_shaft`, `led_carrier`, `mag_slider`, `aperture_*` và `hood_*` chỉ xuất bản
+> `red` làm khuôn mẫu, dùng cho cả làn IR (bản `*_ir` trong `model.json` chỉ để
+> hiển thị — không có file STL riêng). In thêm 1 bản nữa cho mỗi làn theo bảng trên.
 
-> **Linh kiện mua sẵn (KHÔNG in)** — chỉ hiển thị trong viewer để duyệt lắp ráp:
-> `led_red`, `led_ir`, `opt101_red` (#2 → A2), `opt101_ir` (#1 → A0), `sensor_board`
-> (5×7 cm), `pi4`, `grove_hat`, `driver_board` (perfboard + LM358 + 2SC1815 +
-> 2× MCP4725), `wiring` (bó dây TX/RX/I2C/PWR minh hoạ).
+> **Linh kiện mua ngoài (KHÔNG in)** — **4× nam châm đĩa Ø10×3 N35** (2 vào carrier,
+> 2 vào cần trượt), **8× vít M3×8** (bắt 2 chụp cáp), **4× vít M3×16** (tai bắt hộp
+> xuống đế). Ngoài ra chỉ hiển thị trong viewer để duyệt lắp ráp: `led_red`, `led_ir`,
+> `opt101_red` (#2 → A2), `opt101_ir` (#1 → A0), `sensor_board` (5×7 cm), `pi4`,
+> `grove_hat`, `driver_board` (perfboard + LM358 + 2×2N4401 + 2× MCP4725), `wiring`.
 
 **Thông số in khuyến nghị**
 
@@ -143,22 +162,26 @@ Bố trí tổng thể theo X:
   100% (carrier).
 - Không cần hỗ trợ (support) — các file đã xoay sẵn về tư thế in (`flip` trong
   `build_system.py`).
-- Đế in 2 nửa `base_neg` + `base_pos`, nối bằng 3 mộng vuông + 2 vít M3 (lỗ Ø3.5).
+- Đế in 2 nửa `base_neg` + `base_pos`, nối bằng **5 mộng vuông** (10/43/77/111/144)
+  — không cần vít bắt chéo đường nối z=0.
 
 ---
 
 ## 6. Lắp ráp
 
-1. **Hộp tối**: ép carrier LED (kèm LED) lên trục trượt D mỗi làn; đẩy trục vào lỗ
-   mù vách trái, đầu còn lại tựa cột đỡ. Lắp khung giữ board, luồn board 5×7 +
-   2 module OPT101, chốt bằng 2 vấu nắp.
-2. **Tấm khẩu độ**: trượt vào rãnh tại x=113..115 (bắt đầu `blank` → đo nền tối,
-   sau đó `d5`/`d16`).
-3. **Chụp che sáng**: bắt vít M3 mù vào 4 bệ trên thân hộp (2 đầu trục quang).
-4. **Đế**: xiết 2 nửa `base_neg`/`base_pos` bằng 2 vít M3; bắt hộp tối lên đế qua
-   4 tai (vít M3 Ø3.5) tại x=21/129, z=±40.
+1. **Hộp tối**: ép carrier LED (kèm LED) lên trục trượt D mỗi làn (trượt tự do,
+   không vít); đẩy trục vào lỗ mù vách trái, đầu còn lại tựa cột đỡ. Nhét nam
+   châm Ø10×3 vào hốc đỉnh cột carrier (ép khít + 1 giọt keo). Lắp khung giữ
+   board, luồn board 5×7 + 2 module OPT101, chốt bằng 2 vấu nắp.
+2. **Tấm khẩu độ**: **LẮP TRƯỚC KHI ĐÓNG NẮP** — trượt vào rãnh tại x=113..115
+   (bắt đầu `blank` → đo nền tối, sau đó `d5`/`d16`).
+3. **Chụp che sáng**: bắt 2 vít M3×8 QUA bích (lỗ xuyên từ mặt ngoài) vào mồi
+   Ø2.5 trên vách hộp — 2 chụp, 4 vít.
+4. **Đế**: ghép 2 nửa `base_neg`/`base_pos` bằng 5 mộng vuông; bắt hộp tối lên
+   đế qua 4 tai (vít M3×16) tại x=21/129, z=±40.
 5. **Điện tử**: Pi 4 lên 4 trụ M2.5 của `base_neg`, Grove HAT cắm header; board
-   driver lên 4 trụ M3 của `base_pos`, 2 breakout MCP4725 hàn trên board.
+   driver (xoay 90°) lên 4 trụ M3 của `base_neg` — **cùng bên -Z với Pi** —,
+   2 breakout MCP4725 hàn trên board.
 6. **Dây** theo `docs/hardware/PPG_PROTOTYPE_WIRING_AND_TEST_POINTS.md`:
    TX driver→LED qua chụp -X, RX OPT101→cáp Grove→socket A0/A2, I2C HAT→2 DAC,
    USB-C→Pi. Trong mô hình, dây được dựng thành **bẹ dây** (`harness()`): nhiều
@@ -170,7 +193,10 @@ Bố trí tổng thể theo X:
      khung board** (y 56..60) → cửa luồn dây (y 12..58) → chụp +X → khe sàn →
      nối vào **cáp Grove trắng** vòng qua nóc hộp → socket A0/A2 trên HAT.
    - **I2C**: bẹ 2 cáp trắng chung đoạn HAT→nóc hộp, tách về 2 MCP4725.
-7. Đậy nắp labyrinth; chạy `python3 main.py --dry-run` trước khi chạy thật.
+7. **Nắp + cần trượt**: đậy nắp labyrinth; nhấn nam châm Ø10×3 vào hốc đáy 2
+   cần trượt (+1 giọt keo), đặt cần lên 2 ray trên nắp; kéo tới vạch to
+   **25 (Đỏ)** / **85 (IR)** — carrier chạy theo trong lòng hộp. Chạy
+   `python3 main.py --dry-run` trước khi chạy thật.
 
 ---
 
@@ -200,8 +226,13 @@ thanh **Tách rời** xem thứ tự lắp · thanh **Mặt cắt theo X** cắt
 nút **Trong suốt thân** xuyên qua hộp thấy LED + OPT101 · nút **Trong làn IR/Đỏ**
 đưa camera ngang trục quang từng làn · nút **Trục quang** hiện 2 trục Đỏ/IR ·
 nút **Khối điện tử** xem đế (Pi + HAT + driver + DAC) · nút **Tự xoay** ·
+nút **🧱 Vách ngăn quang** tô đỏ lớp ngăn z=0 (minh hoạ, không phải hình học in) ·
 checkbox ẩn/hiện từng bộ phận (nhãn tiếng Việt; đỏ = LED Đỏ, tím = LED IR,
 xanh dương = cửa sổ OPT101, trắng = cáp Grove).
+
+**Trượt vị trí LED**: mục *"Vị trí LED — cần trượt nam châm"* có 2 slider d=15..90 mm —
+carrier + LED + chùm sáng + cần trượt di chuyển dọc trục D đúng cơ cấu vật lý, chùm
+sáng giữ nguyên góc mở datasheet và luôn ghim đầu xa tại cửa sổ OPT101 (x=120).
 
 ### Ảnh preview tĩnh (không cần mở trình duyệt)
 
@@ -233,6 +264,79 @@ Chạy từ thư mục `docs/system_3d/` hoặc từ gốc repo (đường dẫn
 
 Phụ thuộc: `trimesh`, `manifold3d`, `numpy`, `matplotlib` (đã cài trong `.cad_venv/`).
 
+### 8.1 Các chế độ build (CLI)
+
+| Lệnh | Kết quả | Dùng khi |
+|---|---|---|
+| `build_system.py` | STL **full** + model.json + viewer.html | Viewer trình diễn / ảnh đẹp (mặc định) |
+| `build_system.py --detail simple` | STL **simple** + model.json + viewer | Mô hình in 3D tối giản, vẫn duyệt web được |
+| `build_system.py --detail simple --stl-only` | Chỉ STL simple | Xuất file in nhanh (~1 s) |
+| `… --stl-only --only carrier` | Chỉ STL khớp tên (`led_carrier_*`) | Chỉnh 1 chi tiết, build lại từng phần |
+| `build_system.py --no-visual` | STL full + model.json không dây/board mua sẳn | Viewer gọn, bỏ chi tiết minh hoạ |
+| `build_system.py --bambu` | Gói in Bambu A1 (`out/print_bambu/`) | **Xuất file đưa thẳng vào máy in** |
+
+**`--detail simple` khác `full` ở chỗ nào?** Chỉ giữ chi tiết **chức năng** trên các
+chi tiết in 3D, bỏ toàn bộ chi tiết thẩm mỹ:
+
+| Chi tiết | `full` | `simple` |
+|---|---|---|
+| `body` | + vát 4 góc đứng, chỉ bóng ngang, vát vành mép | Mặt phẳng, góc vuông |
+| `lid` | + panel giữa thụt (chức năng: ray/chặn cần trượt giữ nguyên cả 2 chế độ), vát vành | Tấm phẳng + rãnh labyrinth + ray/chặn cần trượt |
+| `hood` | + vát góc ngoài | Hộp phẳng |
+| `aperture` | + khắc mã nhận dạng (vạch) | Không khắc |
+| `base` | + gân chu vi dưới đế, vát góc, vát mép | Tấm phẳng 4 mm — in không phải bridge |
+
+Mọi chi tiết chức năng (vách ngăn quang, lỗ trục, khe khẩu độ, bệ vít, mộng nối
+đế, trụ đỡ board) đều **giữ nguyên ở cả 2 chế độ** — chỉ bỏ phần trang trí.
+
+### 8.3 Gói in Bambu Lab A1 (`--bambu`)
+
+```bash
+../../.cad_venv/bin/python build_system.py --bambu
+```
+
+Xuất `out/print_bambu/` — hộp tối + trục/carrier/cần trượt + chụp luồn dây +
+khẩu độ, bỏ phần đế/khung board:
+
+| File | Chi tiết | Kích thước bàn (mm) |
+|---|---|---|
+| `00_ppg_hop_toi_A1_all_in_one.stl` | **Cả 11 chi tiết xếp sẵn** trên 1 bàn | ~238×233, cao 64 |
+| `01_than_hop_toi.stl` | Thân hộp (đã có lỗ luồn dây, khe khẩu độ, máng dây) | 150×103, cao 64 |
+| `02_nap_labyrinth.stl` | Nắp labyrinth (2 ray cần trượt + thước khắc) | 150×80, cao 12.4 |
+| `03_truc_truot_D.stl` | Trục trượt D Ø8 (in 2 bản) | 110×6.5, cao 8 |
+| `04_carrier_led.stl` | Carrier LED (in 2 — đáy xuống bàn, cột nam châm hướng lên) | 25×18, cao 58.5 |
+| `05_can_truot_nam_cham.stl` | Cần trượt nam châm (in 2 — lật ngửa, hốc nam châm hở lên) | 16×14.4, cao 5.3 |
+| `06`/`07_chup_luon_day_*.stl` | Chụp che sáng lỗ luồn dây (trái/phải) | 15.5×36, cao 21 |
+| `08..11_khau_do_*.stl` | Khẩu độ bịt/Ø2/Ø5/Ø16 (nằm phẳng, tab cầm cắt gọn) | 61×35, cao 3 |
+
+[BOM] mua ngoài: **4× nam châm đĩa Ø10×3 N35** (2 vào carrier, 2 vào cần trượt).
+
+Tất cả đã **chuyển về hệ trục slicer** (Z = chiều cao — STL gốc trong `out/stl/`
+dùng hệ thế giới Y-lên trời nên sẽ nằm nghiêng nếu mở trực tiếp) và **xoay sẵn
+tư thế in không cần support**. Bambu Studio: mở file all-in-one → `Split to
+objects` nếu muốn in tách bàn. In bằng nhựa đen mờ, layer 0.2mm, tường ≥4 vòng
+(tham khảo §5).
+
+**Thu nhỏ hộp**: thêm `--scale S` (ví dụ `--bambu --scale 0.85` → hộp
+~128×57×68 mm, bàn in ~230×185 mm). Các cặp lắp ghép vẫn khớp nhau vì cùng tỉ
+lệ; lỗ vít M3/trục Ø8 nhỏ theo (khoan lại hoặc dán). Khuyến nghị `S >= 0.8`
+để tường còn ≥ 2.4 mm kín sáng. Lưu ý: hộp ở scale 1.0 đã chỉ dài 15cm —
+kích thước ~23cm của file all-in-one là **bàn in xếp trải 8 chi tiết**,
+không phải kích thước hộp.
+
+### 8.2 Cấu trúc file
+
+```
+build_system.py        — hình học + tham số (single source of truth)
+viewer_template.html   — giao diện viewer (HTML/JS, tách khỏi Python) — sửa
+                         giao diện ở đây rồi chạy lại build_system.py
+out/stl/*.stl          — chi tiết in (theo chế độ build gần nhất)
+out/model.json         — hình học cho viewer (theo chế độ build gần nhất)
+```
+
+> Lưu ý: `out/` phản ánh lần build cuối. Nếu build `simple` rồi muốn quay lại
+> viewer đầy đủ, chạy lại `build_system.py` (không cờ) trước khi deploy_pages.
+
 ---
 
 ## 9. Bằng chứng kích thước & giới hạn
@@ -246,3 +350,25 @@ Phụ thuộc: `trimesh`, `manifold3d`, `numpy`, `matplotlib` (đã cài trong `
 
 Mô hình là công cụ thiết kế & mô phỏng. Không phải thiết bị y tế, không có giá trị
 lâm sàng.
+
+---
+
+## 10. Nhật ký sửa đổi v2 (2026-08-30)
+
+- **(a) Cần trượt nam châm** — cơ cấu chỉnh d mới: nam châm Ø10×3 N35 trong cột
+  trên lưng carrier ↔ nam châm trong cần trượt chạy trên 2 ray của nắp (tâm cần
+  x = 107 − d, thước khắc d=15..90, chặn đầu hành trình). Bỏ **2 cửa hatch +
+  tấm phủ hatch + vít kẹp carrier** (carrier trượt tự do) → không thêm khe hở
+  nào trên hộp, kín sáng giữ nguyên.
+- **(b) Lỗ vít chụp xuyên bích** [VERIFIED ray-cast trên STL]: 4 lỗ M3 trên chụp
+  cáp giờ xuyên hẳn bích, vặn từ mặt ngoài (bản v1 bịt mặt ngoài, không vặn được);
+  mồi trên vách sâu 2.3 → 2.6 mm.
+- **(c) Mộng nối đế 3 → 5** (x=10/43/77/111/144); bỏ 2 lỗ vít M3 "xiết mối nối"
+  vô dụng (vít dọc Y không thể bắt chéo đường nối z=0).
+- **(d) Khe khẩu độ 1.8 → 2.0 mm** cho tấm dày 1.6 mm (khe 0.2/cạnh); tấm được
+  căn giữa khe (đặt tại AP_X0 + 0.2).
+- **(e) Loại STL trùng `_ir`** — `out/stl/` còn đúng **14 file** (bản `_red` dùng
+  cho cả 2 làn; xoá `led_carrier_ir.stl`, `slide_shaft_ir.stl` cũ; thêm
+  `mag_slider_red.stl`).
+- **(f) Viewer thêm mục tải STL** (fieldset "📦 Tải file in 3D") + cập nhật nhãn
+  cơ cấu thành "cần trượt nam châm".
