@@ -8,7 +8,10 @@ phiên này, `[SPEC]/[DS]` = theo tài liệu, `[ASSUME]` = giả định, cần
 
 ## 0. CẬP NHẬT v2 (2026-08-30) — cơ cấu "cần trượt nam châm"
 
-Ghi đè các mục cũ dưới đây ở những chỗ đụng chạm. Trạng thái mới `[VERIFIED]` (68/68 check geometry pass — script /tmp/verify_ppg3d.py, 12 cặp giao nhau = 0 mm³, 14/14 STL watertight):
+Ghi đè các mục cũ dưới đây ở những chỗ đụng chạm. Trạng thái mới `[VERIFIED]`
+(69/69 check geometry pass — script trong repo `docs/system_3d/verify_geometry.py`,
+đã chạy lại sau các fix review: deploy script, hằng số dùng chung, lid STL
+không lật; 12 cặp giao nhau = 0 mm³, 14/14 STL watertight):
 
 1. **Chỉnh d từ NGOÀI hộp**: carrier LED bỏ vít kẹp M3 (trượt tự do trên trục D); trên carrier có **cột nam châm** (tâm local x=−12, đỉnh y=63.5, khe 0.5 mm tới nóc) chứa nam châm Ø10×3 N35; trên nắp có **2 ray dẫn cần trượt** (x 8..101, ray ±7.5..9.5 quanh mỗi làn) + 2 chặn đầu (tâm cần x ∈ 17..92) + thước khắc d=15..90 (vạch to: Đỏ 25 / IR 85); **cần trượt** (mag_slider_red.stl, in 2) chứa nam châm thứ 2 — cộng hưởng xuyên nắp 2.2 mm (vùng recess). Tâm cần x = 107 − d. Hộp giữ kín sáng tuyệt đối (không thêm khe hở nào). [ASSUME] lực kéo nam châm ~3–6 N — chưa đo thật.
 2. **Bỏ 2 cửa hatch + tấm phủ + build_hatch_cover()** — không còn cần mở nắp để chỉnh.

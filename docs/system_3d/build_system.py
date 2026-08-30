@@ -121,6 +121,8 @@ BRD_Y0, BRD_Y1 = Y_AX - BRD_Y / 2, Y_AX + BRD_Y / 2   # 7 .. 57
 # --- lỗ ra cáp + chụp che sáng ------------------------------------------------
 EX_Y0, EX_Y1 = 6.0, 16.0                   # lỗ xuyên vách
 EX_ZW = 20.0                               # bề rộng lỗ theo Z
+HOOD_BOLT_Y = (EX_Y0 + EX_Y1) / 2.0        # 10.5 — tâm hàng vít chụp
+HOOD_BOLT_Z = EX_ZW / 2.0 + 8.0 - 1.5      # ±16.5 — trên vành bích đặc (HW - 1.5)
 HOOD_Y0, HOOD_Y1 = 3.0, 24.0
 
 # --- đế chung + khối điện tử ngoài --------------------------------------------
@@ -499,11 +501,14 @@ MAG_D, MAG_T = 10.0, 3.0          # [BOM] nam châm đĩa Ø10×3 N35 (mua ngoà
 MAG_POCKET = MAG_D + 0.3          # hốc nhựa giữ nam châm
 TWR_X0, TWR_X1 = -18.0, -6.0      # cột nam châm trên carrier (local x, tâm -12)
 TWR_TOP = 63.5                    # đỉnh cột (khe 0.5 mm tới nóc buồng y=64)
+TWR_C = (TWR_X0 + TWR_X1) / 2.0   # -12 — tâm cột & hốc khoét nam châm
+SLIDER_X0 = X_WIN - LED_TIP_OUT + TWR_C   # = 107 — tâm cần khi d=0; tâm cần ở vị trí d là SLIDER_X0 - d
 SLIDER_HW = 7.2                   # nửa rộng cần trượt (ray trên nắp ±7.5..9.5)
+SLIDER_HL = 8.0                   # nửa DÀI cần trượt theo X (khối 16×14)
 SLIDER_TOP = 71.5                 # đỉnh cần: 0.8 chìm recess + 4.5 trên nắp
 RAIL_X0, RAIL_X1 = 8.0, 101.0     # 2 ray dẫn cần trên mặt nắp
 RAIL_TOP = 68.4                   # đỉnh ray
-SL_X_MIN, SL_X_MAX = 17.0, 92.0   # hành trình TÂM cần = 107 - d (d=90..15)
+SL_X_MIN, SL_X_MAX = 17.0, 92.0   # hành trình TÂM cần = SLIDER_X0 - d (d=90..15)
 
 LID_GROOVE_W = 2.0          # bề rộng rãnh labyrinth trên đỉnh thành
 LID_GROOVE_D = 4.0          # chiều sâu rãnh (Y_TOP-4 .. Y_TOP)
@@ -570,9 +575,9 @@ def build_body():
         for xs, sgn in ((X0, -1.0), (X_TOT, 1.0)):
             holes.append(box(xs - sgn * (WALL + 0.5), xs + sgn * 0.5,
                              EX_Y0, EX_Y1, zc - EX_ZW / 2, zc + EX_ZW / 2))
-            for dz in (-16.5, 16.5):
+            for dz in (-HOOD_BOLT_Z, HOOD_BOLT_Z):
                 holes.append(_tube("x", xs + sgn * 0.3, xs - sgn * 2.6,
-                                   10.5, zc + dz, 1.25, 12))
+                                   HOOD_BOLT_Y, zc + dz, 1.25, 12))
 
     # tai bắt vít xuống đế
     ears = []
@@ -624,9 +629,9 @@ def build_lid():
                        zc - 9.5, zc - 7.5))
         add.append(box(RAIL_X0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
                        zc + 7.5, zc + 9.5))
-        add.append(box(RAIL_X0, 9.0, Y_LID - 0.8, RAIL_TOP,
+        add.append(box(RAIL_X0, SL_X_MIN - SLIDER_HL, Y_LID - 0.8, RAIL_TOP,
                        zc - 7.5, zc + 7.5))          # chặn trước (d=90)
-        add.append(box(100.0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
+        add.append(box(SL_X_MAX + SLIDER_HL, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
                        zc - 7.5, zc + 7.5))          # chặn sau (d=15)
     m = uni([m] + add)
 
@@ -636,7 +641,7 @@ def build_lid():
     for ch, zc in LANE_Z.items():
         s = LANE_SIGN[ch]
         for d in range(15, 91, 5):
-            c = 107.0 - d
+            c = SLIDER_X0 - d
             big = (d == 25) if ch == "red" else (d == 85)
             w = 0.6 if big else 0.3
             dep = 0.8 if big else 0.4
@@ -677,7 +682,7 @@ def build_carrier():
     m = uni([m, frustum_x(0.0, COLLAR_L, Y_AX, 0.0, 5.2, 2.1, 40)])
     # cột nam châm trên lưng carrier + hốc mù giữ nam châm Ø10×3 (mở trên đỉnh)
     m = uni([m, box(TWR_X0, TWR_X1, CAR_Y1, TWR_TOP, -6.0, 6.0)])
-    m = dif(m, [cyl_y(60.3, TWR_TOP + 0.1, -12.0, 0.0, MAG_POCKET / 2, 32)])
+    m = dif(m, [cyl_y(60.3, TWR_TOP + 0.1, TWR_C, 0.0, MAG_POCKET / 2, 32)])
     dbore = dif(cyl_x(-CAR_L - 0.5, 0.5, SH_Y, 0.0, SH_R + CLR, 40),
                 [box(-CAR_L - 1, 1, SH_FLAT_Y + CLR, SH_Y + SH_R + 2,
                      -SH_R - 2, SH_R + 2)])
@@ -698,7 +703,7 @@ def build_mag_slider():
     khắc trên nắp). Khối 16×14×5.3 trượt giữa 2 ray (khe 0.3/ray), đáy có hốc
     mù giữ nam châm (nam châmflush mặt đáy, nóc hốc dày 0.3 mm), mặt trên khắc
     vạch chỉ dọc tim + 2 rãnh ngón tay để kéo."""
-    m = box(-8, 8, Y_LID - 0.8, SLIDER_TOP, -SLIDER_HW, SLIDER_HW)
+    m = box(-SLIDER_HL, SLIDER_HL, Y_LID - 0.8, SLIDER_TOP, -SLIDER_HW, SLIDER_HW)
     # hốc nam châm đục từ ĐÁY (nam châmflush mặt đáy, nóc 0.3 mm giữ)
     m = dif(m, [cyl_y(Y_LID - 0.8, Y_LID - 0.8 + MAG_T + 0.3,
                       0, 0, MAG_POCKET / 2, 32)])
@@ -773,7 +778,7 @@ def build_hood(sgn):
         return box(sgn * u0, sgn * u1, y0, y1, z0, z1)
 
     # lỗ vít: y=10.5 (giữa lỗ cáp 6..16), z=±16.5 (vành bích z 10.5..18)
-    bolt_y, bolt_z = 10.5, HW - 1.5
+    bolt_y, bolt_z = HOOD_BOLT_Y, HOOD_BOLT_Z
 
     m = bx(0.0, BRIM_T + TUBE_D, HOOD_Y0, HOOD_Y1, -HW, HW)
     cuts = [
@@ -1273,7 +1278,7 @@ def collect_parts():
                           label=label or name, subs=subs, printable=printable))
 
     add("body", build_body(), C_BODY, [0, 0, 0], label="Thân hộp tối (2 làn quang)")
-    add("lid", build_lid(), C_LID, [0, 42, 0], flip=True,
+    add("lid", build_lid(), C_LID, [0, 42, 0],
         label="Nắp labyrinth (2 ray cần trượt nam châm)")
     for ch, cc, vn in (("red", C_CAR_R, "Đỏ"), ("ir", C_CAR_I, "IR")):
         add(f"slide_shaft_{ch}", _place_shaft(ch), C_SHAFT, [-60, 0, 0],
@@ -1288,7 +1293,7 @@ def collect_parts():
     for ch, vn in (("red", "Đỏ"), ("ir", "IR")):
         m = build_mag_slider()
         m.apply_transform(translation_matrix(
-            [107.0 - D_DEFAULT[ch], 0.0, LANE_Z[ch]]))
+            [SLIDER_X0 - D_DEFAULT[ch], 0.0, LANE_Z[ch]]))
         add(f"mag_slider_{ch}", m, 0x5a6a7c, [0, 30, 0],
             printable=(ch == "red"),
             label=f"Cần trượt nam châm — làn {vn} (kèm nam châm Ø10×3 N35)")
@@ -1296,7 +1301,8 @@ def collect_parts():
     for kind, kl in (("blank", "bịt kín"), ("d2", "Ø2 mm"), ("d5", "Ø5 mm"), ("d16", "Ø16 mm")):
         for ch in ("red", "ir"):
             m = build_aperture(kind)
-            m.apply_transform(translation_matrix([AP_X0 + 0.2, 0.0, LANE_Z[ch]]))
+            m.apply_transform(translation_matrix(
+                [AP_X0 + ((AP_X1 - AP_X0) - AP_T) / 2.0, 0.0, LANE_Z[ch]]))
             add(f"aperture_{ch}_{kind}", m, C_APER, [0, 26, 0], printable=(ch == "red"),
                 label=f"Khẩu độ {'Đỏ' if ch == 'red' else 'IR'} {kl}")
     for ch in ("red", "ir"):
@@ -1516,9 +1522,7 @@ def _orient_print(mesh, mode):
     m = mesh.copy()
     lo, _ = m.bounds
     m.apply_translation([-lo[0], -lo[1], -lo[2]])   # góc bbox về (0,0,0)
-    if mode == "flip":                       # nắp: mặt trên (rãnh hatch) xuống bàn
-        m.apply_transform(rotation_matrix(-math.pi / 2, [1, 0, 0]))
-    elif mode == "shaft":                    # trục D: flat quay xuống
+    if mode == "shaft":                      # trục D: flat quay xuống
         lo, hi = m.bounds
         c = (lo + hi) / 2
         m.apply_translation([-c[0], -c[1], -c[2]])
