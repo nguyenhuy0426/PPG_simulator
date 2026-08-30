@@ -138,8 +138,8 @@ Bố trí tổng thể theo X:
 | `aperture_red_d2.stl` | Khẩu độ Ø2 mm | 2 |
 | `aperture_red_d5.stl` | Khẩu độ Ø5 mm | 2 |
 | `aperture_red_d16.stl` | Khẩu độ Ø16 mm | 2 |
-| `hood_l_red.stl` | Chụp che sáng trái (thành -X, cáp LED) | 1 |
-| `hood_r_red.stl` | Chụp che sáng phải (thành +X, cáp OPT101) | 1 |
+| `hood_l_red.stl` | Chụp che sáng trái (thành -X, cáp LED) — dùng chung 2 làn | 2 |
+| `hood_r_red.stl` | Chụp che sáng phải (thành +X, cáp OPT101) — dùng chung 2 làn | 2 |
 | `base_neg.stl` | Đế — nửa Pi 4 + Grove HAT + driver | 1 |
 | `base_pos.stl` | Đế — nửa dưới hộp tối | 1 |
 
@@ -149,7 +149,7 @@ Bố trí tổng thể theo X:
 > hiển thị — không có file STL riêng). In thêm 1 bản nữa cho mỗi làn theo bảng trên.
 
 > **Linh kiện mua ngoài (KHÔNG in)** — **4× nam châm đĩa Ø10×3 N35** (2 vào carrier,
-> 2 vào cần trượt), **8× vít M3×8** (bắt 2 chụp cáp), **4× vít M3×16** (tai bắt hộp
+> 2 vào cần trượt), **8× vít M3×8** (bắt 4 chụp cáp), **4× vít M3×16** (tai bắt hộp
 > xuống đế). Ngoài ra chỉ hiển thị trong viewer để duyệt lắp ráp: `led_red`, `led_ir`,
 > `opt101_red` (#2 → A2), `opt101_ir` (#1 → A0), `sensor_board` (5×7 cm), `pi4`,
 > `grove_hat`, `driver_board` (perfboard + LM358 + 2×2N4401 + 2× MCP4725), `wiring`.
@@ -160,8 +160,8 @@ Bố trí tổng thể theo X:
   công suất cao. Đế nên PETG/ABS bền cơ.
 - Lớp 0.2 mm, tường ≥ 4 vòng (tường thực ≥ 2.4 mm), infill 20–30% (thân/đế),
   100% (carrier).
-- Không cần hỗ trợ (support) — các file đã xoay sẵn về tư thế in (`flip` trong
-  `build_system.py`).
+- Bản in sẵn tư thế (không support) là gói `--bambu` trong `out/print_bambu/`;
+  STL trong `out/stl/` giữ hệ thế giới (mở bằng slicer cần xoay — xem §8.3).
 - Đế in 2 nửa `base_neg` + `base_pos`, nối bằng **5 mộng vuông** (10/43/77/111/144)
   — không cần vít bắt chéo đường nối z=0.
 
@@ -176,7 +176,8 @@ Bố trí tổng thể theo X:
 2. **Tấm khẩu độ**: **LẮP TRƯỚC KHI ĐÓNG NẮP** — trượt vào rãnh tại x=113..115
    (bắt đầu `blank` → đo nền tối, sau đó `d5`/`d16`).
 3. **Chụp che sáng**: bắt 2 vít M3×8 QUA bích (lỗ xuyên từ mặt ngoài) vào mồi
-   Ø2.5 trên vách hộp — 2 chụp, 4 vít.
+   Ø2.5 trên vách hộp — 4 chụp (mỗi làn 1 cặp trái/phải — mỗi file in 2 bản),
+   8 vít M3×8.
 4. **Đế**: ghép 2 nửa `base_neg`/`base_pos` bằng 5 mộng vuông; bắt hộp tối lên
    đế qua 4 tai (vít M3×16) tại x=21/129, z=±40.
 5. **Điện tử**: Pi 4 lên 4 trụ M2.5 của `base_neg`, Grove HAT cắm header; board
@@ -321,7 +322,7 @@ objects` nếu muốn in tách bàn. In bằng nhựa đen mờ, layer 0.2mm, t�
 ~128×57×68 mm, bàn in ~230×185 mm). Các cặp lắp ghép vẫn khớp nhau vì cùng tỉ
 lệ; lỗ vít M3/trục Ø8 nhỏ theo (khoan lại hoặc dán). Khuyến nghị `S >= 0.8`
 để tường còn ≥ 2.4 mm kín sáng. Lưu ý: hộp ở scale 1.0 đã chỉ dài 15cm —
-kích thước ~23cm của file all-in-one là **bàn in xếp trải 8 chi tiết**,
+kích thước ~23cm của file all-in-one là **bàn in xếp trải 11 chi tiết**,
 không phải kích thước hộp.
 
 ### 8.2 Cấu trúc file
