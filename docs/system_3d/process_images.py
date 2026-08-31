@@ -12,10 +12,10 @@ Pipeline per component:
   3. Crop to the object's alpha bounding box (+2 px pad).
   4. Resize so the longest side is <= 512 px (LANCZOS).
   5. Save assets/<name>.png (RGBA) and emit assets/textures.json with
-     base64 data URLs + aspect ratios for build_chamber.py to embed in
-     model.json / viewer.html.
+      base64 data URLs for build_system.py to embed in
+      model.json / viewer.html.
 
-Run:  ../.cad_venv/bin/python process_images.py
+Run:  ../../.cad_venv/bin/python process_images.py   (from docs/system_3d/)
 """
 import base64
 import io

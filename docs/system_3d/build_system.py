@@ -920,12 +920,12 @@ def sensor_board_vis(v):
             for dz in (-8.5, 8.5):
                 v.add(_tube("x", X_MOD1, X_BF, Y_AX + dy, zc + dz, 2.5, 6), C_NYLON)
                 v.add(_tube("x", X_BR, X_BR + 3.0, Y_AX + dy, zc + dz, 1.5, 8), C_SILVER)
-        v.add(box(X_BF - 0.2, X_BR, Y_AX + 14.0, Y_AX + 19.0,         # cầu đấu 3 chân
+        v.add(box(X_BR, X_BR + 1.8, Y_AX + 14.0, Y_AX + 19.0,          # cầu đấu 3 chân — MẶT SAU board
                   zc - 7.6, zc + 7.6), 0x1b6ea8)
         for i in range(3):
-            v.add(cyl_x(X_BF - 3.4, X_BF - 0.2, Y_AX + 16.5,
+            v.add(cyl_x(X_BR + 1.8, X_BR + 5.2, Y_AX + 16.5,
                         zc - 5.08 + i * 5.08, 1.2, 10), C_SILVER)
-        v.add(box(X_BF, X_BR, Y_AX - 20.0, Y_AX - 16.0,               # tụ 100 nF cạnh VS
+        v.add(box(X_BR, X_BR + 3.5, Y_AX - 20.0, Y_AX - 16.0,           # tụ 100 nF cạnh VS — mặt sau
                   zc - 2.0, zc + 2.0), 0x7a5a2a)
     return v
 
@@ -1200,15 +1200,17 @@ def wires_vis(v):
     # ---------- RX: OPT101 -> khe trên khung -> chụp +X -> cáp Grove -> HAT ----------
     for ch, sock in (("ir", "A0"), ("red", "A2")):
         zc = LANE_Z[ch]
-        # 3 sợi (đỏ/đen/vàng) từ header 6 chân, qua khe dây trên khung, ra chụp,
-        # xuống khe sàn chụp rồi nối vào cáp Grove trắng.
-        rx = [(132.0, 23, zc), (132.5, 46, zc), (133.2, 53, zc), (135, 56, zc),
-              (138, 58.5, zc), (141, 58, zc), (141, 40, zc), (141, 20, zc),
-              (141, 12, zc), (144, 11, zc), (147, 10.5, zc), (151, 10.5, zc),
+        # 3 sợi (đỏ/đen/vàng) từ header 6 chân, VƯỢT QUA MIỆNG board (y>57, khe
+        # dây lên máng z làn±6.5), vào CẦU ĐẤU MẶT SAU board (x X_BR..X_BR+5.2),
+        # rồi vòng ra kênh sau khung (x 141.5..147) đi xuống, ra chụp +X.
+        rx = [(132.0, 23, zc), (132.5, 44, zc), (133.2, 52, zc), (135, 56, zc),
+              (138, 58.5, zc), (141.5, 57.5, zc), (143.6, 54, zc), (143.8, 49, zc),
+              (142.6, 48.6, zc), (143.8, 44, zc), (143.8, 20, zc),
+              (143.8, 13, zc), (147, 10.5, zc), (151, 10.5, zc),
               (156, 12, zc), (162, 16, zc), (168, 19, zc), (167, 8, zc),
               (167, 3.2, zc), (166, 2.5, zc)]
         for m, c in harness(rx, [(-5.08, C_WIRE_R), (0.0, C_WIRE_K), (5.08, C_WIRE_Y)],
-                            r=0.35, n=6, tie_step=16.0):
+                            r=0.35, n=6, tie_step=16.0, tie_skip_y=(55.0, 63.0)):
             v.add(m, c)
         # cáp Grove trắng: khe sàn chụp -> leo qua mép ngoài chụp -> chạy TRÊN NỌC
         # chụp -> bám mặt +X hộp -> mép nắp -> chạy trên nắp -> bám mặt -Z hộp ->
@@ -1288,7 +1290,7 @@ def collect_parts():
             printable=(ch == "red"),
             label=f"Carrier LED {vn} (trượt tự do, chỉnh từ ngoài bằng cần trượt nam châm)")
         add(f"led_{ch}", None, C_LEDR if ch == "red" else C_LEDI, [-46, 0, 0],
-            label=("LED Đỏ 622nm" if ch == "red" else "LED IR 875nm"),
+            label=("LED Đỏ 622nm [ASSUME]" if ch == "red" else "LED IR 875nm"),
             printable=False, subs=_vis_subs(led_vis, ch, x_front(ch)))
     for ch, vn in (("red", "Đỏ"), ("ir", "IR")):
         m = build_mag_slider()
@@ -1439,7 +1441,7 @@ def export(parts, write_model=True):
             print(f"  {p['name']:<22} tris={len(m0.faces):>6}  {ok}")
         else:
             # bản _ir của chi tiết in dùng chung STL bản _red (dedup) -> ghi rõ
-            twin = p["name"][:-3] + "_red" if p["name"].endswith("_ir") else None
+            twin = p["name"].replace("_ir", "_red") if "_ir" in p["name"] else None
             named = {q["name"]: q for q in parts}
             dedup = (twin is not None and twin in named
                      and named[twin].get("printable", True))

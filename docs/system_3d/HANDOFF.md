@@ -21,6 +21,7 @@ không lật; 12 cặp giao nhau = 0 mm³, 14/14 STL watertight):
 6. **STL dedup: 14 file** out/stl/ (bỏ *_ir trùng lặp; in 2 bản từ file _red). Bambu package 12 file (05_can_truot_nam_cham.stl thay 05_tam_hatch.stl).
 7. **BOM mua thêm**: 4× nam châm đĩa Ø10×3 N35, 8× vít M3×8 (chụp), 4× vít M3×16 (tai đế).
 8. **gh-pages đã dọn**: trước đây chứa 4.711 file rác (.cad_venv vendored + __pycache__ + dataset); bản deploy mới = index.html + stl/ + print_bambu/ + README.md + .nojekyll.
+9. **`chamber_3d/` đã xóa** (2026-08-31) — ngân sách quang học legacy chuyển vào README §2.1; lịch sử git vẫn giữ đầy đủ.
 
 ---
 
@@ -45,7 +46,7 @@ Dựng mô hình 3D **chân thực nhất có thể** cho toàn hệ PPG simulat
 > sửa lại cho đúng yêu cầu thẩm mỹ"
 
 → 3 phần: (a) hộp đẹp hơn — **ĐÃ XONG**; (b) web đen — **ĐÃ XONG**;
-(c) **dây đi theo bẹ — CHƯA LÀM** (đây là việc chính còn lại).
+(c) **dây đi theo bẹ — ĐÃ LÀM 2026-08-31** (xem §6).
 
 ---
 
@@ -186,6 +187,12 @@ Thêm primitive CSG mới (do không có shapely/scipy):
 
 ## 6. VIỆC CHÍNH CÒN LẠI — vẽ lại bó dây "đi theo bẹ"
 
+> ✅ **ĐÃ LÀM 2026-08-31** — đã hiện thực trong `build_system.py`
+> (`wires_vis()` + `harness()`: bẹ nhiều sợi song song + dây rút định kỳ),
+> tọa độ đã suy ra lại theo hình học v2 (khe sàn chụp −16..−10.5 /
+> 160.5..166.5; board driver ở −Z). Chi tiết: README §2.1 và docstring
+> `wires_vis`.
+
 `wires_vis()` ở **`build_system.py:1012`** vẫn là bản CŨ: các polyline viết tay
 rời rạc (TX 2 sợi r=0.55/kênh; RX 3 sợi r=0.35/làn; Grove r=1.1; I2C r=0.8).
 Đây chính là cái người dùng chê "rải rác thưa thớt".
@@ -311,26 +318,29 @@ Bó dây đặt ở y 1.05..2.15 → lọt dưới vòm cao 3.4 mm.
 
 ---
 
-## 7. Tồn đọng khác (chưa sửa, mức độ giảm dần)
+## 7. Tồn đọng khác (cập nhật 2026-08-31)
 
-1. **Dây RX xuyên qua board 5×7** — do cầu đấu + tụ 100 nF đang được dựng
-   NẰM TRONG bề dày FR4 (`sensor_board_vis()`: cầu đấu ở x `X_BF−0.2..X_BR`,
-   vít quay vào buồng tối; tụ ở x `X_BF..X_BR`).
-   → Phải dời ra **mặt sau board**: cầu đấu x `X_BR..X_BR+7.6` (vít quay +x),
-   tụ x `X_BR..X_BR+3.5`. Dây RX hiện bắt đầu ở y = 23 trong khi cầu đấu ở
-   y 46..51 — sẽ tự khớp sau khi vẽ lại.
-2. **"622 nm" không có căn cứ** — BOM không cho bước sóng LED Đỏ.
-   Xoá hoặc gắn nhãn `[ASSUME]` tại `README.md:3`, `README.md:31`,
-   `build_system.py` ~dòng 980 và ~1189.
-3. **README ghi sai kích thước đế**: "mỗi nửa 190×122" — thực tế
-   **198×131 (base_neg) / 198×122 (base_pos)**.
-4. **Texture `led_red` / `led_ir` không dùng tới** (~220 KB thừa trong
-   `viewer.html`) → nên bỏ khỏi `assets/textures.json`.
-5. **Nhãn console gây hiểu nhầm**: `aperture_ir_*` và `hood_*_ir` in ra
-   "not exported to STL" — dễ đọc thành "không cần in", trong khi thực tế
-   **phải in 2 bản** (dùng chung file với bản `_red`). Cần đổi chữ.
-6. **`render_preview.py`** cho ra 4 ảnh PNG gần như vô dụng về mặt thị giác
-   → hoặc làm lại cho đọc được, hoặc giảm vai trò vì viewer đã chạy.
+1. ✅ **ĐÃ SỬA 2026-08-31** — Dây RX xuyên qua board 5×7: cầu đấu 3 chân + tụ
+   100 nF đã dời ra **mặt sau board** (cầu đấu x `X_BR..X_BR+5.2`, vít quay +x;
+   tụ x `X_BR..X_BR+3.5`); dây RX được vẽ lại: vượt qua miệng board trên khe
+   dây lên máng (y 56..60.2), chạm cầu đấu mặt sau, rồi chạy xuống kênh sau
+   khung (x 141.5..147) ra chụp +X. Visual-only, không ảnh hưởng STL in.
+2. ✅ **ĐÃ SỬA 2026-08-31** — "622 nm" đã gắn nhãn `[ASSUME]` tại
+   `build_system.py` (label LED Đỏ) và `README.md` (đầu trang + sơ đồ khối,
+   có chú thích *) — BOM không ghi bước sóng LED Đỏ.
+3. ✅ **ĐÃ SỬA** — README ghi đúng kích thước đế **198×164 (base_neg) /
+   198×122 (base_pos)**.
+4. ✅ **ĐÃ SỬA 2026-08-31** — `led_red`/`led_ir` đã bỏ khỏi
+   `assets/textures.json` (-220 KB). Lưu ý thêm: hiện **toàn bộ** texture đều
+   chưa được nối vào model (Vis hỗ trợ `tex=` nhưng chưa nơi nào gọi với tex)
+   — nếu muốn PCB có ảnh thật cần viết bước nạp `textures.json` vào
+   `model.json`/viewer.
+5. ✅ **ĐÃ SỬA 2026-08-31** — nhãn console: phát hiện `_ir` bằng
+   `"_ir" in name` (trước đây `endswith("_ir")` bỏ sót `aperture_ir_*`);
+   mọi bản dedup đều in đúng "dùng chung file bản _red, in 2 bản".
+6. ⬜ **`render_preview.py`** cho ra 4 ảnh PNG gần như vô dụng về mặt thị giác
+   → hoặc làm lại cho đọc được, hoặc giảm vai trò vì viewer đã chạy. (Còn lại
+   — mức ưu tiên thấp, không chặn deploy.)
 
 ---
 
