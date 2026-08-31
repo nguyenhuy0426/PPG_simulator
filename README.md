@@ -1,13 +1,14 @@
 # PPG Simulator — Mô hình 3D toàn hệ thống (Raspberry Pi)
 
-> Mô hình 3D **toàn bộ hệ thống** PPG Simulator: hộp tối quang 2 làn (Red 622 nm /
-> IR 875 nm → 2× OPT101) + board cảm biến 5×7 cm + đế chung mang Pi 4, Grove HAT,
+> Mô hình 3D **toàn bộ hệ thống** PPG Simulator: hộp tối quang 2 làn (Red 622 nm
+> [ASSUME] / IR 875 nm → 2× OPT101) + board cảm biến 5×7 cm + đế chung mang Pi 4, Grove HAT,
 > board driver LED và 2× MCP4725. Sinh bằng script tham số `build_system.py`
 > (trimesh + Manifold CSG), duyệt trực tiếp trên trình duyệt tại `viewer.html`
 > (three.js, chạy offline).
 
-Kế thừa thiết kế buồng đơn trong `chamber_3d/`; file này dựng **toàn hệ thống**
-gắn trên một đế chung và bổ sung khối điện tử ngoài hộp tối.
+Kế thừa thiết kế buồng đơn v1 (bản legacy — xem lịch sử git trước commit xóa
+`chamber_3d/`); file này dựng **toàn hệ thống** gắn trên một đế chung và bổ
+sung khối điện tử ngoài hộp tối.
 
 ---
 
@@ -28,7 +29,7 @@ gắn trên một đế chung và bổ sung khối điện tử ngoài hộp t�
 │         │                                          │ I_LED (V_cmd/R_sense) │
 │         │           ┌──────────────────────────────▼─────────────────────┐ │
 │         │           │  HỘP TỐI + BOARD 5×7 + ĐẾ (docs/system_3d/)       │ │
-│         │           │   Làn Đỏ z=-19.25: LED 622 nm ──▶ OPT101 #2 (A2)  │ │
+│         │           │   Làn Đỏ z=-19.25: LED 622nm*──▶ OPT101 #2 (A2)  │ │
 │         │           │   Làn IR  z=+19.25: LED 875 nm ──▶ OPT101 #1 (A0)  │ │
 │         │           │   Trục trượt D d=15..90 + tấm khẩu độ (x=113..115) │ │
 │         │           └──────────────────────┬─────────────────────────────┘ │
@@ -45,6 +46,9 @@ gắn trên một đế chung và bổ sung khối điện tử ngoài hộp t�
 │  models/ppg_model.py · config.py · config_store.py · calibration.py        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> \* Bước sóng **622 nm** của LED Đỏ là `[ASSUME]` — BOM không ghi rõ bước sóng
+> này; đo kiểm trên vật thật trước khi hiệu chuẩn (Stage 6).
 
 ---
 
@@ -65,8 +69,39 @@ Hệ lắp ráp (xem thêm header `build_system.py` §1):
   Pi 4 + Grove HAT + board driver (xoay 90°) + 2× MCP4725 cùng nằm một bên;
   nửa `+Z` chỉ đỡ hộp tối.
 - Khoảng cách mặc định (chóp LED → cửa sổ OPT101 tại x=120): **Đỏ d=25 mm**,
-  **IR d=85 mm** — theo ngân sách quang học `chamber_3d/README.md` §4 (Đỏ để gần
+  **IR d=85 mm** — theo ngân sách quang học §2.1 dưới đây (Đỏ để gần
   vì LED yếu, IR để xa để tránh bão hòa).
+
+### 2.1 Ngân sách quang học (di chuyển từ chamber_3d §4 — bản legacy)
+
+Mô hình điểm-xấp-xỉ-nghịch-bình-phương `V_out = Rv × Ie × (A/d²) + V_dark`:
+
+**Kênh ĐỎ (622 nm — [ASSUME])** — LED yếu → để gần sensor:
+
+| Vdac | I_LED | d=15 | d=25 | d=40 | d=60 | d=85 mm |
+|---|---|---|---|---|---|---|
+| 1.0 V | 5.0 mA | 1.457 | **0.529** | 0.211 | 0.098 | 0.053 V |
+| 2.0 V | 10 mA | 2.907 | **1.051** | 0.415 | 0.189 | 0.098 V |
+
+→ **d = 25 mm** khuyến nghị: dải Vdac 0.5–3.28 V đều dưới trần 2.13 V (không kẹp).
+
+**Kênh IR (875 nm)** — LED rất mạnh → phải để xa để tránh bão hòa:
+
+| Vdac | I_LED | d=25 | d=60 | d=85 mm |
+|---|---|---|---|---|
+| 1.0 V | 6.1 mA | 11.29 (⚠ kẹp) | 1.966 | **0.983** V |
+| 2.0 V | 12.2 mA | 22.57 (⚠ kẹp) | 3.925 | **1.959** V |
+
+→ **d = 85 mm** khuyến nghị: tại d=85 Vdac được phép tới 2.17 V; tại d=25 chỉ
+0.19 V (gần như không điều khiển được). Đây là lý do ray trượt phải dài 15–85 mm.
+
+> ⚠ Giá trị Rv 0.35/0.49 V/µW là ước lượng đồ thị từ datasheet (chỉ 0.45 A/W
+> @650 nm được ghi rõ). Trước khi chốt hiệu chuẩn nên đo thực tế ở Stage 6.
+
+> Nguồn: `chamber_3d/README.md` §4 — thư mục legacy đã bị xóa khỏi source
+> tree (lịch sử git vẫn giữ đầy đủ). Lưu ý: dải d 15–85 mm của bản legacy
+> đã mở thành **15–90 mm** trong v2 (`D_MIN, D_MAX = 15.0, 90.0` trong
+> `build_system.py`).
 
 Bố trí tổng thể theo X:
 
@@ -247,8 +282,8 @@ sáng giữ nguyên góc mở datasheet và luôn ghim đầu xa tại cửa s�
 Tái sinh ảnh (cần matplotlib): `../../.cad_venv/bin/python render_preview.py`
 
 Tái sinh texture từ ảnh thô (cần Pillow): `../../.cad_venv/bin/python process_images.py`
-(chạy trong `chamber_3d/`, sau đó copy `assets/textures.json` + `*.png` sang đây
-hoặc đồng bộ thủ công — script hiện ghi vào `chamber_3d/assets/`).
+(chạy ngay trong `docs/system_3d/` — đọc `assets/*_raw.jpg`, ghi
+`assets/textures.json` + `assets/*.png`).
 
 ---
 
@@ -373,3 +408,16 @@ lâm sàng.
   `mag_slider_red.stl`).
 - **(f) Viewer thêm mục tải STL** (fieldset "📦 Tải file in 3D") + cập nhật nhãn
   cơ cấu thành "cần trượt nam châm".
+
+---
+
+## 11. Nhật ký 2026-08-31
+
+- **(a) Bẹ dây "đi theo bẹ" 2 hành lang** — −X (dòng LED) / +X (tín hiệu):
+  bẹ nhiều sợi song song buộc dây rút định kỳ, dựng bằng helper `harness()`
+  trong `wires_vis()` của `build_system.py`; chỉ hiển thị trong viewer
+  (không ảnh hưởng STL in).
+- **(b) Chuyển ngân sách quang học legacy vào §2.1** và xóa `chamber_3d/`
+  khỏi source tree (lịch sử git vẫn giữ đầy đủ).
+- **(c) Chuyển `process_images.py` về `docs/system_3d/`** — đọc/ghi thẳng
+  `assets/` tại chỗ, hết đồng bộ thủ công.
