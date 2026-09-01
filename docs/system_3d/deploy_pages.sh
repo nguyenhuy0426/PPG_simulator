@@ -1,5 +1,5 @@
 #!/bin/sh
-# Triển khai viewer 3D v2 + STL lên GitHub Pages.
+# Triển khai viewer 3D v3 + STL lên GitHub Pages.
 # Dọn SẠCH gh-pages (trước đây bị dính .cad_venv/__pycache__/dataset) rồi
 # chỉ chép đúng bộ file deploy: index.html + stl/ + print_bambu/ + README + .nojekyll.
 # Worktree tạm ở thư mục mktemp (tự dọn qua trap), sync theo TIP TRÊN REMOTE
@@ -28,7 +28,7 @@ git rm -rq --ignore-unmatch .
 # Tàn dư chưa được git quản lý (vd .cad_venv, __pycache__, dataset, .codegraph):
 find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 
-echo "==> Chép đúng bộ file deploy v2 từ $SRCDIR..."
+echo "==> Chép đúng bộ file deploy v3 từ $SRCDIR..."
 cp "$SRCDIR/viewer.html" "$WT/index.html"
 mkdir -p "$WT/stl" "$WT/print_bambu"
 cp "$SRCDIR"/out/stl/*.stl "$WT/stl/"
@@ -40,7 +40,7 @@ git add -A
 echo "==> Nội dung gh-pages sau khi dọn:"
 git ls-files | sed 's/^/    /'
 if [ -n "$(git status --porcelain)" ]; then
-    git commit -m "deploy v2: can truot nam cham + STL downloads ($(date +%Y-%m-%d))" || exit 1
+    git commit -m "deploy v3: thanh truot day-keo + chup 4 tru cam + de man hinh 7in ($(date +%Y-%m-%d))" || exit 1
 else
     echo "  (không có thay đổi)"
 fi
@@ -50,6 +50,6 @@ git push origin HEAD:gh-pages
 DEPLOY_SHA=$(git rev-parse --short HEAD)
 
 cd "$SRCDIR"
-echo "✅ Đã dọn sạch và đẩy bản deploy v2 lên gh-pages."
+echo "✅ Đã dọn sạch và đẩy bản deploy v3 lên gh-pages."
 echo "   Commit đã đẩy: $DEPLOY_SHA"
 echo "   Link: https://nguyenhuy0426.github.io/PPG_simulator/"

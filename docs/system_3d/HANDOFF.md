@@ -1,8 +1,57 @@
 # HANDOFF — Mô hình 3D hệ thống PPG simulator (`docs/system_3d`)
 
 Tài liệu bàn giao để tiếp tục công việc ở cuộc hội thoại sau.
-Cập nhật: 2026-08-28. Nhãn bằng chứng: `[VERIFIED]` = đã chạy/đo được trong
+Cập nhật: 2026-09-02. Nhãn bằng chứng: `[VERIFIED]` = đã chạy/đo được trong
 phiên này, `[SPEC]/[DS]` = theo tài liệu, `[ASSUME]` = giả định, cần đo thật.
+
+---
+
+## 0. CẬP NHẬT v3 (2026-09-02) — thanh trượt đẩy-kéo, chụp 4 trụ cắm, đế màn hình
+
+Ghi đè mục 0-v2 và các mục cũ ở những chỗ đụng chạm. Trạng thái
+`[VERIFIED]` **93/93 check** (`docs/system_3d/verify_geometry.py`; 15/15 STL
+watertight, 12 cặp lắp ghép giao nhau = 0 mm³).
+
+1. **Cơ cấu chỉnh d = thanh trụ tròn Ø5 h8 × 130 mm** (thép/inox `[SPEC]`, mua
+   sẵn) gắn cứng vào lỗ mù Ø5.1 sâu 15 mm trên **lưng carrier**, song song trục
+   D tại **y = 24**, xuyên vách `-X` qua **bệ dẫn hướng Ø10.4/lỗ Ø5.4 dài 21 mm**
+   (ống nhô 18 mm + vách 3 mm). Đẩy/kéo **bằng tay** từ ngoài; **núm cầm Ø16×8**
+   in 3D (`rod_knob_red.stl`) kẹp bằng vít lục giác chìm M3×6.
+   **Phần thanh lộ ra ngoài mặt bệ = d (mm)** → đọc khoảng cách bằng thước kẹp.
+   Kín sáng bằng **bẫy khe vành 0.20 mm × 21 mm ≈ 105:1** `[ASSUME]` — CHƯA đo
+   bằng OPT101 ở khẩu độ `blank`; đây là phép đo bắt buộc ở Stage 6.
+   **Bỏ toàn bộ nam châm N35, ray/chặn/thước khắc trên nắp → nắp là tấm phẳng.**
+2. **Không va chạm** `[VERIFIED]`: thanh ở y=24 vs bó dây TX y≈1.8..9 (cách
+   ≥15 mm), vs trục D y=16.75, vs hốc chân LED y≈29.2; đầu thanh x=112−d luôn
+   **lùi sau chóp LED (x=120−d) 8 mm** nên không chắn quang. Máng dây sàn đã dời
+   về **x ≥ 9** (sau 4 trụ đứng đỡ lỗ trụ cắm).
+3. **Kết cấu KHOẺ HƠN, không yếu đi**: bệ là vật liệu ĐẮP THÊM (ống vách 2.5 mm)
+   + bệ phẳng 2.0 mm nâng vách chỗ khoét từ 3.0 → 5.0 mm.
+4. **Chụp che sáng: 4 trụ cắm Ø4 × 6.5 mm** (y = 5.0/13.5, z = tâm làn ±14.5)
+   vào lỗ Ø4.30 (khe 0.15/mặt) — **bỏ 8 vít M3×8**. Kín sáng bằng **vòng mộng
+   âm-dương khép kín** quanh lỗ cáp (gân 1.2 mm ↔ rãnh 1.5×1.5 mm, khe
+   0.15/mặt), 4 trụ nằm NGOÀI vòng mộng (±14.5 vs ±13). Đáy lỗ tựa **trụ đứng
+   liền khối trong hộp** (x=3..8, cao y=19.5) → lỗ không xuyên thủng vách.
+5. **2 chân đỡ màn hình 7"** (`screen_foot_1.stl`, in 2) trên nửa đế `+Z`:
+   x = 20/130, **z = 56..110** (lùi sau 4 tai bắt hộp z≤51.5 — cặp
+   `body × screen_foot_1` = 0 mm³), máng kẹp rộng 21 sâu 14 ngả **15°**,
+   4 vít M3×12 xuống đế + 2 vít kẹp M3. `[SPEC]` panel Pi 7" 194×110×20 mm;
+   `[ASSUME]` panel khác dày 15..21 mm. Không cản Pi (z −108..−52) hay quạt.
+   In **đứng đúng tư thế lắp, không support** (mọi mặt hướng xuống ≤39°).
+6. **Lưới 2×3 lỗ M3 Ø3.4 dự phòng** trên `base_pos` (x 55/95, z 65/90/115).
+7. **STL: 15 file** `out/stl/` (bỏ `mag_slider_red.stl`; thêm `rod_knob_red.stl`,
+   `screen_foot_1.stl`). Bambu **12 file** (`05_num_thanh_truot.stl` thay
+   `05_can_truot_nam_cham.stl`). Thân in rộng 150 → **170 mm** ⇒ đã đổi thuật
+   toán xếp bàn sang **MaxRects** (all-in-one 237×235 mm); thêm bước **dọn STL
+   mồ côi** trong `export()` / `export_print_package()`.
+8. **BOM mua thêm (v3)**: 2× thanh Ø5 h8 ×130 mm, 2× vít lục giác chìm M3×6,
+   4× vít M3×16 (tai đế), 4× vít M3×12 (chân màn hình), 2× vít M3×16 (kẹp panel),
+   *(tuỳ chọn)* 6× vít M3 + đai ốc (lưới mở rộng). **BỎ**: 4 nam châm N35,
+   8 vít M3×8.
+9. **Lỗi thật đã sửa trong đợt này**: gân kín sáng của chụp cấn vào đảo rãnh
+   thân **13.1 mm³ mỗi bên** (đặt lệch dấu khe ở 2 mép trong) và chân màn hình
+   cấn tai bắt hộp **98.5 mm³ mỗi chân**. Cả hai đều do check giao nhau bắt
+   được — **luôn chạy `verify_geometry.py` trước khi in**.
 
 ---
 

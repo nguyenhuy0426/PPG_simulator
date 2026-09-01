@@ -10,6 +10,10 @@ Sinh ra:
 
 v2 (2026-08-30): cơ cấu chỉnh d bằng cần trượt nam châm ngoài nắp (bỏ cửa
 hatch), chụp bắt vít xuyên từ mặt ngoài, 5 mộng nối đế.
+v3 (2026-09-02): bỏ nam châm — thanh trụ Ø5 gắn cứng vào carrier xuyên vách -X
+qua bệ dẫn hướng 21 mm (bẫy sáng khe vành, đẩy/kéo bằng tay, phần lộ ra = d);
+chụp cáp khớp 4 trụ cắm Ø4 + mộng âm-dương kín sáng (bỏ vít M3); thêm 2 chân
+đỡ màn hình cảm ứng 7 inch + lưới lỗ M3 mở rộng trên nửa đế +Z.
 
 HỆ TRỤC (mm):
   +X = trục quang, hướng từ đầu LED  ->  board cảm biến
@@ -118,12 +122,63 @@ BRD_Z, BRD_Y = 70.0, 50.0
 BRD_Z0, BRD_Z1 = -BRD_Z / 2, BRD_Z / 2     # -35 .. 35
 BRD_Y0, BRD_Y1 = Y_AX - BRD_Y / 2, Y_AX + BRD_Y / 2   # 7 .. 57
 
-# --- lỗ ra cáp + chụp che sáng ------------------------------------------------
-EX_Y0, EX_Y1 = 6.0, 16.0                   # lỗ xuyên vách
+# --- thanh trượt đẩy-kéo (thay cần trượt nam châm) ----------------------------
+# Thanh trụ tròn Ø5 mm gắn cứng vào mặt sau carrier, song song trục D (trục X),
+# xuyên vách -X qua bệ dẫn hướng dài -> đẩy/kéo bằng tay từ bên ngoài.
+ROD_D = 5.0                                # [SPEC] thanh trụ tròn Ø5 h8 mua sẵn (thép/inox)
+ROD_R = ROD_D / 2.0
+ROD_BORE_R = ROD_R + 0.20                  # Ø5.4 — khe hướng kính 0.20 mm (trượt nhẹ, kín sáng)
+ROD_Y = 24.0                               # tâm thanh: giữa mặt vát D-shaft (16.75) và hốc chân LED (29.2)
+ROD_BOSS_L = 18.0                          # bệ dẫn hướng nhô ra ngoài vách -X
+ROD_BOSS_X0 = X0 - ROD_BOSS_L              # -18.0
+ROD_BOSS_R = ROD_BORE_R + 2.5              # Ø10.4 — vách bệ 2.5 mm quanh lỗ
+ROD_BOSS_APEX = ROD_Y - ROD_BOSS_R         # 18.8 — đỉnh nhọn hướng xuống (in không cần support)
+ROD_BORE_DEPTH = 15.0                      # lỗ mù trong carrier (carrier dài 22 -> còn 7 mm đặc)
+ROD_GRUB_X = -19.0                         # vị trí lỗ vít chặn M3 (toạ độ cục bộ carrier)
+ROD_LEN = 130.0                            # chọn L=130 -> phần thanh lộ ra ngoài bệ = d (mm)
+ROD_KNOB_D, ROD_KNOB_T = 16.0, 8.0         # núm cầm in 3D ở đuôi thanh
+
+# --- lỗ ra cáp + chụp che sáng (khớp 4 trụ cắm) -------------------------------
+EX_Y0, EX_Y1 = 5.5, 13.5                   # lỗ xuyên vách 8 x 20 mm (hạ xuống, nhường bệ thanh trượt)
 EX_ZW = 20.0                               # bề rộng lỗ theo Z
-HOOD_BOLT_Y = (EX_Y0 + EX_Y1) / 2.0        # 10.5 — tâm hàng vít chụp
-HOOD_BOLT_Z = EX_ZW / 2.0 + 8.0 - 1.5      # ±16.5 — trên vành bích đặc (HW - 1.5)
-HOOD_Y0, HOOD_Y1 = 3.0, 24.0
+HOOD_Y0, HOOD_Y1 = 1.5, 18.0               # bao ngoài bích chụp theo Y (dưới đỉnh bệ 18.8)
+HOOD_HZ = 17.75                            # nửa bề rộng bích chụp theo Z
+HOOD_PEG_D = 4.0                           # Ø trụ cắm (thay 2 vít M3 cũ)
+HOOD_PEG_R = HOOD_PEG_D / 2.0
+HOOD_PEG_YS = (5.0, 13.5)                  # 2 hàng trụ theo Y
+HOOD_PEG_Z = 14.5                          # ±14.5 quanh tâm làn — NGOÀI rãnh kín (±13)
+HOOD_PEG_L = 6.5                           # chiều dài trụ cắm vào thân
+HOOD_PEG_CLR = 0.15                        # khe lỗ trụ: Ø4.30 cho trụ Ø4.00 -> ép nhẹ, rút được tay
+# Rãnh + gân kín sáng (mộng âm-dương) bao quanh lỗ cáp: 2 lần bẻ 90°
+GRV_Y0, GRV_Y1 = 2.5, 16.5                 # bao NGOÀI của vòng rãnh
+GRV_HZ = 13.0                              # nửa bề rộng bao ngoài vòng rãnh
+GRV_W = 1.5                                # bề rộng lòng rãnh
+GRV_D = 1.5                                # chiều sâu rãnh trên bệ (bệ 2.0 + vách 3.0 = 5.0)
+PLATEAU_T = 2.0                            # bệ nhô ngoài vách: dày thêm chỗ khoét + tạo mặt tì cho chụp
+PLATEAU_Y1 = 19.0                          # đỉnh bệ (khớp đỉnh nhọn bệ thanh trượt 18.8)
+PEG_PIL_L = 5.0                            # trụ đứng trong hộp đỡ đáy lỗ trụ cắm
+PEG_PIL_HZ = 4.5                           # nửa bề rộng trụ đứng (mép trong cách carrier 1.0 mm)
+PEG_PIL_TOP = 19.5                         # đỉnh trụ đứng
+
+# --- đế đỡ màn hình cảm ứng 7 inch (vùng +Z còn trống của đế) -----------------
+# [SPEC] Raspberry Pi 7" Touch Display: 194 x 110 x 20 mm (bao gồm bo mạch sau).
+# Máng kẹp thiết kế dung sai rộng 15..26 mm nên vẫn nhận panel 7" phổ thông.
+SCR_W, SCR_H, SCR_T = 194.0, 110.0, 20.0
+SCR_TILT = 15.0                            # độ ngả ra sau (so với phương thẳng đứng)
+SCR_FOOT_X = (20.0, 130.0)                 # 2 chân, cách nhau 110 mm, đối xứng qua x = 75
+SCR_FOOT_Z0 = 56.0                         # mép trước chân: sau 4 TAI BẮT HỘP (z tới 51.5)
+SCR_FOOT_L = 54.0                          # chiều dài chân theo Z
+SCR_FOOT_W = 16.0                          # bề rộng chân theo X
+SCR_SLOT_W = 21.0                          # bề rộng máng kẹp (panel [SPEC] 20 mm -> khe 0.5/cạnh)
+SCR_SLOT_D = 14.0                          # chiều sâu máng
+SCR_SLOT_Y = 8.0                           # đáy máng (cách mặt đế)
+SCR_SLOT_Z = 24.0                          # tâm đáy máng theo z cục bộ
+SCR_BOLT_Z = (4.0, 51.0)                   # 2 lỗ M3 bắt chân xuống đế (z cục bộ)
+SCR_CLAMP_Y = 12.0                         # vít kẹp M3 ngang xuyên thành sau máng
+
+# --- lưới lỗ bắt module mở rộng trên nửa đế +Z ---------------------------------
+EXP_HOLE_X = (55.0, 95.0)                  # giữa 2 chân màn hình (x 12..28 / 122..138)
+EXP_HOLE_Z = (65.0, 90.0, 115.0)           # sau hộp tối (z <= 51.5), trước gân (z >= 117)
 
 # --- đế chung + khối điện tử ngoài --------------------------------------------
 BASE_T = 4.0                               # bề dày tấm đế (mặt trên y = 0)
@@ -492,23 +547,9 @@ SHADOW_Y0, SHADOW_Y1 = 46.0, 48.5     # chỉ bóng ngang quanh 4 thành
 SHADOW_D = 0.8                        # chiều sâu chỉ bóng (thành còn 2.2 mm)
 BASE_CHAM = 8.0          # vát 2 góc ngoài mỗi nửa đế
 LID_CHAM = 1.5                        # vát vành mép trên nắp
-LID_PANEL_X0, LID_PANEL_X1 = 8.0, 142.0    # panel giữa thụt trên nắp (chức năng:
-LID_PANEL_Z0, LID_PANEL_Z1 = -34.0, 34.0   # ray + chặn đứng trên mặt recess)
+LID_PANEL_X0, LID_PANEL_X1 = 8.0, 142.0    # panel giữa thụt trên nắp (thẩm mỹ,
+LID_PANEL_Z0, LID_PANEL_Z1 = -34.0, 34.0   # đồng thời giảm cong vênh mặt phẳng lớn)
 LID_PANEL_D = 0.8                     # panel giữa thụt xuống
-
-# --- cần trượt nam châm (chỉnh d từ NGOÀI hộp, không mở nắp) ---
-MAG_D, MAG_T = 10.0, 3.0          # [BOM] nam châm đĩa Ø10×3 N35 (mua ngoài, 4 cái)
-MAG_POCKET = MAG_D + 0.3          # hốc nhựa giữ nam châm
-TWR_X0, TWR_X1 = -18.0, -6.0      # cột nam châm trên carrier (local x, tâm -12)
-TWR_TOP = 63.5                    # đỉnh cột (khe 0.5 mm tới nóc buồng y=64)
-TWR_C = (TWR_X0 + TWR_X1) / 2.0   # -12 — tâm cột & hốc khoét nam châm
-SLIDER_X0 = X_WIN - LED_TIP_OUT + TWR_C   # = 107 — tâm cần khi d=0; tâm cần ở vị trí d là SLIDER_X0 - d
-SLIDER_HW = 7.2                   # nửa rộng cần trượt (ray trên nắp ±7.5..9.5)
-SLIDER_HL = 8.0                   # nửa DÀI cần trượt theo X (khối 16×14)
-SLIDER_TOP = 71.5                 # đỉnh cần: 0.8 chìm recess + 4.5 trên nắp
-RAIL_X0, RAIL_X1 = 8.0, 101.0     # 2 ray dẫn cần trên mặt nắp
-RAIL_TOP = 68.4                   # đỉnh ray
-SL_X_MIN, SL_X_MAX = 17.0, 92.0   # hành trình TÂM cần = SLIDER_X0 - d (d=90..15)
 
 LID_GROOVE_W = 2.0          # bề rộng rãnh labyrinth trên đỉnh thành
 LID_GROOVE_D = 4.0          # chiều sâu rãnh (Y_TOP-4 .. Y_TOP)
@@ -528,6 +569,47 @@ def _lid_groove_boxes(shrink=0.0):
         box(cx_r - h, cx_r + h, y0, y1, Z0, Z1),             # thành phải (+X)
         box(X_IN0, X_IN1, y0, y1, -h, h),                    # vách ngăn quang
     ]
+
+
+def _rod_boss(zc, n=48):
+    """Bệ dẫn hướng thanh trượt Ø5: nửa trên là trụ Ø10.4, nửa dưới là 2 mặt 45°
+    hội tụ xuống đỉnh nhọn y=ROD_BOSS_APEX.
+
+    Thân hộp in với world +Y -> print +Z, nên bệ này là một TRỤ NẰM NGANG trong
+    tư thế in; mặt dưới của trụ tròn sẽ là overhang. Tiết diện "giọt nước ngược"
+    (đỉnh nhọn hướng xuống) giữ mọi mặt dưới <= 45° -> in không cần support.
+    """
+    R = ROD_BOSS_R
+    pts = [(ROD_Y + R * math.sin(math.pi * i / n), zc + R * math.cos(math.pi * i / n))
+           for i in range(n + 1)]
+    pts.append((ROD_BOSS_APEX, zc))
+    return prism("x", pts, ROD_BOSS_X0, X_IN0)
+
+
+def _seal_groove(sgn, zc, extra=0.0, depth=None):
+    """Vòng rãnh chữ nhật kín bao quanh lỗ cáp trên mặt bệ nhô (dao cắt).
+
+    `extra` nới cả 4 phía (dùng khi khoét rãnh trên THÂN để chừa khe cho gân
+    của chụp).  Trả về 4 thanh dao (trên / dưới / 2 bên) — nối liền thành vòng.
+    """
+    _, xo, _ = _wall_out_x(sgn)
+    d = GRV_D if depth is None else depth
+    xa, xb = xo + sgn * 0.5, xo - sgn * d
+    oy0, oy1 = GRV_Y0 - extra, GRV_Y1 + extra
+    oz0, oz1 = zc - GRV_HZ - extra, zc + GRV_HZ + extra
+    iy0, iy1 = oy0 + GRV_W, oy1 - GRV_W
+    iz0, iz1 = oz0 + GRV_W, oz1 - GRV_W
+    return [box(xa, xb, oy0, iy0, oz0, oz1),
+            box(xa, xb, iy1, oy1, oz0, oz1),
+            box(xa, xb, iy0, iy1, oz0, iz0),
+            box(xa, xb, iy0, iy1, iz1, oz1)]
+
+
+def _wall_out_x(sgn):
+    """(mặt ngoài vách, mặt ngoài bệ nhô, mặt trong vách) cho vách -X (sgn=-1)
+    hoặc +X (sgn=+1)."""
+    xw = X0 if sgn < 0 else X_TOT
+    return xw, xw + sgn * PLATEAU_T, (X_IN0 if sgn < 0 else X_IN1)
 
 
 def build_body():
@@ -565,19 +647,43 @@ def build_body():
         cuts.append(cyl_x(POST_X0 - 0.5, POST_X1 + 0.5, SH_Y, zc, SH_R + CLR, 40))
         cuts.append(box(AP_X0, AP_X1, Y_FL - 1.1, Y_FL + 0.05, zc - 17.8, zc + 17.8))
         zw = s * (Z_IN1 - 4.0)                                               # máng dây LED
-        cuts.append(box(4.0, 104.0, Y_FL - 1.4, Y_FL + 0.05, zw - 3.0, zw + 3.0))
+        # bắt đầu ở x=9 (sau trụ đứng chân chụp x=3..8) để dây không chui hầm
+        cuts.append(box(9.0, 104.0, Y_FL - 1.4, Y_FL + 0.05, zw - 3.0, zw + 3.0))
     m = dif(m, cuts)
 
-    # lỗ ra cáp xuyên vách + mồi vít cho chụp: 2 vít M3×8 tự khoan vào mồi
-    # Ø2.5 sâu 2.6 mm — lỗ vít trên chụp XUYÊN bích, vặn từ mặt ngoài
+    # --- bệ dẫn hướng thanh trượt Ø5 xuyên vách -X ----------------------------
+    # Bệ dài 18 mm + vách 3 mm = 21 mm lỗ dẫn hướng cho khe hướng kính 0.20 mm
+    # -> tỉ lệ L/khe ~= 105:1, bẫy sáng hình khuyên (chưa kể thanh lấp gần kín).
+    # Bệ làm chỗ khoét DÀY LÊN (2.5 mm vách quanh lỗ + 3 mm vách gốc) nên vách
+    # KHOẺ HƠN chứ không yếu đi.
+    boss = [_rod_boss(zc) for zc in LANE_Z.values()]
+
+    # --- bệ nhô ngoài 2 vách + bậc (rabbet) ôm bích chụp + trụ đứng chân chụp -
+    plate = []
+    for sgn in (-1.0, 1.0):
+        xw, xo, xi = _wall_out_x(sgn)
+        plate.append(box(xw, xo, Y0, PLATEAU_Y1, Z0 + BODY_CHAM, Z1 - BODY_CHAM))
+        for zc in LANE_Z.values():
+            for dz in (-HOOD_PEG_Z, HOOD_PEG_Z):
+                plate.append(box(xi, xi - sgn * PEG_PIL_L, Y_FL, PEG_PIL_TOP,
+                                 zc + dz - PEG_PIL_HZ, zc + dz + PEG_PIL_HZ))
+    m = uni([m] + boss + plate)
+
+    # lỗ ra cáp xuyên vách + bậc ôm bích + 4 lỗ mù cho trụ cắm của chụp
     holes = []
     for zc in LANE_Z.values():
-        for xs, sgn in ((X0, -1.0), (X_TOT, 1.0)):
-            holes.append(box(xs - sgn * (WALL + 0.5), xs + sgn * 0.5,
+        holes.append(_tube("x", ROD_BOSS_X0 - 0.5, X_IN0 + 0.5, ROD_Y, zc,
+                           ROD_BORE_R, 48))
+        for sgn in (-1.0, 1.0):
+            xw, xo, xi = _wall_out_x(sgn)
+            holes.append(box(xo - sgn * 0.5, xi + sgn * 0.5,
                              EX_Y0, EX_Y1, zc - EX_ZW / 2, zc + EX_ZW / 2))
-            for dz in (-HOOD_BOLT_Z, HOOD_BOLT_Z):
-                holes.append(_tube("x", xs + sgn * 0.3, xs - sgn * 2.6,
-                                   HOOD_BOLT_Y, zc + dz, 1.25, 12))
+            holes += _seal_groove(sgn, zc)
+            for dz in (-HOOD_PEG_Z, HOOD_PEG_Z):
+                for yp in HOOD_PEG_YS:
+                    holes.append(_tube("x", xo + sgn * 0.5,
+                                       xo - sgn * (HOOD_PEG_L + 1.0),
+                                       yp, zc + dz, HOOD_PEG_R + HOOD_PEG_CLR, 24))
 
     # tai bắt vít xuống đế
     ears = []
@@ -606,48 +712,21 @@ def build_body():
 
 
 def build_lid():
-    """Nắp labyrinth: tấm + gờ cắm vào rãnh (kể cả trên vách ngăn) + vấu chặn khung.
-    Mặt trên có 2 KÊNH CẦN TRƯỢT NAM CHÂM (mỗi làn 1 kênh): panel giữa mỏng còn
-    2.2 mm (vùng cộng hưởng nam châm), 2 ray dẫn cần + 2 chặn đầu hành trình +
-    thước khắc d=15..90. Cần trượt chỉnh carrier LED từ NGOÀI hộp — KHÔNG còn
-    cửa hatch nào trên nắp (kín sáng tuyệt đối, không thêm khe hở)."""
+    """Nắp labyrinth: tấm ĐẶC + gờ cắm vào rãnh (kể cả trên vách ngăn) + vấu chặn.
+
+    Sau khi bỏ cần trượt nam châm, nắp KHÔNG còn ray / chặn / vùng mỏng 2.2 mm:
+    tấm dày đều LID_T = 3.0 mm trên toàn bộ mặt (trừ panel thụt 0.8 mm thuần
+    thẩm mỹ) -> cứng hơn, kín sáng hơn, không có chi tiết mỏng dễ vênh khi in.
+    """
     m = box(X0, X_TOT, Y_TOP, Y_LID, Z0, Z1)
     m = uni([m] + _lid_groove_boxes(shrink=CLR / 2))
     tabs = [box(FRM_X0 - 2.4, FRM_X0 - 0.6, 56.0, Y_TOP, zc - 14.0, zc + 14.0)
             for zc in LANE_Z.values()]
     m = uni([m] + tabs)
 
-    # panel giữa thụt 0.8 mm — mặt recess chức năng: ray/chặn đứng trên đó,
-    # vùng mỏng 2.2 mm đúng vị trí cộng hưởng nam châm carrier ↔ cần trượt
+    # panel giữa thụt 0.8 mm — thuần thẩm mỹ, nắp còn 2.2 mm ở đây vẫn kín sáng
     m = dif(m, [box(LID_PANEL_X0, LID_PANEL_X1, Y_LID - LID_PANEL_D, Y_LID + 0.6,
                     LID_PANEL_Z0, LID_PANEL_Z1)])
-
-    # 2 kênh cần trượt: ray dẫn 2 bên mỗi làn + chặn trước/sau hành trình
-    add = []
-    for zc in LANE_Z.values():
-        add.append(box(RAIL_X0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
-                       zc - 9.5, zc - 7.5))
-        add.append(box(RAIL_X0, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
-                       zc + 7.5, zc + 9.5))
-        add.append(box(RAIL_X0, SL_X_MIN - SLIDER_HL, Y_LID - 0.8, RAIL_TOP,
-                       zc - 7.5, zc + 7.5))          # chặn trước (d=90)
-        add.append(box(SL_X_MAX + SLIDER_HL, RAIL_X1, Y_LID - 0.8, RAIL_TOP,
-                       zc - 7.5, zc + 7.5))          # chặn sau (d=15)
-    m = uni([m] + add)
-
-    # thước khắc d=15..90 trên sàn recess, NGOÀI ray — tâm vạch c = 107 - d;
-    # vạch to: Đỏ d=25 / IR d=85 (vị trí mặc định)
-    cuts = []
-    for ch, zc in LANE_Z.items():
-        s = LANE_SIGN[ch]
-        for d in range(15, 91, 5):
-            c = SLIDER_X0 - d
-            big = (d == 25) if ch == "red" else (d == 85)
-            w = 0.6 if big else 0.3
-            dep = 0.8 if big else 0.4
-            cuts.append(box(c - w, c + w, Y_LID - 0.8 - dep, Y_LID - 0.8 + 0.05,
-                            zc + s * 9.9, zc + s * 11.1))
-    m = dif(m, cuts)
 
     if DETAIL == "full":
         cuts = chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_LID, LID_CHAM)
@@ -673,48 +752,58 @@ def build_shaft():
 
 def build_carrier():
     """Khối trượt mang LED: lỗ D ôm trục, TRƯỢT TỰ DO (bỏ kẹp xẻ + vít M3),
-    loa che sáng 45°. Dẫn động từ NGOÀI hộp bằng cần trượt nam châm: trên lưng
-    carrier có CỘT NAM CHÂM (tâm local x=-12 -> tâm cột thế giới = x_front - 12,
-    đỉnh y=TWR_TOP, khe 0.5 mm tới nóc buồng) chứa nam châm đĩa Ø10×3 N35 ép
-    khít vào hốc mù mở trên đỉnh cột (60.3..63.3, môi 0.2 mm giữ) + 1 giọt keo.
+    loa che sáng 45°.
+
+    Dẫn động TRỰC TIẾP bằng THANH TRỤ Ø5 cắm vào lỗ mù sâu 15 mm ở mặt lưng
+    (carrier dài 22 -> còn 7 mm vật liệu đặc phía trước lỗ: KHÔNG có đường
+    sáng thẳng xuyên qua carrier), khoá bằng 1 vít chặn M3 xuyên ngang.
+
+    Chọn ROD_Y = 24.0: nằm giữa mặt vát D-shaft (16.75) và đáy hốc chân LED
+    (29.2). Cánh tay đòn tới tim trục trượt chỉ 24 - 14 = 10 mm; tiêu chuẩn tự
+    hãm của bạc trượt dài L = CAR_L = 22 mm với hệ số ma sát PLA/thép mu ~ 0.3
+    là L/(2*mu) ~ 36.7 mm >> 10 mm -> đẩy/kéo KHÔNG bị kẹt nghiêng.
+
+    2 hốc dây bên hông (đối xứng) cho chân LED thoát NGANG, không vắt qua thanh.
     Hệ cục bộ: mặt trước carrier x=0; trục trượt y=SH_Y,z=0; trục quang y=Y_AX,z=0."""
     m = box(-CAR_L, 0.0, CAR_Y0, CAR_Y1, -CAR_ZW / 2, CAR_ZW / 2)
     m = uni([m, frustum_x(0.0, COLLAR_L, Y_AX, 0.0, 5.2, 2.1, 40)])
-    # cột nam châm trên lưng carrier + hốc mù giữ nam châm Ø10×3 (mở trên đỉnh)
-    m = uni([m, box(TWR_X0, TWR_X1, CAR_Y1, TWR_TOP, -6.0, 6.0)])
-    m = dif(m, [cyl_y(60.3, TWR_TOP + 0.1, TWR_C, 0.0, MAG_POCKET / 2, 32)])
     dbore = dif(cyl_x(-CAR_L - 0.5, 0.5, SH_Y, 0.0, SH_R + CLR, 40),
                 [box(-CAR_L - 1, 1, SH_FLAT_Y + CLR, SH_Y + SH_R + 2,
                      -SH_R - 2, SH_R + 2)])
     cuts = [dbore,
             cyl_x(-9.0, COLLAR_L + 0.2, Y_AX, 0.0, 1.65, 32),        # thân LED Ø3.0 +0.3
             cyl_x(-10.4, -9.0, Y_AX, 0.0, 2.05, 32),                 # hốc vành LED Ø3.8
-            cyl_x(-CAR_L - 0.5, -10.4, Y_AX, 0.0, 2.8, 32),          # khoang chân/dây
+            cyl_x(-CAR_L - 0.5, -10.4, Y_AX, 0.0, 2.6, 32),          # khoang chân/dây
+            # lỗ mù Ø5.1 nhận thanh trượt (ép nhẹ) + vít chặn M3 xuyên ngang
+            cyl_x(-CAR_L - 0.5, -CAR_L + ROD_BORE_DEPTH, ROD_Y, 0.0, ROD_R + 0.05, 40),
+            cyl_z(-CAR_ZW / 2 - 0.5, CAR_ZW / 2 + 0.5, ROD_GRUB_X, ROD_Y, 1.3, 24),
+            # 2 hốc dây bên hông: chân LED thoát ngang khỏi khoang sau
+            box(-CAR_L + 2.0, -CAR_L + 6.0, Y_AX - 2.0, Y_AX + 2.6,
+                -CAR_ZW / 2 - 0.5, CAR_ZW / 2 + 0.5),
             box(-CAR_L - 0.5, -CAR_L + 5.0, CAR_Y0 + 1.0, CAR_Y0 + 5.0, -3.0, 3.0)]
-    return dif(m, cuts)
-
-
-def build_mag_slider():
-    """Cần trượt nam châm — chỉnh d từ NGOÀI hộp, KHÔNG mở nắp (thay 2 cửa hatch).
-    Nam châm đĩa Ø10×3 N35 trong cần ↔ nam châm trong cột carrier cộng hưởng
-    XUYÊN nắp 2.2 mm (vùng recess mỏng trên nắp) — hộp vẫn KÍN SÁNG tuyệt đối
-    vì cơ cấu không thêm khe hở nào. Hệ cục bộ: z=0 = tâm làn quang, x=0 = TÂM
-    cần; đặt thế giới: tâm cần x = 107 - d (d=15..90 -> x=92..17, trùng thước
-    khắc trên nắp). Khối 16×14×5.3 trượt giữa 2 ray (khe 0.3/ray), đáy có hốc
-    mù giữ nam châm (nam châmflush mặt đáy, nóc hốc dày 0.3 mm), mặt trên khắc
-    vạch chỉ dọc tim + 2 rãnh ngón tay để kéo."""
-    m = box(-SLIDER_HL, SLIDER_HL, Y_LID - 0.8, SLIDER_TOP, -SLIDER_HW, SLIDER_HW)
-    # hốc nam châm đục từ ĐÁY (nam châmflush mặt đáy, nóc 0.3 mm giữ)
-    m = dif(m, [cyl_y(Y_LID - 0.8, Y_LID - 0.8 + MAG_T + 0.3,
-                      0, 0, MAG_POCKET / 2, 32)])
-    # vạch chỉ dọc tim + 2 rãnh ngón tay (khắc trên mặt trên)
-    m = dif(m, [box(-0.4, 0.4, SLIDER_TOP - 0.4, SLIDER_TOP + 0.05,
-                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1),
-                box(-5, -3, SLIDER_TOP - 0.8, SLIDER_TOP + 0.05,
-                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1),
-                box(3, 5, SLIDER_TOP - 0.8, SLIDER_TOP + 0.05,
-                    -SLIDER_HW - 0.1, SLIDER_HW + 0.1)])
+    m = dif(m, cuts)
+    if DETAIL == "full":
+        m = dif(m, chamfer_box_v(-CAR_L, 0.0, -CAR_ZW / 2, CAR_ZW / 2, 1.2,
+                                 CAR_Y0 - 0.5, CAR_Y1 + 0.5))
     return m
+
+
+def build_rod_knob():
+    """Núm cầm ở đuôi thanh trượt: đĩa Ø16 x 8 mm, lỗ mù Ø5.1 sâu 6 mm + vít
+    chặn M3 xuyên ngang.
+
+    Hệ cục bộ: trục thanh nằm trên trục X, y = z = 0; MIỆNG lỗ (hướng về hộp)
+    tại x = 0, núm kéo dài về -X. 6 rãnh lõm quanh vành để cầm không trượt tay.
+    """
+    R = ROD_KNOB_D / 2.0
+    m = cyl_x(-ROD_KNOB_T, 0.0, 0.0, 0.0, R, 48)
+    cuts = [cyl_x(-6.0, 0.5, 0.0, 0.0, ROD_R + 0.05, 40),
+            cyl_y(-R - 0.5, R + 0.5, -ROD_KNOB_T / 2.0, 0.0, 1.3, 24)]
+    for i in range(6):
+        t = 2 * math.pi * i / 6.0
+        cuts.append(cyl_x(-ROD_KNOB_T - 0.5, 0.5,
+                          (R + 1.2) * math.cos(t), (R + 1.2) * math.sin(t), 2.4, 24))
+    return dif(m, cuts)
 
 
 def x_front(ch, d=None):
@@ -763,43 +852,122 @@ def build_aperture(kind):
 
 
 def build_hood(sgn):
-    """Chụp che sáng lối ra cáp — bản lắp bằng VÍT NGOÀI (bản cũ có lỗi:
-    lỗ vít chỉ thông từ ruột chụp, mặt ngoài bịt kín nên không vặn được).
+    """Chụp che sáng lối ra cáp — lắp bằng 4 TRỤ CẮM Ø4 (bỏ hoàn toàn vít M3).
 
-    Cấu trúc: BÍCH PHẲNG áp mặt ngoài vách (có 2 lỗ vít M3 xuyên, mặt ngoài
-    bích luôn tự do để vặn) + ỐNG nhô ra ngoài che lỗ cáp. Cáp luồn qua KHE
-    SÀN ở đầu xa ống — ánh sáng ngoài phải quay 90° hai lần mới tới lỗ vách.
-    sgn=+1 lắp ở thành +X (cáp OPT101); sgn=-1 ở thành -X (cáp LED)."""
-    BRIM_T, TUBE_T, TUBE_D = 3.0, 2.5, 12.5   # bích / tường ống / sâu ống
-    HW = EX_ZW / 2 + 8.0                       # 18 — nửa rộng chụp
-    VW = 10.5                                  # nửa rộng lỗ giữa bích (⊇ lỗ cáp ±10)
+    Khớp nối: 4 trụ tròn Ø4.00 x 6.5 mm trên bích chụp -> 4 lỗ mù Ø4.30 trên
+    thân (khe 0.15 mm/bán kính: ép nhẹ bằng tay, giữ chắc, rút ra được, không
+    cần dụng cụ).  Lỗ trên thân là LỖ MÙ nên tháo chụp ra hộp vẫn kín sáng.
+
+    Tăng độ kín: vòng GÂN chữ nhật quanh cửa sổ cáp ăn vào vòng RÃNH tương ứng
+    trên bệ nhô của thân (mộng âm-dương) -> thêm 2 lần bẻ 90° cho tia xiên,
+    ngoài 2 lần bẻ 90° sẵn có của ống + khe sàn ở đầu xa.
+
+    Hệ cục bộ: u = khoảng cách ĐI RA khỏi mặt ngoài danh nghĩa của vách
+    (x = sgn*u sau khi tịnh tiến); mặt bệ nhô của thân ở u = PLATEAU_T.
+    sgn=+1 lắp ở thành +X (cáp OPT101); sgn=-1 ở thành -X (cáp LED).
+    """
+    BRIM_T, TUBE_T, TUBE_D = 3.0, 2.5, 13.0     # bích / tường ống / sâu ống
+    U_F0 = PLATEAU_T                            # 2.0  mặt tì của bích lên bệ nhô
+    U_F1 = U_F0 + BRIM_T                        # 5.0  mặt ngoài bích
+    U_T1 = U_F1 + TUBE_D                        # 18.0 đầu xa ống (bằng bệ thanh trượt)
+    VW = EX_ZW / 2 + 0.75                       # 10.75 nửa rộng cửa sổ trong chụp
+    VY0, VY1 = EX_Y0 - 1.0, EX_Y1 + 1.0         # 4.5 .. 14.5
 
     def bx(u0, u1, y0, y1, z0, z1):
         return box(sgn * u0, sgn * u1, y0, y1, z0, z1)
 
-    # lỗ vít: y=10.5 (giữa lỗ cáp 6..16), z=±16.5 (vành bích z 10.5..18)
-    bolt_y, bolt_z = HOOD_BOLT_Y, HOOD_BOLT_Z
+    # --- bích + ống ----------------------------------------------------------
+    m = uni([bx(U_F0, U_F1, HOOD_Y0, HOOD_Y1, -HOOD_HZ, HOOD_HZ),
+             bx(U_F1, U_T1, HOOD_Y0, VY1 + TUBE_T, -VW - TUBE_T, VW + TUBE_T)])
 
-    m = bx(0.0, BRIM_T + TUBE_D, HOOD_Y0, HOOD_Y1, -HW, HW)
+    # --- vòng gân kín sáng (ăn vào rãnh trên bệ nhô của thân) ----------------
+    # Gân dày GRV_W - 2*C = 1.2 mm, thụt vào 0.15 mm ở CẢ HAI mép của lòng
+    # rãnh (mép ngoài lùi vào, mép trong lùi ra) -> lắp không kênh, không cấn.
+    u_r = U_F0 - (GRV_D - 0.2)                  # 0.7 — chừa 0.2 mm đáy rãnh
+    C = HOOD_PEG_CLR                            # 0.15 khe mỗi mặt
+    oy0, oy1 = GRV_Y0 + C, GRV_Y1 - C
+    oz0, oz1 = -GRV_HZ + C, GRV_HZ - C
+    iy0, iy1 = GRV_Y0 + GRV_W - C, GRV_Y1 - GRV_W + C
+    iz0, iz1 = -GRV_HZ + GRV_W - C, GRV_HZ - GRV_W + C
+    ribs = [bx(U_F0, u_r, oy0, iy0, oz0, oz1),
+            bx(U_F0, u_r, iy1, oy1, oz0, oz1),
+            bx(U_F0, u_r, iy0, iy1, oz0, iz0),
+            bx(U_F0, u_r, iy0, iy1, iz1, oz1)]
+
+    # --- 4 trụ cắm Ø4 (mũi thu nhỏ 0.8 mm làm mồi dẫn hướng) ----------------
+    pegs = []
+    u_tip, u_sh = U_F0 - HOOD_PEG_L, U_F0 - HOOD_PEG_L + 0.8
+    for dz in (-HOOD_PEG_Z, HOOD_PEG_Z):
+        for yp in HOOD_PEG_YS:
+            pegs.append(_tube("x", sgn * U_F0, sgn * u_sh, yp, dz, HOOD_PEG_R, 28))
+            xa, xb = sgn * u_sh, sgn * u_tip
+            pegs.append(frustum_x(xa, xb, yp, dz, HOOD_PEG_R, HOOD_PEG_R - 0.6)
+                        if xa < xb else
+                        frustum_x(xb, xa, yp, dz, HOOD_PEG_R - 0.6, HOOD_PEG_R))
+    m = uni([m] + ribs + pegs)
+
     cuts = [
-        # ruột ống (phủ lỗ cáp vách y 6..16, z ±10)
-        bx(-0.5, BRIM_T + TUBE_D - TUBE_T, 5.5, 21.5, -VW - 5.0, VW + 5.0),
-        # lỗ giữa bích thông xuống ruột (⊇ lỗ cáp)
-        bx(-0.5, BRIM_T + 0.5, 5.5, 16.5, -VW, VW),
-        # khe sàn đầu ống — cáp luồn xuống, ánh sáng ngoài phải gập 2 lần góc
-        bx(BRIM_T + TUBE_D - 5.0, BRIM_T + TUBE_D + 0.5,
-           HOOD_Y0 - 0.5, 6.0, -6.5, 6.5),
-        # 2 lỗ vít M3 xuyên bích — vặn từ MẶT NGOÀI (z=±16.5 là vành bích đặc)
-        _tube("x", sgn * -0.5, sgn * (BRIM_T + 0.5), bolt_y, bolt_z, 1.7, 16),
-        _tube("x", sgn * -0.5, sgn * (BRIM_T + 0.5), bolt_y, -bolt_z, 1.7, 16),
+        # ruột ống + cửa sổ xuyên bích (⊇ lỗ cáp vách y 5.5..13.5, z ±10)
+        bx(U_F0 - 0.5, U_T1 - TUBE_T, VY0, VY1, -VW, VW),
+        # khe sàn ở ĐẦU XA ống — cáp thoát xuống đế, tia sáng phải gập 2 lần 90°
+        bx(U_T1 - 5.0, U_T1 + 0.5, HOOD_Y0 - 0.5, VY0 + 0.5, -6.5, 6.5),
     ]
-    return dif(m, cuts)
+    m = dif(m, cuts)
+    if DETAIL == "full":
+        xa, xb = sorted((sgn * (U_F0 + 0.6), sgn * U_T1))
+        m = dif(m, chamfer_edge_top(xa, xb, -HOOD_HZ, HOOD_HZ, HOOD_Y1, 1.0))
+    return m
+
+
+def build_screen_foot():
+    """Chân đỡ màn hình cảm ứng 7 inch — in 2 bản, bắt xuống đế bằng 2 vít M3.
+
+    Máng kẹp ngả SCR_TILT = 15° so với phương thẳng đứng, rộng 21.0 mm (panel
+    [SPEC] 194 x 110 x 20 mm -> khe 0.5 mm mỗi bên), sâu 14 mm. 1 vít kẹp M3
+    xuyên thành SAU máng (dày >= 10 mm, đủ ren trong nhựa) giữ chắc cả panel
+    mỏng hơn (~15..21 mm) — không cần biết trước toạ độ lỗ bắt của panel.
+
+    Biên dạng 2D trong mặt (y, z) đùn theo X: mặt trên vuông góc panel (ngả 15°
+    so với phương ngang), mọi mặt hướng xuống <= 39° so với phương thẳng đứng
+    -> in ĐỨNG nguyên tư thế lắp, KHÔNG cần support.
+    Hệ cục bộ: x = 0 giữa chân, y = 0 mặt trên đế, z = 0 mép trước.
+    """
+    t = math.radians(SCR_TILT)
+    ua, ub = math.cos(t), math.sin(t)          # dọc panel, hướng lên
+    na, nb = -math.sin(t), math.cos(t)         # pháp tuyến panel (hướng +z)
+    hw = SCR_SLOT_W / 2.0
+
+    def pt(a, b):
+        """Điểm (y, z) = tâm đáy máng + a·(dọc panel) + b·(pháp tuyến panel)."""
+        return (SCR_SLOT_Y + a * ua + b * na, SCR_SLOT_Z + a * ub + b * nb)
+
+    ty, tz = pt(SCR_SLOT_D, 0.0)               # tâm miệng máng
+    zb = SCR_FOOT_L - 6.0                      # vách sau (mặt ngoài) tại z = 48
+    yb = ty + (zb - tz) * na / nb              # mặt trên gặp vách sau
+    qf = pt(SCR_SLOT_D, -(hw + 4.0))           # góc TRƯỚC của mặt trên
+    prof = [(0.0, 0.0), (0.0, SCR_FOOT_L), (5.0, SCR_FOOT_L), (5.0, zb),
+            (yb, zb), qf, (5.0, 8.0), (5.0, 0.0)]
+    m = prism("x", prof, -SCR_FOOT_W / 2.0, SCR_FOOT_W / 2.0)
+
+    # máng kẹp: hình bình hành kéo dài 20 mm quá mặt trên để mở miệng
+    dd = SCR_SLOT_D + 20.0
+    slot = prism("x", [pt(0.0, -hw), pt(0.0, hw), pt(dd, hw), pt(dd, -hw)],
+                 -SCR_FOOT_W / 2.0 - 0.5, SCR_FOOT_W / 2.0 + 0.5)
+    cuts = [slot,
+            cyl_z(SCR_FOOT_L + 0.5, 34.0, 0.0, SCR_CLAMP_Y, 1.25, 24)]  # vít kẹp M3
+    for zc in SCR_BOLT_Z:                                                # 2 lỗ M3 xuống đế
+        cuts.append(cyl_y(-0.5, 6.0, 0.0, zc, 1.75, 24))
+    m = dif(m, cuts)
+    if DETAIL == "full":
+        m = dif(m, chamfer_box_v(-SCR_FOOT_W / 2.0, SCR_FOOT_W / 2.0,
+                                 0.0, SCR_FOOT_L, 1.2, -0.5, 5.5))
+    return m
 
 
 def build_base(half):
     """Đế chung, chia đôi tại z=0 cho vừa bàn in.
     half='neg': z<0 (Pi 4 + Grove HAT + board driver + 2x MCP4725 — cùng 1 bên).
-    half='pos': z>0 (phần đế dưới hộp tối + chụp +X)."""
+    half='pos': z>0 (phần đế dưới hộp tối + chụp +X + 2 chân đỡ màn hình 7")."""
     neg = (half == "neg")
     z0, z1 = (BASE_Z0, 0.0) if neg else (0.0, BASE_Z1)
     m = box(BASE_X0, BASE_X1, -BASE_T, 0.0, z0, z1)
@@ -823,6 +991,20 @@ def build_base(half):
                 px, pz = drv_world(lx, lz)
                 add.append(cyl_y(0.0, DRV_STAND, px, pz, 3.6, 24))
                 holes.append(cyl_y(-BASE_T - 0.5, DRV_STAND + 0.5, px, pz, 1.4, 16))
+    else:                                      # 2 chân đỡ màn hình 7 inch
+        for xc in SCR_FOOT_X:
+            for dz in SCR_BOLT_Z:
+                pz = SCR_FOOT_Z0 + dz
+                add.append(cyl_y(-BASE_T - RIB_H, -BASE_T, xc, pz, 4.6, 24))
+                holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, pz, 1.4, 16))
+        # Lưới lỗ M3 dự phòng (mở rộng): vùng đế TRỐNG giữa 2 chân màn hình,
+        # x = 55/95 (bước 40), z = 65/90/115 (bước 25) — đủ chỗ bắt thêm 1
+        # module (MCP4725 dự phòng, cảm biến môi trường, quạt...) mà không
+        # đụng hộp tối (z <= 51.5), chân màn hình (x 12..28 / 122..138) hay
+        # gân chu vi (z >= 117). Lỗ suốt Ø3.4 -> vít M3 + đai ốc.
+        for xc in EXP_HOLE_X:
+            for pz in EXP_HOLE_Z:
+                holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, pz, 1.7, 20))
     for xc in (21.0, 129.0):                   # bệ bắt tai hộp
         zs, sg = (Z0, -1.0) if neg else (Z1, 1.0)
         add.append(cyl_y(-BASE_T - RIB_H, -BASE_T, xc, zs + sg * 5.5, 4.6, 24))
@@ -1156,6 +1338,29 @@ def sense_resistor_subs(lx, lz):
     return out
 
 
+def push_rod_vis(v, ch):
+    """Thanh trượt Ø5 mua sẵn (thép/inox h8) — chỉ để nhìn, không xuất STL.
+    Đầu trước cắm sâu 15 mm vào lỗ mù mặt lưng carrier, đuôi mang núm cầm."""
+    x1 = x_front(ch) - CAR_L + ROD_BORE_DEPTH        # đáy lỗ mù trong carrier
+    v.add(cyl_x(x1 - ROD_LEN, x1, ROD_Y, LANE_Z[ch], ROD_R, 32), 0x9aa3ad)
+    return v
+
+
+def screen_vis(v):
+    """Màn hình cảm ứng 7 inch [SPEC] 194 x 110 x 20 mm, ngả 15° — chỉ để nhìn.
+    Cạnh dưới panel nằm ở đáy máng kẹp của 2 chân đỡ."""
+    T = (translation_matrix([75.0, SCR_SLOT_Y, SCR_FOOT_Z0 + SCR_SLOT_Z])
+         @ rotation_matrix(math.radians(SCR_TILT), [1, 0, 0]))
+    hw, ht = SCR_W / 2.0, SCR_T / 2.0
+    for mesh, col in ((box(-hw, hw, 0.0, SCR_H, -ht, ht), 0x2b3038),
+                      (box(-hw + 7.0, hw - 7.0, 9.0, SCR_H - 9.0,
+                           -ht - 0.6, -ht + 0.3), 0x0f1a2b)):
+        mm = mesh.copy()
+        mm.apply_transform(T)
+        v.add(mm, col)
+    return v
+
+
 def beam_vis(v, ch):
     """Chùm sáng LED dạng nón (frustum) từ chóp LED tới cửa sổ OPT101.
     [DS] datasheet LED: 2θ½ Đỏ 40-60° (lấy 50°), IR 30° -> nửa góc 25°/15°.
@@ -1186,11 +1391,14 @@ def wires_vis(v):
         "ir": [(9, 13.5, -131), (5, 7, -130), (2, 2, -127), (-3, 1.8, -122),
                (-7, 1.8, -100), (-7, 1.8, -40), (-7, 1.8, 0), (-7, 1.8, 12),
                (-6, 6, 18), (-4, 9, 19.25), (-1, 8, 19.25), (2, 7, 19.25),
-               (3.8, 5.5, 19.25), (5, 2.6, 31), (12, 2.6, 31), (13, 7, 20.5)],
+               (3.8, 6.0, 19.25), (6, 6.5, 21), (10, 4.0, 24), (12, 2.6, 29),
+               (16, 2.6, 32), (15, 5.5, 24), (13, 7, 20.5)],
         "red": [(9, 13.5, -128), (5, 7, -127), (2, 2, -124), (-3, 1.8, -119),
                 (-7, 1.8, -105), (-7, 1.8, -80), (-7, 1.8, -40), (-7, 1.8, -28),
                 (-6, 6, -18), (-4, 9, -19.25), (-1, 8, -19.25), (2, 7, -19.25),
-                (3.8, 5.5, -19.25), (5, 2.6, -31), (68, 2.6, -31), (72, 7, -20.5)],
+                (3.8, 6.0, -19.25), (6, 6.5, -21), (10, 4.0, -24),
+                (12, 2.6, -29), (16, 2.6, -32), (64, 2.6, -32), (70, 5.5, -24),
+                (72, 7, -20.5)],
     }
     for pts in tx.values():
         for m, c in harness(pts, [(-0.55, C_WIRE_R), (0.55, C_WIRE_K)],
@@ -1281,24 +1489,25 @@ def collect_parts():
 
     add("body", build_body(), C_BODY, [0, 0, 0], label="Thân hộp tối (2 làn quang)")
     add("lid", build_lid(), C_LID, [0, 42, 0],
-        label="Nắp labyrinth (2 ray cần trượt nam châm)")
+        label="Nắp labyrinth (tấm đặc 3 mm, không còn ray)")
     for ch, cc, vn in (("red", C_CAR_R, "Đỏ"), ("ir", C_CAR_I, "IR")):
         add(f"slide_shaft_{ch}", _place_shaft(ch), C_SHAFT, [-60, 0, 0],
             printable=(ch == "red"),
             label="Trục trượt D Ø8 — in 2 bản (dùng file bản đỏ)")
         add(f"led_carrier_{ch}", _place_carrier(ch), cc, [-46, 0, 0],
             printable=(ch == "red"),
-            label=f"Carrier LED {vn} (trượt tự do, chỉnh từ ngoài bằng cần trượt nam châm)")
+            label=f"Carrier LED {vn} (chỉnh từ ngoài bằng thanh trượt Ø5)")
         add(f"led_{ch}", None, C_LEDR if ch == "red" else C_LEDI, [-46, 0, 0],
             label=("LED Đỏ 622nm [ASSUME]" if ch == "red" else "LED IR 875nm"),
             printable=False, subs=_vis_subs(led_vis, ch, x_front(ch)))
     for ch, vn in (("red", "Đỏ"), ("ir", "IR")):
-        m = build_mag_slider()
-        m.apply_transform(translation_matrix(
-            [SLIDER_X0 - D_DEFAULT[ch], 0.0, LANE_Z[ch]]))
-        add(f"mag_slider_{ch}", m, 0x5a6a7c, [0, 30, 0],
+        m = build_rod_knob()
+        # miệng lỗ núm nằm cách đuôi thanh 6 mm (= chiều sâu lỗ mù)
+        x_tail = x_front(ch) - CAR_L + ROD_BORE_DEPTH - ROD_LEN
+        m.apply_transform(translation_matrix([x_tail + 6.0, ROD_Y, LANE_Z[ch]]))
+        add(f"rod_knob_{ch}", m, 0x5a6a7c, [-30, 0, 0],
             printable=(ch == "red"),
-            label=f"Cần trượt nam châm — làn {vn} (kèm nam châm Ø10×3 N35)")
+            label=f"Núm cầm thanh trượt — làn {vn} (in 2 bản, dùng file bản đỏ)")
     add("frame", build_frame(), C_FRAME, [26, 0, 0], label="Khung giữ board 5×7")
     for kind, kl in (("blank", "bịt kín"), ("d2", "Ø2 mm"), ("d5", "Ø5 mm"), ("d16", "Ø16 mm")):
         for ch in ("red", "ir"):
@@ -1316,6 +1525,13 @@ def collect_parts():
             add(f"hood_{snm}_{ch}", m, C_PRINT2, [sgn * 26, 0, 0],
                 printable=(ch == "red"),
                 label=f"Chụp che sáng {sn} — {'Đỏ' if ch == 'red' else 'IR'}")
+    for i, xc in enumerate(SCR_FOOT_X):
+        m = build_screen_foot()
+        m.apply_transform(translation_matrix([xc, 0.0, SCR_FOOT_Z0]))
+        add(f"screen_foot_{i + 1}", m, C_PRINT2, [0, -20, 30],
+            printable=(i == 0),
+            label=("Chân đỡ màn hình 7 inch — in 2 bản (dùng file bản 1)"
+                   if i == 0 else "Chân đỡ màn hình 7 inch — bản thứ 2"))
     add("base_neg", build_base("neg"), C_BASE, [0, -26, -10],
         label="Đế — Pi 4 + Grove HAT + driver + 2× MCP4725")
     add("base_pos", build_base("pos"), C_BASE, [0, -26, 10],
@@ -1372,6 +1588,13 @@ def collect_parts():
         add(f"beam_{ch}", None, 0xff4040 if ch == "red" else 0x9a6aff, [0, 0, 0],
             label=lbl, printable=False, subs=_vis_subs(beam_vis, ch))
 
+    for ch, vn in (("red", "Đỏ"), ("ir", "IR")):
+        add(f"push_rod_{ch}", None, 0x9aa3ad, [-30, 0, 0], printable=False,
+            label=f"Thanh trượt Ø5 × 130 mm (mua sẵn) — làn {vn}",
+            subs=_vis_subs(push_rod_vis, ch))
+    add("screen7", None, 0x2b3038, [0, 0, 30], printable=False,
+        label='Màn hình cảm ứng 7" [SPEC] 194×110×20 mm',
+        subs=_vis_subs(screen_vis))
     add("wiring", None, C_WIRE_K, [0, 0, 0],
         label="Dây dẫn / cáp (minh hoạ)", printable=False, subs=_vis_subs(wires_vis))
     return parts
@@ -1399,7 +1622,7 @@ DRVLABELS = [
 
 def export(parts, write_model=True):
     os.makedirs(STL_DIR, exist_ok=True)
-    model = dict(units="mm", parts=[])
+    model, written = dict(units="mm", parts=[]), set()
     for p in parts:
         if SCALE != 1.0:
             if p.get("explode"):
@@ -1414,6 +1637,7 @@ def export(parts, write_model=True):
             if p.get("flip"):
                 stl.apply_transform(rotation_matrix(math.pi, [1, 0, 0], point=[0, 0, 0]))
             stl.export(os.path.join(STL_DIR, p["name"] + ".stl"))
+            written.add(p["name"] + ".stl")
         subdata, allb = [], None
         for s in subs:
             mesh = s["mesh"]
@@ -1448,6 +1672,11 @@ def export(parts, write_model=True):
             note = (" — không xuất STL (dùng chung file bản _red, in 2 bản)"
                     if dedup else "  — not exported to STL")
             print(f"  {p['name']:<22} (visual, {len(subs)} sub-materials){note}")
+    if not ONLY:            # dọn STL mồ côi của lần build trước (đổi tên chi tiết)
+        for fn in sorted(os.listdir(STL_DIR)):
+            if fn.endswith(".stl") and fn not in written:
+                os.remove(os.path.join(STL_DIR, fn))
+                print(f"  (xoá STL cũ không còn trong thiết kế: {fn})")
     if write_model:
         with open(os.path.join(OUT, "model.json"), "w") as fh:
             json.dump(model, fh)
@@ -1488,16 +1717,17 @@ def build_viewer():
 # ============================================================================
 # Chỉ xuất CÁC CHI TIẾT HỘP TỐI cho máy in 3D (Bambu Lab A1, bàn 256x256):
 #   thân hộp (có sẵn lỗ luồn dây qua vách + khe khẩu độ + máng dây LED)
-#   + nắp labyrinth (2 ray cần trượt)  + trục + carrier + CẦN TRƯỢT NAM CHÂM
-#   + 4 tấm khẩu độ  + 2 chụp luồn dây chống sáng. BỎ phần đế/khung board —
-#   thêm lại khi cần bằng build thường (--stl-only).
-#   [BOM] mua ngoài 4 nam châm đĩa Ø10×3 N35 (2 vào carrier, 2 vào cần trượt).
+#   + nắp labyrinth  + trục D + carrier + NÚM CẦM THANH TRƯỢT
+#   + 4 tấm khẩu độ  + 2 chụp luồn dây chống sáng. BỎ phần đế/khung board/chân
+#   màn hình — thêm lại khi cần bằng build thường (--stl-only).
+#   [BOM] mua ngoài 2 thanh trụ tròn Ø5 h8 x 130 mm (thép/inox) + 2 vít lục
+#   giác chìm M3x6 chặn núm. Chụp cáp KHÔNG còn vít (4 trụ cắm Ø4 liền khối).
 PRINT_SET = [  # (tên part, tên file xuất, xoay tư thế in)
     ("body",              "01_than_hop_toi.stl",          None),
     ("lid",               "02_nap_labyrinth.stl",         None),
     ("slide_shaft_red",   "03_truc_truot_D.stl",          "shaft"),      # in 2
-    ("led_carrier_red",   "04_carrier_led.stl",           None),         # in 2 — đáy xuống bàn, cột nam châm hướng lên
-    ("mag_slider_red",    "05_can_truot_nam_cham.stl",    "slider"),     # in 2 — lật ngửa: hốc nam châm hở lên
+    ("led_carrier_red",   "04_carrier_led.stl",           None),         # in 2 — đáy xuống bàn, lỗ mù thanh trượt nằm ngang
+    ("rod_knob_red",      "05_num_thanh_truot.stl",       "knob"),       # in 2 — mặt đĩa áp bàn
     ("hood_l_red",        "06_chup_luon_day_trai.stl",    None),
     ("hood_r_red",        "07_chup_luon_day_phai.stl",    None),
     ("aperture_red_blank","08_khau_do_biet.stl",          "lay_flat"),
@@ -1516,9 +1746,10 @@ def _orient_print(mesh, mode):
       - body/hood : in nguyên tư thế lắp — mặt đáy xuống bàn, không cần support.
       - lid       : in nguyên tư thế lắp — mặt recess + ray hướng lên.
       - shaft     : D-flat quay xuống làm mặt bám bàn (in trục không support).
-      - carrier   : in nguyên tư thế lắp — đáy xuống bàn, cột nam châm hướng lên
-                    (hốc nam châm mở trên đỉnh cột, không cần support).
-      - slider    : lật ngửa (R_x 180°) — hốc nam châm HỞ LÊN, mặt khắc áp bàn.
+      - carrier   : in nguyên tư thế lắp — đáy xuống bàn; lỗ mù thanh trượt và
+                    lỗ vít chặn đều nằm ngang, Ø nhỏ, không cần support.
+      - knob      : trục núm dựng đứng (world X -> print Z) — mặt đĩa áp bàn,
+                    lỗ mù Ø5.1 mở lên trên.
       - aperture 'lay_flat': mặt tấm 35×58 áp bàn (bề dày 1.6 = chiều cao),
                     cắt phần tay cầm lún dưới mặt bàn (tab 1.4mm còn lại)."""
     m = mesh.copy()
@@ -1529,8 +1760,8 @@ def _orient_print(mesh, mode):
         c = (lo + hi) / 2
         m.apply_translation([-c[0], -c[1], -c[2]])
         m.apply_transform(rotation_matrix(math.pi, [1, 0, 0]))
-    elif mode == "slider":                   # cần trượt: lật ngửa R_x(-90°) —
-        m.apply_transform(rotation_matrix(-math.pi / 2, [1, 0, 0]))  # hốc nam châm hở lên
+    elif mode == "knob":                     # núm: trục X -> trục Z bàn in
+        m.apply_transform(rotation_matrix(-math.pi / 2, [0, 1, 0]))
     elif mode == "lay_flat":   # (x,y,z) -> (-y, -z, x): mặt 35×58 áp bàn,
         m.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))   # bề dày 1.6 = Z
         m.apply_transform(rotation_matrix(math.pi / 2, [1, 0, 0]))
@@ -1546,40 +1777,76 @@ def _orient_print(mesh, mode):
     return m
 
 
+def _rect_sub(r, u):
+    """Cắt ô trống r bởi vùng vừa dùng u -> các mảnh trống còn lại."""
+    rx, ry, rw, rh = r
+    ux, uy, uw, uh = u
+    if (ux >= rx + rw - 1e-9 or ux + uw <= rx + 1e-9
+            or uy >= ry + rh - 1e-9 or uy + uh <= ry + 1e-9):
+        return [r]                                   # không giao -> giữ nguyên
+    out = []
+    if uy > ry:
+        out.append((rx, ry, rw, uy - ry))
+    if uy + uh < ry + rh:
+        out.append((rx, uy + uh, rw, ry + rh - uy - uh))
+    if ux > rx:
+        out.append((rx, ry, ux - rx, rh))
+    if ux + uw < rx + rw:
+        out.append((ux + uw, ry, rx + rw - ux - uw, rh))
+    return [q for q in out if q[2] > 1e-6 and q[3] > 1e-6]
+
+
+def _rect_in(a, q):
+    """a chứa trọn q?"""
+    return (a[0] <= q[0] + 1e-9 and a[1] <= q[1] + 1e-9
+            and a[0] + a[2] >= q[0] + q[2] - 1e-9
+            and a[1] + a[3] >= q[1] + q[3] - 1e-9)
+
+
 def _pack_plate(placed, plate=A1_PLATE, margin=8.0, gap=6.0):
-    """Xếp shelf theo footprint TRÊN MẶT BÀN (mặt XY của STL — Z là chiều cao
-    in). Nếu hàng không đủ chỗ, thử XOAY 90° quanh Z (an toàn khi in) trước
-    khi sang shelf mới. Trả list [(tên, mesh, x, y)]."""
-    out, x, y, shelf_h = [], margin, margin, 0.0
-    lim = plate - margin
-    for name, m in placed:
+    """Xếp footprint TRÊN MẶT BÀN (mặt XY của STL — Z là chiều cao in) bằng
+    MaxRects / best-short-side-fit, cho phép XOAY 90° quanh Z (an toàn khi
+    in vì chỉ đổi hướng trong mặt phẳng bàn). Khác shelf next-fit cũ, thuật
+    toán này quay lại lấp mọi khoảng trống đã mở, nên 11 chi tiết (kể cả
+    thân 170 mm sau khi mọc bệ thanh trượt) vẫn nằm gọn trong bàn 256 mm.
+    Trả list [(tên, mesh, x, y)]."""
+    lim = plate - 2 * margin + gap        # mỗi chi tiết tự mang khe gap
+    free = [(0.0, 0.0, lim, lim)]
+    order = sorted(placed, key=lambda kv: -max(
+        kv[1].bounds[1][0] - kv[1].bounds[0][0],
+        kv[1].bounds[1][1] - kv[1].bounds[0][1]))     # cạnh dài giảm dần
+    out = []
+    for name, m in order:
         b = m.bounds
-        w, d = b[1][0] - b[0][0], b[1][1] - b[0][1]    # rộng × sâu TRÊN BÀN
+        w0, d0 = b[1][0] - b[0][0], b[1][1] - b[0][1]
+        best = None
+        for rot in (False, True):
+            w, d = (d0, w0) if rot else (w0, d0)
+            wg, dg = w + gap, d + gap
+            for fx, fy, fw, fh in free:
+                if wg > fw + 1e-9 or dg > fh + 1e-9:
+                    continue
+                key = (min(fw - wg, fh - dg), max(fw - wg, fh - dg), fy, fx)
+                if best is None or key < best[0]:
+                    best = (key, fx, fy, w, d, rot)
+        if best is None:
+            raise RuntimeError(f"Không vừa bàn in {plate:.0f}mm: {name}")
+        _, fx, fy, w, d, rot = best
         mm = m
-
-        def fits(ww, dd):
-            return x + ww <= lim and y + dd <= lim
-
-        if not fits(w, d) and fits(d, w):              # xoay 90° quanh Z
+        if rot:
             mm = m.copy()
             mm.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))
             b2 = mm.bounds
             mm.apply_translation([-b2[0][0], -b2[0][1], 0])   # góc về (0,0)
-            w, d = d, w
-        elif not fits(w, d):                           # sang shelf mới
-            y += shelf_h + gap
-            x, shelf_h = margin, 0.0
-            if not fits(w, d) and fits(d, w):
-                mm = m.copy()
-                mm.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))
-                b2 = mm.bounds
-                mm.apply_translation([-b2[0][0], -b2[0][1], 0])
-                w, d = d, w
-        if not fits(w, d):
-            raise RuntimeError(f"Không vừa bàn in {plate:.0f}mm: {name}")
-        out.append((name, mm, x, y))
-        x += w + gap
-        shelf_h = max(shelf_h, d)
+        out.append((name, mm, fx + margin, fy + margin))
+        used = (fx, fy, w + gap, d + gap)
+        nf = []
+        for r in free:
+            nf += _rect_sub(r, used)
+        free = [a for i, a in enumerate(nf)
+                if not any(j != i and _rect_in(q, a)
+                           and (j < i or not _rect_in(a, q))
+                           for j, q in enumerate(nf))]
     return out
 
 
@@ -1614,8 +1881,7 @@ def export_print_package(parts):
         print(f"  {fname:<28} {w:6.1f} x {d:6.1f} x cao {h:5.1f} mm  "
               f"{len(m.faces):>5} tris  {ok}")
         oriented.append((fname, m))
-    # --- all-in-one: xếp trên 1 bàn (shelf theo bề sâu TRÊN BÀN giảm dần) ---
-    oriented.sort(key=lambda kv: -(kv[1].bounds[1][1] - kv[1].bounds[0][1]))
+    # --- all-in-one: xếp trên 1 bàn (MaxRects, cạnh dài giảm dần) ---
     layout = _pack_plate(oriented)
     combo_parts = []
     for _, m, x, y in layout:
@@ -1624,6 +1890,11 @@ def export_print_package(parts):
         combo_parts.append(c)
     combo = cat(combo_parts)
     combo.export(os.path.join(pdir, "00_ppg_hop_toi_A1_all_in_one.stl"))
+    keep = {f for _, f, _ in PRINT_SET} | {"00_ppg_hop_toi_A1_all_in_one.stl"}
+    for fn in sorted(os.listdir(pdir)):     # dọn file mồ côi của lần build trước
+        if fn.endswith(".stl") and fn not in keep:
+            os.remove(os.path.join(pdir, fn))
+            print(f"  (xoá STL cũ không còn trong thiết kế: {fn})")
     b = combo.bounds
     # kiểm tra chồng lấn bbox TRÊN MẶT BÀN (mặt XY — z là chiều cao in, bỏ qua)
     boxes = []
@@ -1683,8 +1954,8 @@ def main():
         print("=" * 78)
         print(f"PPG SIMULATOR — GÓI IN BAMBU LAB A1 (bàn {A1_PLATE:.0f}×{A1_PLATE:.0f} mm)")
         print("  Chỉ: hộp tối (lỗ luồn dây + khe khẩu độ + máng dây) · nắp labyrinth"
-              " · trục + carrier + cần trượt nam châm · 4 tấm khẩu độ · 2 chụp"
-              " — KHÔNG đế/khung board")
+              " · trục + carrier + núm thanh trượt · 4 tấm khẩu độ · 2 chụp"
+              " — KHÔNG đế/khung board/chân màn hình")
         print("=" * 78)
         print("\nBuilding parts (manifold CSG) ...")
         parts = collect_parts()
