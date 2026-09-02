@@ -147,7 +147,7 @@ Bố trí tổng thể theo Z (**-Z = trước, +Z = sau**):
 | −175.7..−127.9 | Panel màn hình 7 inch, ngả 15°, mặt hiển thị quay về -Z |
 | −136..−112 | Khe thao tác cổng USB-C / HDMI của Pi (24 mm) |
 | −112..−57 | Board driver LED 70×55 (x −12..58, không xoay) |
-| −108..−52 | Pi 4B + Grove HAT (x 62..147) |
+| −110..−51.5 | Pi 4B + Grove HAT kể cả connector (PCB z −108..−52, x 62..147) |
 | −106.5 | Hàng chân 2× MCP4725 trên board driver |
 | −51.5..+51.5 | 4 tai bắt hộp tối xuống đế (x = 21 và 129) |
 | −40..+40 | Hộp tối (làn Đỏ z = −19.25, làn IR z = +19.25) |
@@ -261,9 +261,11 @@ Phía `-X` chỉ có thành hộp.
   **ta-rô trực tiếp** vào lỗ mồi Ø2.8 sâu 10 mm của `base_neg` (đế 4 mm + bệ trụ
   Ø9.2 đúc liền trong hốc gân, 6 mm) tại z = −186 và −139. Thêm **2 vít kẹp M3**
   (mỗi chân 1, lỗ mồi Ø2.5 xuyên thành sau máng) giữ panel.
-- **Không cản Pi 4**: đỉnh sau panel chỉ vươn tới z = −127.9 ở độ cao
-  y ≈ 113.7 mm — **không trùm lên Pi** (Pi bắt đầu ở z=−108, cao nhất ~25 mm);
-  khe 24 mm giữa chân màn hình và board driver để cắm cáp và thoát khí quạt.
+- **Không cản Pi 4** `[VERIFIED]` (bounds trong `out/model.json`): panel chiếm
+  z −175.7..−127.9, y 5.4..116.8; mép sau cùng (z = −127.9) ở độ cao y ≈ 111.7 —
+  **không trùm lên Pi**, vì Pi kể cả connector chỉ bắt đầu ở z = −110 và cao
+  22 mm. Khe 24 mm giữa chân màn hình (z=−136) và board driver (z=−112) để cắm
+  cáp DSI/HDMI/USB-C và thoát khí quạt.
 - Biên dạng chân được dựng sao cho **mọi mặt hướng xuống ≤ 39° so với phương
   thẳng đứng** → in **đứng đúng tư thế lắp, không cần support**.
 
@@ -650,7 +652,8 @@ là mặt trước** và cả 3 cụm xếp thành một hàng trước → sau.
   cả hai vẫn vừa bàn in 256×256. Mộng ghép tại z=0 giữ nguyên.
 - **(b) Chân màn hình chuyển từ `base_pos` (z 56..110) sang hàng đầu của
   `base_neg`** (`SCR_FOOT_Z0 = −190` → z −190..−136, lỗ bắt z = −186 / −139).
-  Panel vươn tới z = −127.9 ở y ≈ 113.7 → **không trùm lên Pi 4** (Pi z ≥ −108).
+  Panel chiếm z −175.7..−127.9 (mép sau ở y ≈ 111.7) → **không trùm lên Pi 4**
+  (Pi kể cả connector z ≥ −110).
 - **(c) Board driver LED bỏ phép xoay 90°** (xoá ma trận `_DRV_R`) — nay chỉ tịnh
   tiến, `DRV_WX, DRV_WZ = −12, −112` → chiếm x −12..58, z −112..−57. Khe hở:
   4 mm tới Pi (x=62), 12 mm tới mép đế (x=−24), 5.5 mm tới tai bắt hộp (z=−51.5).
