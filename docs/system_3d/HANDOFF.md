@@ -20,10 +20,10 @@ watertight, **14 cặp** lắp ghép giao nhau = 0 mm³), gói Bambu **không đ
 |---|---|---|
 | Mép trước đế | −196 | `BASE_Z0` (trước: −164) |
 | 2 chân màn hình 7" | −190..−136 | x = 20/130; lỗ bắt z = −186 / −139, trên **`base_neg`** |
-| Panel 7" (ngả 15°) | −175.7..−127.9 | mặt hiển thị quay về `-Z`; đỉnh sau y ≈ 113.7 |
+| Panel 7" (ngả 15°) | −175.7..−127.9 | mặt hiển thị quay về `-Z`; y 5.4..116.8, mép sau (z=−127.9) ở y ≈ 111.7 |
 | Khe cắm USB-C/HDMI | −136..−112 | 24 mm trống |
 | Board driver 70×55 | −112..−57 | x −12..58, **không xoay** (đã xoá ma trận `_DRV_R`) |
-| Pi 4B + Grove HAT | −108..−52 | x 62..147 (giữ nguyên) |
+| Pi 4B + Grove HAT | −108..−52 | x 62..147 (giữ nguyên); kể cả connector: z −110..−51.5, cao 22 mm |
 | Tai bắt hộp | ±51.5 | x = 21/129 |
 | Hộp tối | −40..+40 | giữ nguyên toàn bộ |
 | Lưới lỗ mở rộng 3×2 | 62 / 80 | x = 30/75/120, trên `base_pos` |
