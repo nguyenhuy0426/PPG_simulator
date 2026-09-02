@@ -166,7 +166,7 @@ PEG_PIL_TOP = 19.5                         # đỉnh trụ đứng
 SCR_W, SCR_H, SCR_T = 194.0, 110.0, 20.0
 SCR_TILT = 15.0                            # độ ngả ra sau (so với phương thẳng đứng)
 SCR_FOOT_X = (20.0, 130.0)                 # 2 chân, cách nhau 110 mm, đối xứng qua x = 75
-SCR_FOOT_Z0 = 56.0                         # mép trước chân: sau 4 TAI BẮT HỘP (z tới 51.5)
+SCR_FOOT_Z0 = -190.0                       # mép trước chân — HÀNG ĐẦU của hệ (xem BASE_Z0)
 SCR_FOOT_L = 54.0                          # chiều dài chân theo Z
 SCR_FOOT_W = 16.0                          # bề rộng chân theo X
 SCR_SLOT_W = 21.0                          # bề rộng máng kẹp (panel [SPEC] 20 mm -> khe 0.5/cạnh)
@@ -177,13 +177,16 @@ SCR_BOLT_Z = (4.0, 51.0)                   # 2 lỗ M3 bắt chân xuống đế
 SCR_CLAMP_Y = 12.0                         # vít kẹp M3 ngang xuyên thành sau máng
 
 # --- lưới lỗ bắt module mở rộng trên nửa đế +Z ---------------------------------
-EXP_HOLE_X = (55.0, 95.0)                  # giữa 2 chân màn hình (x 12..28 / 122..138)
-EXP_HOLE_Z = (65.0, 90.0, 115.0)           # sau hộp tối (z <= 51.5), trước gân (z >= 117)
+EXP_HOLE_X = (30.0, 75.0, 120.0)           # 3 cột, bước 45 mm
+EXP_HOLE_Z = (62.0, 80.0)                  # sau tai bắt hộp (z <= 51.5), trước gân (z >= 87)
 
 # --- đế chung + khối điện tử ngoài --------------------------------------------
 BASE_T = 4.0                               # bề dày tấm đế (mặt trên y = 0)
 BASE_X0, BASE_X1 = -24.0, 174.0
-BASE_Z0, BASE_Z1 = -164.0, 122.0           # nửa -Z kéo dài để chứa driver + Pi chung 1 bên
+# -Z là MẶT TRƯỚC (phía người dùng). Thứ tự trước -> sau:
+#   màn hình 7" (z -190..-136)  ->  Pi 4 + board driver (z -112..-52)
+#   ->  hộp tối (z -40..+40, tai bắt tới ±51.5)  ->  vùng mở rộng (z 52..92).
+BASE_Z0, BASE_Z1 = -196.0, 92.0
 RIB_H = 6.0                                # gân chu vi dưới đế
 
 PI_X0, PI_Z0 = 62.0, -108.0                # [SPEC] Pi 4B PCB 85 x 56 x 1.4
@@ -199,22 +202,25 @@ HDR_H = 8.5                                # [ASSUME] header cái 2x20 cao 8.5 m
 HAT_Y0 = PI_Y1 + HDR_H
 HAT_Y1 = HAT_Y0 + HAT_T
 
-# Board driver LED 70 x 55 mm (gọn theo ảnh thực tế — hình 1) đặt CÙNG BÊN -Z
-# với Pi 4 (xoay 90° về Y). Hệ cục bộ board: x 0..70, z 0..55; sau xoay
-# (x,z)->(-z,x) + tịnh tiến [DRV_WX, 0, DRV_WZ] -> world x in [DRV_WX-55, DRV_WX],
-# z in [DRV_WZ, DRV_WZ+70].  DRV_WX=62 khớp mép +X của Pi (62), DRV_WZ=-164 mép -Z đế.
+# Board driver LED 70 x 55 mm (gọn theo ảnh thực tế — hình 1) đặt KỀ Pi 4 theo
+# phương X, cùng dải z với Pi -> cả cụm điện tử nằm gọn trong 1 hàng ngang giữa
+# màn hình (trước) và hộp tối (sau). KHÔNG xoay: hệ cục bộ board (x 0..70,
+# z 0..55) trùng hướng thế giới -> world x in [DRV_WX, DRV_WX+70],
+# z in [DRV_WZ, DRV_WZ+55].
+#   DRV_WX = -12 -> mép +X board x=58, cách mép -X của Pi (x=62) 4 mm;
+#                   mép -X board cách mép đế (x=-24) 12 mm.
+#   DRV_WZ = -112 -> mép +Z board z=-57, cách tai bắt hộp (z=-51.5) 5.5 mm;
+#                   header ra LED (cạnh +Z) hướng thẳng về hộp tối.
 DRV_L, DRV_W, DRV_T = 70.0, 55.0, 1.6
-DRV_WX, DRV_WZ = 62.0, -164.0              # góc đặt board sau xoay (mép +X / mép -Z)
+DRV_WX, DRV_WZ = -12.0, -112.0             # góc (-X, -Z) của board trên đế
 DRV_STAND = 5.0
 DRV_Y0 = DRV_STAND
 DRV_Y1 = DRV_Y0 + DRV_T
-_DRV_R = rotation_matrix(-math.pi / 2, [0, 1, 0])[:3, :3]   # (x,z)->(-z,x)
 
 
 def drv_world(lx, lz):
-    """Toạ độ (x, z) thế giới của điểm cục bộ (lx, lz) trên board driver (đã xoay)."""
-    w = _DRV_R @ np.array([lx, 0.0, lz]) + np.array([DRV_WX, 0.0, DRV_WZ])
-    return float(w[0]), float(w[2])
+    """Toạ độ (x, z) thế giới của điểm cục bộ (lx, lz) trên board driver."""
+    return DRV_WX + lx, DRV_WZ + lz
 
 DAC_L, DAC_W, DAC_T = 17.8, 15.2, 1.2      # [ASSUME] breakout MCP4725
 DAC_HDR_H = 8.5
@@ -966,8 +972,9 @@ def build_screen_foot():
 
 def build_base(half):
     """Đế chung, chia đôi tại z=0 cho vừa bàn in.
-    half='neg': z<0 (Pi 4 + Grove HAT + board driver + 2x MCP4725 — cùng 1 bên).
-    half='pos': z>0 (phần đế dưới hộp tối + chụp +X + 2 chân đỡ màn hình 7")."""
+    half='neg': z<0 — NỬA TRƯỚC: 2 chân đỡ màn hình 7" (z -190..-136), rồi
+                board driver + Pi 4 + Grove HAT (z -112..-52).
+    half='pos': z>0 — nửa sau: đế dưới hộp tối + chụp +X + lưới lỗ mở rộng."""
     neg = (half == "neg")
     z0, z1 = (BASE_Z0, 0.0) if neg else (0.0, BASE_Z1)
     m = box(BASE_X0, BASE_X1, -BASE_T, 0.0, z0, z1)
@@ -980,28 +987,28 @@ def build_base(half):
                box(BASE_X1 - 5.0, BASE_X1, -BASE_T - RIB_H, -BASE_T, z0, z1),
                box(BASE_X0, BASE_X1, -BASE_T - RIB_H, -BASE_T, zr[0], zr[1])]
     holes = []
-    if neg:                                    # trụ đỡ Pi 4B (M2.5) + driver (M3)
+    if neg:                                    # 2 chân màn hình + trụ Pi 4B + driver
+        for xc in SCR_FOOT_X:                  # bệ vít M3 bắt 2 chân đỡ màn hình 7"
+            for dz in SCR_BOLT_Z:
+                pz = SCR_FOOT_Z0 + dz
+                add.append(cyl_y(-BASE_T - RIB_H, -BASE_T, xc, pz, 4.6, 24))
+                holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, pz, 1.4, 16))
         for dx in (0.0, PI_HOLE_PX):
             for dz in (0.0, PI_HOLE_PZ):
                 px, pz = PI_X0 + PI_HOLE_INSET + dx, PI_Z0 + PI_HOLE_INSET + dz
                 add.append(cyl_y(0.0, PI_STAND, px, pz, 3.6, 24))
                 holes.append(cyl_y(-BASE_T - 0.5, PI_STAND + 0.5, px, pz, 1.15, 16))
-        for lx in (4.0, DRV_L - 4.0):          # board driver xoay 90° (70 x 90 mm)
+        for lx in (4.0, DRV_L - 4.0):          # board driver 70 x 55 mm (không xoay)
             for lz in (4.0, DRV_W - 4.0):
                 px, pz = drv_world(lx, lz)
                 add.append(cyl_y(0.0, DRV_STAND, px, pz, 3.6, 24))
                 holes.append(cyl_y(-BASE_T - 0.5, DRV_STAND + 0.5, px, pz, 1.4, 16))
-    else:                                      # 2 chân đỡ màn hình 7 inch
-        for xc in SCR_FOOT_X:
-            for dz in SCR_BOLT_Z:
-                pz = SCR_FOOT_Z0 + dz
-                add.append(cyl_y(-BASE_T - RIB_H, -BASE_T, xc, pz, 4.6, 24))
-                holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, pz, 1.4, 16))
-        # Lưới lỗ M3 dự phòng (mở rộng): vùng đế TRỐNG giữa 2 chân màn hình,
-        # x = 55/95 (bước 40), z = 65/90/115 (bước 25) — đủ chỗ bắt thêm 1
-        # module (MCP4725 dự phòng, cảm biến môi trường, quạt...) mà không
-        # đụng hộp tối (z <= 51.5), chân màn hình (x 12..28 / 122..138) hay
-        # gân chu vi (z >= 117). Lỗ suốt Ø3.4 -> vít M3 + đai ốc.
+    else:
+        # Lưới lỗ M3 dự phòng (mở rộng): dải đế TRỐNG phía SAU hộp tối,
+        # x = 30/75/120 (bước 45), z = 62/80 (bước 18) — đủ chỗ bắt thêm module
+        # (MCP4725 dự phòng, cảm biến môi trường, quạt, bộ nguồn...) mà không
+        # đụng tai bắt hộp (z <= 51.5) hay gân chu vi (z >= 87).
+        # Lỗ suốt Ø3.4 -> vít M3 + đai ốc.
         for xc in EXP_HOLE_X:
             for pz in EXP_HOLE_Z:
                 holes.append(cyl_y(-BASE_T - RIB_H - 0.5, 0.5, xc, pz, 1.7, 20))
@@ -1292,7 +1299,7 @@ def driver_board_vis(v):
     """Perfboard driver 70 x 55 mm — bố cục theo ảnh thực tế (hình 1), gọn area:
     2× MCP4725 ở 2 góc trên (trái 0x60->IR, phải 0x61->Đỏ), LM358 ở giữa,
     2× 2N4401 (TO-92) + 2× điện trở cảm biến (E→GND, thay được) phía dưới,
-    header cái ra LED ở cạnh dưới. Hệ cục bộ; collect_parts() xoay + đặt.
+    header cái ra LED ở cạnh +Z (hướng về hộp tối). Hệ cục bộ; collect_parts() đặt.
     Mạch tối giản thật: LM358 -> 2N4401 -> R(E→GND) -> GND, LED trên collector."""
     yb = DRV_Y1
     v.add(box(0, DRV_L, DRV_Y0, DRV_Y1, 0, DRV_W), C_PCB_G)
@@ -1314,8 +1321,8 @@ def driver_board_vis(v):
     # 2× 2N4401 (TO-92) — khóa dòng LED, phía dưới LM358
     _to92(v, 30.0, yb, 38.0)                           # Q1 — kênh IR
     _to92(v, 40.0, yb, 38.0)                           # Q2 — kênh Đỏ
-    # header cái ra LED — đặt SÁT MÉP -X board (world x≈7..11): dây ra thẳng
-    # về phía hộp tối, không phải chạy vắt qua mặt board (tránh đâm linh kiện)
+    # header cái ra LED — cạnh +Z board (world x 12..29, z ≈ -59): quay thẳng
+    # về phía hộp tối, dây ra không phải vắt qua mặt board (tránh đâm linh kiện)
     _header(v, 24.0, 41.0, yb, 51.0, 55.0, h=8.5, female=True)
     # 2× điện trở cảm biến (E→GND) là part riêng 'rsense_*' — xem collect_parts()
     return v
@@ -1383,19 +1390,29 @@ def wires_vis(v):
     RX : 3 dây OPT101 -> chụp +X -> cáp Grove -> socket A0/A2 trên HAT
     I2C: socket I2C trên HAT -> 2 module MCP4725 trên board driver
     PWR: cáp USB-C cấp nguồn cho Pi."""
-    # ---------- TX: driver (cùng bên -Z với Pi) -> LED ----------
-    # Header ra LED ở cạnh dưới board (local z=45 -> world x=17, z=-136/-127).
-    # Bẹ 2 sợi đỏ/đen chạy trên board ra mép -X, xuống đế, dọc mép -X đế,
-    # qua khe sàn chụp -X -> cổng -> máng sàn -> nối vào carrier LED.
+    # ---------- TX: driver (kề Pi, cùng dải z) -> LED ----------
+    # Header cái ra LED ở cạnh +Z board (world x 12..29, z = -59), quay về phía
+    # hộp tối. Bẹ 2 sợi đỏ/đen rời board ngay tại cạnh +Z, xuống đế, chạy dọc
+    # NGOÀI đầu ống chụp (x = -21, đầu xa ống ở x = -18) rồi CHUI LÊN qua KHE
+    # SÀN của chụp (x -18.5..-13, y 1..5, z = tâm làn ±6.5) -> lòng ống ->
+    # cửa sổ cáp trên vách -> máng sàn trong hộp -> carrier LED.
+    #   làn Đỏ  (z = -19.25): chạy ở y = 1.8
+    #   làn IR  (z = +19.25): chạy ở y = 4.4 khi đi song song -> không đè lên
+    #                         bó Đỏ ở đoạn z = -41..-21.
     tx = {
-        "ir": [(9, 13.5, -131), (5, 7, -130), (2, 2, -127), (-3, 1.8, -122),
-               (-7, 1.8, -100), (-7, 1.8, -40), (-7, 1.8, 0), (-7, 1.8, 12),
-               (-6, 6, 18), (-4, 9, 19.25), (-1, 8, 19.25), (2, 7, 19.25),
+        "ir": [(15.5, 13.5, -59), (14.0, 10.0, -56.5), (10.0, 6.0, -53.5),
+               (2.0, 3.0, -50.0), (-8.0, 4.4, -47.0), (-16.0, 4.4, -44.0),
+               (-21.0, 4.4, -40.0), (-21.0, 4.4, -12.0), (-21.0, 2.4, 4.0),
+               (-19.5, 2.0, 13.0), (-16.5, 3.0, 19.25), (-14.0, 5.0, 19.25),
+               (-10.0, 8.0, 19.25), (-4.0, 9.0, 19.25), (-1.0, 8.0, 19.25),
+               (2.0, 7.0, 19.25),
                (3.8, 6.0, 19.25), (6, 6.5, 21), (10, 4.0, 24), (12, 2.6, 29),
                (16, 2.6, 32), (15, 5.5, 24), (13, 7, 20.5)],
-        "red": [(9, 13.5, -128), (5, 7, -127), (2, 2, -124), (-3, 1.8, -119),
-                (-7, 1.8, -105), (-7, 1.8, -80), (-7, 1.8, -40), (-7, 1.8, -28),
-                (-6, 6, -18), (-4, 9, -19.25), (-1, 8, -19.25), (2, 7, -19.25),
+        "red": [(23.5, 13.5, -59), (22.0, 10.0, -56.5), (18.0, 6.0, -53.5),
+                (10.0, 2.4, -50.0), (-2.0, 1.8, -47.0), (-14.0, 1.8, -44.0),
+                (-21.0, 1.8, -40.0), (-21.0, 1.8, -27.0), (-19.5, 2.0, -21.0),
+                (-16.5, 3.0, -19.25), (-14.0, 5.0, -19.25), (-10.0, 8.0, -19.25),
+                (-4.0, 9.0, -19.25), (-1.0, 8.0, -19.25), (2.0, 7.0, -19.25),
                 (3.8, 6.0, -19.25), (6, 6.5, -21), (10, 4.0, -24),
                 (12, 2.6, -29), (16, 2.6, -32), (64, 2.6, -32), (70, 5.5, -24),
                 (72, 7, -20.5)],
@@ -1439,21 +1456,28 @@ def wires_vis(v):
         for m, c in harness(gv, [(0.0, C_WHITE)], r=1.1, n=8, tie_step=40.0):
             v.add(m, c)
 
-    # ---------- I2C: HAT -> 2 module MCP4725 trên board driver (cùng bên -Z) ----------
-    # Header I2C của 2 module nằm tại world x≈56.5 (module #1 z≈-154, #2 z≈-106).
-    # Cáp trắng vòng lên trên HAT (y=28) rồi chạy DỌC MÉP +X board (x=62.5, ngoài
-    # các module cao 16.3) và cắm xuống từng header từ phía trên.
-    i2c_a = [(74, 19.9, -80), (74, 28, -80), (66, 28, -84), (63, 22, -87),
-             (62.5, 12, -92), (62.5, 12, -152), (57.5, 16.6, -154)]
-    i2c_b = [(89, 19.9, -80), (89, 28, -80), (80, 28, -83), (64, 22, -86),
-             (63.8, 12, -91), (63.8, 12, -106), (58.5, 16.6, -106)]
+    # ---------- I2C: HAT -> 2 module MCP4725 trên board driver (kề Pi) ----------
+    # Header 5 chân của 2 module hướng LÊN tại z = -106.5 (module #1 0x60/IR ở
+    # x -8.4..4.3, module #2 0x61/Đỏ ở x 39.8..52.5), đỉnh chân y = 18.1.
+    #   i2c_b (0x61, Đỏ):  vòng qua mép +X board (x 58) rồi cắm xuống module #2.
+    #   i2c_a (0x60, IR):  đi vòng phía TRƯỚC board (z = -114, không có gì cản)
+    #                      sang mép -X rồi cắm xuống module #1 — không vắt qua
+    #                      mặt board (2 module + 2 header + LM358 đều cao <= 18.1).
+    i2c_a = [(74, 19.9, -80), (74, 27, -80), (66, 27, -85), (60, 24, -95),
+             (58, 18, -104), (58, 10, -113), (30, 8, -114.5), (2, 8, -114.5),
+             (-2, 13, -112), (-2, 21, -109.5), (-2, 19.5, -106.5)]
+    i2c_b = [(89, 19.9, -80), (89, 27, -80), (80, 27, -84), (68, 25, -92),
+             (60, 23, -100), (54, 21, -105), (46, 19.5, -106.5)]
     for pts, w in ((i2c_a, [(0.0, C_WHITE)]), (i2c_b, [(0.0, C_WHITE)])):
         for m, c in harness(pts, w, r=0.75, n=8, tie_step=18.0):
             v.add(m, c)
 
     # ---------- PWR: USB-C -> Pi (tiếp cận từ -Z, đúng hướng cổng) ----------
-    for m, c in harness([(96, 7, -128), (90, 7, -122), (82, 7, -116), (78, 7, -112),
-                         (75, 7.5, -109.5), (73, 8.2, -109.5)], [(0.0, C_WIRE_K)], r=1.2, n=8,
+    # Thoát ra mép +X đế: khe z = -108..-136 giữa Pi và 2 chân màn hình, KHÔNG
+    # chui xuống gầm panel (panel phủ z -175.7..-127.9 nhưng ở y >= 5.4).
+    for m, c in harness([(130, 7, -124), (112, 7, -124), (96, 7, -122),
+                         (84, 7, -118), (76, 7.5, -113),
+                         (73, 8.2, -109.5)], [(0.0, C_WIRE_K)], r=1.2, n=8,
                         tie_step=18.0):
         v.add(m, c)
     return v
@@ -1528,14 +1552,14 @@ def collect_parts():
     for i, xc in enumerate(SCR_FOOT_X):
         m = build_screen_foot()
         m.apply_transform(translation_matrix([xc, 0.0, SCR_FOOT_Z0]))
-        add(f"screen_foot_{i + 1}", m, C_PRINT2, [0, -20, 30],
+        add(f"screen_foot_{i + 1}", m, C_PRINT2, [0, -20, -30],
             printable=(i == 0),
             label=("Chân đỡ màn hình 7 inch — in 2 bản (dùng file bản 1)"
                    if i == 0 else "Chân đỡ màn hình 7 inch — bản thứ 2"))
     add("base_neg", build_base("neg"), C_BASE, [0, -26, -10],
-        label="Đế — Pi 4 + Grove HAT + driver + 2× MCP4725")
+        label="Đế nửa TRƯỚC — chân màn hình + Pi 4 + Grove HAT + driver")
     add("base_pos", build_base("pos"), C_BASE, [0, -26, 10],
-        label="Đế — nửa đối diện (dưới hộp tối)")
+        label="Đế nửa SAU — dưới hộp tối + lưới lỗ mở rộng")
 
     # ---- mua sẳn / chỉ để nhìn (không xuất STL) ----
     # Mọi phần dưới đây đều là hình minh hoạ (printable=False) — bỏ hẳn khi
@@ -1552,9 +1576,8 @@ def collect_parts():
     add("grove_hat", None, C_PCB_G, [0, -32, -34], label="Grove Base HAT (ADC 0x08)",
         printable=False, subs=_vis_subs(grove_hat_vis))
 
-    # board driver: dựng hệ cục bộ rồi XOAY 90° quanh Y + đặt cùng bên -Z với Pi.
-    drv_T = (translation_matrix([DRV_WX, 0.0, DRV_WZ])
-             @ rotation_matrix(-math.pi / 2, [0, 1, 0]))
+    # board driver: hệ cục bộ trùng hướng thế giới, chỉ tịnh tiến (xem drv_world).
+    drv_T = translation_matrix([DRV_WX, 0.0, DRV_WZ])
 
     def place(subs, T):
         out = []
@@ -1566,7 +1589,7 @@ def collect_parts():
             out.append(d)
         return out
 
-    add("driver_board", None, C_PCB_G, [0, -16, 34],
+    add("driver_board", None, C_PCB_G, [0, -16, -34],
         label="Board driver LED (LM358 + 2×2N4401 + 2×MCP4725)", printable=False,
         subs=place(_vis_subs(driver_board_vis), drv_T))
 
@@ -1592,7 +1615,7 @@ def collect_parts():
         add(f"push_rod_{ch}", None, 0x9aa3ad, [-30, 0, 0], printable=False,
             label=f"Thanh trượt Ø5 × 130 mm (mua sẵn) — làn {vn}",
             subs=_vis_subs(push_rod_vis, ch))
-    add("screen7", None, 0x2b3038, [0, 0, 30], printable=False,
+    add("screen7", None, 0x2b3038, [0, 0, -30], printable=False,
         label='Màn hình cảm ứng 7" [SPEC] 194×110×20 mm',
         subs=_vis_subs(screen_vis))
     add("wiring", None, C_WIRE_K, [0, 0, 0],

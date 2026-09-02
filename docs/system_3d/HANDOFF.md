@@ -1,8 +1,49 @@
 # HANDOFF — Mô hình 3D hệ thống PPG simulator (`docs/system_3d`)
 
 Tài liệu bàn giao để tiếp tục công việc ở cuộc hội thoại sau.
-Cập nhật: 2026-09-02. Nhãn bằng chứng: `[VERIFIED]` = đã chạy/đo được trong
+Cập nhật: 2026-09-02 (lần 2 — đổi bố cục, xem §0 đầu tiên). Nhãn bằng chứng: `[VERIFIED]` = đã chạy/đo được trong
 phiên này, `[SPEC]/[DS]` = theo tài liệu, `[ASSUME]` = giả định, cần đo thật.
+
+---
+
+## 0. CẬP NHẬT BỐ CỤC (2026-09-02, SAU v3) — màn hình → Pi 4 → hộp tối
+
+**Mục này ghi đè mục 0-v3 ở các điểm 5, 6 và mọi toạ độ đế/board driver bên dưới.**
+Lý do: ở v3 màn hình nằm nửa `+Z`, tức **sau hộp tối** so với người dùng → bị che,
+không nhìn/chạm được. Nay **`-Z` = MẶT TRƯỚC**, 3 cụm xếp thành 1 hàng.
+
+Trạng thái `[VERIFIED]` **96/96 check** (`verify_geometry.py`; 15/15 STL
+watertight, **14 cặp** lắp ghép giao nhau = 0 mm³), gói Bambu **không đổi**
+(12 file, all-in-one 237×235 mm — `PRINT_SET` không chứa đế/chân màn hình).
+
+| Cụm | z (mm) | Ghi chú |
+|---|---|---|
+| Mép trước đế | −196 | `BASE_Z0` (trước: −164) |
+| 2 chân màn hình 7" | −190..−136 | x = 20/130; lỗ bắt z = −186 / −139, trên **`base_neg`** |
+| Panel 7" (ngả 15°) | −175.7..−127.9 | mặt hiển thị quay về `-Z`; đỉnh sau y ≈ 113.7 |
+| Khe cắm USB-C/HDMI | −136..−112 | 24 mm trống |
+| Board driver 70×55 | −112..−57 | x −12..58, **không xoay** (đã xoá ma trận `_DRV_R`) |
+| Pi 4B + Grove HAT | −108..−52 | x 62..147 (giữ nguyên) |
+| Tai bắt hộp | ±51.5 | x = 21/129 |
+| Hộp tối | −40..+40 | giữ nguyên toàn bộ |
+| Lưới lỗ mở rộng 3×2 | 62 / 80 | x = 30/75/120, trên `base_pos` |
+| Mép sau đế | +92 | `BASE_Z1` (trước: 122) |
+
+- Đế chung **198 × 288 mm**; `base_neg` 198×196 (nửa TRƯỚC), `base_pos` 198×92
+  (nửa SAU) — cả hai vẫn vừa bàn in 256×256. Mộng ghép tại z=0 giữ nguyên.
+- Khe hở board driver `[VERIFIED]`: 4 mm tới Pi (x=62), 12 mm tới mép đế
+  (x=−24), 5.5 mm tới tai bắt hộp (z=−51.5), 24 mm tới chân màn hình.
+  Cạnh `+Z` mang **header cái ra LED** (world x 12..29, z −61..−57, đỉnh chân
+  y = 15.1) quay thẳng về hộp tối → đường TX ngắn nhất.
+- Hàng chân 2× MCP4725 (world): **0x60 → IR** x −8.4..4.3, **0x61 → Đỏ**
+  x 39.8..52.5, cùng z −107.5..−105.5, mặt trên module y = 16.3.
+- **Lỗi mô hình dây đã sửa trong đợt này**: bó TX cũ chạy ở y=1.8 dọc x=−7 →
+  **xuyên qua vách đặc của chụp che sáng**. Nay bó vòng ra ngoài đầu ống chụp
+  (x=−21) rồi **chui lên đúng khe sàn** (x −18.5..−13, y 1..5) vào lòng ống;
+  làn IR đi ở y=4.4 khi song song để không đè bó Đỏ (y=1.8). I2C + nguồn vẽ lại
+  theo board driver không xoay (I2C 0x60 vòng phía trước board tại z=−114).
+- Viewer: preset camera lật về `-Z` (`iso`, `Trước` nhìn thẳng mặt màn hình;
+  `Khối điện tử` target z=−84; lưới sàn dời về z=−52).
 
 ---
 
@@ -32,13 +73,14 @@ watertight, 12 cặp lắp ghép giao nhau = 0 mm³).
    âm-dương khép kín** quanh lỗ cáp (gân 1.2 mm ↔ rãnh 1.5×1.5 mm, khe
    0.15/mặt), 4 trụ nằm NGOÀI vòng mộng (±14.5 vs ±13). Đáy lỗ tựa **trụ đứng
    liền khối trong hộp** (x=3..8, cao y=19.5) → lỗ không xuyên thủng vách.
-5. **2 chân đỡ màn hình 7"** (`screen_foot_1.stl`, in 2) trên nửa đế `+Z`:
-   x = 20/130, **z = 56..110** (lùi sau 4 tai bắt hộp z≤51.5 — cặp
-   `body × screen_foot_1` = 0 mm³), máng kẹp rộng 21 sâu 14 ngả **15°**,
+5. **2 chân đỡ màn hình 7"** (`screen_foot_1.stl`, in 2) — *(vị trí đã đổi,
+   xem §0 bố cục: nay ở **`base_neg`, z −190..−136**)*:
+   x = 20/130, máng kẹp rộng 21 sâu 14 ngả **15°**,
    4 vít M3×12 xuống đế + 2 vít kẹp M3. `[SPEC]` panel Pi 7" 194×110×20 mm;
    `[ASSUME]` panel khác dày 15..21 mm. Không cản Pi (z −108..−52) hay quạt.
    In **đứng đúng tư thế lắp, không support** (mọi mặt hướng xuống ≤39°).
-6. **Lưới 2×3 lỗ M3 Ø3.4 dự phòng** trên `base_pos` (x 55/95, z 65/90/115).
+6. **Lưới lỗ M3 Ø3.4 dự phòng** trên `base_pos` — *(đã đổi: nay **3×2 lỗ,
+   x 30/75/120, z 62/80**, xem §0 bố cục)*.
 7. **STL: 15 file** `out/stl/` (bỏ `mag_slider_red.stl`; thêm `rod_knob_red.stl`,
    `screen_foot_1.stl`). Bambu **12 file** (`05_num_thanh_truot.stl` thay
    `05_can_truot_nam_cham.stl`). Thân in rộng 150 → **170 mm** ⇒ đã đổi thuật
@@ -99,7 +141,7 @@ Dựng mô hình 3D **chân thực nhất có thể** cho toàn hệ PPG simulat
 
 ---
 
-## 2. Trạng thái đã kiểm chứng lại hôm nay `[VERIFIED]`
+## 2. Ảnh chụp trạng thái build v1 (LỊCH SỬ — toạ độ đế đã lỗi thời, xem §0 bố cục)
 
 Chạy `.cad_venv/bin/python build_system.py` — **build sạch**:
 
@@ -175,19 +217,17 @@ hood_r_ir  155.00   3.00   1.25 → 171.50  24.00  37.25
 | Khe cáp sàn chụp | `HOOD_SLOT_L = 7`, `HOOD_SLOT_HW = 6` → local x 12..19, y 2.5..6.0, z làn ±6 → **world x −19..−12 (−X), 162..169 (+X)** |
 | Vít giữ chụp | `HOOD_BOLT_Y = (5.5, 21.0)`, `HOOD_BOLT_Z = (−14.5, 14.5)` |
 | Máng cáp sàn hộp | `zw = ±33`, cắt `box(4, 104, 1.6, 3.05, zw±3)` → rộng 6 mm, sâu 1.4 mm |
-| Đế | `BASE_T = 4` (mặt trên y=0), `BASE_X0..X1 = −24..174`, `BASE_Z0..Z1 = −122..122`, `RIB_H = 6` |
+| Đế | `BASE_T = 4` (mặt trên y=0), `BASE_X0..X1 = −24..174`, `BASE_Z0..Z1 = −196..92`, `RIB_H = 6` |
 | Pi 4 | `PI_X0 = 62`, `PI_Z0 = −108`, PCB 85×56×1.4, `PI_Y0..Y1 = 5..6.4` |
 | Grove HAT | 65×56.5×1.6, `HAT_Y0..Y1 = 14.9..16.5`, `HDR_H = 8.5` |
-| Driver perfboard | `DRV_X0 = −8`, `DRV_Z0 = 46`, 90×70×1.6, `DRV_Y0..Y1 = 5..6.6` → x −8..82, z 46..116 |
-| MCP4725 | `DAC_L/W = 17.8/15.2`, `DAC_HDR_H = 8.5`; header 0x60 tại x 65.6..78.3, z 48.3..50.3; 0x61 tại z 101.5..103.5 |
+| Driver perfboard | `DRV_L/W/T = 70/55/1.6`, `DRV_WX/WZ = −12/−112` (**không xoay**), `DRV_Y0..Y1 = 5..6.6` → x −12..58, z −112..−57 |
+| MCP4725 | `DAC_L/W = 17.8/15.2`, `DAC_HDR_H = 8.5`; header 0x60 (IR) x −8.4..4.3; 0x61 (Đỏ) x 39.8..52.5; cùng z −107.5..−105.5 |
 
 **Điểm nối đã xác minh (cần giữ nguyên khi vẽ dây):**
 
 ```
-Cầu đấu LED trên driver (npos=2, mặt vít hướng −x, x=−7.6, y=11.1):
-    IR  : z = 59.46 và 64.54      (cụm tâm z = 62)
-    Đỏ  : z = 97.46 và 102.54     (cụm tâm z = 100)
-Cầu đấu nguồn 3 vị trí trên driver: x 34..42, z tâm 110, vít trên mặt y = 15.6
+Header cái ra LED trên driver (cạnh +Z, quay về hộp tối):
+    world x = 12..29, z = −61..−57 (hàng chân z ≈ −59), đỉnh chân y = 15.1
 Socket Grove (miệng cắm):
     A0 (IR RX)  = (71.5, 19.9, −57.5)
     A2 (Đỏ RX)  = (84.5, 19.9, −57.5)
@@ -377,8 +417,9 @@ Bó dây đặt ở y 1.05..2.15 → lọt dưới vòm cao 3.4 mm.
 2. ✅ **ĐÃ SỬA 2026-08-31** — "622 nm" đã gắn nhãn `[ASSUME]` tại
    `build_system.py` (label LED Đỏ) và `README.md` (đầu trang + sơ đồ khối,
    có chú thích *) — BOM không ghi bước sóng LED Đỏ.
-3. ✅ **ĐÃ SỬA** — README ghi đúng kích thước đế **198×164 (base_neg) /
-   198×122 (base_pos)**.
+3. ✅ **ĐÃ SỬA** — README ghi đúng kích thước đế; sau đợt đổi bố cục
+   (2026-09-02, §0) là **198×196 (base_neg, nửa trước) / 198×92 (base_pos,
+   nửa sau)**.
 4. ✅ **ĐÃ SỬA 2026-08-31** — `led_red`/`led_ir` đã bỏ khỏi
    `assets/textures.json` (-220 KB). Lưu ý thêm: hiện **toàn bộ** texture đều
    chưa được nối vào model (Vis hỗ trợ `tex=` nhưng chưa nơi nào gọi với tex)

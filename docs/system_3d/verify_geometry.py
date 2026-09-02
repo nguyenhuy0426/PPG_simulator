@@ -204,7 +204,7 @@ expect(m["body"], (50.0, 2.5, -33.0), False, "máng dây LED mở (x=50)")
 expect(m["body"], (5.0, 2.5, -33.0), True, "sàn đặc trước máng (x=5, dưới trụ đứng)")
 
 # ================================================================ 8. base
-print("=== 8. base (mộng ghép + bệ bắt chân màn hình) ===")
+print("=== 8. base (mộng ghép + bệ bắt chân màn hình + lưới lỗ mở rộng) ===")
 expect(m["base_neg"], (43.0, -2.0, -6.0), True, "base_neg vị trí vít nối cũ đặc")
 expect(m["base_neg"], (111.0, -2.0, -6.0), True, "base_neg vị trí vít nối cũ #2 đặc")
 expect(m["base_neg"], (43.0, -2.0, 4.0), True, "base_neg mộng dương x=43 đặc")
@@ -212,22 +212,34 @@ expect(m["base_neg"], (111.0, -2.0, 4.0), True, "base_neg mộng dương x=111 �
 expect(m["base_pos"], (43.0, -2.0, 4.0), False, "base_pos mộng âm x=43 mở")
 expect(m["base_pos"], (111.0, -2.0, 4.0), False, "base_pos mộng âm x=111 mở")
 expect(m["base_pos"], (77.0, -2.0, 4.0), False, "base_pos mộng âm x=77 mở")
-expect(m["base_pos"], (23.0, -7.0, 60.0), True, "bệ vít chân màn hình (x=20,z=60) đặc")
-expect(m["base_pos"], (20.0, -7.0, 60.0), False, "lỗ vít M3 chân màn hình #1 mở")
-expect(m["base_pos"], (130.0, -7.0, 107.0), False, "lỗ vít M3 chân màn hình #4 mở")
-expect(m["base_pos"], (55.0, -2.0, 65.0), False, "lưới lỗ M3 mở rộng (55, 65) mở")
-expect(m["base_pos"], (95.0, -2.0, 115.0), False, "lưới lỗ M3 mở rộng (95, 115) mở")
-expect(m["base_pos"], (75.0, -2.0, 90.0), True, "đế đặc giữa 2 lỗ mở rộng")
+# chân màn hình đã chuyển sang NỬA TRƯỚC (base_neg, z = -186 / -139)
+expect(m["base_neg"], (23.0, -7.0, -186.0), True, "bệ vít chân màn hình (x=20,z=-186) đặc")
+expect(m["base_neg"], (20.0, -7.0, -186.0), False, "lỗ vít M3 chân màn hình #1 mở")
+expect(m["base_neg"], (130.0, -7.0, -139.0), False, "lỗ vít M3 chân màn hình #4 mở")
+expect(m["base_pos"], (30.0, -2.0, 62.0), False, "lưới lỗ M3 mở rộng (30, 62) mở")
+expect(m["base_pos"], (120.0, -2.0, 80.0), False, "lưới lỗ M3 mở rộng (120, 80) mở")
+expect(m["base_pos"], (52.0, -2.0, 71.0), True, "đế đặc giữa 4 lỗ mở rộng")
+
+# --- thứ tự TRƯỚC -> SAU: màn hình (z<=-136) | Pi 4 + driver (-112..-52) | hộp tối
+sfb = m["screen_foot_1"].bounds
+check("chân màn hình nằm hẳn phía TRƯỚC cụm điện tử (z <= -130)",
+      float(sfb[1][2]) <= -130.0,
+      f"(mép sau chân z = {float(sfb[1][2]):.1f}, mép trước board driver z = -112)")
+bnb = m["base_neg"].bounds
+check("đế nửa trước phủ hết chân màn hình (z <= -196)",
+      float(bnb[0][2]) <= -195.9 and float(sfb[0][2]) >= float(bnb[0][2]),
+      f"(đế z0 = {float(bnb[0][2]):.1f}, chân z0 = {float(sfb[0][2]):.1f})")
 
 # ================================================================ 9. pairs
 print("=== 9. Pairwise intersection volumes ~ 0 ===")
 PAIRS = [
     ("body", "lid"), ("body", "led_carrier_red"), ("body", "slide_shaft_red"),
-    ("led_carrier_red", "slide_shaft_red"), ("base_pos", "screen_foot_1"),
+    ("led_carrier_red", "slide_shaft_red"), ("base_neg", "screen_foot_1"),
+    ("base_pos", "screen_foot_1"),
     ("body", "hood_l_red"), ("body", "hood_r_red"),
     ("base_neg", "base_pos"), ("body", "base_neg"), ("body", "base_pos"),
     ("body", "aperture_red_blank"), ("led_carrier_red", "lid"),
-    ("body", "screen_foot_1"),      # chân màn hình phải né 4 tai bắt hộp (z<=51.5)
+    ("body", "screen_foot_1"),      # chân màn hình ở z <= -136, hộp tối ở z >= -40
 ]
 for a, bna in PAIRS:
     try:

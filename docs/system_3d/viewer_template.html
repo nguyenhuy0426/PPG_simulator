@@ -37,6 +37,7 @@
   <h1>PPG Simulator — mô hình 3D toàn hệ thống</h1>
   <div class="sub">Hộp tối 2 làn quang (Đỏ -Z / IR +Z) · board 5×7 + 2× OPT101 ·
   đế chung Pi 4 + Grove HAT + driver + 2× MCP4725<br>
+  Bố cục trước → sau: <b>màn hình 7"</b> → <b>Pi 4 + driver</b> → <b>hộp tối</b><br>
   <span style="color:#ff6060">■</span> LED Đỏ &nbsp;
   <span style="color:#8a5cf0">■</span> LED IR &nbsp;
   <span style="color:#66ccff">■</span> cửa sổ OPT101 &nbsp;
@@ -97,8 +98,8 @@
       <a href="stl/aperture_red_d2.stl" download>aperture_red_d2.stl — khẩu độ Ø2 ×2</a>
       <a href="stl/aperture_red_d5.stl" download>aperture_red_d5.stl — khẩu độ Ø5 ×2</a>
       <a href="stl/aperture_red_d16.stl" download>aperture_red_d16.stl — khẩu độ Ø16 ×2</a>
-      <a href="stl/base_neg.stl" download>base_neg.stl — đế (Pi + HAT + driver) ×1</a>
-      <a href="stl/base_pos.stl" download>base_pos.stl — đế (dưới hộp + chân màn hình) ×1</a>
+      <a href="stl/base_neg.stl" download>base_neg.stl — đế nửa TRƯỚC (chân màn hình + Pi + HAT + driver) ×1</a>
+      <a href="stl/base_pos.stl" download>base_pos.stl — đế nửa SAU (dưới hộp tối + lưới lỗ mở rộng) ×1</a>
       <a href="stl/screen_foot_1.stl" download>screen_foot_1.stl — chân đỡ màn hình 7" ×2</a>
     </div>
   </fieldset>
@@ -181,17 +182,18 @@ function updAxisLabel(lane,d){const a=axisLbl[lane];if(!a)return;
 axisLine(-19.25,0xff5555,'Đỏ 622nm → OPT101 → A2 (d=25mm)','red');
 axisLine(19.25,0x6688ff,'IR 875nm → OPT101 → A0 (d=85mm)','ir');
 const grid=new THREE.GridHelper(560,56,0x223,0x1a2030);
-grid.position.set(75,-10.5,0);scene.add(grid);
+grid.position.set(75,-10.5,-52);scene.add(grid);
 function setView(v){
   const d=rad*1.4;
   if(v==="inIR"){camera.position.set(6,32,19.25);controls.target.set(118,32,19.25);}
   else if(v==="inRed"){camera.position.set(6,32,-19.25);controls.target.set(118,32,-19.25);}
-  else if(v==="elec"){camera.position.set(75,190,175);controls.target.set(75,8,0);}
+  else if(v==="elec"){camera.position.set(75,175,-200);controls.target.set(67,10,-84);}
   else if(v==="top2"){camera.position.set(75,190,0.5);controls.target.set(75,10,0);}
   else{
-    const P={iso:[ctr.x+d*.8,ctr.y+d*.65,ctr.z+d*.9],
-             front:[ctr.x+d*1.05,ctr.y,ctr.z+d*1.25],
-             top:[ctr.x,ctr.y+d*1.7,ctr.z+1]};
+    // -Z = mat TRUOC (man hinh 7"), +Z = mat sau (hop toi)
+    const P={iso:[ctr.x+d*.62,ctr.y+d*.5,ctr.z-d*.78],
+             front:[ctr.x,ctr.y+d*.2,ctr.z-d*1.05],
+             top:[ctr.x,ctr.y+d*1.35,ctr.z-1]};
     camera.position.set(...P[v]);controls.target.copy(ctr);}
   controls.update();
 }

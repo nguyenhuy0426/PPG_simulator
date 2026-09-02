@@ -64,12 +64,19 @@ Hệ lắp ráp (xem thêm header `build_system.py` §1):
 | **+Y** | Lên trên |
 | **+Z** | Ngang; **làn Đỏ ở -Z**, **làn IR ở +Z**, vách ngăn quang tại z=0 |
 
+> **-Z là MẶT TRƯỚC** (phía người dùng ngồi). Thứ tự trước → sau trên đế chung:
+> **màn hình 7"** (z −190..−136) → **Pi 4 + board driver** (z −112..−52) →
+> **hộp tối** (z −40..+40, tai bắt vươn tới ±51.5) → **vùng lỗ mở rộng**
+> (z 62..80). Màn hình ngả 15° ra sau, mặt hiển thị quay về `-Z` → nhìn và
+> chạm được ngay, không bị hộp tối che.
+
 - Kích thước hộp tối: **150 × 67 × 80 mm** (X×Y×Z, gồm nắp).
 - Trục quang tại y=32 mm; tâm 2 làn tại z = ±19.25 mm.
-- Đế chung: **198 × 286 mm**, chia đôi tại z=0 (nửa `-Z` ~198×164 mm, nửa `+Z`
-  ~198×122 mm — vừa bàn in thông dụng). **Nửa `-Z` chứa toàn bộ khối điện tử**:
-  Pi 4 + Grove HAT + board driver (xoay 90°) + 2× MCP4725 cùng nằm một bên;
-  nửa `+Z` đỡ hộp tối **và 2 chân đỡ màn hình cảm ứng 7 inch** (§4.3).
+- Đế chung: **198 × 288 mm** (x −24..174, z −196..92), chia đôi tại z=0 —
+  nửa `-Z` **198 × 196 mm**, nửa `+Z` **198 × 92 mm** (cả hai vừa bàn in
+  256×256). **Nửa `-Z` là nửa TRƯỚC**: 2 chân đỡ màn hình 7 inch (§4.3) ở hàng
+  đầu, rồi board driver + Pi 4 + Grove HAT + 2× MCP4725. Nửa `+Z` là nửa SAU:
+  đỡ hộp tối và mang lưới lỗ mở rộng (§4.4).
 - **Không gian thao tác**: thanh trượt Ø5 thò ra phía `-X`; ở d=90 mm đuôi núm
   tới **x = −110 mm**, tức cần chừa **≥ 86 mm bàn trống** ngoài mép đế (đế kết
   thúc ở x=−24).
@@ -130,6 +137,22 @@ Bố trí tổng thể theo X:
 | 137.5..139.1 | Board cảm biến 5×7 cm dựng đứng |
 | 141.5..147 | Vách ngăn sau khung board |
 | -24..174 | Đế chung (Pi 4 + Grove HAT + driver + 2× MCP4725) |
+
+Bố trí tổng thể theo Z (**-Z = trước, +Z = sau**):
+
+| z (mm) | Thành phần |
+|---|---|
+| −196 | Mép trước đế chung (`base_neg`) |
+| −190..−136 | 2 chân đỡ màn hình 7 inch (x = 20 và 130) |
+| −175.7..−127.9 | Panel màn hình 7 inch, ngả 15°, mặt hiển thị quay về -Z |
+| −136..−112 | Khe thao tác cổng USB-C / HDMI của Pi (24 mm) |
+| −112..−57 | Board driver LED 70×55 (x −12..58, không xoay) |
+| −108..−52 | Pi 4B + Grove HAT (x 62..147) |
+| −106.5 | Hàng chân 2× MCP4725 trên board driver |
+| −51.5..+51.5 | 4 tai bắt hộp tối xuống đế (x = 21 và 129) |
+| −40..+40 | Hộp tối (làn Đỏ z = −19.25, làn IR z = +19.25) |
+| +62 / +80 | Lưới 3×2 lỗ M3 dự phòng mở rộng (§4.4) |
+| +92 | Mép sau đế chung (`base_pos`) |
 
 ---
 
@@ -221,11 +244,12 @@ Phía `-X` chỉ có thành hộp.
 
 ### 4.3 Đế đỡ màn hình cảm ứng 7 inch
 
-- **2 chân đỡ rời** (`screen_foot_1.stl`, in 2 bản) đặt trên **nửa đế `+Z` còn
-  trống**: x = 20 và 130 (cách nhau 110 mm, đối xứng qua trục hộp x=75),
-  z = 56..110. Mép trước **lùi sau 4 tai bắt hộp** (tai vươn tới z=51.5) 4.5 mm,
-  cách vách hộp tối 16 mm → không cấn tai vít, không cản luồng khí quanh hộp
-  (verify: `body × screen_foot_1` = 0 mm³).
+- **2 chân đỡ rời** (`screen_foot_1.stl`, in 2 bản) đặt ở **hàng đầu của nửa
+  đế `-Z`**: x = 20 và 130 (cách nhau 110 mm, đối xứng qua trục hộp x=75),
+  z = −190..−136 — tức **trước Pi 4 và trước hộp tối**, đúng thứ tự
+  màn hình → Pi → hộp. Mép sau chân cách mép trước board driver (z=−112)
+  **24 mm** → còn khe cắm USB-C/HDMI cho Pi; cách hộp tối > 95 mm
+  (verify: `body × screen_foot_1` = 0 mm³, `base_* × screen_foot_1` = 0 mm³).
 - Mỗi chân: **máng kẹp rộng 21 mm, sâu 14 mm, ngả 15°** so với phương thẳng
   đứng; cạnh dưới panel tì vào đáy máng ở y=8 mm.
 - `[SPEC]` **Raspberry Pi 7" Touch Display: 194 × 110 × 20 mm** (kể cả bo mạch
@@ -234,20 +258,20 @@ Phía `-X` chỉ có thành hộp.
   thành sau máng** (thành dày ≥ 10 mm, ta-rô vào nhựa) — **không phụ thuộc toạ
   độ lỗ bắt VESA của panel**, vì mỗi hãng một kiểu.
 - Bắt xuống đế: **2 vít M3×12 mỗi chân** (tổng 4) — lỗ suốt Ø3.5 trên chân,
-  **ta-rô trực tiếp** vào lỗ mồi Ø2.8 sâu 10 mm của `base_pos` (đế 4 mm + bệ trụ
-  Ø9.2 đúc liền trong hốc gân, 6 mm). Thêm **2 vít kẹp M3** (mỗi chân 1, lỗ mồi
-  Ø2.5 xuyên thành sau máng) giữ panel.
-- **Không cản Pi 4**: Pi nằm ở nửa `-Z` (z = −108..−52), chân màn hình ở
-  z = +48..+102 — cách nhau > 150 mm, mọi cổng USB/HDMI/Ethernet/nguồn và quạt
-  đều thông thoáng.
+  **ta-rô trực tiếp** vào lỗ mồi Ø2.8 sâu 10 mm của `base_neg` (đế 4 mm + bệ trụ
+  Ø9.2 đúc liền trong hốc gân, 6 mm) tại z = −186 và −139. Thêm **2 vít kẹp M3**
+  (mỗi chân 1, lỗ mồi Ø2.5 xuyên thành sau máng) giữ panel.
+- **Không cản Pi 4**: đỉnh sau panel chỉ vươn tới z = −127.9 ở độ cao
+  y ≈ 113.7 mm — **không trùm lên Pi** (Pi bắt đầu ở z=−108, cao nhất ~25 mm);
+  khe 24 mm giữa chân màn hình và board driver để cắm cáp và thoát khí quạt.
 - Biên dạng chân được dựng sao cho **mọi mặt hướng xuống ≤ 39° so với phương
   thẳng đứng** → in **đứng đúng tư thế lắp, không cần support**.
 
 ### 4.4 Dự phòng mở rộng
 
-**Lưới 2×3 lỗ M3 suốt (Ø3.4)** trên `base_pos` tại x = 55/95, z = 65/90/115 —
-vùng đế trống giữa 2 chân màn hình, **sau hộp tối** (hộp kết thúc z ≈ 51.5),
-**trước gân chu vi** (z ≥ 117). Đủ chỗ bắt thêm 1 module cỡ 40×25 mm
+**Lưới 3×2 lỗ M3 suốt (Ø3.4)** trên `base_pos` tại x = 30/75/120 (bước 45 mm),
+z = 62/80 (bước 18 mm) — **dải đế trống phía SAU hộp tối**: sau 4 tai bắt hộp
+(tai vươn tới z=51.5), **trước gân chu vi** (z ≥ 87). Đủ chỗ bắt thêm 1 module cỡ 40×25 mm
 (MCP4725 dự phòng, cảm biến nhiệt-ẩm-ánh sáng nền, quạt 40 mm, hub I2C…) bằng
 vít M3 + đai ốc mà không phải in lại đế.
 
@@ -270,8 +294,8 @@ vít M3 + đai ốc mà không phải in lại đế.
 | `hood_l_red.stl` | Chụp che sáng trái (thành -X, cáp LED) — 4 trụ cắm Ø4 | 2 |
 | `hood_r_red.stl` | Chụp che sáng phải (thành +X, cáp OPT101) — 4 trụ cắm Ø4 | 2 |
 | `screen_foot_1.stl` | Chân đỡ màn hình cảm ứng 7 inch | 2 |
-| `base_neg.stl` | Đế — nửa Pi 4 + Grove HAT + driver | 1 |
-| `base_pos.stl` | Đế — nửa dưới hộp tối + bệ chân màn hình + lưới lỗ mở rộng | 1 |
+| `base_neg.stl` | Đế nửa TRƯỚC — bệ chân màn hình + Pi 4 + Grove HAT + driver | 1 |
+| `base_pos.stl` | Đế nửa SAU — dưới hộp tối + lưới lỗ mở rộng | 1 |
 
 > **Một thiết kế dùng cho cả 2 làn**: vì 2 làn quang đối xứng quanh z=0, các chi tiết
 > `slide_shaft`, `led_carrier`, `rod_knob`, `aperture_*` và `hood_*` chỉ xuất bản
@@ -283,9 +307,10 @@ vít M3 + đai ốc mà không phải in lại đế.
 > - **2× thanh trụ tròn Ø5 h8 × 130 mm**, thép hoặc inox 304 `[SPEC]` — cơ cấu chỉnh d.
 > - **2× vít lục giác chìm M3×6** — chặn núm cầm vào thanh trượt.
 > - **4× vít M3×16** — 4 tai bắt hộp tối xuống đế.
-> - **4× vít M3×12** — bắt 2 chân màn hình xuống đế (ta-rô vào nhựa).
+> - **4× vít M3×12** — bắt 2 chân màn hình xuống `base_neg` (ta-rô vào nhựa).
 > - **2× vít M3×16** — vít kẹp panel màn hình (xuyên thành sau máng).
-> - *(tuỳ chọn)* **6× vít M3 + đai ốc** — lưới lỗ mở rộng Ø3.4 trên `base_pos` (§4.4).
+> - *(tuỳ chọn)* **6× vít M3 + đai ốc** — lưới lỗ mở rộng Ø3.4 (3×2) trên
+>   `base_pos`, phía sau hộp tối (§4.4).
 >
 > **ĐÃ BỎ so với v2**: 4× nam châm đĩa Ø10×3 N35 và 8× vít M3×8 bắt chụp cáp
 > (chụp giờ dùng 4 trụ cắm liền khối).
@@ -330,9 +355,10 @@ vít M3 + đai ốc mà không phải in lại đế.
    in 2 bản). Tháo: kẹp mép bích, kéo thẳng ra.
 5. **Đế**: ghép 2 nửa `base_neg`/`base_pos` bằng 5 mộng vuông; bắt hộp tối lên
    đế qua 4 tai (vít M3×16) tại x=21/129, z=±40.
-6. **Điện tử**: Pi 4 lên 4 trụ M2.5 của `base_neg`, Grove HAT cắm header; board
-   driver (xoay 90°) lên 4 trụ M3 của `base_neg` — **cùng bên -Z với Pi** —,
-   2 breakout MCP4725 hàn trên board.
+6. **Điện tử**: Pi 4 lên 4 trụ M2.5 của `base_neg` (x 62..147), Grove HAT cắm
+   header; board driver 70×55 (**không xoay**) lên 4 trụ M3 của `base_neg` ngay
+   **bên -X kề Pi** (x −12..58, cùng dải z) — cạnh `+Z` mang header ra LED quay
+   thẳng về hộp tối; 2 breakout MCP4725 hàn trên board, hàng chân quay lên.
 7. **Dây** theo `docs/hardware/PPG_PROTOTYPE_WIRING_AND_TEST_POINTS.md`:
    TX driver→LED qua chụp -X, RX OPT101→cáp Grove→socket A0/A2, I2C HAT→2 DAC,
    USB-C→Pi. Trong mô hình, dây được dựng thành **bẹ dây** (`harness()`): nhiều
@@ -348,9 +374,10 @@ vít M3 + đai ốc mà không phải in lại đế.
    - **I2C**: bẹ 2 cáp trắng chung đoạn HAT→nóc hộp, tách về 2 MCP4725.
 8. **Nắp**: đậy nắp labyrinth (tấm phẳng, không còn ray/cần trượt). Chỉnh d
    bằng thanh trượt từ ngoài — **không cần mở nắp nữa**.
-9. **Màn hình 7 inch**: bắt 2 chân đỡ xuống `base_pos` (4 vít M3×12), tra panel
-   vào máng ngả 15°, siết 2 vít kẹp M3 ở thành sau. Kiểm tra cáp DSI/HDMI +
-   nguồn màn hình không chắn quạt hay cổng Pi.
+9. **Màn hình 7 inch**: bắt 2 chân đỡ xuống **`base_neg`** (hàng đầu, 4 vít
+   M3×12), tra panel vào máng ngả 15° — **mặt hiển thị quay ra -Z, về phía người
+   dùng**; siết 2 vít kẹp M3 ở thành sau. Cáp DSI/HDMI + nguồn màn hình luồn qua
+   khe 24 mm giữa chân màn hình và board driver, không chắn quạt hay cổng Pi.
 10. Chạy `python3 main.py --dry-run` trước khi chạy thật.
 
 ---
@@ -518,10 +545,12 @@ out/model.json         — hình học cho viewer (theo chế độ build gần 
   **Raspberry Pi 7" Touch Display 194×110×20 mm**; **thanh trụ tròn Ø5 h8**
   (linear shaft thương mại — dung sai h8 = 0/−0.018 mm).
 - `[VERIFIED]` ray-cast + boolean trên chính STL đã xuất, chạy bằng
-  `verify_geometry.py` — **93/93 PASS**: 15 chi tiết watertight, 12 cặp lắp ghép
-  giao nhau = 0 mm³ (kể cả `body × screen_foot_1` và `body × hood_*`), lỗ dẫn
-  hướng thanh trượt thông suốt, 4 lỗ trụ cắm chụp mở, vòng mộng âm-dương khớp,
-  lưới lỗ mở rộng thông, gói Bambu đúng 12 file và nằm trong bàn 256×256.
+  `verify_geometry.py` — **96/96 PASS**: 15 chi tiết watertight, 14 cặp lắp ghép
+  giao nhau = 0 mm³ (kể cả `body × screen_foot_1` và `base_neg/base_pos ×
+  screen_foot_1`), thứ tự trước→sau (chân màn hình z ≤ −136 nằm hẳn trước board
+  driver z = −112, đế nửa trước phủ hết chân), lỗ dẫn hướng thanh trượt thông
+  suốt, 4 lỗ trụ cắm chụp mở, vòng mộng âm-dương khớp, lưới lỗ mở rộng thông,
+  gói Bambu đúng 12 file và nằm trong bàn 256×256.
 - `[ASSUME]` **lực đẩy/kéo và độ rơ của thanh trượt chưa đo trên vật thật**:
   khe 0.20 mm hướng kính là giá trị thiết kế cho in FDM 0.2 mm; ma sát thực tế
   phụ thuộc chất lượng lớp in. Nếu chặt → doa lỗ; nếu rơ → thay thanh Ø5.1 hoặc
@@ -607,3 +636,36 @@ lâm sàng.
 - **(i) Viewer**: nhãn cơ cấu đổi thành "thanh trượt đẩy-kéo Ø5", slider d kéo
   theo cả `push_rod_*` và `rod_knob_*`, danh sách tải STL cập nhật đúng 15 file,
   thêm khối `screen7` xem trước màn hình.
+
+---
+
+## 13. Nhật ký bố cục (2026-09-02, sau v3) — xếp hàng màn hình → Pi 4 → hộp tối
+
+Lý do: ở bố cục v3 màn hình nằm ở nửa `+Z`, **sau hộp tối** so với chỗ ngồi của
+người dùng → bị hộp che, không nhìn và không chạm được. Nay **-Z được định nghĩa
+là mặt trước** và cả 3 cụm xếp thành một hàng trước → sau.
+
+- **(a) Đế chung 198×286 → 198×288 mm**, `BASE_Z0, BASE_Z1 = −196, 92`
+  (trước: −164, 122). Nửa trước `base_neg` 198×196, nửa sau `base_pos` 198×92 —
+  cả hai vẫn vừa bàn in 256×256. Mộng ghép tại z=0 giữ nguyên.
+- **(b) Chân màn hình chuyển từ `base_pos` (z 56..110) sang hàng đầu của
+  `base_neg`** (`SCR_FOOT_Z0 = −190` → z −190..−136, lỗ bắt z = −186 / −139).
+  Panel vươn tới z = −127.9 ở y ≈ 113.7 → **không trùm lên Pi 4** (Pi z ≥ −108).
+- **(c) Board driver LED bỏ phép xoay 90°** (xoá ma trận `_DRV_R`) — nay chỉ tịnh
+  tiến, `DRV_WX, DRV_WZ = −12, −112` → chiếm x −12..58, z −112..−57. Khe hở:
+  4 mm tới Pi (x=62), 12 mm tới mép đế (x=−24), 5.5 mm tới tai bắt hộp (z=−51.5).
+  Cạnh `+Z` mang header ra LED quay thẳng về hộp tối → đường TX ngắn nhất.
+- **(d) Lưới lỗ mở rộng chuyển ra dải đế trống phía sau hộp**: x 30/75/120,
+  z 62/80 (trước: x 55/95, z 65/90/115 — vùng đó nay là mép sau đế).
+- **(e) Sửa một sai sót mô hình dây có từ trước**: bó TX cũ chạy ở y=1.8 dọc
+  x=−7 → **xuyên thẳng qua vách đặc của chụp che sáng**. Nay bó TX vòng ra
+  ngoài đầu ống chụp (x=−21) rồi **chui lên đúng khe sàn** (x −18.5..−13,
+  y 1..5) vào lòng ống; làn IR chạy ở y=4.4 khi song song để không đè lên bó Đỏ
+  (y=1.8). Bó I2C và nguồn cũng được vẽ lại theo board driver không xoay.
+- **(f) Viewer**: các preset camera lật về phía trước — `iso` và `Trước` nay đặt
+  camera ở `-Z` nhìn thẳng vào mặt màn hình, `Khối điện tử` ngắm cụm Pi + driver
+  (target z=−84), lưới sàn dời về tâm bố cục mới (z=−52).
+- **(g) `verify_geometry.py` 93 → 96 check, tất cả PASS**: thêm 2 cặp
+  `base_neg × screen_foot_1`, `base_pos × screen_foot_1` và 2 check thứ tự
+  trước→sau. Gói Bambu **không đổi** (12 file, all-in-one 237×235 mm) vì
+  `PRINT_SET` không chứa đế và chân màn hình.
