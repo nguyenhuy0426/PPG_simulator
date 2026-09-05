@@ -40,7 +40,9 @@ git add -A
 echo "==> Nội dung gh-pages sau khi dọn:"
 git ls-files | sed 's/^/    /'
 if [ -n "$(git status --porcelain)" ]; then
-    git commit -m "deploy: bo cuc man hinh 7in -> Pi 4 -> hop toi (-Z = mat truoc) ($(date +%Y-%m-%d))" || exit 1
+    # Message chung, luon dung cho moi lan deploy: noi dung cu the nam trong
+    # lich su nhanh huynn, khong lap lai (va khong the sai) o day.
+    git commit -m "deploy: cap nhat viewer 3D + STL + README ($(date +%Y-%m-%d))" || exit 1
 else
     echo "  (không có thay đổi)"
 fi

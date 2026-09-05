@@ -5,7 +5,7 @@ BioSignalSimulatorPro-main/
 # A venv must never be committed: its wheels are architecture-specific (the
 # laptop is x86_64, the Raspberry Pi 4 is aarch64) and the shebangs in .venv/bin
 # hardcode absolute paths. Each machine recreates its own with
-# scripts/setup_laptop_venv.sh or scripts/setup_rpi_ubuntu24.sh.
+# scripts/setup_laptop_venv.sh or scripts/setup_rpi_ubuntu.sh.
 .venv/
 venv/
 env/
@@ -21,6 +21,19 @@ dist/
 # PlatformIO / editor / tooling caches
 .pio/
 .codegraph/
+.codebase-memory/
 
 # CAD virtual environment (trimesh/manifold3d — 190 MB, tạo lại bằng pip)
 .cad_venv/
+
+# Local configuration and credentials. Commit only the documented template.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+.claude/

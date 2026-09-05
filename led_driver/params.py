@@ -192,7 +192,15 @@ class OpAmpSpec:
 
 @dataclass(frozen=True)
 class TransistorSpec:
-    """2SC1815 NPN. [VERIFIED-DATASHEET] limits; V_BE is an inference."""
+    """2SC1815 NPN. [VERIFIED-DATASHEET] limits; V_BE is an inference.
+
+    The fitted part is NOT confirmed: only a 2SC1815 datasheet exists in this
+    repo, while the operator has stated the board carries a 2N4401. The values
+    below stay 2SC1815 because that is the datasheet on disk; substituting
+    2N4401 numbers would be fabricating them. The choice does not move
+    R_sense (swept: under 1 % on I_LED), but the TO-92 pinouts differ.
+    See docs/hardware/TRANSISTOR_IDENTIFICATION.md.
+    """
 
     vceo_max_v: float = 50.0
     ic_max_a: float = 0.150

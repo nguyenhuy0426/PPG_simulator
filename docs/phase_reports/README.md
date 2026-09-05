@@ -1,17 +1,9 @@
-# Phase Reports
+# Validation reports
 
-Completed reports currently present:
-- Phase 1
-- Phase 2
-- Phase 3
+Only reports that describe the current implementation belong here.
 
-For every later phase, Claude Code must create:
+- [V5 continuation and validation](V5_CONTINUATION_REPORT.md)
 
-```text
-PHASE_04_COMPLETION_REPORT.md
-PHASE_05_COMPLETION_REPORT.md
-...
-PHASE_10_COMPLETION_REPORT.md
-```
-
-Each report must record exact files changed, commands actually run, real PASS/FAIL/NOT RUN/BLOCKED results, hardware-validation status, remaining unknowns, git diff summary, acceptance checklist, and a do-not-redo handoff for the next phase.
+Historical phase prompts and intermediate completion notes are available in Git
+history. They were removed from the source tree because their ranges, UI paths,
+test counts and implementation status no longer match version 5.

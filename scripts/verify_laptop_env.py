@@ -245,7 +245,7 @@ def check_tests_are_discoverable() -> None:
     else:
         record("PASS", f"all {len(TEST_MODULES)} test modules are present")
     print("        This script does NOT run them. Run them yourself:")
-    print("        PPG_DRY_RUN=1 python3 -m unittest " + " ".join(TEST_MODULES))
+    print("        PPG_DRY_RUN=1 python3 -m pytest -q")
 
 
 def main() -> int:

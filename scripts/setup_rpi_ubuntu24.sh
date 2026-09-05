@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 #
 # scripts/setup_rpi_ubuntu24.sh — set up the PPG simulator on a
-# Raspberry Pi 4 running Ubuntu 24.04 LTS (aarch64).
+# Raspberry Pi 4 running Ubuntu 24.04 or 26.04 LTS (aarch64).
 #
-#   ./scripts/setup_rpi_ubuntu24.sh                # apt deps + venv + verify
-#   ./scripts/setup_rpi_ubuntu24.sh --skip-apt     # venv only (apt already done)
-#   ./scripts/setup_rpi_ubuntu24.sh --recreate     # delete and rebuild .venv
-#   ./scripts/setup_rpi_ubuntu24.sh --enable-i2c   # also edit config.txt (asks first)
+# The filename is kept for backwards compatibility. New instructions use the
+# version-neutral scripts/setup_rpi_ubuntu.sh wrapper.
+#
+#   ./scripts/setup_rpi_ubuntu.sh                # apt deps + venv + verify
+#   ./scripts/setup_rpi_ubuntu.sh --skip-apt     # venv only (apt already done)
+#   ./scripts/setup_rpi_ubuntu.sh --recreate     # delete and rebuild .venv
+#   ./scripts/setup_rpi_ubuntu.sh --enable-i2c   # also edit config.txt (asks first)
 #
 # Run as your normal user, NOT as root. The script calls sudo only for apt and
 # only for the two optional system changes it asks about first.
 #
 # This script does NOT: write a DAC value, toggle a GPIO, probe the I2C bus, or
-# reboot. Full walkthrough: docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md
+# reboot. Ubuntu 24.04 walkthrough: docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md
+# Ubuntu 26.04 + direct SSH: docs/setup/RASPBERRY_PI_4_UBUNTU_26_04_SSH.md
 #
-# NOTE: scripts/install_rpi_system_packages.sh and scripts/setup_rpi_venv.sh are
-# the OLDER pair, written for Raspberry Pi OS Bookworm (raspi-config, ADC at
-# 0x04, classic RPi.GPIO). Do not mix them with this script.
+# Legacy Raspberry Pi OS installers were removed because they assumed a
+# different Grove ADC address and GPIO backend. This is the supported path.
 #
 set -euo pipefail
 
@@ -25,6 +28,13 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${PROJECT_ROOT}/.venv"
 BOOT_CONFIG="/boot/firmware/config.txt"
 GROVE_REPO="https://github.com/Seeed-Studio/grove.py.git"
+
+# Ubuntu may already contain useful Raspberry Pi packages in
+# /usr/lib/python3/dist-packages, so this project intentionally uses a venv with
+# --system-site-packages. Do not, however, inherit ~/.local packages: an old
+# user-installed RPi.GPIO there can shadow Ubuntu's rpi-lgpio compatibility shim
+# and make GPIO backend selection depend on sys.path order.
+export PYTHONNOUSERSITE=1
 
 SKIP_APT=0
 RECREATE=0
@@ -86,7 +96,7 @@ fi
 
 ARCH="$(uname -m)"
 if [ "${ARCH}" != "aarch64" ]; then
-    die "architecture is ${ARCH}, expected aarch64. Ubuntu 24.04 for the Pi 4 is \
+    die "architecture is ${ARCH}, expected aarch64. Ubuntu for the Pi 4 is \
 64-bit; a 32-bit userland means the wrong image was flashed and the aarch64 \
 wheels below will not install."
 fi
@@ -95,10 +105,16 @@ ok "architecture: aarch64"
 if [ -r /etc/os-release ]; then
     # shellcheck disable=SC1091
     . /etc/os-release
-    if [ "${ID:-}" = "ubuntu" ] && [ "${VERSION_ID:-}" = "24.04" ]; then
-        ok "distribution: ${PRETTY_NAME:-Ubuntu 24.04}"
+    if [ "${ID:-}" = "ubuntu" ] \
+       && { [ "${VERSION_ID:-}" = "24.04" ] || [ "${VERSION_ID:-}" = "26.04" ]; }; then
+        ok "distribution: ${PRETTY_NAME:-Ubuntu ${VERSION_ID}}"
+        if [ "${VERSION_ID}" = "26.04" ]; then
+            warn "Ubuntu 26.04 uses the newer Raspberry Pi A/B boot layout."
+            warn "Before future kernel upgrades, confirm the Pi 4 boot EEPROM is"
+            warn "dated 2022-11-25 or later:  sudo rpi-eeprom-update"
+        fi
     else
-        warn "distribution is '${PRETTY_NAME:-unknown}', not Ubuntu 24.04."
+        warn "distribution is '${PRETTY_NAME:-unknown}', not supported Ubuntu 24.04/26.04 LTS."
         warn "The apt package names and the ${BOOT_CONFIG} path below are"
         warn "Ubuntu-specific. On Raspberry Pi OS the boot config lives"
         warn "elsewhere and raspi-config manages I2C."
@@ -199,7 +215,12 @@ if getent group i2c >/dev/null 2>&1; then
     if id -nG "${USER}" | tr ' ' '\n' | grep -qx 'i2c'; then
         ok "${USER} is already in the 'i2c' group"
     else
-        warn "${USER} is not in the 'i2c' group, so /dev/i2c-1 is not writable."
+        if [ -e /dev/i2c-1 ] && [ -r /dev/i2c-1 ] && [ -w /dev/i2c-1 ]; then
+            warn "${USER} is not in the 'i2c' group, but a device ACL currently"
+            warn "grants this session read/write access to /dev/i2c-1."
+        else
+            warn "${USER} is not in the 'i2c' group and /dev/i2c-1 is not writable."
+        fi
         warn "The correct fix is group membership — never 'chmod 777' a device"
         warn "node, which would grant every process on the system raw bus access."
         if confirm "Run 'sudo usermod -aG i2c ${USER}'?"; then
@@ -239,7 +260,8 @@ else
     # --system-site-packages: lets the venv see any vendor-supplied Python
     # package already installed system-wide (a distro python3-gpiod, a
     # BSP-provided module), which cannot be reproduced by pip on aarch64.
-    # Project dependencies are still installed INTO the venv and shadow them.
+    # PYTHONNOUSERSITE above still hides unrelated packages from ~/.local.
+    # Project dependencies are installed INTO the venv and shadow system ones.
     python3 -m venv --system-site-packages "${VENV_DIR}"
     ok "created with --system-site-packages"
 fi
@@ -253,10 +275,10 @@ VENV_PY="${VENV_DIR}/bin/python"
 info "Step 6 — Python dependencies"
 
 # Everything goes through the venv's own interpreter. Never `sudo pip`; Ubuntu
-# 24.04 marks its system Python externally-managed (PEP 668) and overriding that
-# breaks apt-managed packages.
+# LTS marks its system Python externally-managed (PEP 668); overriding that
+# breaks apt-managed packages. PYTHONNOUSERSITE also applies to these commands.
 "${VENV_PY}" -m pip install --upgrade pip setuptools wheel
-"${VENV_PY}" -m pip install -r "${PROJECT_ROOT}/requirements/rpi.txt"
+"${VENV_PY}" -m pip install --upgrade -r "${PROJECT_ROOT}/requirements/rpi.txt"
 ok "requirements/rpi.txt installed"
 
 # Reject the forbidden combination before it can cause a confusing runtime bug.
@@ -319,11 +341,7 @@ ${C_INFO}Next, by hand:${C_OFF}
   Expect 0x08 (Grove MM32 ADC), 0x60 (IR MCP4725), 0x61 (Red MCP4725).
 
   Run the test suite on the Pi as well:
-      PPG_DRY_RUN=1 ${VENV_PY} -m unittest \\
-          tests.test_calibration tests.test_phase3_acdc tests.test_phase4_dac \\
-          tests.test_phase5_rx tests.test_led_driver_dac \\
-          tests.test_led_driver_compliance tests.test_led_driver_power \\
-          tests.test_led_driver_error_budget
+      PYTHONNOUSERSITE=1 PPG_DRY_RUN=1 ${VENV_PY} -m pytest -q
 
 ${C_WARN}An I2C ACK is not analog or optical validation.${C_OFF}
 i2cdetect proves only that a chip pulled SDA low for one address byte. It says

@@ -48,6 +48,7 @@ def main():
     config = load_config()
     p = engine.get_ppg_params()
     apply_config_to_params(config, p)
+    engine.load_parameters(p)
     
     # Simulation will be started manually via the GUI
     

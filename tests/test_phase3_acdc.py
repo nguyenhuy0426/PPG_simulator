@@ -1,8 +1,7 @@
 """
 tests/test_phase3_acdc.py — Phase 3 narrow unit tests.
 
-Covers exactly the Phase 3 scope (docs/claude_phases/03_PHASE_AC_DC_PI_AND_
-RED_IR_MODEL.md §Tests):
+Covers the AC/DC behavior retained in the v5 validation scope:
   - AC/DC → PI                         (PI derived, AC/DC are master)
   - equal and unequal DC ratio-of-ratios : R = (AC_red/DC_red)/(AC_ir/DC_ir)
   - A/B changes                        (SpO2 = A - B*R drives derived Red AC)

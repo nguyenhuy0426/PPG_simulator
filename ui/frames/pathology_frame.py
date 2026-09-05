@@ -1,289 +1,180 @@
 import customtkinter as ctk
-import tkinter as tk
 from core.signal_engine import SignalEngine
 from models.ppg_model import CONDITION_NAMES
-from calibration import r_target_from_spo2, ac_red_from_target, R_CLAMP_MIN, R_CLAMP_MAX
+from models import limits
+from calibration import r_target_from_spo2
+from ui.trace_view import TraceView
+from ui import theme as T
+
 
 class PathologyFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        
-        self.app = master
-        self.engine = SignalEngine.get_instance()
-        self.logger = self.app.csv_logger
-        
-        self.grid_rowconfigure(0, weight=1)  # Waveform area
-        self.grid_rowconfigure(1, weight=1)  # Controls area
-        self.grid_columnconfigure(0, weight=1)
-        
-        # --- Waveform Area ---
-        self.wf_frame = ctk.CTkFrame(self)
-        self.wf_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.wf_frame.grid_rowconfigure(0, weight=1)
-        self.wf_frame.grid_columnconfigure(0, weight=1)
-        
-        self.canvas = ctk.CTkCanvas(self.wf_frame, bg="black", highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.canvas.bind("<Configure>", self.on_canvas_resize)
-        
-        # Canvas state
-        self.canvas_width = 800
-        self.canvas_height = 300
-        self.sweep_x = 0
-        self.last_y_ir = None
-        self.last_y_red = None
-        self.lines_ir = []
-        self.lines_red = []
-        
-        # Draw grid
-        self._draw_grid()
-
-        # Amplitude display box overlay
-        self.amp_label = ctk.CTkLabel(self.wf_frame, text="IR: 0.0 mV | RED: 0.0 mV", 
-                                      fg_color="#1a1a1a", text_color="white", corner_radius=5,
-                                      font=("Arial", 14, "bold"), padx=10, pady=5)
-        self.amp_label.place(relx=0.98, rely=0.05, anchor="ne")
-
-        # --- Controls Area ---
-        self.ctrl_frame = ctk.CTkFrame(self)
-        self.ctrl_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        
-        # Sliders
-        self.sliders = {}
-        self.slider_vars = {}
-        
-        configs = [
-            ("Heart Rate", "hr", 20, 300, 75, "{:.0f} BPM"),
-            ("SpO2", "spo2", 70, 100, 98, "{:.0f} %"),
-            ("Resp Rate", "rr", 4, 60, 16, "{:.0f} BPM"),
-            ("Perf Index", "pi", 0.0, 20.0, 2.5, "{:.2f} %"),
-            ("Noise Level", "noise", 0.0, 1.0, 0.0, "{:.2f}")
-        ]
-        
-        for i, (label_text, key, vmin, vmax, vdefault, fmt) in enumerate(configs):
-            frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
-            frame.grid(row=i//2, column=i%2, padx=20, pady=5, sticky="ew")
-            self.ctrl_frame.grid_columnconfigure(i%2, weight=1)
-            
-            lbl = ctk.CTkLabel(frame, text=label_text, width=80, anchor="w")
-            lbl.pack(side="left")
-            
-            var = ctk.DoubleVar(value=vdefault)
-            self.slider_vars[key] = var
-            
-            val_lbl = ctk.CTkLabel(frame, text=fmt.format(vdefault), width=60, anchor="e")
-            val_lbl.pack(side="right")
-            
-            def make_cmd(k=key, f=fmt, vl=val_lbl):
-                def cmd(val):
-                    vl.configure(text=f.format(val))
-                    self.update_param(k, val)
-                return cmd
-                
-            slider = ctk.CTkSlider(frame, from_=vmin, to=vmax, variable=var, command=make_cmd())
-            slider.pack(side="left", fill="x", expand=True, padx=10)
-            self.sliders[key] = slider
-
-        # Condition Buttons
-        self.cond_frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
-        self.cond_frame.grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")
-        
-        self.cond_btns = []
-        for i, name in enumerate(CONDITION_NAMES):
-            btn = ctk.CTkButton(self.cond_frame, text=name[:12], width=80, 
-                                command=lambda idx=i: self.set_condition(idx),
-                                fg_color="gray25")
-            btn.pack(side="left", padx=5, expand=True)
-            self.cond_btns.append(btn)
-            
-        if self.cond_btns:
-            self.cond_btns[0].configure(fg_color=["#3a7ebf", "#1f538d"]) # default active color
-            
-        # Bottom Controls (Run & Record)
-        self.bottom_frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
-        self.bottom_frame.grid(row=4, column=0, columnspan=2, pady=10, sticky="ew")
-        self.bottom_frame.grid_columnconfigure(0, weight=1)
-        self.bottom_frame.grid_columnconfigure(1, weight=1)
-        
-        self.run_btn = ctk.CTkButton(self.bottom_frame, text="Run Simulation",
-                                     fg_color="darkgreen", hover_color="green",
-                                     command=self.toggle_simulation)
-        self.run_btn.grid(row=0, column=0, padx=10)
-        
-        self.record_btn = ctk.CTkButton(self.bottom_frame, text="Start Recording", 
-                                        fg_color="darkred", hover_color="red",
-                                        command=self.toggle_recording)
-        self.record_btn.grid(row=0, column=1, padx=10)
+        self.app, self.engine, self.logger = master, SignalEngine.get_instance(), master.csv_logger
         self.is_recording = False
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        toolbar = ctk.CTkFrame(self, fg_color="transparent")
+        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        T.label(toolbar, "Signal monitor", 22, True).pack(side="left")
+        self.run_btn = ctk.CTkButton(toolbar, text="Run simulation", height=38,
+                                    fg_color=T.ACCENT, command=self.toggle_simulation)
+        self.run_btn.pack(side="right", padx=(8, 0))
+        self.record_btn = ctk.CTkButton(toolbar, text="Record CSV", width=120, height=38,
+                                       command=self.toggle_recording)
+        self.record_btn.pack(side="right")
+        monitor = ctk.CTkFrame(self, fg_color="transparent")
+        monitor.grid(row=1, column=0, sticky="nsew")
+        monitor.grid_columnconfigure(0, weight=4)
+        monitor.grid_columnconfigure(1, weight=1, minsize=250)
+        monitor.grid_rowconfigure(0, weight=1)
+        waves = ctk.CTkFrame(monitor, fg_color=T.DARK)
+        waves.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        waves.grid_rowconfigure(1, weight=1)
+        waves.grid_columnconfigure(0, weight=1)
+        T.label(waves, "TRANSMIT  /  AC + modulation     •     8 s window     •     Auto scale per channel",
+                11, text_color="#C4CED5", anchor="w").grid(row=0, column=0, sticky="ew", padx=18, pady=(10, 0))
+        self.trace = TraceView(waves, height=220)
+        self.trace.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 6))
+        self.canvas = self.trace
+        vitals = ctk.CTkFrame(monitor, fg_color=T.PANEL)
+        vitals.grid(row=0, column=1, sticky="nsew")
+        vitals.grid_columnconfigure(0, weight=1)
+        T.label(vitals, "SETPOINTS", 11, True, text_color=T.MUTED).grid(row=0, column=0, sticky="w", padx=18, pady=(10, 0))
+        self.vital_labels = {}
+        for i, (key, title, unit) in enumerate((("hr", "Heart rate", "bpm"), ("spo2", "SpO₂ target", "%"),
+                                                ("rr", "Respiration", "brpm"), ("pi", "Perfusion index", "%"))):
+            row = ctk.CTkFrame(vitals, fg_color=T.PANEL if i % 2 == 0 else "#F4F6F7", corner_radius=0)
+            row.grid(row=i+1, column=0, sticky="nsew", padx=8, pady=2)
+            vitals.grid_rowconfigure(i+1, weight=1)
+            row.grid_columnconfigure(1, weight=1)
+            row.grid_rowconfigure(0, weight=1)
+            T.label(row, title + " / " + unit, 11, text_color=T.MUTED,
+                    wraplength=92, justify="left", anchor="w").grid(row=0, column=0, padx=10, sticky="w")
+            value = T.label(row, "—", 30, True, anchor="e")
+            value.grid(row=0, column=1, padx=10, sticky="e")
+            self.vital_labels[key] = value
+        self.amp_label = T.label(self, "", 11, text_color=T.MUTED, anchor="w")
+        self.amp_label.grid(row=2, column=0, sticky="ew", pady=(6, 4))
+        controls = ctk.CTkFrame(self, fg_color=T.PANEL)
+        controls.grid(row=3, column=0, sticky="ew")
+        controls.grid_columnconfigure((0, 1), weight=1, uniform="controls")
+        self.entries, self.sliders, self.slider_vars = {}, {}, {}
+        self.fields = {
+            "hr": ("Heart rate", "heart_rate", limits.HEART_RATE, "bpm"),
+            "spo2": ("SpO₂ target", "spo2", limits.SPO2, "%"),
+            "rr": ("Respiration", "resp_rate", limits.RESP_RATE, "brpm"),
+            "pi": ("Perfusion index", "perfusion_index", limits.PERFUSION_INDEX, "%"),
+        }
+        for i, (key, (title, attr, span, unit)) in enumerate(self.fields.items()):
+            box = ctk.CTkFrame(controls, fg_color="transparent")
+            box.grid(row=i//2, column=i%2, sticky="ew", padx=16, pady=8)
+            box.grid_columnconfigure(1, weight=1)
+            T.label(box, title, 12, anchor="w", width=106).grid(row=0, column=0, sticky="w")
+            var = ctk.DoubleVar(value=getattr(self.engine.ppg_params, attr))
+            self.slider_vars[key] = var
+            slider = ctk.CTkSlider(box, from_=span.minimum, to=span.maximum, variable=var,
+                                  command=lambda value, k=key: self.update_param(k, value))
+            slider.grid(row=0, column=1, sticky="ew", padx=10)
+            self.sliders[key] = slider
+            entry = ctk.CTkEntry(box, width=70, height=32)
+            entry.grid(row=0, column=2)
+            entry.bind("<Return>", lambda event, k=key: self.apply_entry(k))
+            self.entries[key] = entry
+            T.label(box, unit, 11, width=34, text_color=T.MUTED).grid(row=0, column=3)
+        bottom = ctk.CTkFrame(controls, fg_color="transparent")
+        bottom.grid(row=2, column=0, columnspan=2, sticky="ew", padx=16, pady=(2, 10))
+        T.label(bottom, "Condition", 12).pack(side="left", padx=(0, 12))
+        self.condition_menu = ctk.CTkOptionMenu(bottom, values=CONDITION_NAMES, width=158,
+                                               command=lambda name: self.set_condition(CONDITION_NAMES.index(name)))
+        self.condition_menu.pack(side="left")
+        self.message = T.label(bottom, "Enter a value, then press Enter to apply.", 11, text_color=T.MUTED)
+        self.message.pack(side="left", padx=16)
 
     def on_show(self):
-        # Update UI to reflect current engine params
         p = self.engine.ppg_params
-        self.slider_vars["hr"].set(p.heart_rate)
-        self.slider_vars["spo2"].set(p.spo2)
-        self.slider_vars["rr"].set(p.resp_rate)
-        self.slider_vars["pi"].set(p.perfusion_index)
-        self.slider_vars["noise"].set(p.noise_level)
-        
-        # trigger commands to update labels
-        for k, v in self.slider_vars.items():
-            self.sliders[k]._command(v.get())
-            
-        self.set_condition(p.condition)
-        
-        # Sync run button state
-        if self.engine._running:
-            self.run_btn.configure(text="Stop Simulation", fg_color="darkorange", hover_color="orange")
-        else:
-            self.run_btn.configure(text="Run Simulation", fg_color="darkgreen", hover_color="green")
+        self.entries["pi"].configure(state="normal")
+        for key, (_, attr, _, _) in self.fields.items():
+            value = getattr(p, attr)
+            self.slider_vars[key].set(value)
+            self.entries[key].delete(0, "end")
+            self.entries[key].insert(0, f"{value:g}")
+        self.condition_menu.set(CONDITION_NAMES[p.condition])
+        self.sliders["pi"].configure(state="disabled" if self.engine.ac_dc_locked else "normal")
+        self.entries["pi"].configure(state="disabled" if self.engine.ac_dc_locked else "normal")
+        self.periodic_update()
 
-    def update_param(self, key, val):
-        if key == "hr": self.engine.update_heart_rate(val)
-        elif key == "spo2": self.engine.update_spo2(val)
-        elif key == "rr": self.engine.update_resp_rate(val)
-        elif key == "pi": self.engine.update_perfusion_index(val)
-        elif key == "noise": self.engine.update_noise_level(val)
+    def apply_entry(self, key):
+        try:
+            value = float(self.entries[key].get())
+            self.fields[key][2].validate(value)
+            self.update_param(key, value)
+        except ValueError as exc:
+            self.message.configure(text=str(exc), text_color=T.ERROR)
+
+    def update_param(self, key, value):
+        span = self.fields[key][2]
+        value = span.quantise(value)
+        callbacks = {"hr": self.engine.update_heart_rate, "spo2": self.engine.update_spo2,
+                     "rr": self.engine.update_resp_rate, "pi": self.engine.update_perfusion_index}
+        try:
+            callbacks[key](value)
+            actual = getattr(self.engine.ppg_params, self.fields[key][1])
+            self.slider_vars[key].set(actual)
+            self.entries[key].delete(0, "end")
+            self.entries[key].insert(0, f"{actual:g}")
+            self.message.configure(text="Applied to generator", text_color=T.ACCENT)
+        except ValueError as exc:
+            self.message.configure(text=str(exc), text_color=T.ERROR)
 
     def set_condition(self, idx):
-        for i, btn in enumerate(self.cond_btns):
-            btn.configure(fg_color=["#3a7ebf", "#1f538d"] if i == idx else "gray25")
-        self.engine.ppg_params.condition = idx
-        if self.engine._running:
-            self.engine.change_condition(idx)
+        self.engine.change_condition(idx)
 
     def toggle_simulation(self):
         if self.engine._running:
             self.engine.stop_simulation()
-            self.run_btn.configure(text="Run Simulation", fg_color="darkgreen", hover_color="green")
-            # Clear canvas sweep when stopped
-            self.sweep_x = 0
-            self.last_y_ir = None
-            self.last_y_red = None
-            self.canvas.delete("trace")
-            # If recording, stop it automatically
             if self.is_recording:
                 self.toggle_recording()
         else:
-            self.engine.start_simulation(self.engine.ppg_params.condition)
-            self.run_btn.configure(text="Stop Simulation", fg_color="darkorange", hover_color="orange")
+            try:
+                self.engine.start_simulation(self.engine.ppg_params.condition)
+            except ValueError as exc:
+                self.message.configure(text=str(exc), text_color=T.ERROR)
+        self.periodic_update()
 
     def toggle_recording(self):
-        if not self.is_recording:
-            self.logger.start()
-            self.record_btn.configure(text="Stop Recording", fg_color="red")
-            self.is_recording = True
-        else:
-            self.record_btn.configure(text="Start Recording", fg_color="darkred")
-            self.is_recording = False
-            self.show_save_dialog()
-
-    def show_save_dialog(self):
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Save Recording")
-        dialog.geometry("300x150")
-        dialog.attributes("-topmost", True)
-        dialog.transient(self.winfo_toplevel())
-        
-        lbl = ctk.CTkLabel(dialog, text="Do you want to save this data segment?")
-        lbl.pack(pady=20)
-        
-        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=20)
-        
-        def save():
+        if self.is_recording:
+            self.engine.set_recording(False)
+            self.record_tick()
             self.logger.stop(save=True)
-            dialog.destroy()
-            
-        def discard():
-            self.logger.stop(save=False)
-            dialog.destroy()
-            
-        ctk.CTkButton(btn_frame, text="Yes", command=save, width=100).pack(side="left", expand=True)
-        ctk.CTkButton(btn_frame, text="No", command=discard, width=100, fg_color="gray").pack(side="right", expand=True)
+            self.is_recording = False
+            self.message.configure(text="CSV saved in dataset/", text_color=T.ACCENT)
+        elif self.engine._running:
+            self.logger.start()
+            self.is_recording = self.logger.is_logging
+            if self.is_recording:
+                self.engine.set_recording(True)
+        else:
+            self.message.configure(text="Start simulation before recording.", text_color=T.MUTED)
+        self.record_btn.configure(text="Save recording" if self.is_recording else "Record CSV",
+                                  fg_color=T.ERROR if self.is_recording else T.INK)
 
-    def on_canvas_resize(self, event):
-        self.canvas_width = event.width
-        self.canvas_height = event.height
-        self._draw_grid()
-
-    def _draw_grid(self):
-        self.canvas.delete("grid")
-        mid_y = self.canvas_height // 2
-        self.canvas.create_line(0, mid_y, self.canvas_width, mid_y, fill="#004020", tags="grid")
-        
-        # time grid (every ~100px)
-        for x in range(0, self.canvas_width, 100):
-            self.canvas.create_line(x, 0, x, self.canvas_height, fill="#002010", tags="grid")
+    def record_tick(self):
+        if self.is_recording:
+            for sample in self.engine.drain_recording():
+                self.logger.log_data(*sample)
 
     def periodic_update(self):
-        # Read from signal engine buffer
-        if not self.engine._running:
-            return
-            
-        # Get latest data points
-        n_points = 5 # 50Hz update * 5 points = 250Hz draw rate equivalent approx
-        
-        ir_val = self.engine._curr_disp_ir
-        red_val = self.engine._curr_disp_red
-        
-        # log to csv if recording
-        if self.is_recording:
-            p = self.engine.ppg_params
-            self.logger.log_data(
-                self.engine.get_current_raw_ir(),
-                self.engine.get_current_raw_red(),
-                p.heart_rate, p.spo2, p.resp_rate, p.perfusion_index, CONDITION_NAMES[p.condition]
-            )
-            
-        # Calculate and update AC amplitudes in mV based on the live simulated waveform
-        ac_ir_v = self.engine.ppg_model.measured_peak - self.engine.ppg_model.measured_valley
-        if ac_ir_v < 0 or ac_ir_v > 5.0:  # Fallback if measurement is not yet stable
-            ac_ir_v = 0.0
-            
-        # R_target from the shared, configurable SpO2 calibration (default 110/25)
-        # — no longer a duplicated hardcoded formula.
-        p = self.engine.ppg_model.params
-        r_val = max(R_CLAMP_MIN, min(R_CLAMP_MAX,
-                    r_target_from_spo2(p.spo2, p.spo2_coeff_a, p.spo2_coeff_b)))
-        # Full ratio-of-ratios: AC_red = R · AC_ir · (DC_red/DC_ir). Uses the
-        # model's live per-channel DC so the label matches unequal-DC setups.
-        # At the default equal DC this reduces to AC_red = R · AC_ir.
-        m = self.engine.ppg_model
-        ac_red_v = ac_red_from_target(r_val, ac_ir_v, m.dc_red, m.dc_ir)
-        
-        self.amp_label.configure(text=f"IR: {ac_ir_v*1000:.1f} mV | RED: {ac_red_v*1000:.1f} mV")
-            
-        # Map values to y coordinates (AC component only)
-        v_min, v_max = -0.4, 0.4
-        h = self.canvas_height
-        
-        def map_y(val):
-            # inverted Y for canvas
-            norm = (val - v_min) / (v_max - v_min)
-            return h - (norm * h)
-            
-        y_ir = map_y(ir_val)
-        y_red = map_y(red_val)
-        
-        x = self.sweep_x
-        
-        if self.last_y_ir is not None:
-            l_ir = self.canvas.create_line(x-2, self.last_y_ir, x, y_ir, fill="#00ff80", width=2, tags="trace")
-            l_red = self.canvas.create_line(x-2, self.last_y_red, x, y_red, fill="#ff4040", width=1, tags="trace")
-            self.lines_ir.append(l_ir)
-            self.lines_red.append(l_red)
-            
-        self.last_y_ir = y_ir
-        self.last_y_red = y_red
-        self.sweep_x += 2
-        
-        # Erase ahead
-        if self.sweep_x >= self.canvas_width:
-            self.sweep_x = 0
-            self.last_y_ir = None
-            self.last_y_red = None
-            self.canvas.delete("trace")
-            
-        # Optional: remove old lines to save memory if doing continuous scrolling
-        # Actually with sweep, deleting all at wrap is very efficient.
-
+        p, m = self.engine.ppg_params, self.engine.ppg_model
+        for key, (_, attr, _, _) in self.fields.items():
+            self.vital_labels[key].cget("font").configure(size=44 if self.vital_labels[key].master.winfo_height() >= 75 else 30)
+            self.vital_labels[key].configure(text=f"{getattr(p, attr):.2f}" if key == "pi" else f"{getattr(p, attr):.0f}")
+        ac = p.perfusion_index / 100 * p.dc_ir_mv
+        ratio = r_target_from_spo2(p.spo2, p.spo2_coeff_a, p.spo2_coeff_b)
+        clamp = max(0.0, ratio)
+        red = p.ac_red_mv if p.ac_red_mv is not None else clamp * ac * p.dc_red_mv / p.dc_ir_mv
+        state = "RED AC manual • SpO₂ target uncoupled" if p.ac_red_mv is not None else ("Negative R • target outside calibration range" if ratio != clamp else "RED follows SpO₂ ratio")
+        self.amp_label.configure(text=(f"NOMINAL  AC IR {ac:.2f} / RED {red:.2f} mV   ·   DC IR {p.dc_ir_mv:g} / RED {p.dc_red_mv:g} mV   ·   {state}"))
+        self.trace.update_samples(self.engine.get_display_history())
+        self.run_btn.configure(text="Stop output" if self.engine._running else "Run simulation",
+                               fg_color=T.ERROR if self.engine._running else T.ACCENT)

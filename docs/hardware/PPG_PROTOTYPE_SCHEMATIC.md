@@ -221,3 +221,5 @@ DNP initially), C1 option, C2 (DNP unless the bench shows instability),
 installed transistor pinout/hFE bin, installed LED polarity, MCP4725 EEPROM
 power-up contents, OPT101 strap presence, LED-to-OPT101 distance (Stage 6 —
 no distance is invented here).
+
+> **Transistor identity is unconfirmed.** This document says 2SC1815 because that is the only transistor datasheet in `docs/ds_linhkien/`; the operator has stated the board carries a 2N4401. The TO-92 pinouts differ (E-C-B vs E-B-C) — verify with a DMM before soldering. See [TRANSISTOR_IDENTIFICATION.md](TRANSISTOR_IDENTIFICATION.md).

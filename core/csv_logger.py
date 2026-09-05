@@ -27,7 +27,7 @@ class CSVLogger:
                     # Always start fresh for a new recording
                     self.file = open(self.temp_filename, 'w', newline='')
                     self.writer = csv.writer(self.file)
-                    self.writer.writerow(["IR_Raw", "RED_Raw", "HR_BPM", "SpO2_%", "RR_BPM", "PI_%", "Condition"])
+                    self.writer.writerow(["IR_Raw", "RED_Raw", "HR_BPM", "SpO2_%", "RR_BPM", "PI_%", "Condition", "Time_s", "Source"])
                     self.is_logging = True
                     log.info(f"[CSVLogger] Started recording to {self.temp_filename}")
                 except Exception as e:
@@ -66,7 +66,7 @@ class CSVLogger:
         os.rename(self.temp_filename, new_name)
         log.info(f"[CSVLogger] Saved recording as {new_name}")
 
-    def log_data(self, ir, red, hr, spo2, rr, pi, condition_name):
+    def log_data(self, ir, red, hr, spo2, rr, pi, condition_name, timestamp_s=None):
         with self.lock:
             if self.is_logging and self.writer:
                 try:
@@ -77,7 +77,9 @@ class CSVLogger:
                         f"{spo2:.1f}", 
                         f"{rr:.1f}", 
                         f"{pi:.2f}", 
-                        condition_name
+                        condition_name,
+                        "" if timestamp_s is None else f"{timestamp_s:.6f}",
+                        "TX model / DAC command"
                     ])
                     self.file.flush()
                 except Exception as e:

@@ -17,7 +17,8 @@ It is strictly read-only with respect to hardware:
   * It does not even probe the I2C bus. Probing means transacting on the bus,
     which can disturb a device mid-conversion. Address discovery is left to
     `i2cdetect -y 1`, which you run yourself (see step 7 of
-    docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md).
+    docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md or
+    docs/setup/RASPBERRY_PI_4_UBUNTU_26_04_SSH.md).
 
 It inspects: the OS, the machine, /dev/i2c-1's presence and YOUR permission on
 it, whether the required Python modules import, whether the installed grove.py
@@ -48,6 +49,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 I2C_DEV = Path("/dev/i2c-1")
+SUPPORTED_UBUNTU_LTS = {"24.04", "26.04"}
 
 # The addresses this build is wired for. Cross-checked against config.py.
 EXPECTED_ADDRESSES = {
@@ -107,7 +109,7 @@ def check_platform() -> None:
         record("PASS", "architecture is aarch64 (64-bit ARM)")
     elif machine in ("armv7l", "armv6l"):
         record("FAIL", f"architecture is {machine} — this is a 32-bit userland",
-               "Ubuntu 24.04 for the Pi 4 is 64-bit. A 32-bit userland means the\n"
+               "Ubuntu for the Pi 4 is 64-bit. A 32-bit userland means the\n"
                "wrong image was flashed, and aarch64 wheels will not install.")
     else:
         record("FAIL", f"architecture is {machine}, expected aarch64",
@@ -122,11 +124,12 @@ def check_platform() -> None:
                 key, _, value = line.partition("=")
                 fields[key] = value.strip('"')
         pretty = fields.get("PRETTY_NAME", "unknown")
-        if fields.get("ID") == "ubuntu" and fields.get("VERSION_ID") == "24.04":
+        if (fields.get("ID") == "ubuntu"
+                and fields.get("VERSION_ID") in SUPPORTED_UBUNTU_LTS):
             record("PASS", f"distribution: {pretty}")
         else:
             record("SKIP", f"distribution: {pretty}",
-                   "This setup is documented for Ubuntu 24.04 LTS. Another distro\n"
+                   "This setup supports Ubuntu 24.04 and 26.04 LTS. Another distro\n"
                    "may work but the apt package names and /boot/firmware/config.txt\n"
                    "path in the guide are Ubuntu-specific.")
     else:
@@ -164,7 +167,7 @@ def check_i2c_device() -> None:
                "The I2C controller is not enabled. Add this line to\n"
                "/boot/firmware/config.txt and reboot:\n"
                "    dtparam=i2c_arm=on\n"
-               "See docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md steps 2-3.")
+               "See the Ubuntu setup guide under docs/setup/ steps 2-3.")
         return
     record("PASS", f"{I2C_DEV} exists")
 
@@ -213,9 +216,29 @@ def check_venv() -> None:
                f"sys.prefix = {sys.prefix}")
     else:
         record("FAIL", "not running inside a virtual environment",
-               "Ubuntu 24.04 marks its system Python as externally-managed\n"
+               "Ubuntu marks its system Python as externally-managed\n"
                "(PEP 668); installing into it with pip is both blocked and wrong.\n"
                "Run:  .venv/bin/python scripts/verify_rpi_env.py")
+
+
+def check_gui_modules() -> None:
+    section("GUI modules (imports only — no window is created)")
+
+    tkinter, exc = _try_import("tkinter")
+    if tkinter is not None:
+        record("PASS", "import tkinter",
+               f"Tk {getattr(tkinter, 'TkVersion', 'unknown')}")
+    else:
+        record("FAIL", "import tkinter", f"{exc!r}\n"
+               "Tkinter is an Ubuntu package, not a pip package. Install it with:\n"
+               "    sudo apt install -y python3-tk")
+
+    customtkinter, exc = _try_import("customtkinter")
+    if customtkinter is not None:
+        record("PASS", "import customtkinter",
+               f"version {getattr(customtkinter, '__version__', 'unknown')}")
+    else:
+        record("FAIL", "import customtkinter", repr(exc))
 
 
 def check_i2c_modules() -> None:
@@ -317,16 +340,28 @@ def check_gpio_backend() -> None:
     rpi_gpio, rpi_exc = _try_import("RPi.GPIO")
     lgpio_mod, lgpio_exc = _try_import("lgpio")
 
+    # Both projects install the same RPi.GPIO import path, so the module's file
+    # name cannot identify the provider. Ask package metadata which distribution
+    # owns the top-level RPi package instead.
+    try:
+        from importlib.metadata import packages_distributions
+        rpi_package_owners = {
+            name.lower() for name in (packages_distributions().get("RPi") or [])
+        }
+    except Exception:                             # noqa: BLE001
+        rpi_package_owners = set()
+
     if rpi_gpio is not None:
         source = getattr(rpi_gpio, "__file__", "") or ""
-        is_shim = "lgpio" in source.lower() or hasattr(rpi_gpio, "_lgpio")
+        is_shim = ("rpi-lgpio" in rpi_package_owners
+                   and "rpi.gpio" not in rpi_package_owners)
         detail = f"module file: {source}"
         if is_shim:
             detail += "\nThis is the rpi-lgpio shim (RPi.GPIO API over the lgpio\n" \
-                      "character-device backend) — correct for Ubuntu 24.04."
+                      "character-device backend) — correct for Ubuntu 24.04/26.04."
         else:
             detail += "\nThis appears to be the CLASSIC RPi.GPIO, which drives\n" \
-                      "/dev/gpiomem directly. On Ubuntu 24.04 prefer rpi-lgpio.\n" \
+                      "/dev/gpiomem directly. On Ubuntu 24.04/26.04 prefer rpi-lgpio.\n" \
                       "Never install both: they claim the same module name."
         record("PASS", "import RPi.GPIO (hw/button_handler.py's first choice)", detail)
     else:
@@ -413,6 +448,7 @@ def main() -> int:
 
     check_platform()
     check_venv()
+    check_gui_modules()
     check_i2c_device()
     check_i2c_modules()
     check_grove_adc()

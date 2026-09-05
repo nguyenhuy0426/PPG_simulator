@@ -6,11 +6,10 @@
 # dry-run mode and to run the full test suite. No Raspberry Pi hardware, no
 # /dev/i2c-1, no root, no GPIO or I2C library.
 #
-#   ./scripts/setup_laptop_venv.sh                 # UI + tests
-#   ./scripts/setup_laptop_venv.sh --with-analysis # + numpy/pandas/matplotlib
-#   ./scripts/setup_laptop_venv.sh --recreate      # delete and rebuild .venv
+#   ./scripts/setup_laptop_venv.sh            # UI + tests
+#   ./scripts/setup_laptop_venv.sh --recreate # delete and rebuild .venv
 #
-# Do NOT run this on the Raspberry Pi — use scripts/setup_rpi_ubuntu24.sh there.
+# Do NOT run this on the Raspberry Pi — use scripts/setup_rpi_ubuntu.sh there.
 # Do NOT copy the resulting .venv between machines: the wheels are
 # architecture-specific and the bin/ shebangs hardcode absolute paths.
 #
@@ -20,7 +19,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${PROJECT_ROOT}/.venv"
 
-WITH_ANALYSIS=0
 RECREATE=0
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -42,10 +40,9 @@ usage() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --with-analysis) WITH_ANALYSIS=1 ;;
-        --recreate)      RECREATE=1 ;;
-        -h|--help)       usage; exit 0 ;;
-        *)               die "unknown option: $1 (try --help)" ;;
+        --recreate) RECREATE=1 ;;
+        -h|--help)  usage; exit 0 ;;
+        *)          die "unknown option: $1 (try --help)" ;;
     esac
     shift
 done
@@ -66,7 +63,7 @@ if [ -r /proc/device-tree/model ] && grep -qi 'raspberry pi' /proc/device-tree/m
     warn "this looks like a Raspberry Pi ($(tr -d '\0' < /proc/device-tree/model))."
     warn "This script installs the LAPTOP dependency set, which has no I2C, no"
     warn "DAC and no GPIO support. For the Pi use:"
-    warn "    scripts/setup_rpi_ubuntu24.sh"
+    warn "    scripts/setup_rpi_ubuntu.sh"
     die  "refusing to build a laptop environment on Pi hardware."
 fi
 
@@ -121,15 +118,8 @@ info "Installing dependencies"
 # `pip install --user`, never a global site-packages edit.
 "${VENV_PY}" -m pip install --upgrade pip setuptools wheel
 
-"${VENV_PY}" -m pip install -r "${PROJECT_ROOT}/requirements/test.txt"
+"${VENV_PY}" -m pip install --upgrade -r "${PROJECT_ROOT}/requirements/test.txt"
 ok "requirements/test.txt installed (UI + test dependencies)"
-
-if [ "${WITH_ANALYSIS}" -eq 1 ]; then
-    "${VENV_PY}" -m pip install -r "${PROJECT_ROOT}/requirements/analysis.txt"
-    ok "requirements/analysis.txt installed (numpy, pandas, matplotlib)"
-else
-    printf '      %s\n' "skipped requirements/analysis.txt (pass --with-analysis to include it)"
-fi
 
 # Guard the constraint that makes this a *laptop* environment.
 info "Confirming no hardware library was pulled in"
@@ -166,12 +156,8 @@ ${C_OK}Laptop environment ready.${C_OFF}
   Activate:
       source .venv/bin/activate
 
-  Run the full test suite (261 tests, no hardware needed):
-      PPG_DRY_RUN=1 .venv/bin/python -m unittest \\
-          tests.test_calibration tests.test_phase3_acdc tests.test_phase4_dac \\
-          tests.test_phase5_rx tests.test_led_driver_dac \\
-          tests.test_led_driver_compliance tests.test_led_driver_power \\
-          tests.test_led_driver_error_budget
+  Run the full test suite:
+      PPG_DRY_RUN=1 .venv/bin/python -m pytest -q
 
   Run the UI without hardware:
       PPG_DRY_RUN=1 .venv/bin/python main.py

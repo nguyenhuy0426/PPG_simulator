@@ -1,50 +1,53 @@
 # 🫀 PPG Signal Simulator — Raspberry Pi 4
 
-**Portable photoplethysmography (PPG) signal generator for clinical training and biomedical equipment validation**
+**Dual-channel PPG research simulator for Raspberry Pi and Linux desktop development**
 
-![Version](https://img.shields.io/badge/version-4.0.0-blue)
+![Version](https://img.shields.io/badge/version-5.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%204-green)
 ![Language](https://img.shields.io/badge/language-Python%203.10+-orange)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 **Group #2:** HuyNN, VyPT
 **Institution:** Industrial University of Ho Chi Minh City (IUH) — Faculty of Electronic Technology
-**Version:** 4.1.0 — CustomTkinter Migration & Improved Signal Fidelity
+**Version:** 5.0.0 — Clinical-style monitor, complete waveform controls and timestamped recording
 
 ---
 
 ## 📋 Overview
 
-Python port of the ESP32-S3 PPG Signal Simulator firmware for **Raspberry Pi 4**. Generates synthetic PPG waveforms using a 3-component Gaussian sum model (Allen 2007) with Beer-Lambert law for accurate SpO₂-dependent Red/IR ratio. Outputs via dual 12-bit DACs.
+The Raspberry Pi runtime synthesizes IR/RED signals at 100 Hz, interpolates them
+for a nominal 1 kHz dual-MCP4725 output, and acquires OPT101 signals separately.
+The empirical SpO₂ mapping is configurable; a realistic plot does not establish
+optical accuracy or compatibility with a particular pulse oximeter.
 
-Featuring a modern **CustomTkinter** UI, this version introduces a structured navigation layout, real-time waveform recording to a dedicated dataset folder, and a playback viewer for historical data analysis.
+![PPG monitor, running in dry-run mode](docs/ui/monitor-1280.png)
 
-### Key Features
+### What's complete in v5
 
-- ✅ **CustomTkinter GUI** — Professional sidebar-based navigation (Pathology, Calibration, Playback).
-- ✅ **Real-time Recording** — Save PPG waveform segments to `dataset/data_N.csv` with a confirmation dialog, ensuring strict positive DAC integer outputs.
-- ✅ **Enhanced Visualization** — UI Refactored to exclusively display the AC component for better clinical clarity, while dynamically tracking real-time amplitude scaling.
-- ✅ **Playback Mode** — Browse and visualize recorded datasets directly within the app.
-- ✅ **Physiological Couplings** — Real-time HR → amplitude attenuation and SpO₂ → dicrotic notch fading.
-- ✅ **Beer-Lambert law physics** — Accurate R = (110 − SpO₂) / 25 for Red/IR amplitude ratio.
-- ✅ **Clinical Perfusion Index (PI)** — Strict mathematical mapping: `AC = PI * DC / 100` at a `1.5V` DC baseline for high-fidelity sensor testing.
-- ✅ **6 clinical conditions** — Normal, Arrhythmia, Weak perfusion, Vasoconstriction, Strong perfusion, Vasodilation.
-- ✅ **Calibration mode** — Dedicated tab for sine wave output (adjustable freq/amp) for hardware verification.
-- ✅ **Hardware-Safe DAC Output** — Signal strictly clamped to positive integers (0-4095) for the dual MCP4725 (I2C) outputs, preventing negative dataset artifacts.
-- ✅ **Config persistence** — Parameters saved to JSON, restored on reboot.
-- ✅ **Dry-run mode** — Run on any Linux PC without Raspberry Pi hardware.
+- Light controls, charcoal IR/RED plots, large setpoints, timestamp axes and a 1024×600 minimum layout.
+- HR 10–300 bpm; respiration 1–150 brpm; SpO₂ target 0–100%; PI convenience input 0.01–30%.
+- Independent IR/RED AC and DC, AC/DC ownership, output offset, gain and polarity.
+- PPG, sine, triangle and square waveforms; independent SP/DN/DP timing for each channel.
+- Baseline, amplitude and frequency respiratory modulation, inhale/exhale ratio, per-channel variation and periodic apnea.
+- Absolute-mV artefacts with optional seeds; configurable HR/amplitude, SpO₂/notch and beat-variability effects.
+- Timestamped 100 Hz model-command CSV recording continues across pages; playback follows the recorded timestamps.
+- Explicit Start/Stop for calibration; only the engine's DAC thread produces its sine output.
+- Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
+
+See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
+for scope, evidence, commercial-reference comparison and physical validation still needed.
 
 ### Key Specifications
 
 | Parameter               | Value                                           |
 |------------------------|-------------------------------------------------|
-| Platform               | Raspberry Pi 4 (Ubuntu 24.04 LTS)               |
+| Platform               | Raspberry Pi 4 (Ubuntu 24.04/26.04 LTS, arm64)  |
 | UI Library             | CustomTkinter                                   |
 | DAC                    | MCP4725 (12-bit, I2C) × 2 — IR & Red channels   |
 | Model Rate             | 100 Hz                                          |
-| DAC Rate               | 1 kHz (10× linear interpolation)                |
-| Data Recording         | CSV format, saved to `dataset/`                 |
-| DAC Voltage Range      | 0–3.3V linear (0 V → 0, 3.3 V → 4095)           |
+| DAC Rate               | 1 kHz target; Linux/I²C timing requires measurement |
+| Data Recording         | 100 Hz model commands, timestamped CSV in `dataset/` |
+| DAC Voltage Range      | Configured 0–3.28 V (0 → 0, 3.28 V → 4095) |
 
 ---
 
@@ -62,6 +65,20 @@ Display:
   HDMI → Any screen (auto-detect resolution)
 ```
 
+### Mechanical enclosure (3D)
+
+The dark-chamber enclosure, its parametric build script and the printable STLs
+live in [`docs/system_3d/`](docs/system_3d/README.md).
+
+![3D web viewer with the light control panel](docs/ui/web-viewer-1280.png)
+
+> **The IR lane has no STLs of its own — this is deliberate, not a missing
+> export.** The two optical lanes are mirror-symmetric about z = 0, so the
+> `slide_shaft`, `led_carrier`, `rod_knob`, `aperture_*` and `hood_*` parts are
+> exported once under the `_red` name and printed twice (the `*_ir` copies exist
+> in `model.json` for the viewer only). Print counts are in the STL table of the
+> `docs/system_3d/` README.
+
 ---
 
 ## 💻 Software Architecture
@@ -76,14 +93,23 @@ PPG_simulator_raspi/
 ├── core/
 │   ├── signal_engine.py         # Signal generation thread + DAC output
 │   ├── csv_logger.py            # Dataset recording logic
+│   ├── tx_rx_logger.py          # TX/RX paired acquisition logging
+│   ├── rate_scheduler.py        # Drift-free fixed-rate ticker
 │   └── state_machine.py         # System state machine
 ├── models/
-│   └── ppg_model.py             # PPG physiological model logic
+│   ├── ppg_model.py             # PPG physiological model logic
+│   ├── noise.py                 # Artefact sources (absolute-mV, band-limited)
+│   ├── respiration.py           # Respiratory modulation and apnea
+│   ├── waveform.py              # Pulse morphology and test waveforms
+│   └── limits.py                # Shared parameter ranges
+├── led_driver/                  # Op-amp + BJT current-sink design calculations
 ├── ui/
 │   ├── ctk_app.py               # Main CustomTkinter Application
+│   ├── advanced_controls.py     # Parse/validate/dispatch for Signal Setup
 │   └── frames/
 │       ├── pathology_frame.py   # Main simulation & sliders
 │       ├── calibration_frame.py # Sine wave generator
+│       ├── advanced_frame.py    # Signal Setup tab (AC/DC, SpO2 cal, artefact)
 │       └── playback_frame.py    # Data file browser & viewer
 └── dataset/                     # Folder where recordings are stored
 ```
@@ -93,77 +119,109 @@ PPG_simulator_raspi/
 ## 🔧 Installation & Setup
 
 ### 1. Prerequisites
-- Raspberry Pi 4 with Ubuntu 24.04 LTS
-- I2C enabled (`sudo raspi-config`)
-- CustomTkinter installed: `pip install customtkinter`
+- Raspberry Pi 4 with Ubuntu 24.04 or 26.04 LTS (aarch64)
+- I2C enabled (`dtparam=i2c_arm=on` in `/boot/firmware/config.txt`; the setup
+  script can add it after confirmation)
+- Python 3.10+ and OS package `python3-tk`; install dependencies inside a venv.
 
-### 2. Run the simulator
+For Ubuntu, use the repository setup script instead of installing into the
+system Python:
 
 ```bash
-# On Raspberry Pi (Hardware mode)
-python3 main.py
-
-# On any Linux PC (Dry-run mode)
-python3 main.py --dry-run
+./scripts/setup_rpi_ubuntu.sh --enable-i2c
 ```
 
----
+For a laptop-to-Pi Ethernet cable, source transfer, repeatable `ping`/`ssh`
+commands, and remote debugging, follow
+[docs/setup/RASPBERRY_PI_4_UBUNTU_26_04_SSH.md](docs/setup/RASPBERRY_PI_4_UBUNTU_26_04_SSH.md).
 
-## 🎯 Mode Guide
+### 2. Laptop setup, run and tests
 
-### 🧬 Pathology Mode
-The default mode for simulating clinical conditions. Adjust Heart Rate, SpO2, Respiratory Rate, and Perfusion Index using the on-screen sliders.
-- **Recording**: Click "Start Recording" to begin capturing data. Click "Stop" to trigger a save confirmation. Files are saved as `data_1.csv`, `data_2.csv`, etc., in the `dataset` folder.
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade -r requirements/test.txt
+.venv/bin/python main.py --dry-run
+PPG_DRY_RUN=1 .venv/bin/python -m pytest -q
+```
 
-### 📐 Calibration Mode
-Outputs a pure sine wave on both DAC channels.
-- Adjust **Frequency** (1–10 Hz) and **Amplitude** (mV) using the sliders to verify DAC and oscilloscope performance.
+On the configured Raspberry Pi, use `.venv/bin/python main.py` for hardware mode.
+Virtual environments are deliberately excluded from Git; recreate one on each
+machine because wheels and interpreter paths are architecture-specific.
 
-### 🔄 Playback Mode
-Review previously recorded data.
-- Select a file from the sidebar list.
-- The waveform will be plotted, and the original physiological parameters will be displayed at the top.
+GUI interaction and screenshot check (requires a real display or Xvfb):
 
----
+```bash
+.venv/bin/python scripts/smoke_ui.py --output docs/ui
+```
 
-## 📈 PPG Signal Model & Physiological Synthesis
-
-The simulator synthesizes realistic dual-channel (IR & Red) photoplethysmography (PPG) waveforms by modeling cardiac and respiratory physiology with clinical precision:
-
-### 1. Waveform Shape (Allen 2007)
-A 3-component Gaussian sum model represents the physiological pressure-pulse cycle:
-$$\text{pulse}(t) = \text{systolic\_gaussian}(t) + \text{diastolic\_gaussian}(t) - \text{dicrotic\_notch\_gaussian}(t)$$
-
-aligned with the reference C++ physiological models:
-- **Systolic Peak**: $\mu = 0.15$, $\sigma = 0.055$ (Sharp systolic rise and peak)
-- **Dicrotic Notch**: $\mu = 0.30$, $\sigma = 0.020$ (Rapid closing of the aortic valve)
-- **Diastolic Peak**: $\mu = 0.40$, $\sigma = 0.100$ (Pressure wave reflection from lower body)
-
-### 2. Clinical Perfusion Index (PI) Scaling
-To guarantee compatibility with medical-grade pulse oximeters, the model implements the strict clinical definition of the Perfusion Index:
-$$\text{PI} = \frac{\text{AC}}{\text{DC}} \times 100\% \implies \text{AC} = \text{PI} \times \frac{\text{DC}}{100}$$
-
-- **DC Baseline**: Set to $1.5\text{V}$ representing static tissue, venous, and baseline arterial light absorption.
-- **AC Pulsatile Amplitude**: Scaled at exactly $0.015\text{V}$ per $\text{PI}\%$.
-  - At $\text{PI} = 3\%$, $\text{AC} = 45\text{mV}$.
-  - At $\text{PI} = 10\%$, $\text{AC} = 150\text{mV}$.
-This ensures that the output signal represents physiologically accurate ratios for external sensor calibration.
-
-### 3. SpO₂ Modulation (Beer-Lambert Law)
-The amplitude ratio of the Red and Infrared channels ($R$-ratio) is dynamically derived using empirical calibration coefficients:
-$$R = \frac{110 - \text{SpO}_2}{25}$$
-$$\text{AC}_{\text{Red}} = \text{AC}_{\text{IR}} \times R$$
-
-### 4. Advanced Physiological Couplings
-- **Heart Rate $\to$ Amplitude Coupling**: Real-time vasoconstriction and stroke volume reduction under elevated heart rate. AC amplitudes undergo a $-3.2\%$ attenuation per $10\text{ BPM}$ increase above $60\text{ BPM}$ (physiological limit $\ge 70\%$).
-- **Hypoxia $\to$ Vasoconstriction Coupling**: When $\text{SpO}_2$ drops below $94\%$, sympathetic activation is simulated by fading out the dicrotic notch (simulating loss of arterial elasticity and increased vascular resistance). The notch depth is reduced by up to $60\%$ at severe hypoxia ($\text{SpO}_2 \le 84\%$).
-
-### 5. Respiratory Modulations (Charlton 2018)
-- **Baseline Wander (BW / RIIV)**: Respiratory-induced intensity variation up to $0.4\%$ of the DC baseline.
-- **Amplitude Modulation (AM / RIAV)**: Respiratory-induced amplitude variation ($\pm25\%$) matching the chest cavity's mechanical pressure changes.
-- **Frequency Modulation (FM / RIFV / RSA)**: Respiratory sinus arrhythmia (±5% cardiac interval modulation).
+The laptop environment verifier also audits Git hygiene and rejects committed
+virtual environments, bytecode and generated package caches.
 
 ---
+
+## Operation
+
+**Monitor:** adjust HR, SpO₂ target, respiration and PI with sliders, or type a
+value and press Enter. Run starts TX; Stop parks both DAC command values at zero.
+Record CSV starts capture; Save recording closes the file into `dataset/data_N.csv`.
+Closing the app saves an active recording. The plotted signal is generated TX,
+not an optical measurement. The right-hand numbers are setpoints.
+
+**Signal setup:** each tab applies only when its Apply button is pressed.
+Blank RED AC derives it from SpO₂. Explicit RED AC disconnects that amplitude
+from the SpO₂ target and the monitor reports this. Lock AC holds AC while a PI
+change moves IR DC; Lock DC lets PI move AC; both locks make PI read-only.
+Feature times are quoted at 60 bpm and scale with cycle duration.
+
+For a repeatable nominal waveform, disable respiratory modulation and all three
+physiological dynamics switches on the Respiration tab. Otherwise modulation,
+HR coupling and beat variability deliberately change the instantaneous AC/HR.
+
+**Calibration / RX:** enter sine frequency (1–10 Hz) and peak output (100–3280 mV),
+then Start calibration. Opening the page alone does not start output. Leaving the
+page stops an active calibration. OPT101 values are raw ADC-derived mV with
+freshness/status; dry-run and disconnected inputs display no fabricated samples.
+
+**Recordings:** review saved TX command CSVs without driving hardware. New files
+contain `Time_s` and `Source`; the first seven columns retain the legacy schema.
+Legacy files without timestamps explicitly assume 50 Hz for screen playback.
+CSV output is a model command record, not proof that a DAC wrote every sample.
+
+## Signal relationships and limits
+
+`PI = AC_IR / DC_IR × 100`; at DC=1500 mV, PI=3% gives nominal AC=45 mV.
+RED is derived with the full ratio-of-ratios:
+
+`R = max(0, (A − SpO₂_target) / B)`
+
+`AC_RED = R × AC_IR × DC_RED / DC_IR`
+
+The defaults A=110 and B=25 are an empirical example, not universal optical
+calibration. The former R clamp of 0.4–1.6 has been removed so low SpO₂ targets
+change the generated ratio. A negative requested R cannot be synthesized; the
+monitor reports it. Unequal respiration depth and manually pinned RED AC can
+change the instantaneous ratio from the nominal target.
+
+PPG uses a normalized three-Gaussian shape. Respiratory depth defaults to 4% of
+AC per channel, with baseline/amplitude/RSA modulation individually selectable.
+Apnea suppresses respiratory modulation while cardiac pulses continue.
+
+Direct AC entry spans 0.1–300 mV and DC entry 100–3000 mV. PI-driven AC can exceed
+the direct AC range; output offset spans 0–2000 mV with DC+offset≤3000 mV. Gain,
+noise and modulation can still exceed DAC headroom: the output clamps to the
+configured rails and the clipping counter reports it. A clipped waveform does
+not meet the requested amplitude or ratio.
+
+50/60 Hz mains noise is rejected by the 100 Hz synthesis model; 10× interpolation
+does not create additional bandwidth. Likewise, the MCP4725 code step is about
+0.80 mV at 3.28 V: software entry resolution is finer than physical DAC resolution.
+
+The LED-driver topology in the supplied drawing is DAC → op-amp → NPN current
+sink with emitter feedback through R_sense. The 3D preview defaults to this direct
+command path, and offers the older 10k/10k divider hypothesis separately. Its
+`I ≈ Vcmd/R` readout is an ideal estimate; current, compliance and optical response
+must be measured on the actual assembly. No wiring, transistor or resistor is
+changed by this software update.
 
 ## 👨‍💻 Authors
 

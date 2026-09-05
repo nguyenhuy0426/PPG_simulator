@@ -530,7 +530,7 @@ Add the polarity control (E9), defaulting to **AC-below-DC** to match the AECG10
 - [comm/ble_server.py](../../comm/ble_server.py), [comm/logger.py](../../comm/logger.py) — working, out of scope.
 - [core/state_machine.py](../../core/state_machine.py), [core/csv_logger.py](../../core/csv_logger.py) — working; touch only if a feature needs it.
 - [ui/frames/playback_frame.py](../../ui/frames/playback_frame.py) — CSV replay works.
-- **Do not delete** `param_controller.py` / `digital_filters.py` yet — unused now but `digital_filters.py` is a candidate for Phase 6 reuse; removal is a separate, evidence-based cleanup decision.
+- ~~**Do not delete** `param_controller.py` / `digital_filters.py` yet~~ — **superseded.** `core/param_controller.py` was deleted in the v4.2.0 cleanup: it had zero importers and carried a third, divergent `noise_level` clamp (0.10) that disagreed with the model and the engine, so keeping it was a correctness hazard, not a reserve. `core/digital_filters.py` is **kept** — still unused, still a Phase 6 candidate, and it holds no duplicated limits.
 
 ---
 

@@ -69,3 +69,5 @@ breadboard-jumpered. A shorted R_sense is the only destructive single fault
 - A final LED-to-OPT101 spacer: the distance comes from the Stage 6
   measured sweep, never from this BOM.
 - PCB fabrication items (no Gerbers at this stage).
+
+> **Transistor identity is unconfirmed.** This document says 2SC1815 because that is the only transistor datasheet in `docs/ds_linhkien/`; the operator has stated the board carries a 2N4401. The TO-92 pinouts differ (E-C-B vs E-B-C) — verify with a DMM before soldering. See [TRANSISTOR_IDENTIFICATION.md](TRANSISTOR_IDENTIFICATION.md).

@@ -8,11 +8,10 @@ The hardware statements it points to (LED current, op-amp compliance, optical
 behaviour) are **design hypotheses, not measurements** — see
 [§10](#10-what-is-still-unverified).
 
-> This guide is for **Ubuntu 24.04**. The older
-> [scripts/install_rpi_system_packages.sh](../../scripts/install_rpi_system_packages.sh)
-> and [scripts/setup_rpi_venv.sh](../../scripts/setup_rpi_venv.sh) target
-> **Raspberry Pi OS Bookworm** (they use `raspi-config`, assume the Grove ADC is
-> at `0x04`, and install the classic `RPi.GPIO`). Do not mix the two sets.
+> This guide is for **Ubuntu 24.04**. Use
+> [scripts/setup_rpi_ubuntu.sh](../../scripts/setup_rpi_ubuntu.sh); legacy
+> Raspberry Pi OS installers were removed because they assumed the wrong Grove
+> ADC address and GPIO backend for this hardware.
 
 ---
 

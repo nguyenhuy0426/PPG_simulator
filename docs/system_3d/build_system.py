@@ -1298,9 +1298,9 @@ def mcp4725_vis(v, x0, z0, yb):
 def driver_board_vis(v):
     """Perfboard driver 70 x 55 mm — bố cục theo ảnh thực tế (hình 1), gọn area:
     2× MCP4725 ở 2 góc trên (trái 0x60->IR, phải 0x61->Đỏ), LM358 ở giữa,
-    2× 2N4401 (TO-92) + 2× điện trở cảm biến (E→GND, thay được) phía dưới,
+    2× NPN TO-92 + 2× điện trở cảm biến (E→GND, thay được) phía dưới,
     header cái ra LED ở cạnh +Z (hướng về hộp tối). Hệ cục bộ; collect_parts() đặt.
-    Mạch tối giản thật: LM358 -> 2N4401 -> R(E→GND) -> GND, LED trên collector."""
+    Mạch tối giản thật: LM358 -> NPN -> R(E→GND) -> GND, LED trên collector."""
     yb = DRV_Y1
     v.add(box(0, DRV_L, DRV_Y0, DRV_Y1, 0, DRV_W), C_PCB_G)
     v.add(pad_grid("y", DRV_Y1, 0, DRV_L, 0, DRV_W, pitch=2.54, r=0.62, margin=3.0), C_GOLD)
@@ -1318,7 +1318,7 @@ def driver_board_vis(v):
     _dip(v, 35.0, yb, 26.0, 8)
     # tụ decouple 100 nF cạnh LM358 (duy nhất)
     _cap_film(v, 48.0, yb, 30.0, col=0x2f6ea8)
-    # 2× 2N4401 (TO-92) — khóa dòng LED, phía dưới LM358
+    # 2× NPN TO-92 — khóa dòng LED, phía dưới LM358
     _to92(v, 30.0, yb, 38.0)                           # Q1 — kênh IR
     _to92(v, 40.0, yb, 38.0)                           # Q2 — kênh Đỏ
     # header cái ra LED — cạnh +Z board (world x 12..29, z ≈ -59): quay thẳng
@@ -1361,7 +1361,7 @@ def screen_vis(v):
     hw, ht = SCR_W / 2.0, SCR_T / 2.0
     for mesh, col in ((box(-hw, hw, 0.0, SCR_H, -ht, ht), 0x2b3038),
                       (box(-hw + 7.0, hw - 7.0, 9.0, SCR_H - 9.0,
-                           -ht - 0.6, -ht + 0.3), 0x0f1a2b)):
+                           -ht - 0.6, -ht + 0.3), 0xf4f6f7)):
         mm = mesh.copy()
         mm.apply_transform(T)
         v.add(mm, col)
@@ -1590,7 +1590,7 @@ def collect_parts():
         return out
 
     add("driver_board", None, C_PCB_G, [0, -16, -34],
-        label="Board driver LED (LM358 + 2×2N4401 + 2×MCP4725)", printable=False,
+        label="Board driver LED (LM358 + 2×NPN + 2×MCP4725)", printable=False,
         subs=place(_vis_subs(driver_board_vis), drv_T))
 
     # 2× điện trở cảm biến (E→GND, THAY ĐƯỢC) — 4 vòng màu tô lại trong viewer
@@ -1633,8 +1633,8 @@ DRVLABELS = [
     _drv_label(11.0, 10.6, 9.0, "MCP4725 #1 (0x60) → IR"),
     _drv_label(59.0, 10.6, 9.0, "MCP4725 #2 (0x61) → Đỏ"),
     _drv_label(35.0, 26.0, 8.5, "LM358"),
-    _drv_label(30.0, 38.0, 8.5, "Q1 2N4401 (IR)"),
-    _drv_label(40.0, 38.0, 8.5, "Q2 2N4401 (Đỏ)"),
+    _drv_label(30.0, 38.0, 8.5, "Q1 NPN (IR)"),
+    _drv_label(40.0, 38.0, 8.5, "Q2 NPN (Đỏ)"),
     _drv_label(28.0, 47.0, 7.5, "R_sense IR (E→GND)"),
     _drv_label(37.0, 47.0, 7.5, "R_sense Đỏ (E→GND)"),
     dict(pos=[122.4, 49.0, 19.25], text="OPT101 #1 (IR → A0)"),

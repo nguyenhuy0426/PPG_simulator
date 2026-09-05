@@ -139,3 +139,5 @@ depend on the LED-to-OPT101 distance, which is set in Stage 6, not here.
 No LED-to-OPT101 distance (Stage 6 measures it; nothing is invented here),
 no ADC-code-to-optical-power calibration (Stage 6), no claim that any
 expected value has been observed on hardware.
+
+> **Transistor identity is unconfirmed.** This document says 2SC1815 because that is the only transistor datasheet in `docs/ds_linhkien/`; the operator has stated the board carries a 2N4401. The TO-92 pinouts differ (E-C-B vs E-B-C) — verify with a DMM before soldering. See [TRANSISTOR_IDENTIFICATION.md](TRANSISTOR_IDENTIFICATION.md).

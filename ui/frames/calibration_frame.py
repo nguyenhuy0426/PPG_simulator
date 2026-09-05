@@ -1,118 +1,79 @@
-import customtkinter as ctk
-import math
 import time
+import customtkinter as ctk
 from core.signal_engine import SignalEngine
-from config import DAC_FULLSCALE_MV
-from calibration import dac_voltage_to_code
+from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
+from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED, DRY_RUN
+from ui.trace_view import TraceView
+from ui import theme as T
+
 
 class CalibrationFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        
-        self.engine = SignalEngine.get_instance()
-        
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.engine, self.rx = SignalEngine.get_instance(), OPT101Receiver.get_instance()
         self.grid_columnconfigure(0, weight=1)
-        
-        # --- Waveform Area ---
-        self.wf_frame = ctk.CTkFrame(self)
-        self.wf_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.wf_frame.grid_rowconfigure(0, weight=1)
-        self.wf_frame.grid_columnconfigure(0, weight=1)
-        
-        self.canvas = ctk.CTkCanvas(self.wf_frame, bg="black", highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.canvas.bind("<Configure>", self.on_canvas_resize)
-        
-        self.canvas_width = 800
-        self.canvas_height = 300
-        self.sweep_x = 0
-        self.last_y = None
-        
-        # --- Controls Area ---
-        self.ctrl_frame = ctk.CTkFrame(self)
-        self.ctrl_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        self.ctrl_frame.grid_columnconfigure(0, weight=1)
-        self.ctrl_frame.grid_columnconfigure(1, weight=1)
-        
-        self.freq_var = ctk.DoubleVar(value=1.0)
-        self.amp_var = ctk.DoubleVar(value=2000.0)
-        
-        # Freq Slider
-        f_frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
-        f_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
-        ctk.CTkLabel(f_frame, text="Frequency").pack(side="left")
-        self.freq_lbl = ctk.CTkLabel(f_frame, text="1.0 Hz")
-        self.freq_lbl.pack(side="right")
-        def update_f(v): self.freq_lbl.configure(text=f"{v:.1f} Hz")
-        ctk.CTkSlider(f_frame, from_=1.0, to=10.0, variable=self.freq_var, command=update_f).pack(side="left", fill="x", expand=True, padx=10)
+        self.grid_rowconfigure(2, weight=1)
+        T.label(self, "Calibration & acquisition", 22, True).grid(row=0, column=0, sticky="w", pady=(0, 12))
+        controls = ctk.CTkFrame(self)
+        controls.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        T.label(controls, "Sine output", 14, True).pack(side="left", padx=16, pady=14)
+        T.label(controls, "Frequency / Hz").pack(side="left", padx=8)
+        self.frequency = ctk.CTkEntry(controls, width=75)
+        self.frequency.insert(0, "1")
+        self.frequency.pack(side="left")
+        T.label(controls, "0 to peak / mV").pack(side="left", padx=8)
+        self.amplitude = ctk.CTkEntry(controls, width=85)
+        self.amplitude.insert(0, "1000")
+        self.amplitude.pack(side="left")
+        self.run_btn = ctk.CTkButton(controls, text="Start calibration", command=self.toggle, height=36)
+        self.run_btn.pack(side="right", padx=16)
+        self.trace = TraceView(self, height=200)
+        self.trace.empty_text = "Calibration standby  /  output starts only on request"
+        self.trace.grid(row=2, column=0, sticky="nsew")
+        self.status = T.label(self, "Opening this page does not change the output. Leaving stops calibration output.",
+                              12, text_color=T.MUTED, anchor="w")
+        self.status.grid(row=3, column=0, sticky="ew", pady=8)
+        rx_panel = ctk.CTkFrame(self)
+        rx_panel.grid(row=4, column=0, sticky="ew")
+        T.label(rx_panel, "OPT101 / RECEIVED SIGNAL", 12, True).pack(anchor="w", padx=16, pady=(12, 4))
+        self.rx_label = T.label(rx_panel, "No samples", 15, anchor="w", justify="left")
+        self.rx_label.pack(anchor="w", padx=16, pady=(0, 8))
+        T.label(rx_panel, "Raw ADC readings • measured SpO₂ requires a validated optical calibration.",
+                11, text_color=T.MUTED).pack(anchor="w", padx=16, pady=(0, 12))
 
-        # Amp Slider
-        a_frame = ctk.CTkFrame(self.ctrl_frame, fg_color="transparent")
-        a_frame.grid(row=0, column=1, padx=20, pady=20, sticky="ew")
-        ctk.CTkLabel(a_frame, text="Amplitude").pack(side="left")
-        self.amp_lbl = ctk.CTkLabel(a_frame, text="2000 mV")
-        self.amp_lbl.pack(side="right")
-        def update_a(v): self.amp_lbl.configure(text=f"{v:.0f} mV")
-        ctk.CTkSlider(a_frame, from_=100, to=DAC_FULLSCALE_MV, variable=self.amp_var, command=update_a).pack(side="left", fill="x", expand=True, padx=10)
-        
-        self.cal_phase = 0.0
-        self.cal_last_time = time.time()
+    def toggle(self):
+        if self.engine.is_calibrating:
+            self.engine.stop_simulation()
+        else:
+            try:
+                if self.master.frames["Pathology"].is_recording:
+                    self.master.frames["Pathology"].toggle_recording()
+                self.engine.start_calibration(float(self.frequency.get()), float(self.amplitude.get()))
+                self.status.configure(text="Sine output running on both DAC channels • waveform units: mV", text_color=T.ACCENT)
+            except ValueError as exc:
+                self.status.configure(text=str(exc), text_color=T.ERROR)
+        self.periodic_update()
 
     def on_show(self):
-        self.sweep_x = 0
-        self.last_y = None
-        self.canvas.delete("trace")
-        self.cal_last_time = time.time()
-        self.engine.stop_simulation() # Stop PPG model to let calibration run
+        self.periodic_update()
 
-    def on_canvas_resize(self, event):
-        self.canvas_width = event.width
-        self.canvas_height = event.height
-        self._draw_grid()
-
-    def _draw_grid(self):
-        self.canvas.delete("grid")
-        mid_y = self.canvas_height // 2
-        self.canvas.create_line(0, mid_y, self.canvas_width, mid_y, fill="#004020", tags="grid")
-        for x in range(0, self.canvas_width, 100):
-            self.canvas.create_line(x, 0, x, self.canvas_height, fill="#002010", tags="grid")
+    def on_hide(self):
+        if self.engine.is_calibrating:
+            self.engine.stop_simulation()
 
     def periodic_update(self):
-        now = time.time()
-        dt = now - self.cal_last_time
-        self.cal_last_time = now
-        
-        freq = self.freq_var.get()
-        amp = self.amp_var.get()
-        
-        self.cal_phase += dt * 2.0 * math.pi * freq
-        self.cal_phase %= (2.0 * math.pi)
-        
-        # ✅ Sóng sin từ 0 → amp, trục tự dịch theo biên độ
-        # val_mv ∈ [0, amp], offset = amp/2
-        val_mv = (amp / 2.0) * (1.0 + math.sin(self.cal_phase))
-        
-        # DAC: map [0, DAC_FULLSCALE_MV] → [0, 4095] via the shared converter
-        # (explicit mV→V conversion; full-scale is 3.28 V).
-        dac_val = dac_voltage_to_code(val_mv / 1000.0)
-        self.engine.dac_manager.set_values(dac_val, dac_val)
-
-        # Draw: vẽ trong range [0, DAC_FULLSCALE_MV] để canvas luôn hiển thị đúng tỉ lệ
-        v_min, v_max = 0, DAC_FULLSCALE_MV
-        h = self.canvas_height
-        norm = (val_mv - v_min) / (v_max - v_min)
-        y = h - (norm * h)
-        
-        x = self.sweep_x
-        if self.last_y is not None:
-            self.canvas.create_line(x-5, self.last_y, x, y,
-                                    fill="#00ff80", width=2, tags="trace")
-        self.last_y = y
-        self.sweep_x += 5
-        
-        if self.sweep_x >= self.canvas_width:
-            self.sweep_x = 0
-            self.last_y = None
-            self.canvas.delete("trace")
+        self.run_btn.configure(text="Stop calibration" if self.engine.is_calibrating else "Start calibration",
+                               fg_color=T.ERROR if self.engine.is_calibrating else T.INK)
+        self.trace.update_samples(self.engine.get_display_history() if self.engine.is_calibrating else [])
+        rows = []
+        for channel, name in ((ADC_CHANNEL_IR, "IR  ·  A0"), (ADC_CHANNEL_RED, "RED  ·  A2")):
+            sample = self.rx.get_latest(channel)
+            status = self.rx.channel_status(channel)
+            if DRY_RUN or self.rx.is_simulated:
+                text = "—   simulation mode; no physical ADC samples"
+            elif sample is None or self.rx.is_stale(channel):
+                text = f"—   {status} / no fresh sample"
+            else:
+                text = f"{raw_to_millivolts(sample.raw):.1f} mV   ·   {status}"
+            rows.append(f"{name}    {text}")
+        self.rx_label.configure(text="\n".join(rows))

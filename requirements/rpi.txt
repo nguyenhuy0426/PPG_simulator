@@ -1,6 +1,6 @@
 # requirements/rpi.txt
 # -----------------------------------------------------------------------------
-# Raspberry Pi 4 / Ubuntu 24.04 LTS (aarch64) hardware dependencies.
+# Raspberry Pi 4 / Ubuntu 24.04 or 26.04 LTS (aarch64) hardware dependencies.
 #
 # Install ONLY on the Pi, inside the Pi's own .venv:
 #   .venv/bin/python -m pip install -r requirements/rpi.txt
@@ -20,18 +20,18 @@
 # Pure-Python SMBus/I2C access over /dev/i2c-1. Required by the official Seeed
 # grove.py: grove/i2c.py builds its Bus on smbus2. Installed explicitly because
 # grove.py is installed with --no-deps (see below).
-smbus2
+smbus2>=0.6.1,<1
 
 # --- MCP4725 DAC path (hw/dac_manager.py) ----------------------------------
 # hw/dac_manager.py lazily does `import board`, `import busio`,
 # `import adafruit_mcp4725` when PPG_DRY_RUN is not set.
 # Blinka is what provides `board` and `busio` on a Linux SBC.
-adafruit-blinka>=8.0.0
-adafruit-circuitpython-mcp4725>=1.4.0
+adafruit-blinka>=9.2.0,<10
+adafruit-circuitpython-mcp4725>=1.4.21,<2
 
 # --- GPIO (hw/button_handler.py) -------------------------------------------
 # button_handler.begin() tries `import RPi.GPIO as GPIO` first and falls back to
-# `import lgpio`. On Ubuntu 24.04 the correct way to satisfy the first import is
+# `import lgpio`. On Ubuntu 24.04/26.04 the correct way to satisfy the first import is
 # the rpi-lgpio SHIM, which presents the RPi.GPIO API on top of the lgpio
 # character-device backend. It works with the /dev/gpiochip* interface that this
 # kernel actually exposes.
@@ -42,7 +42,7 @@ adafruit-circuitpython-mcp4725>=1.4.0
 # HARD CONSTRAINT: rpi-lgpio and the classic RPi.GPIO both provide the module
 # name `RPi.GPIO`. Installing BOTH corrupts the environment. This file installs
 # rpi-lgpio ONLY. Never add RPi.GPIO alongside it.
-rpi-lgpio
+rpi-lgpio>=0.6,<1
 
 # -----------------------------------------------------------------------------
 # INSTALLED SEPARATELY, NOT VIA THIS FILE
@@ -94,10 +94,5 @@ rpi-lgpio
 # pyserial      Not imported anywhere. There is no UART path in this project;
 #               every peripheral is on I2C.
 #
-# numpy /       Offline analysis only (plot_ppg_from_data.py). Building these
-# pandas /      on aarch64 is slow and none of them is on the runtime path.
-# matplotlib    See requirements/analysis.txt.
-#
-# pygame /      Dead code (ui/sliders.py, comm/ble_server.py). See
-# bless         requirements/base.txt.
+# pygame /      No importer left; the pre-CustomTkinter modules were deleted.
 # -----------------------------------------------------------------------------

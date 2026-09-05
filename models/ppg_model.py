@@ -15,15 +15,26 @@ References:
 import math
 import random
 
-from config import DAC_FULLSCALE_V
+from models import limits
+from models.waveform import PulseShaper, PulseMorphology, WAVE_PPG, validate_kind
+from models.respiration import RespirationConfig, RespirationModulator
+
+RESP_FIELDS = {
+    "rate_brpm": "resp_rate", "inhale_exhale_ratio": "resp_ie_ratio",
+    "baseline_enabled": "resp_mod_baseline", "amplitude_enabled": "resp_mod_amplitude",
+    "frequency_enabled": "resp_mod_frequency", "variation_ir_pct": "resp_variation_ir_pct",
+    "variation_red_pct": "resp_variation_red_pct", "apnea_enabled": "apnea_enabled",
+    "apnea_duration_s": "apnea_duration_s", "apnea_cycle_min": "apnea_cycle_min",
+}
+
+from config import DAC_FULLSCALE_V, MODEL_SAMPLE_RATE_PPG
+from models.noise import NOISE_PROPORTIONAL, NoiseGenerator
 from calibration import (
     r_target_from_spo2,
     validate_coefficients,
     validate_ac_dc,
     ac_red_from_target,
     perfusion_index_from_ac_dc,
-    R_CLAMP_MIN,
-    R_CLAMP_MAX,
     SPO2_COEFF_A_DEFAULT,
     SPO2_COEFF_B_DEFAULT,
 )
@@ -43,6 +54,10 @@ PPG_NOTCH_WIDTH     = 0.02    # σ notch (fast valvular event)
 PPG_BASE_SYSTOLIC_AMPL   = 1.0    # Systolic amplitude (reference)
 PPG_BASE_DIASTOLIC_RATIO = 0.4    # Diastolic/systolic ratio (Allen 2007)
 PPG_BASE_DICROTIC_DEPTH  = 0.25   # Notch depth (≥20% for normal)
+
+# --- Pulse-shape normalisation search (see PPGModel._find_raw_pulse_peak) ---
+PULSE_PEAK_SCAN_STEPS   = 1000  # coarse scan resolution over one cycle
+PULSE_PEAK_REFINE_ITERS = 40    # golden-section refinements around the coarse max
 
 # --- AC/DC ownership (Phase 3) ---
 # AC and DC are the master parameters; PI is DERIVED, not the driver:
@@ -160,7 +175,15 @@ class PPGParameters:
     __slots__ = ("condition", "heart_rate", "perfusion_index", "spo2",
                  "resp_rate", "noise_level", "dicrotic_notch", "amplification",
                  "spo2_coeff_a", "spo2_coeff_b",
-                 "dc_ir_mv", "dc_red_mv", "ac_polarity")
+                 "dc_ir_mv", "dc_red_mv", "ac_polarity",
+                 "noise_kind", "noise_amplitude_mv", "noise_freq_hz",
+                 "noise_seed", "waveform", "ac_ir_mv", "ac_red_mv",
+                 "output_dc_offset_mv", "lock_ac", "lock_dc",
+                 "sp_ms_ir", "dn_ms_ir", "dp_ms_ir", "sp_ms_red", "dn_ms_red", "dp_ms_red",
+                 "resp_ie_ratio", "resp_mod_baseline", "resp_mod_amplitude", "resp_mod_frequency",
+                 "resp_variation_ir_pct", "resp_variation_red_pct", "apnea_enabled",
+                 "apnea_duration_s", "apnea_cycle_min", "hr_amplitude_enabled",
+                 "spo2_coupling_enabled", "variability_enabled")
 
     def __init__(self):
         self.condition = COND_NORMAL
@@ -179,11 +202,33 @@ class PPGParameters:
         # AC/DC master state (Phase 3). Per-channel DC levels in mV (independent
         # Red/IR) and the AC polarity. Defaults keep DC_ir == DC_red == 1500 mV
         # (1.5 V) so the equal-DC legacy behavior is reproduced exactly. AC is
-        # not stored here: IR AC follows the PI convenience input (AC_ir =
-        # PI/100 · DC_ir) and Red AC is derived via the ratio-of-ratios.
+        # stored optionally: None derives IR AC from PI and Red AC from the
+        # full ratio-of-ratios. Explicit Red AC disables SpO2 amplitude control.
         self.dc_ir_mv = DEFAULT_DC_BASELINE_V * 1000.0     # 1500.0 mV
         self.dc_red_mv = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
         self.ac_polarity = POLARITY_ABOVE_DC               # legacy pulse-up default
+        # Artefact source (models.noise). The default reproduces the legacy
+        # behaviour exactly: an AC-proportional artefact driven by noise_level,
+        # which is 0.0, so a freshly constructed model is still noise-free.
+        # The other kinds are amplitude-absolute (noise_amplitude_mv in mV) so
+        # a 5 mV artefact stays 5 mV at PI 0.6 % and at PI 6 %.
+        self.noise_kind = NOISE_PROPORTIONAL
+        self.noise_amplitude_mv = 0.0
+        self.noise_freq_hz = 0.0
+        self.noise_seed = None    # None => OS entropy (non-reproducible)
+
+        self.hr_amplitude_enabled = self.spo2_coupling_enabled = self.variability_enabled = True
+        self.waveform = WAVE_PPG
+        self.ac_ir_mv = None  # None: derive from PI, including legacy config files
+        self.ac_red_mv = None  # None: derive from the SpO2 ratio
+        self.output_dc_offset_mv = 0.0
+        self.lock_ac = self.lock_dc = False
+        for channel in ("ir", "red"):
+            self.__setattr__("sp_ms_" + channel, 150.0)
+            self.__setattr__("dn_ms_" + channel, 300.0)
+            self.__setattr__("dp_ms_" + channel, 400.0)
+        for source, target in RESP_FIELDS.items():
+            setattr(self, target, getattr(RespirationConfig(), source))
 
     def copy(self):
         p = PPGParameters()
@@ -206,6 +251,10 @@ class PPGModel:
         self._has_pending = False
         self._pending_params = None
 
+        # Cached pulse-shape normalisation (invalidated when the shape changes)
+        self._pulse_scale_key = None
+        self._pulse_scale_cache = 1.0
+
         # Gaussian RNG state (Box-Muller)
         self._gauss_has_spare = False
         self._gauss_spare = 0.0
@@ -214,14 +263,27 @@ class PPGModel:
         self.hr_amplitude_enabled = True    # HR → pulse amplitude reduction
         self.spo2_coupling_enabled = True   # SpO2 → vasoconstriction (notch loss)
 
+        # Independent artefact source per channel: IR and Red must not share a
+        # stream, otherwise the artefact cancels out of the ratio-of-ratios and
+        # SpO2 would be immune to noise — physically wrong.
+        self._noise_ir = NoiseGenerator(MODEL_SAMPLE_RATE_PPG)
+        self._noise_red = NoiseGenerator(MODEL_SAMPLE_RATE_PPG)
+
+        self.respiration = RespirationModulator()
+        self._shapers = {"ir": PulseShaper(), "red": PulseShaper()}
+        self.clipped_samples = 0
         self.params = PPGParameters()
         self.cond_ranges = ConditionRanges()
+        self._apply_noise_config()
         self.reset()
 
     # ─────────────────────────── RESET ───────────────────────────
     def reset(self):
+        self.respiration.reset()
+        self._resp_state = self.respiration.advance(0.0)
+        self.clipped_samples = 0
         self.phase_in_cycle = 0.0
-        self.current_rr = 60.0 / 75.0
+        self.current_rr = 60.0 / self.params.heart_rate
         self.beat_count = 0
         self.motion_noise = 0.0
         self.baseline_wander_phase = 0.0
@@ -229,8 +291,8 @@ class PPGModel:
         self._gauss_has_spare = False
         self._gauss_spare = 0.0
 
-        self.current_hr = 75.0
-        self.current_pi = 3.0
+        self.current_hr = self.params.heart_rate
+        self.current_pi = self.params.perfusion_index
         # Per-channel DC working state in Volts (Phase 3). Independent Red/IR.
         # dc_baseline is retained as a legacy alias equal to dc_ir (the primary
         # channel) for external readers (get_measured_pi, hw.dac_manager helper).
@@ -279,6 +341,9 @@ class PPGModel:
         self.measured_systole_ms = self.systole_time
         self.measured_diastole_ms = self.diastole_time
 
+        self._sync_ac_dc_from_params()
+        self._apply_condition_modifiers()
+
     # ─────────────────────── CONDITION RANGES ───────────────────────
     def _init_condition_ranges(self):
         c = self.params.condition
@@ -308,10 +373,14 @@ class PPGModel:
 
     def set_parameters(self, params: PPGParameters):
         self.params = params.copy()
+        if self.params.ac_ir_mv is not None:
+            self.params.perfusion_index = self.params.ac_ir_mv / self.params.dc_ir_mv * 100.0
+        self._apply_noise_config()
+        self.set_respiration(RespirationConfig(**{k: getattr(self.params, v) for k, v in RESP_FIELDS.items()}))
         self._sync_ac_dc_from_params()
-        self._init_condition_ranges()
+        self.set_modelling_options(self.params.hr_amplitude_enabled, self.params.spo2_coupling_enabled, self.params.variability_enabled)
         self._apply_condition_modifiers()
-        self.current_hr = self._generate_dynamic_hr()
+        self.current_hr = limits.HEART_RATE.clamp(self.params.heart_rate)
         self.current_rr = 60.0 / self.current_hr
         self.current_pi = self._generate_dynamic_pi()
         self.systole_fraction = self._calculate_systole_fraction(self.current_hr)
@@ -328,7 +397,7 @@ class PPGModel:
     def _apply_condition_modifiers(self):
         self.systolic_amplitude = self.cond_ranges.systolic_ampl
         self.diastolic_amplitude = self.cond_ranges.diastolic_ampl
-        self.dicrotic_depth = self.cond_ranges.dicrotic_depth
+        self.dicrotic_depth = self.params.dicrotic_notch
         self.systolic_width = PPG_SYSTOLIC_WIDTH
         self.diastolic_width = PPG_DIASTOLIC_WIDTH
         self.dicrotic_width = PPG_NOTCH_WIDTH
@@ -336,7 +405,7 @@ class PPGModel:
 
     # ─────────────────────── HEART RATE SETTER ───────────────────────
     def set_heart_rate(self, hr: float):
-        hr = _clamp(hr, 40.0, 180.0)
+        hr = limits.HEART_RATE.clamp(hr)
         self.params.heart_rate = hr
         self.current_hr = hr
         self.current_rr = 60.0 / hr
@@ -353,62 +422,168 @@ class PPGModel:
         in generate_both_samples). With the default DC_ir = 1.5 V this reproduces
         the legacy AC_ir = PI × 0.015 V exactly. DC levels are unchanged here.
         """
-        pi = _clamp(pi, 0.5, 20.0)
+        pi = limits.PERFUSION_INDEX.clamp(pi)
+        if self.params.lock_ac:
+            if self.params.lock_dc:
+                return
+            ac = self.params.ac_ir_mv
+            if ac is None:
+                ac = self.params.perfusion_index / 100 * self.params.dc_ir_mv
+            dc = ac * 100 / pi
+            limits.DC_LEVEL_MV.validate(dc)
+            limits.validate_dc_with_offset(dc, self.params.output_dc_offset_mv)
+            self.params.dc_ir_mv = dc
+            self._sync_ac_dc_from_params()
         self.params.perfusion_index = pi
+        self.params.ac_ir_mv = pi / 100.0 * self.params.dc_ir_mv
         self.current_pi = pi
+
+    def _apply_noise_config(self):
+        """Push the parameter block onto both channel generators.
+
+        The two channels are seeded differently (seed, seed+1) so their
+        artefacts are uncorrelated while the pair as a whole stays
+        reproducible when params.noise_seed is set.
+
+        Raises:
+            ValueError: propagated from NoiseGenerator.configure for an unknown
+                kind, a negative amplitude, or a frequency above the usable
+                band of the model tick rate.
+        """
+        p = self.params
+        seed_ir = p.noise_seed
+        seed_red = None if p.noise_seed is None else p.noise_seed + 1
+        self._noise_ir = NoiseGenerator(MODEL_SAMPLE_RATE_PPG, seed=seed_ir)
+        self._noise_red = NoiseGenerator(MODEL_SAMPLE_RATE_PPG, seed=seed_red)
+        for gen in (self._noise_ir, self._noise_red):
+            gen.configure(p.noise_kind,
+                          amplitude_mv=p.noise_amplitude_mv,
+                          freq_hz=p.noise_freq_hz,
+                          level=p.noise_level)
 
     def set_noise_level(self, noise: float):
+        """Legacy 0–1 AC-proportional noise level."""
         self.params.noise_level = _clamp(noise, 0.0, 1.0)
+        self._apply_noise_config()
 
-    def set_dc_levels(self, dc_ir_mv: float, dc_red_mv: float = None):
-        """Set independent per-channel DC levels (mV). Red defaults to IR.
-
-        Validates each channel against the DAC headroom (DC > 0, DC <= full-scale)
-        by reusing calibration.validate_ac_dc with AC = 0. Updates both the
-        persisted params (mV) and the Volts working state.
-        """
-        if dc_red_mv is None:
-            dc_red_mv = dc_ir_mv
-        # AC=0 here → validate_ac_dc only checks the DC constraints (0 < DC <= FS).
-        _, dc_ir_mv = validate_ac_dc(0.0, dc_ir_mv)
-        _, dc_red_mv = validate_ac_dc(0.0, dc_red_mv)
-        self.params.dc_ir_mv = dc_ir_mv
-        self.params.dc_red_mv = dc_red_mv
-        self.dc_ir = dc_ir_mv / 1000.0
-        self.dc_red = dc_red_mv / 1000.0
-        self.dc_baseline = self.dc_ir
-
-    def set_ac_dc(self, ac_ir_mv: float, dc_ir_mv: float, dc_red_mv: float = None):
-        """Master AC/DC entry point (Phase 3): set IR AC amplitude and per-channel DC.
-
-        AC and DC are the master parameters; PI is DERIVED here as
-        PI = AC_ir / DC_ir × 100 and stored on params so the existing PI-driven
-        generator (presets, beat-to-beat variability, HR coupling) uses it. The
-        Red AC is derived downstream from the SpO2 target via the ratio-of-ratios.
-
-        Both channels are validated against the DAC headroom (envelope
-        [DC-AC, DC+AC] within [0, full-scale]) via calibration.validate_ac_dc.
+    def set_noise(self, kind: str, amplitude_mv: float = 0.0,
+                  freq_hz: float = 0.0, seed=None):
+        """Select the artefact kind and its absolute parameters.
 
         Args:
-            ac_ir_mv:  IR AC amplitude in mV (peak, one-sided).
-            dc_ir_mv:  IR DC level in mV.
-            dc_red_mv: Red DC level in mV (defaults to dc_ir_mv → equal-DC).
+            kind: one of models.noise.NOISE_KINDS.
+            amplitude_mv: RMS (white/motion) or peak (sine/powerline), in mV.
+            freq_hz: tone frequency, or the drift cutoff for the motion kind.
+            seed: base seed for reproducible runs; None uses OS entropy.
+
+        Raises:
+            ValueError: if the kind is unknown, the amplitude is negative, or
+                the frequency exceeds what the model tick rate can represent.
+                The parameter block is left unchanged when this happens.
         """
-        if dc_red_mv is None:
-            dc_red_mv = dc_ir_mv
-        ac_ir_mv, dc_ir_mv = validate_ac_dc(ac_ir_mv, dc_ir_mv)
-        # Red channel uses the same AC envelope check for headroom safety.
-        validate_ac_dc(ac_ir_mv, dc_red_mv)
-        self.params.dc_ir_mv = dc_ir_mv
-        self.params.dc_red_mv = dc_red_mv
-        self.dc_ir = dc_ir_mv / 1000.0
-        self.dc_red = dc_red_mv / 1000.0
-        self.dc_baseline = self.dc_ir
-        # PI derived from AC/DC (units cancel; mV/mV). Clamped to the same PI
-        # slider range so the derived value stays consistent with set_perfusion_index.
-        pi = _clamp(perfusion_index_from_ac_dc(ac_ir_mv, dc_ir_mv), 0.5, 20.0)
-        self.params.perfusion_index = pi
+        previous = (self.params.noise_kind, self.params.noise_amplitude_mv,
+                    self.params.noise_freq_hz, self.params.noise_seed)
+        self.params.noise_kind = kind
+        self.params.noise_amplitude_mv = amplitude_mv
+        self.params.noise_freq_hz = freq_hz
+        self.params.noise_seed = seed
+        try:
+            self._apply_noise_config()
+        except ValueError:
+            (self.params.noise_kind, self.params.noise_amplitude_mv,
+             self.params.noise_freq_hz, self.params.noise_seed) = previous
+            self._apply_noise_config()
+            raise
+
+    def set_dc_levels(self, dc_ir_mv: float, dc_red_mv: float = None):
+        dc_red_mv = dc_ir_mv if dc_red_mv is None else dc_red_mv
+        for dc in (dc_ir_mv, dc_red_mv):
+            limits.DC_LEVEL_MV.validate(dc)
+            limits.validate_dc_with_offset(dc, self.params.output_dc_offset_mv)
+        ac = self.params.ac_ir_mv
+        if self.params.lock_ac and ac is not None:
+            pi = ac / dc_ir_mv * 100.0
+        else:
+            pi = self.params.perfusion_index
+            ac = pi / 100.0 * dc_ir_mv
+        self.params.dc_ir_mv, self.params.dc_red_mv = dc_ir_mv, dc_red_mv
+        self.params.ac_ir_mv, self.params.perfusion_index = ac, pi
         self.current_pi = pi
+        self._sync_ac_dc_from_params()
+
+    def set_ac_dc(self, ac_ir_mv: float, dc_ir_mv: float, dc_red_mv: float = None):
+        dc_red_mv = dc_ir_mv if dc_red_mv is None else dc_red_mv
+        validate_ac_dc(ac_ir_mv, dc_ir_mv)
+        validate_ac_dc(ac_ir_mv, dc_red_mv)
+        for dc in (dc_ir_mv, dc_red_mv):
+            limits.DC_LEVEL_MV.validate(dc)
+            limits.validate_dc_with_offset(dc, self.params.output_dc_offset_mv)
+        self.params.dc_ir_mv, self.params.dc_red_mv = dc_ir_mv, dc_red_mv
+        self.params.ac_ir_mv = ac_ir_mv
+        self.params.perfusion_index = ac_ir_mv / dc_ir_mv * 100.0
+        self.current_pi = self.params.perfusion_index
+        self._sync_ac_dc_from_params()
+
+    def set_ac_levels(self, ac_ir_mv, ac_red_mv=None):
+        limits.AC_LEVEL_MV.validate(ac_ir_mv)
+        if ac_red_mv is not None:
+            limits.AC_LEVEL_MV.validate(ac_red_mv)
+        self.params.ac_ir_mv, self.params.ac_red_mv = ac_ir_mv, ac_red_mv
+        self.params.perfusion_index = ac_ir_mv / self.params.dc_ir_mv * 100.0
+        self.current_pi = self.params.perfusion_index
+
+    def set_lock(self, lock_ac=None, lock_dc=None):
+        if lock_ac is not None:
+            self.params.lock_ac = bool(lock_ac)
+        if lock_dc is not None:
+            self.params.lock_dc = bool(lock_dc)
+
+    def set_output_dc_offset(self, offset_mv):
+        limits.OUTPUT_DC_OFFSET_MV.validate(offset_mv)
+        for dc in (self.params.dc_ir_mv, self.params.dc_red_mv):
+            limits.validate_dc_with_offset(dc, offset_mv)
+        self.params.output_dc_offset_mv = offset_mv
+
+    def set_spo2(self, value):
+        self.params.spo2 = limits.SPO2.validate(value)
+
+    def set_resp_rate(self, value):
+        self.set_respiration(self.respiration.config.replace(rate_brpm=value))
+
+    def set_respiration(self, config):
+        config.validate()
+        self.respiration.config = config
+        for source, target in RESP_FIELDS.items():
+            setattr(self.params, target, getattr(config, source))
+
+    def set_modelling_options(self, hr_amplitude, spo2_notch, variability):
+        self.params.hr_amplitude_enabled = self.hr_amplitude_enabled = bool(hr_amplitude)
+        self.params.spo2_coupling_enabled = self.spo2_coupling_enabled = bool(spo2_notch)
+        self.params.variability_enabled = bool(variability)
+        self._init_condition_ranges()
+        if not variability:
+            self.cond_ranges.hr_cv = self.cond_ranges.pi_cv = 0.0
+        self.current_pi = self.params.perfusion_index
+
+    def set_amplification(self, value):
+        self.params.amplification = limits.AMPLIFICATION.validate(value)
+
+    def set_dicrotic_notch(self, value):
+        self.params.dicrotic_notch = limits.DICROTIC_NOTCH_DEPTH.validate(value)
+        self.dicrotic_depth = self.params.dicrotic_notch
+
+    def set_waveform(self, kind):
+        self.params.waveform = validate_kind(kind)
+
+    def set_feature_times(self, channel, sp_ms, dn_ms, dp_ms):
+        if channel not in ("ir", "red"):
+            raise ValueError("channel must be ir or red")
+        for value in (sp_ms, dn_ms, dp_ms):
+            limits.FEATURE_TIME_MS.validate(value)
+        if not sp_ms < dn_ms < dp_ms:
+            raise ValueError("Feature times must satisfy SP < DN < DP")
+        for key, value in zip(("sp_ms_", "dn_ms_", "dp_ms_"), (sp_ms, dn_ms, dp_ms)):
+            setattr(self.params, key + channel, value)
 
     def set_polarity(self, polarity: int):
         """Select AC-above-DC (0, default/legacy) or AC-below-DC (1)."""
@@ -456,7 +631,7 @@ class PPGModel:
         # Seeded random variation centered on user's PI value
         seed_val = self._seeded_rand(self.beat_count * 11 + int(self.phase_in_cycle * 17))
         pi_now = self.params.perfusion_index * (1.0 + cr.pi_cv * (seed_val - 0.5) * 1.2)
-        return _clamp(pi_now, cr.pi_min * 0.8, cr.pi_max * 1.2)
+        return max(0.0, pi_now)
 
     # ─────────────────────── SYSTOLE FRACTION ───────────────────────
     @staticmethod
@@ -479,7 +654,7 @@ class PPGModel:
         rr_mean = 60.0 / self.current_hr
 
         # Arrhythmia: ectopic beats and compensatory pauses
-        if self.params.condition == COND_ARRHYTHMIA:
+        if self.params.condition == COND_ARRHYTHMIA and self.params.variability_enabled:
             r1 = self._seeded_rand(self.beat_count * 7 + 13)
             r2 = self._seeded_rand(self.beat_count * 3 + 7)
             if r1 < 0.15:
@@ -487,18 +662,14 @@ class PPGModel:
             elif r1 < 0.25:
                 rr_mean *= 1.30   # Compensatory pause
             rr_mean *= (1.0 + self.cond_ranges.hr_cv * (r2 - 0.5) * 2.0)
-            rr_mean = _clamp(rr_mean, 0.30, 1.50)
+            rr_mean = _clamp(rr_mean, 0.2, 6.0)
         else:
             # Normal HRV
             rr_std = rr_mean * self.cond_ranges.hr_cv
             rr_mean += self._gaussian_random(0.0, rr_std)
 
-        # FM (RSA) — 5% modulation by respiratory phase
-        resp_rad = self.resp_phase_cycles * 2.0 * math.pi
-        rsa = 0.05 * math.sin(resp_rad)
-        rr_mean *= (1.0 + rsa)
-
-        rr = _clamp(rr_mean, 0.3, 2.0)
+        rr_mean *= self._resp_state.interval_factor
+        rr = _clamp(rr_mean, 0.2, 6.0)
 
         self.systole_fraction = self._calculate_systole_fraction(self.current_hr)
         self.systole_time = rr * 1000.0 * self.systole_fraction
@@ -506,34 +677,18 @@ class PPGModel:
         return rr
 
     # ─────────────────────── PULSE SHAPE ───────────────────────
-    def _compute_pulse_shape(self, phase: float, dicrotic_factor: float = 1.0) -> float:
-        """Compute normalized pulse shape [0, 1].
-
-        Args:
-            phase: Current phase in cardiac cycle (0-1).
-            dicrotic_factor: Multiplier for dicrotic notch depth (1.0 = normal,
-                <1.0 = reduced notch e.g. due to hypoxia/vasoconstriction).
-        """
-        phase = phase % 1.0
-        if phase < 0:
-            phase += 1.0
-
-        systolic = self.systolic_amplitude * math.exp(
-            -(phase - PPG_SYSTOLIC_POS) ** 2 / (2.0 * self.systolic_width ** 2))
-        diastolic = self.diastolic_amplitude * math.exp(
-            -(phase - PPG_DIASTOLIC_POS) ** 2 / (2.0 * self.diastolic_width ** 2))
-        notch = self.dicrotic_depth * dicrotic_factor * self.systolic_amplitude * math.exp(
-            -(phase - PPG_NOTCH_POS) ** 2 / (2.0 * self.dicrotic_width ** 2))
-
-        pulse = systolic + diastolic - notch
-        return self._normalize_pulse(pulse)
-
-    @staticmethod
-    def _normalize_pulse(raw: float) -> float:
-        PULSE_MIN = 0.0
-        PULSE_MAX = 1.4
-        normalized = (raw - PULSE_MIN) / (PULSE_MAX - PULSE_MIN)
-        return _clamp(normalized, 0.0, 1.0)
+    def _compute_pulse_shape(self, phase, dicrotic_factor=1.0, channel="ir"):
+        p = self.params
+        shaper = self._shapers[channel]
+        shaper.morphology = PulseMorphology.from_times_ms(
+            getattr(p, "sp_ms_" + channel), getattr(p, "dn_ms_" + channel),
+            getattr(p, "dp_ms_" + channel),
+            systolic_amplitude=self.systolic_amplitude,
+            diastolic_amplitude=self.diastolic_amplitude,
+            dicrotic_depth=self.dicrotic_depth,
+            systolic_width=self.systolic_width, diastolic_width=self.diastolic_width,
+            notch_width=self.dicrotic_width)
+        return shaper.sample(p.waveform, phase, dicrotic_factor)
 
     # ─────────────────────── BEAT DETECTION ───────────────────────
     def _detect_beat_and_apply_pending(self):
@@ -559,7 +714,7 @@ class PPGModel:
             legacy model: AC_ir = PI × 0.015 V and AC_red = R × AC_ir.
 
         Ratio-of-ratios (A/B configurable, default 110/25):
-            R = (A - SpO2) / B, clamped to [0.4, 1.6]. Because AC_red carries the
+            R = max(0, (A - SpO2) / B). Because AC_red carries the
             (DC_red/DC_ir) correction, the reconstructed
             R = (AC_red/DC_red)/(AC_ir/DC_ir) equals the target R for ANY DC pair.
 
@@ -569,9 +724,9 @@ class PPGModel:
 
         Respiratory modulations (Charlton 2018) — per channel, scaled by that
         channel's DC:
-            BW: Baseline wander ≈ 0.2% (slow) + 0.4% (resp) of DC × sin(phase)
-            AM: Amplitude modulation = 1 + 0.25 × sin(resp_phase)
-            FM: RSA applied in _generate_next_rr() (±5%)
+            BW/AM: configurable per-channel depth relative to AC (default 4%).
+            FM: configurable RSA via the shared RespirationModulator.
+            Each modulation can be disabled; optional apnea gates respiration.
 
         Optional physiological couplings:
             HR → amplitude: -3.2% per 10 BPM above 60 (research-based)
@@ -583,6 +738,8 @@ class PPGModel:
         Returns:
             Tuple (signal_ir_V, signal_red_V, display_ir_V, display_red_V).
         """
+        self._resp_state = self.respiration.advance(delta_time)
+        self.resp_phase_cycles = self._resp_state.cycles
         # Advance phase
         self.phase_in_cycle += delta_time / self.current_rr
         self.simulated_time_s += delta_time
@@ -600,22 +757,27 @@ class PPGModel:
 
         # Pulse shape (normalized [0, 1])
         pulse = self._compute_pulse_shape(self.phase_in_cycle, dicrotic_factor)
+        pulse_red = self._compute_pulse_shape(self.phase_in_cycle, dicrotic_factor, "red")
 
         # Dual channel: full ratio-of-ratios.
-        # R_target = (A - SpO2) / B, clamped to physiological range [0.4, 1.6].
+        # Preserve the full nonnegative calibration ratio: 0–100% targets must
+        # not all collapse to the old 70% floor (R=1.6 at default A/B).
         # A/B come from the configurable SpO2 calibration (default 110/25) — the
         # single source of truth in calibration.py (no longer hardcoded here).
-        r_value = _clamp(
-            r_target_from_spo2(self.params.spo2,
-                               self.params.spo2_coeff_a,
-                               self.params.spo2_coeff_b),
-            R_CLAMP_MIN, R_CLAMP_MAX)
+        r_value = max(0.0, r_target_from_spo2(self.params.spo2,
+                               self.params.spo2_coeff_a, self.params.spo2_coeff_b))
         # IR AC magnitude from the (possibly beat-varied) PI and the IR DC:
         #     AC_ir = PI/100 · DC_ir   (strict clinical PI = AC/DC × 100).
         ac_ir = self.current_pi / 100.0 * self.dc_ir
         # Red AC derived so the reconstructed ratio-of-ratios equals R_target for
         # any DC pair:  AC_red = R · AC_ir · (DC_red/DC_ir).
         ac_red = ac_red_from_target(r_value, ac_ir, self.dc_red, self.dc_ir)
+
+        if self.params.ac_red_mv is not None:
+            variation = self.current_pi / self.params.perfusion_index if self.params.perfusion_index else 1.0
+            ac_red = self.params.ac_red_mv / 1000.0 * variation
+        ac_ir *= self.params.amplification
+        ac_red *= self.params.amplification
 
         # HR → amplitude coupling (optional)
         # Research: pulse amplitude decreases ~3.2% per 10 BPM above 60
@@ -627,41 +789,22 @@ class PPGModel:
             ac_red *= hr_amp_factor
 
         ac_val_ir = pulse * ac_ir
-        ac_val_red = pulse * ac_red
+        ac_val_red = pulse_red * ac_red
 
         self.last_ac_ir = ac_val_ir
         self.last_ac_red = ac_val_red
 
-        # Respiratory modulations (Charlton 2018)
-        # simRespPh += dt * (RR / 60)  → phase in cycles
-        # respRad = simRespPh * 2π     → convert to radians
-        self.resp_phase_cycles += delta_time * (self.params.resp_rate / 60.0)
-        resp_rad = self.resp_phase_cycles * 2.0 * math.pi
+        resp = self._resp_state
+        wander_ir = resp.baseline_ir * ac_ir
+        wander_red = resp.baseline_red * ac_red
+        ac_val_ir *= resp.amplitude_ir
+        ac_val_red *= resp.amplitude_red
 
-        # Baseline wander (BW) — proportional to EACH channel's DC.
-        # ~0.2% DC slow drift + ~0.4% DC respiratory component. Both channels
-        # share the same phases; only the DC scale differs (independent DC).
-        bw_slow_phase = math.sin(self.simulated_time_s * 0.3 * 2.0 * math.pi)
-        bw_resp_phase = math.sin(resp_rad)
-        wander_ir = 0.002 * self.dc_ir * bw_slow_phase + 0.004 * self.dc_ir * bw_resp_phase
-        wander_red = 0.002 * self.dc_red * bw_slow_phase + 0.004 * self.dc_red * bw_resp_phase
-
-        # AM (amplitude modulation by respiration) — multiplies both channels
-        # equally, so the ratio-of-ratios is preserved.
-        am_factor = 1.0 + 0.25 * math.sin(resp_rad)
-        ac_val_ir *= am_factor
-        ac_val_red *= am_factor
-
-        # Noise — proportional to AC amplitude
-        noise_ir = 0.0
-        noise_red = 0.0
-        if self.params.noise_level > 0:
-            noise_seed_ir = self._seeded_rand(
-                self.beat_count * 31 + int(self.simulated_time_ms) % 997)
-            noise_seed_red = self._seeded_rand(
-                self.beat_count * 53 + int(self.simulated_time_ms) % 991)
-            noise_ir = (noise_seed_ir - 0.5) * 2.5 * self.params.noise_level * ac_ir
-            noise_red = (noise_seed_red - 0.5) * 2.5 * self.params.noise_level * ac_red
+        # Artefact — one real pseudo-random stream per channel (models.noise).
+        # ac_ir/ac_red are passed for the legacy proportional kind only; every
+        # other kind is amplitude-absolute and ignores them.
+        noise_ir = self._noise_ir.sample(delta_time, ac_ir)
+        noise_red = self._noise_red.sample(delta_time, ac_red)
 
         # Polarity: pulse rides ABOVE the DC (default/legacy) or BELOW it.
         # Only the pulsatile AC term carries the sign; the (slow) baseline wander
@@ -673,9 +816,11 @@ class PPGModel:
         self.last_display_red = sign * ac_val_red + wander_red + noise_red
 
         # Raw signals for DAC (per-channel DC + AC + wander + noise)
-        signal_ir = self.dc_ir + self.last_display_ir
-        signal_red = self.dc_red + self.last_display_red
+        signal_ir = self.dc_ir + self.params.output_dc_offset_mv / 1000.0 + self.last_display_ir
+        signal_red = self.dc_red + self.params.output_dc_offset_mv / 1000.0 + self.last_display_red
 
+        if not (0 <= signal_ir <= DAC_FULLSCALE_V and 0 <= signal_red <= DAC_FULLSCALE_V):
+            self.clipped_samples += 1
         # Clamp to DAC voltage range [0, DAC_FULLSCALE_V] (3.28 V)
         signal_ir = _clamp(signal_ir, 0.0, DAC_FULLSCALE_V)
         signal_red = _clamp(signal_red, 0.0, DAC_FULLSCALE_V)
@@ -796,13 +941,17 @@ class PPGModel:
         """Enable/disable HR → pulse amplitude reduction.
         When enabled, amplitude decreases ~3.2% per 10 BPM above 60.
         """
-        self.hr_amplitude_enabled = enabled
+        value = bool(enabled)
+        self.params.hr_amplitude_enabled = value
+        self.hr_amplitude_enabled = value
 
     def set_spo2_coupling(self, enabled: bool):
         """Enable/disable SpO2 → vasoconstriction coupling.
         When enabled, dicrotic notch fades when SpO2 < 94%.
         """
-        self.spo2_coupling_enabled = enabled
+        value = bool(enabled)
+        self.params.spo2_coupling_enabled = value
+        self.spo2_coupling_enabled = value
 
     def get_measured_pi(self) -> float:
         """Return measured PI = (AC / DC) × 100% from model output."""

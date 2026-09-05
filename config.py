@@ -13,8 +13,10 @@ import os
 # SYSTEM IDENTIFICATION
 # ============================================================================
 DEVICE_NAME = "PPG Signal Simulator"
-FIRMWARE_VERSION = "3.1.0"
-FIRMWARE_DATE = "01 May 2026"
+# Single source of truth for the version. README.md must match it
+# (tests/test_version_consistency.py enforces this).
+FIRMWARE_VERSION = "5.0.0"
+FIRMWARE_DATE = "05 September 2026"
 HARDWARE_MODEL = "Raspberry Pi 4"
 
 # ============================================================================
