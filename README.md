@@ -25,7 +25,7 @@ sung khối điện tử ngoài hộp tối.
 │  │               │  MCP4725 #1 │  MCP4725 #1 (0x60) ─ IR  DAC channel   │  │
 │  │  SignalEngine │  MCP4725 #2 │  MCP4725 #2 (0x61) ─ Red DAC channel   │  │
 │  │  (1 kHz PPG)  │             │  10 kΩ/10 kΩ divider → V_cmd = Vdac/2  │  │
-│  │  param_ctl    │             │  LM358 (op-amp) → 2×2N4401 current sink│  │
+│  │  param_ctl    │             │  LM358 (op-amp) → 2× NPN current sink       │  │
 │  │  state_machine│             │  R_sense: IR R3=82 Ω / Red R6=100 Ω    │  │
 │  └──────┬────────┘             └───────────────────┬────────────────────┘  │
 │         │                                          │ I_LED (V_cmd/R_sense) │
@@ -319,7 +319,7 @@ vít M3 + đai ốc mà không phải in lại đế.
 >
 > Ngoài ra chỉ hiển thị trong viewer để duyệt lắp ráp: `led_red`, `led_ir`,
 > `opt101_red` (#2 → A2), `opt101_ir` (#1 → A0), `sensor_board` (5×7 cm), `pi4`,
-> `grove_hat`, `driver_board` (perfboard + LM358 + 2×2N4401 + 2× MCP4725),
+> `grove_hat`, `driver_board` (perfboard + LM358 + 2× NPN + 2× MCP4725),
 > `push_rod_red/_ir` (thanh Ø5 mua sẵn), `screen7` (panel 7"), `wiring`.
 
 **Thông số in khuyến nghị**
@@ -672,3 +672,5 @@ là mặt trước** và cả 3 cụm xếp thành một hàng trước → sau.
   `base_neg × screen_foot_1`, `base_pos × screen_foot_1` và 2 check thứ tự
   trước→sau. Gói Bambu **không đổi** (12 file, all-in-one 237×235 mm) vì
   `PRINT_SET` không chứa đế và chân màn hình.
+
+> **NPN transistor:** nhãn trong model 3D chỉ là nhãn cơ khí. Repo chưa thống nhất được 2SC1815 hay 2N4401 (chỉ có datasheet 2SC1815 trên đĩa, người dùng khai báo 2N4401). Chân TO-92 của hai loại KHÁC nhau (E-C-B vs E-B-C) → phải đo bằng DMM trước khi hàn. Xem [../hardware/TRANSISTOR_IDENTIFICATION.md](../hardware/TRANSISTOR_IDENTIFICATION.md).
