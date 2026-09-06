@@ -1,0 +1,5 @@
+# Exact versions used for mechanical-v4 exports and geometry verification.
+numpy==2.5.2
+trimesh==5.0.0
+manifold3d==3.5.2
+matplotlib==3.11.1

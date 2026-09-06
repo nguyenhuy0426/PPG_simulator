@@ -1,0 +1,1223 @@
+{
+  "revision": "mechanical-v4",
+  "passed": 243,
+  "failed": 0,
+  "checks": [
+    {
+      "label": "exact file set (16 STL)",
+      "passed": true,
+      "detail": "(16 files; extra=[], missing=[])"
+    },
+    {
+      "label": "aperture_red_blank.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d16.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d2.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d5.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "base_neg.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "base_pos.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "body.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "frame.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "hood_l_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "hood_r_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "led_carrier_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "lid.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "push_rod_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "rod_knob_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "screen_foot_1.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "slide_shaft_red.stl watertight",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "lid bounds y = 60.2..67 (no interior board stops)",
+      "passed": true,
+      "detail": "(y = 60.20..67.00)"
+    },
+    {
+      "label": "body bounds x = -18..152 (b\u1ec7 thanh tr\u01b0\u1ee3t -X + 2 b\u1ec7 nh\u00f4 2 mm)",
+      "passed": true,
+      "detail": "(x = -18.00..152.00)"
+    },
+    {
+      "label": "hood_l peg (y=5, z=-33.75) solid",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "hood_l peg (y=13.5, z=-4.75) solid",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "hood_r peg (y=5, z=-33.75) solid",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "hood_r peg (y=13.5, z=-4.75) solid",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "hood_l gi\u1eefa 2 tr\u1ee5 r\u1ed7ng",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "hood_r gi\u1eefa 2 tr\u1ee5 r\u1ed7ng",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body l\u1ed7 tr\u1ee5 c\u1eafm (y=5.0, z=-33.75) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body l\u1ed7 tr\u1ee5 c\u1eafm (y=5.0, z=-4.75) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body l\u1ed7 tr\u1ee5 c\u1eafm (y=13.5, z=-33.75) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body l\u1ed7 tr\u1ee5 c\u1eafm (y=13.5, z=-4.75) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body tr\u1ee5 \u0111\u1ee9ng sau \u0111\u00e1y l\u1ed7 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "hood_l g\u00e2n k\u00edn s\u00e1ng \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "body r\u00e3nh k\u00edn s\u00e1ng m\u1edf (nh\u1eadn g\u00e2n)",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "body l\u1ed7 ra c\u00e1p m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "carrier max y = 40.0 (kh\u00f4ng c\u00f2n th\u00e1p nam ch\u00e2m)",
+      "passed": true,
+      "detail": "(max y = 40.00)"
+    },
+    {
+      "label": "l\u1ed7 m\u00f9 nh\u1eadn thanh \u00d85 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "7 mm v\u1eadt li\u1ec7u \u0111\u1eb7c tr\u01b0\u1edbc l\u1ed7 (kh\u00f4ng xuy\u00ean s\u00e1ng)",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 D \u00f4m tr\u1ee5c m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "th\u00e2n carrier \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 thanh tr\u01b0\u1ee3t (l\u00e0n \u0111\u1ecf) m\u1edf ngo\u00e0i b\u1ec7",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "l\u1ed7 thanh tr\u01b0\u1ee3t (l\u00e0n IR) m\u1edf ngo\u00e0i b\u1ec7",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "l\u1ed7 thanh tr\u01b0\u1ee3t xuy\u00ean h\u1ebft v\u00e1ch",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "v\u00e1ch b\u1ec7 ph\u00eda tr\u00ean l\u1ed7 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "v\u00e1ch b\u1ec7 hai b\u00ean l\u1ed7 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "d\u01b0\u1edbi \u0111\u1ec9nh nh\u1ecdn 18.8 l\u00e0 kh\u00f4ng kh\u00ed",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "ngo\u00e0i \u0111\u1ea7u b\u1ec7 (x=-19.5) l\u00e0 kh\u00f4ng kh\u00ed",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "knob bounds x -45..-37, \u00d816 quanh (y=24, z=-19.25)",
+      "passed": true,
+      "detail": "(lo=(-45.0, 16.24, -27.25), hi=(-37.0, 31.76, -11.25))"
+    },
+    {
+      "label": "l\u1ed7 m\u00f9 \u00d85.4 trong n\u00fam m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "\u0111\u00e1y l\u1ed7 m\u00f9 (2 mm) \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 v\u00edt ch\u1eb7n M3 trong n\u00fam m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "r\u00e3nh c\u1ea7m tay tr\u00ean v\u00e0nh n\u00fam",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "c\u1eeda s\u1ed5 c\u0169 l\u00e0n \u0111\u1ecf \u0111\u00e3 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "c\u1eeda s\u1ed5 c\u0169 l\u00e0n IR \u0111\u00e3 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "r\u00e3nh c\u1ea7n tr\u01b0\u1ee3t c\u0169 nay \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "v\u1ea5u ch\u1eb7n tr\u01b0\u1edbc c\u0169 nay l\u00e0 t\u1ea5m \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "v\u1ea5u ch\u1eb7n sau c\u0169 nay l\u00e0 t\u1ea5m \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "v\u1ea1ch chia d=25 c\u0169 \u0111\u00e3 bi\u1ebfn m\u1ea5t",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "v\u1ea1ch chia d=85 c\u0169 \u0111\u00e3 bi\u1ebfn m\u1ea5t",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 m\u1ed3i v\u00edt ch\u1ee5p c\u0169 (-X) \u0111\u00e3 b\u1ecbt",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 m\u1ed3i v\u00edt ch\u1ee5p c\u0169 (+X) \u0111\u00e3 b\u1ecbt",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "khe kh\u1ea9u \u0111\u1ed9 l\u00e0n \u0111\u1ecf m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "khe kh\u1ea9u \u0111\u1ed9 l\u00e0n IR m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "m\u00e1ng d\u00e2y LED m\u1edf (x=50)",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "s\u00e0n \u0111\u1eb7c tr\u01b0\u1edbc m\u00e1ng (x=5, d\u01b0\u1edbi tr\u1ee5 \u0111\u1ee9ng)",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "base_neg v\u1ecb tr\u00ed v\u00edt n\u1ed1i c\u0169 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "base_neg v\u1ecb tr\u00ed v\u00edt n\u1ed1i c\u0169 #2 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "base_neg m\u1ed9ng d\u01b0\u01a1ng x=43 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "base_neg m\u1ed9ng d\u01b0\u01a1ng x=111 \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "base_pos m\u1ed9ng \u00e2m x=43 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "base_pos m\u1ed9ng \u00e2m x=111 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "base_pos m\u1ed9ng \u00e2m x=77 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "b\u1ec7 v\u00edt ch\u00e2n m\u00e0n h\u00ecnh (x=20,z=-186) \u0111\u1eb7c",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "l\u1ed7 v\u00edt M3 ch\u00e2n m\u00e0n h\u00ecnh #1 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "l\u1ed7 v\u00edt M3 ch\u00e2n m\u00e0n h\u00ecnh #4 m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "l\u01b0\u1edbi l\u1ed7 M3 m\u1edf r\u1ed9ng (30, 62) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "l\u01b0\u1edbi l\u1ed7 M3 m\u1edf r\u1ed9ng (120, 80) m\u1edf",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "\u0111\u1ebf \u0111\u1eb7c gi\u1eefa 4 l\u1ed7 m\u1edf r\u1ed9ng",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "ch\u00e2n m\u00e0n h\u00ecnh n\u1eb1m h\u1eb3n ph\u00eda TR\u01af\u1edaC c\u1ee5m \u0111i\u1ec7n t\u1eed (z <= -130)",
+      "passed": true,
+      "detail": "(m\u00e9p sau ch\u00e2n z = -136.0, m\u00e9p tr\u01b0\u1edbc board driver z = -112)"
+    },
+    {
+      "label": "\u0111\u1ebf n\u1eeda tr\u01b0\u1edbc ph\u1ee7 h\u1ebft ch\u00e2n m\u00e0n h\u00ecnh (z <= -196)",
+      "passed": true,
+      "detail": "(\u0111\u1ebf z0 = -196.0, ch\u00e2n z0 = -190.0)"
+    },
+    {
+      "label": "body \u00d7 lid",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 led_carrier_red",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 slide_shaft_red",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "led_carrier_red \u00d7 slide_shaft_red",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "base_neg \u00d7 screen_foot_1",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "base_pos \u00d7 screen_foot_1",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 hood_l_red",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 hood_r_red",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "base_neg \u00d7 base_pos",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 base_neg",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 base_pos",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 aperture_red_blank",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "led_carrier_red \u00d7 lid",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "body \u00d7 screen_foot_1",
+      "passed": true,
+      "detail": "(V=0.00e+00 mm\u00b3)"
+    },
+    {
+      "label": "bambu file set (15 STL + manifest)",
+      "passed": true,
+      "detail": "(16 files; extra=[], missing=[])"
+    },
+    {
+      "label": "bambu n\u00fam cao ~8.0 (m\u1eb7t \u0111\u00e1y ph\u1eb3ng \u00fap xu\u1ed1ng b\u00e0n)",
+      "passed": true,
+      "detail": "(h=8.00)"
+    },
+    {
+      "label": "bambu n\u00fam: l\u1ed7 m\u00f9 quay L\u00caN (r\u1ed7ng ph\u00eda tr\u00ean)",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "bambu n\u00fam: \u0111\u00e1y \u0111\u1eb7c (2 mm)",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "aperture blank: flat 1.6 x 62.9 x 34.9 mm, no pull tab",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture blank: 0.8 mm engagement above lid seat",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d2: flat 1.6 x 62.9 x 34.9 mm, no pull tab",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d2: 0.8 mm engagement above lid seat",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d5: flat 1.6 x 62.9 x 34.9 mm, no pull tab",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d5: 0.8 mm engagement above lid seat",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d16: flat 1.6 x 62.9 x 34.9 mm, no pull tab",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture d16: 0.8 mm engagement above lid seat",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "old board-stop projection absent",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "aperture lid pocket is recessed",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "pocket roof remains solid",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "front frame-retaining shoulder on body",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "D rail support opens upward for assembly",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=-1.95, z=-19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=2.95, z=-19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=147.05, z=-19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=151.95, z=-19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=-1.95, z=19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=2.95, z=19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=147.05, z=19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "cable passage actually opens through wall surfaces x=151.95, z=19.25",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "push rod: diameter 5 mm, length 130 mm",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "carrier socket radius >=2.62 mm",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "carrier socket radius <2.8 mm",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "knob socket radius >=2.62 mm",
+      "passed": true,
+      "detail": "(ray=out, cube=out, expect=out)"
+    },
+    {
+      "label": "knob socket radius <2.8 mm",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "aperture slot side clearance 0.20 mm",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "lid pocket top clearance 0.30 mm",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "lid pocket roof thickness 1.90 mm",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_blank: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d16: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d2: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "aperture_red_d5: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "base_neg: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "base_pos: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "body: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "frame: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "hood_l_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "hood_r_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "led_carrier_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "lid: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "push_rod_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "rod_knob_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "screen_foot_1: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "slide_shaft_red: one connected positive solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "full STL: all 339 assembled pairs incl. lid/apertures/frame/IR",
+      "passed": true,
+      "detail": "max=6.0633e-13 mm3; collisions=[]"
+    },
+    {
+      "label": "full STL: red travel 15..90 mm, 151 positions",
+      "passed": true,
+      "detail": "max=0 mm3; collisions=[]"
+    },
+    {
+      "label": "full STL: ir travel 15..90 mm, 151 positions",
+      "passed": true,
+      "detail": "max=0 mm3; collisions=[]"
+    },
+    {
+      "label": "full STL: top insertion aperture_red_blank",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_red_d16",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_red_d2",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_red_d5",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_ir_blank",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_ir_d16",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_ir_d2",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion aperture_ir_d5",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: top insertion frame",
+      "passed": true,
+      "detail": "max=1.21266e-12 mm3"
+    },
+    {
+      "label": "full STL: D rail red top-entry then 3 mm seating",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: D rail ir top-entry then 3 mm seating",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "full STL: lid closing with apertures/frame fitted",
+      "passed": true,
+      "detail": "33 positions, max=0 mm3"
+    },
+    {
+      "label": "23 instances incl. 2 round rods, 8 interchangeable apertures, 1 frame",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "01_than_hop_toi.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "01_than_hop_toi.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.00637523 mm3"
+    },
+    {
+      "label": "01_than_hop_toi.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "02_nap_labyrinth.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "02_nap_labyrinth.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=1.45519e-11 mm3"
+    },
+    {
+      "label": "02_nap_labyrinth.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "Bambu lid outside face flat on bed",
+      "passed": true,
+      "detail": "(ray=in, cube=in, expect=in)"
+    },
+    {
+      "label": "03_truc_truot_D.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "03_truc_truot_D.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.000133162 mm3"
+    },
+    {
+      "label": "03_truc_truot_D.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "D rail flat faces print bed; height 6.5 mm",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "04_carrier_led.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "04_carrier_led.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=6.78631e-05 mm3"
+    },
+    {
+      "label": "04_carrier_led.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "05_num_thanh_truot.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "05_num_thanh_truot.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=1.96551e-05 mm3"
+    },
+    {
+      "label": "05_num_thanh_truot.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "06_chup_luon_day_trai.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "06_chup_luon_day_trai.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=9.73482e-05 mm3"
+    },
+    {
+      "label": "06_chup_luon_day_trai.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "07_chup_luon_day_phai.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "07_chup_luon_day_phai.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.000381173 mm3"
+    },
+    {
+      "label": "07_chup_luon_day_phai.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "08_khau_do_biet.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "08_khau_do_biet.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.00648371 mm3"
+    },
+    {
+      "label": "08_khau_do_biet.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "09_khau_do_lo2mm.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "09_khau_do_lo2mm.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.00672379 mm3"
+    },
+    {
+      "label": "09_khau_do_lo2mm.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "10_khau_do_lo5mm.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "10_khau_do_lo5mm.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.00669477 mm3"
+    },
+    {
+      "label": "10_khau_do_lo5mm.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "11_khau_do_lo16mm.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "11_khau_do_lo16mm.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.00618757 mm3"
+    },
+    {
+      "label": "11_khau_do_lo16mm.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "12_truc_day_tron_D5x130.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "12_truc_day_tron_D5x130.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.000627902 mm3"
+    },
+    {
+      "label": "12_truc_day_tron_D5x130.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "13_khung_board_5x7.stl: watertight single solid at Z=0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "13_khung_board_5x7.stl: same solid as source after rigid rotation",
+      "passed": true,
+      "detail": "symmetric difference=0.000562773 mm3"
+    },
+    {
+      "label": "13_khung_board_5x7.stl: manifest hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "Bambu exported STL: all 241 assembled pairs incl. lid/apertures/frame/IR",
+      "passed": true,
+      "detail": "max=0 mm3; collisions=[]"
+    },
+    {
+      "label": "Bambu exported STL: red travel 15..90 mm, 151 positions",
+      "passed": true,
+      "detail": "max=0 mm3; collisions=[]"
+    },
+    {
+      "label": "Bambu exported STL: ir travel 15..90 mm, 151 positions",
+      "passed": true,
+      "detail": "max=0 mm3; collisions=[]"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_red_blank",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_red_d2",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_red_d5",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_red_d16",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_ir_blank",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_ir_d2",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_ir_d5",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion aperture_ir_d16",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: top insertion frame",
+      "passed": true,
+      "detail": "max=2.42532e-12 mm3"
+    },
+    {
+      "label": "Bambu exported STL: D rail red top-entry then 3 mm seating",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: D rail ir top-entry then 3 mm seating",
+      "passed": true,
+      "detail": "max=0 mm3"
+    },
+    {
+      "label": "Bambu exported STL: lid closing with apertures/frame fitted",
+      "passed": true,
+      "detail": "33 positions, max=0 mm3"
+    },
+    {
+      "label": "00_ban_1_co_khi.stl: fits 256 mm bed with 8 mm margin",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "00_ban_1_co_khi.stl: every instance is separate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "00_ban_1_co_khi.stl: no footprint overlaps",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "01_than_hop_toi.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "02_nap_labyrinth.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "12_truc_day_tron_D5x130.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "12_truc_day_tron_D5x130.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "03_truc_truot_D.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "03_truc_truot_D.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "06_chup_luon_day_trai.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "06_chup_luon_day_trai.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "07_chup_luon_day_phai.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "07_chup_luon_day_phai.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "04_carrier_led.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "04_carrier_led.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "05_num_thanh_truot.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "05_num_thanh_truot.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "00_ban_2_khau_do_khung.stl: fits 256 mm bed with 8 mm margin",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "00_ban_2_khau_do_khung.stl: every instance is separate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "00_ban_2_khau_do_khung.stl: no footprint overlaps",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "13_khung_board_5x7.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "09_khau_do_lo2mm.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "09_khau_do_lo2mm.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "10_khau_do_lo5mm.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "10_khau_do_lo5mm.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "11_khau_do_lo16mm.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "11_khau_do_lo16mm.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "08_khau_do_biet.stl#1: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "08_khau_do_biet.stl#2: placement matches exported solid",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "both plates contain EXACT required quantities",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "scope": "Nominal CAD geometry; stroke sampled every 0.5 mm. Physical printing, friction and light leakage not measured."
+}

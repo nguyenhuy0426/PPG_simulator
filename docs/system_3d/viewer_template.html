@@ -64,8 +64,8 @@
     <div class="row"><button id="bSept">🧱 Vách ngăn quang</button></div>
     <div class="hint">Kéo slider: thanh trụ Ø5 gắn cứng vào lưng carrier, xuyên vách −X
     qua bệ dẫn hướng dài 21 mm — đẩy/kéo bằng tay từ NGOÀI, không cần mở nắp
-    (d=15..90 mm). Chiều dài thanh lộ ra ngoài bệ <b>đúng bằng d</b> (mm), đo bằng
-    thước là biết ngay khoảng cách. <b>Vách ngăn quang</b> (z=0, 3&nbsp;mm) chạy dọc theo toàn bộ
+    (d=15..90 mm). Đo khe từ mặt bệ tới mặt trong núm rồi <b>cộng 6 mm để ra d</b>;
+    hai đầu trục phải cắm hết chiều sâu thiết kế. <b>Vách ngăn quang</b> (z=0, 3&nbsp;mm) chạy dọc theo toàn bộ
     hành trình đó — nó tách 2 bước sóng thành 2 kênh riêng và <u>không</u> che đường
     nhìn của OPT101 vì nằm song song với trục quang.</div>
   </fieldset>
@@ -87,25 +87,29 @@
     <div id="iInfo" class="hint" style="margin-top:4px"></div>
   </fieldset>
   <fieldset><legend>Bộ phận (bấm để ẩn/hiện)</legend><div id="parts"></div></fieldset>
-  <fieldset><legend>📦 Tải file in 3D (STL bản v3 — thanh trượt đẩy-kéo)</legend>
-    <div class="hint">In nhựa đen mờ · layer 0.2 mm · tường ≥ 4 vòng · carrier &amp; núm infill 100%. Mua thêm: 2× thanh trụ tròn <b>Ø5 h8 × 130 mm</b> (thép/inox), 2× vít lục giác chìm M3×6 (chặn núm), 4× vít M3×16 (tai đế), 6× vít M3×12 + đai ốc (chân màn hình). Chụp cáp <b>không còn dùng vít</b> — cắm 4 trụ Ø4.</div>
+  <fieldset><legend>📦 Tải file in 3D (STL cơ khí v4 — đủ hai làn)</legend>
+    <div class="hint">Hai bàn in chứa đủ <b>23 chi tiết</b>, gồm 2 trục tròn Ø5 × 130 mm và 4 cặp khẩu độ thay thế. Chỉ lắp một tấm khẩu độ mỗi làn. Vít giữ thanh: 2× M3×8 cho carrier, 2× M3×6 cho núm. Kiểm tra support/brim trong slicer, đặc biệt ở trục tròn, bệ dẫn hướng và chụp. Kích thước là CAD danh nghĩa; độ trượt và kín sáng cần kiểm tra sau in.</div>
     <div style="display:flex;flex-direction:column;gap:2px;font-size:12px">
-      <a href="print_bambu/00_ppg_hop_toi_A1_all_in_one.stl" download>⬇ ALL-IN-ONE — cả 11 chi tiết hộp tối xếp sẵn 1 bàn (Bambu A1)</a>
-      <a href="stl/body.stl" download>body.stl — thân hộp ×1</a>
-      <a href="stl/lid.stl" download>lid.stl — nắp labyrinth ×1</a>
-      <a href="stl/slide_shaft_red.stl" download>slide_shaft_red.stl — trục trượt D ×2</a>
-      <a href="stl/led_carrier_red.stl" download>led_carrier_red.stl — carrier LED ×2</a>
-      <a href="stl/rod_knob_red.stl" download>rod_knob_red.stl — núm cầm thanh trượt ×2</a>
-      <a href="stl/hood_l_red.stl" download>hood_l_red.stl — chụp cáp trái ×2</a>
-      <a href="stl/hood_r_red.stl" download>hood_r_red.stl — chụp cáp phải ×2</a>
-      <a href="stl/frame.stl" download>frame.stl — khung board 5×7 ×1</a>
-      <a href="stl/aperture_red_blank.stl" download>aperture_red_blank.stl — khẩu độ bịt ×2</a>
-      <a href="stl/aperture_red_d2.stl" download>aperture_red_d2.stl — khẩu độ Ø2 ×2</a>
-      <a href="stl/aperture_red_d5.stl" download>aperture_red_d5.stl — khẩu độ Ø5 ×2</a>
-      <a href="stl/aperture_red_d16.stl" download>aperture_red_d16.stl — khẩu độ Ø16 ×2</a>
-      <a href="stl/base_neg.stl" download>base_neg.stl — đế nửa TRƯỚC (chân màn hình + Pi + HAT + driver) ×1</a>
-      <a href="stl/base_pos.stl" download>base_pos.stl — đế nửa SAU (dưới hộp tối + lưới lỗ mở rộng) ×1</a>
-      <a href="stl/screen_foot_1.stl" download>screen_foot_1.stl — chân đỡ màn hình 7" ×2</a>
+      <a href="out/print_bambu/00_ban_1_co_khi.stl" download>⬇ Bàn 1 — 14 chi tiết cơ khí cho hai làn</a>
+      <a href="out/print_bambu/00_ban_2_khau_do_khung.stl" download>⬇ Bàn 2 — 8 khẩu độ + khung board</a>
+      <a href="out/print_bambu/12_truc_day_tron_D5x130.stl" download>⬇ Trục đẩy tròn Ø5 × 130 mm — in 2</a>
+      <a href="out/print_bambu/manifest.json" download>Danh mục kích thước và số lượng</a>
+      <a href="out/stl/body.stl" download>body.stl — thân hộp ×1</a>
+      <a href="out/stl/lid.stl" download>lid.stl — nắp labyrinth ×1</a>
+      <a href="out/stl/slide_shaft_red.stl" download>slide_shaft_red.stl — trục trượt D ×2</a>
+      <a href="out/stl/led_carrier_red.stl" download>led_carrier_red.stl — carrier LED ×2</a>
+      <a href="out/stl/push_rod_red.stl" download>push_rod_red.stl — trục đẩy tròn ×2</a>
+      <a href="out/stl/rod_knob_red.stl" download>rod_knob_red.stl — núm cầm thanh trượt ×2</a>
+      <a href="out/stl/hood_l_red.stl" download>hood_l_red.stl — chụp cáp trái ×2</a>
+      <a href="out/stl/hood_r_red.stl" download>hood_r_red.stl — chụp cáp phải ×2</a>
+      <a href="out/stl/frame.stl" download>frame.stl — khung board 5×7 ×1</a>
+      <a href="out/stl/aperture_red_blank.stl" download>aperture_red_blank.stl — khẩu độ bịt ×2</a>
+      <a href="out/stl/aperture_red_d2.stl" download>aperture_red_d2.stl — khẩu độ Ø2 ×2</a>
+      <a href="out/stl/aperture_red_d5.stl" download>aperture_red_d5.stl — khẩu độ Ø5 ×2</a>
+      <a href="out/stl/aperture_red_d16.stl" download>aperture_red_d16.stl — khẩu độ Ø16 ×2</a>
+      <a href="out/stl/base_neg.stl" download>base_neg.stl — đế nửa TRƯỚC (chân màn hình + Pi + HAT + driver) ×1</a>
+      <a href="out/stl/base_pos.stl" download>base_pos.stl — đế nửa SAU (dưới hộp tối + lưới lỗ mở rộng) ×1</a>
+      <a href="out/stl/screen_foot_1.stl" download>screen_foot_1.stl — chân đỡ màn hình 7" ×2</a>
     </div>
   </fieldset>
   <div class="hint">
@@ -225,9 +229,24 @@ $('bTrans').classList.add('on');
 let auto=false;$('bAuto').onclick=e=>{auto=!auto;e.target.classList.toggle('on',auto);};
 $('bAxes').onclick=e=>{axesGroup.visible=!axesGroup.visible;e.target.classList.toggle('on',axesGroup.visible);};
 const list=$('parts');
+const apertureChecks={};
 MODEL.parts.forEach(p=>{
-  const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;
-  cb.onchange=()=>meshes[p.name].visible=cb.checked;
+  const aperture=p.name.startsWith('aperture_');
+  const cb=document.createElement('input');cb.type='checkbox';
+  cb.checked=!aperture||p.name==='aperture_red_d5'||p.name==='aperture_ir_d16';
+  meshes[p.name].visible=cb.checked;
+  if(aperture)apertureChecks[p.name]=cb;
+  cb.onchange=()=>{
+    if(aperture&&cb.checked){
+      const lane=p.name.split('_')[1];
+      Object.entries(apertureChecks).forEach(([name,input])=>{
+        if(name!==p.name&&name.split('_')[1]===lane){
+          input.checked=false;meshes[name].visible=false;
+        }
+      });
+    }
+    meshes[p.name].visible=cb.checked;
+  };
   const sw=document.createElement('span');sw.className='sw';
   sw.style.background='#'+p.color.toString(16).padStart(6,'0');
   const lab=document.createElement('span');lab.textContent=p.label||p.name;lab.style.flex='1';

@@ -1,7 +1,7 @@
 #!/bin/sh
-# Triển khai viewer 3D v3 + STL lên GitHub Pages.
+# Triển khai viewer 3D cơ khí v4 + STL lên GitHub Pages.
 # Dọn SẠCH gh-pages (trước đây bị dính .cad_venv/__pycache__/dataset) rồi
-# chỉ chép đúng bộ file deploy: index.html + stl/ + print_bambu/ + README + .nojekyll.
+# Chỉ chép viewer, out/STL, manifest và tài liệu kiểm tra; không mang môi trường.
 # Worktree tạm ở thư mục mktemp (tự dọn qua trap), sync theo TIP TRÊN REMOTE
 # origin/gh-pages (không đụng nhánh gh-pages local), commit fail-fast.
 # Cách dùng:  1) build lại nếu đã sửa tham số:  ../../.cad_venv/bin/python build_system.py
@@ -28,12 +28,16 @@ git rm -rq --ignore-unmatch .
 # Tàn dư chưa được git quản lý (vd .cad_venv, __pycache__, dataset, .codegraph):
 find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 
-echo "==> Chép đúng bộ file deploy v3 từ $SRCDIR..."
+echo "==> Chép đúng bộ file deploy cơ khí v4 từ $SRCDIR..."
 cp "$SRCDIR/viewer.html" "$WT/index.html"
-mkdir -p "$WT/stl" "$WT/print_bambu"
-cp "$SRCDIR"/out/stl/*.stl "$WT/stl/"
-cp "$SRCDIR"/out/print_bambu/*.stl "$WT/print_bambu/"
+mkdir -p "$WT/out/stl" "$WT/out/print_bambu"
+cp "$SRCDIR"/out/stl/*.stl "$WT/out/stl/"
+cp "$SRCDIR"/out/print_bambu/*.stl "$WT/out/print_bambu/"
+cp "$SRCDIR/out/print_bambu/manifest.json" "$WT/out/print_bambu/"
 cp "$SRCDIR/README.md" "$WT/README.md"
+cp "$SRCDIR/MECHANICAL_V4_REVIEW.md" "$WT/MECHANICAL_V4_REVIEW.md"
+cp "$SRCDIR/out/fit_report.json" "$SRCDIR/out/fit_review.png" \
+   "$SRCDIR/out/preview_mechanical_v4.png" "$SRCDIR/out/print_bambu_v4.zip" "$WT/out/"
 touch "$WT/.nojekyll"
 
 git add -A
@@ -52,6 +56,6 @@ git push origin HEAD:gh-pages
 DEPLOY_SHA=$(git rev-parse --short HEAD)
 
 cd "$SRCDIR"
-echo "✅ Đã dọn sạch và đẩy bản deploy v3 lên gh-pages."
+echo "✅ Đã dọn sạch và đẩy bản deploy cơ khí v4 lên gh-pages."
 echo "   Commit đã đẩy: $DEPLOY_SHA"
 echo "   Link: https://nguyenhuy0426.github.io/PPG_simulator/"

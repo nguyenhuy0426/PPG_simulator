@@ -68,13 +68,15 @@ Display:
 ### Mechanical enclosure (3D)
 
 The dark-chamber enclosure, its parametric build script and the printable STLs
-live in [`docs/system_3d/`](docs/system_3d/README.md).
+live in [`docs/system_3d/`](docs/system_3d/README.md). Mechanical v4 adds the
+printable Ø5 × 130 mm push rods, flat apertures, recessed lid slots, and two
+complete Bambu plates (23 parts). See the [fit review](docs/system_3d/MECHANICAL_V4_REVIEW.md).
 
 ![3D web viewer with the light control panel](docs/ui/web-viewer-1280.png)
 
 > **The IR lane has no STLs of its own — this is deliberate, not a missing
 > export.** The two optical lanes are mirror-symmetric about z = 0, so the
-> `slide_shaft`, `led_carrier`, `rod_knob`, `aperture_*` and `hood_*` parts are
+> `slide_shaft`, `led_carrier`, `push_rod`, `rod_knob`, `aperture_*` and `hood_*` parts are
 > exported once under the `_red` name and printed twice (the `*_ir` copies exist
 > in `model.json` for the viewer only). Print counts are in the STL table of the
 > `docs/system_3d/` README.

@@ -57,6 +57,9 @@ def draw(ax, explode=0.0, alpha_map=None, filter_fn=None):
     for p in parts:
         if filter_fn and not filter_fn(p):
             continue
+        if p['name'].startswith('aperture_') and p['name'] not in {
+                'aperture_red_d5', 'aperture_ir_d16'}:
+            continue
         v, f = decode_part(p)
         if not len(f):
             continue

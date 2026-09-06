@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Verify PPG simulator v3 STL output (thanh trượt đẩy-kéo Ø5 + chụp 4 trụ cắm
+"""Verify PPG simulator mechanical-v4 STL output (thanh trượt đẩy-kéo Ø5 + chụp 4 trụ cắm
 + chân đỡ màn hình 7").
 
 Run (từ docs/system_3d/):
@@ -12,6 +12,12 @@ intersection through manifold3d. Both must agree with the expectation.
 """
 import os
 import sys
+import json
+import hashlib
+from itertools import combinations
+from collections import Counter
+from trimesh.transformations import rotation_matrix
+import build_system as design
 import numpy as np
 import trimesh
 
@@ -24,14 +30,15 @@ EXPECTED_FILES = {
     "rod_knob_red.stl", "frame.stl", "aperture_red_blank.stl",
     "aperture_red_d2.stl", "aperture_red_d5.stl", "aperture_red_d16.stl",
     "hood_l_red.stl", "hood_r_red.stl", "base_neg.stl", "base_pos.stl",
-    "screen_foot_1.stl",
+    "screen_foot_1.stl", "push_rod_red.stl",
 }
 BAMBU_FILES = {
-    "00_ppg_hop_toi_A1_all_in_one.stl", "01_than_hop_toi.stl",
+    "00_ban_1_co_khi.stl", "00_ban_2_khau_do_khung.stl", "01_than_hop_toi.stl",
     "02_nap_labyrinth.stl", "03_truc_truot_D.stl", "04_carrier_led.stl",
     "05_num_thanh_truot.stl", "06_chup_luon_day_trai.stl",
     "07_chup_luon_day_phai.stl", "08_khau_do_biet.stl",
     "09_khau_do_lo2mm.stl", "10_khau_do_lo5mm.stl", "11_khau_do_lo16mm.stl",
+    "12_truc_day_tron_D5x130.stl", "13_khung_board_5x7.stl", "manifest.json",
 }
 
 # --- toạ độ tham chiếu (khớp hằng số trong build_system.py) -------------------
@@ -42,10 +49,12 @@ PEG_YS = (5.0, 13.5)
 
 fails = []
 npass = 0
+results = []
 
 
 def check(label, cond, detail=""):
     global npass
+    results.append(dict(label=label, passed=bool(cond), detail=detail))
     if cond:
         npass += 1
         print(f"  PASS  {label} {detail}")
@@ -100,7 +109,7 @@ def expect(mesh, pt, want_inside, label):
 # ================================================================ 1. files
 print("=== 1. File set (out/stl) ===")
 present = set(os.listdir(STL))
-check("exact file set (15 STL)", present == EXPECTED_FILES,
+check("exact file set (16 STL)", present == EXPECTED_FILES,
       f"({len(present)} files; extra={sorted(present - EXPECTED_FILES)}, "
       f"missing={sorted(EXPECTED_FILES - present)})")
 
@@ -118,11 +127,11 @@ for name in sorted(EXPECTED_FILES):
     check(f"{name} watertight", bool(mesh.is_watertight))
 
 # Nắp là TẤM ĐẶC 3 mm (không còn ray/chặn/vạch chia của cần trượt nam châm):
-# y = 56 (vấu chặn) .. 67 (mặt trên) — đỉnh cũ 68.4 của ray đã biến mất.
+# y = 60.2 (mộng labyrinth) .. 67; vấu chặn y=56 đã bỏ.
 lid = m["lid"]
 lb = lid.bounds
-check("lid bounds y = 56..67 (tấm đặc, không còn ray cao 68.4)",
-      abs(lb[0][1] - 56.0) < 0.1 and abs(lb[1][1] - 67.0) < 0.1,
+check("lid bounds y = 60.2..67 (no interior board stops)",
+      abs(lb[0][1] - 60.2) < 0.1 and abs(lb[1][1] - 67.0) < 0.1,
       f"(y = {lb[0][1]:.2f}..{lb[1][1]:.2f})")
 # Thân mọc thêm bệ thanh trượt về -X (tới -18) và bệ nhô 2 mm ở cả 2 vách.
 bb = m["body"].bounds
@@ -179,7 +188,7 @@ check("knob bounds x -45..-37, Ø16 quanh (y=24, z=-19.25)",
       and abs(kb[1][2] - (Z_RED + 8.0)) < 0.05,
       f"(lo={tuple(round(float(x), 2) for x in kb[0])}, "
       f"hi={tuple(round(float(x), 2) for x in kb[1])})")
-expect(m["rod_knob_red"], (-39.0, ROD_Y, Z_RED), False, "lỗ mù Ø5.1 trong núm mở")
+expect(m["rod_knob_red"], (-39.0, ROD_Y, Z_RED), False, "lỗ mù Ø5.4 trong núm mở")
 expect(m["rod_knob_red"], (-44.0, ROD_Y, Z_RED), True, "đáy lỗ mù (2 mm) đặc")
 expect(m["rod_knob_red"], (-41.0, 28.0, Z_RED), False, "lỗ vít chặn M3 trong núm mở")
 expect(m["rod_knob_red"], (-41.0, 31.5, Z_RED), False, "rãnh cầm tay trên vành núm")
@@ -252,7 +261,7 @@ for a, bna in PAIRS:
 # ================================================================ 10. bambu
 print("=== 10. Bambu package ===")
 bpresent = set(os.listdir(BAMBU))
-check("bambu file set (12 file)", bpresent == BAMBU_FILES,
+check("bambu file set (15 STL + manifest)", bpresent == BAMBU_FILES,
       f"({len(bpresent)} files; extra={sorted(bpresent - BAMBU_FILES)}, "
       f"missing={sorted(BAMBU_FILES - bpresent)})")
 kn = trimesh.load(os.path.join(BAMBU, "05_num_thanh_truot.stl"))
@@ -264,13 +273,200 @@ cx = float((kbb[0][0] + kbb[1][0]) / 2)
 cy = float((kbb[0][1] + kbb[1][1]) / 2)
 expect(kn, (cx, cy, 5.0), False, "bambu núm: lỗ mù quay LÊN (rỗng phía trên)")
 expect(kn, (cx, cy, 0.5), True, "bambu núm: đáy đặc (2 mm)")
-combo = trimesh.load(os.path.join(BAMBU, "00_ppg_hop_toi_A1_all_in_one.stl"))
-cb = combo.bounds
-check("all-in-one nằm trong bàn 256 x 256 mm",
-      cb[0][0] >= -1e-6 and cb[0][1] >= -1e-6
-      and cb[1][0] <= 256.0 and cb[1][1] <= 256.0,
-      f"({cb[1][0] - cb[0][0]:.1f} x {cb[1][1] - cb[0][1]:.1f} mm, "
-      f"gốc ({cb[0][0]:.1f}, {cb[0][1]:.1f}))")
+# Additional v4 checks below inspect ALL exported mating parts, including
+# the assembled copies for the IR lane and both print styles.
+
+def overlap_volume(a, b):
+    if np.any(np.minimum(a.bounds[1], b.bounds[1]) -
+              np.maximum(a.bounds[0], b.bounds[0]) <= 1e-6):
+        return 0.0
+    inter = trimesh.boolean.intersection([a, b])
+    return 0.0 if inter is None or len(inter.faces) == 0 else abs(float(inter.volume))
+
+
+def translated(mesh, offset):
+    copy = mesh.copy()
+    copy.apply_translation(offset)
+    return copy
+
+
+def connected_solids(mesh):
+    """Face connectivity without optional scipy/networkx dependencies."""
+    parents = list(range(len(mesh.faces)))
+
+    def root(i):
+        while parents[i] != i:
+            parents[i] = parents[parents[i]]
+            i = parents[i]
+        return i
+
+    for a, b in mesh.face_adjacency:
+        parents[root(int(a))] = root(int(b))
+    groups = {}
+    for i in range(len(parents)):
+        groups.setdefault(root(i), []).append(i)
+    return [trimesh.Trimesh(vertices=mesh.vertices.copy(), faces=mesh.faces[indices],
+                            process=True) for indices in groups.values()]
+
+
+def expand_lanes(parts):
+    out = dict(parts)
+    for name, mesh in parts.items():
+        if "_red" not in name:
+            continue
+        dx = -60.0 if name.startswith(("led_carrier", "push_rod", "rod_knob")) else 0.0
+        out[name.replace("_red", "_ir")] = translated(mesh, [dx, 0, 38.5])
+    if "screen_foot_1" in parts:
+        out["screen_foot_2"] = translated(parts["screen_foot_1"], [110, 0, 0])
+    return out
+
+
+def assembly_audit(parts, tag):
+    expanded = expand_lanes(parts)
+    bad, count, vmax = [], 0, 0.0
+    for a, b in combinations(expanded, 2):
+        # Alternatives in the SAME lane cannot be installed simultaneously.
+        if a.startswith("aperture_") and b.startswith("aperture_"):
+            if a.split("_")[1] == b.split("_")[1]:
+                continue
+        vol = overlap_volume(expanded[a], expanded[b])
+        count += 1
+        vmax = max(vmax, vol)
+        if vol > 1e-4:
+            bad.append((a, b, round(vol, 6)))
+    check(f"{tag}: all {count} assembled pairs incl. lid/apertures/frame/IR", not bad,
+          f"max={vmax:.6g} mm3; collisions={bad}")
+    # Sweep each lane independently; sample every 0.5 mm over the full 75 mm stroke.
+    # This is sampled collision evidence, not a claim of physical print fit.
+    for lane, default in (("red", 25.0), ("ir", 85.0)):
+        moving = [f"{prefix}_{lane}" for prefix in ("led_carrier", "push_rod", "rod_knob")]
+        fixed = {k: v for k, v in expanded.items() if k not in moving}
+        bad, vmax = [], 0.0
+        for distance in np.linspace(15, 90, 151):
+            for name in moving:
+                moved = translated(expanded[name], [default - distance, 0, 0])
+                for other, mesh in fixed.items():
+                    vol = overlap_volume(moved, mesh)
+                    vmax = max(vmax, vol)
+                    if vol > 1e-4:
+                        bad.append((float(distance), name, other, round(vol, 5)))
+        check(f"{tag}: {lane} travel 15..90 mm, 151 positions", not bad,
+              f"max={vmax:.6g} mm3; collisions={bad[:8]}")
+    # Straight assembly paths with the lid removed, sampled at 1 mm intervals.
+    for name in [k for k in expanded if k.startswith("aperture_")] + ["frame"]:
+        vmax = max(overlap_volume(translated(expanded[name], [0, y, 0]), expanded["body"])
+                   for y in range(68))
+        check(f"{tag}: top insertion {name}", vmax < 1e-4, f"max={vmax:.6g} mm3")
+    # Lower the D rail 3 mm to the right, then slide left into the blind socket.
+    for lane in ("red", "ir"):
+        rail = expanded[f"slide_shaft_{lane}"]
+        positions = [[3, y, 0] for y in range(68)] + [[x, 0, 0] for x in np.linspace(0, 3, 13)]
+        vmax = max(overlap_volume(translated(rail, shift), expanded["body"])
+                   for shift in positions)
+        check(f"{tag}: D rail {lane} top-entry then 3 mm seating", vmax < 1e-4,
+              f"max={vmax:.6g} mm3")
+    closing = {k: v for k, v in expanded.items() if k != "lid"}
+    vmax = max(overlap_volume(translated(expanded["lid"], [0, y, 0]), mesh)
+               for y in np.linspace(0, 8, 33) for mesh in closing.values())
+    check(f"{tag}: lid closing with apertures/frame fitted", vmax < 1e-4,
+          f"33 positions, max={vmax:.6g} mm3")
+
+
+print("=== 11. Mechanical-v4 dimensions / recesses ===")
+for name in ("blank", "d2", "d5", "d16"):
+    ap = m[f"aperture_red_{name}"]
+    check(f"aperture {name}: flat 1.6 x 62.9 x 34.9 mm, no pull tab",
+          np.allclose(ap.extents, [1.6, 62.9, 34.9], atol=2e-5))
+    check(f"aperture {name}: 0.8 mm engagement above lid seat",
+          abs(ap.bounds[1][1] - 64.8) < 2e-5)
+expect(lid, (135.9, 58.0, Z_RED), False, "old board-stop projection absent")
+expect(lid, (114.2, 64.9, Z_RED), False, "aperture lid pocket is recessed")
+expect(lid, (114.2, 66.0, Z_RED), True, "pocket roof remains solid")
+expect(m["body"], (136.0, 40.0, -35.5), True, "front frame-retaining shoulder on body")
+expect(m["body"], (108.0, 20.0, Z_RED), False, "D rail support opens upward for assembly")
+for zc in (Z_RED, Z_IR):
+    for x in (-1.95, 2.95, 147.05, 151.95):
+        expect(m["body"], (x, 9.5, zc), False,
+               f"cable passage actually opens through wall surfaces x={x}, z={zc}")
+check("push rod: diameter 5 mm, length 130 mm",
+      np.allclose(m["push_rod_red"].extents, [130, 5, 5], atol=2e-5))
+expect(m["led_carrier_red"], (80.0, 26.62, Z_RED), False, "carrier socket radius >=2.62 mm")
+expect(m["led_carrier_red"], (80.0, 26.8, Z_RED), True, "carrier socket radius <2.8 mm")
+expect(m["rod_knob_red"], (-39.0, 26.62, Z_RED), False, "knob socket radius >=2.62 mm")
+expect(m["rod_knob_red"], (-39.0, 26.8, Z_RED), True, "knob socket radius <2.8 mm")
+# Measured nominal clearances, independently stated as assembly acceptance values.
+check("aperture slot side clearance 0.20 mm", abs((115.2-113.2-1.6)/2-0.2)<1e-9)
+check("lid pocket top clearance 0.30 mm", abs(65.1-m["aperture_red_blank"].bounds[1][1]-0.3)<2e-5)
+check("lid pocket roof thickness 1.90 mm", abs(67.0-65.1-1.9)<1e-9)
+for name, mesh in m.items():
+    check(f"{name}: one connected positive solid", len(connected_solids(mesh)) == 1 and mesh.volume > 0)
+assembly_audit(m, "full STL")
+
+print("=== 12. Bambu source equivalence / quantities / bed ===")
+with open(os.path.join(BAMBU, "manifest.json")) as fh:
+    manifest = json.load(fh)
+expected_qty = {entry[1]: entry[3] for entry in design.PRINT_SET}
+check("23 instances incl. 2 round rods, 8 interchangeable apertures, 1 frame",
+      manifest["total_instances"] == 23 and
+      {p["file"]: p["quantity"] for p in manifest["parts"]} == expected_qty)
+# Reconstruct each EXPORTED slicer STL in assembly coordinates. No CSG rebuild
+# may replace the exported mesh in the subsequent collision audit.
+design.DETAIL, design.INCLUDE_VISUAL = "simple", False
+references = {p["name"]: p["mesh"] for p in design.collect_parts() if p["mesh"] is not None}
+simple = {}
+for name, fname, mode, qty, plate in design.PRINT_SET:
+    printed = trimesh.load(os.path.join(BAMBU, fname))
+    check(f"{fname}: watertight single solid at Z=0",
+          printed.is_watertight and len(connected_solids(printed)) == 1 and abs(printed.bounds[0][2])<1e-5)
+    restored = printed.copy()
+    if mode in ("lid", "shaft"):
+        rotation = rotation_matrix(-np.pi/2, [1, 0, 0])
+    elif mode == "knob":
+        rotation = rotation_matrix(-np.pi/2, [0, 1, 0])
+    elif mode == "lay_flat":
+        rotation = rotation_matrix(np.pi/2, [1, 0, 0]) @ rotation_matrix(np.pi/2, [0, 0, 1])
+    else:
+        rotation = rotation_matrix(np.pi/2, [1, 0, 0])
+    restored.apply_transform(np.linalg.inv(rotation))
+    restored.apply_translation(references[name].bounds[0] - restored.bounds[0])
+    # Symmetric-difference volume catches a cut/changed functional feature.
+    reference = references[name]
+    mismatch = abs(restored.volume + reference.volume - 2*overlap_volume(restored, reference))
+    check(f"{fname}: same solid as source after rigid rotation", mismatch < 0.05,
+          f"symmetric difference={mismatch:.6g} mm3")
+    simple[name] = restored
+    info = next(p for p in manifest["parts"] if p["file"] == fname)
+    with open(os.path.join(BAMBU, fname), "rb") as fh:
+        check(f"{fname}: manifest hash", hashlib.sha256(fh.read()).hexdigest() == info["sha256"])
+    if mode == "shaft":
+        check("D rail flat faces print bed; height 6.5 mm", abs(printed.extents[2]-6.5)<1e-5)
+    if mode == "lid":
+        # One mm above the OUTSIDE face must be solid (pockets open at top).
+        expect(printed, (75, 40, 1), True, "Bambu lid outside face flat on bed")
+assembly_audit(simple, "Bambu exported STL")
+actual_qty = Counter()
+for plate in manifest["plates"]:
+    combo = trimesh.load(os.path.join(BAMBU, plate["file"]))
+    cb = combo.bounds
+    check(f"{plate['file']}: fits 256 mm bed with 8 mm margin",
+          np.all(cb[0][:2]>=8-1e-4) and np.all(cb[1][:2]<=248+1e-4))
+    solids = connected_solids(combo)
+    check(f"{plate['file']}: every instance is separate",
+          len(solids) == len(plate["instances"]))
+    boxes = [i["bounds_mm"] for i in plate["instances"]]
+    overlaps = [(a,b) for a,b in combinations(range(len(boxes)), 2)
+                if np.all(np.minimum(boxes[a][1][:2], boxes[b][1][:2]) -
+                          np.maximum(boxes[a][0][:2], boxes[b][0][:2]) > 1e-5)]
+    check(f"{plate['file']}: no footprint overlaps", not overlaps)
+    for item in plate["instances"]:
+        actual_qty[item["instance"].split("#")[0]] += 1
+        check(f"{item['instance']}: placement matches exported solid",
+              any(np.allclose(mesh.bounds, item["bounds_mm"], atol=2e-5) for mesh in solids))
+check("both plates contain EXACT required quantities", actual_qty == expected_qty)
+with open(os.path.join(HERE, "out", "fit_report.json"), "w") as fh:
+    json.dump(dict(revision="mechanical-v4", passed=npass, failed=len(fails), checks=results,
+                   scope="Nominal CAD geometry; stroke sampled every 0.5 mm. "
+                         "Physical printing, friction and light leakage not measured."), fh, indent=2)
 
 # ================================================================ summary
 print("=" * 70)
