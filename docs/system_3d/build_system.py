@@ -30,7 +30,8 @@ TRẠNG THÁI BẰNG CHỨNG (bắt buộc đọc):
   Mô hình này là công cụ thiết kế & mô phỏng. Không phải thiết bị y tế,
   không có giá trị lâm sàng.
 """
-import os, math, json, base64, argparse, hashlib
+import os, math, json, base64, argparse, hashlib, zipfile
+from collections import Counter
 import numpy as np
 import trimesh
 from trimesh.transformations import translation_matrix, rotation_matrix
@@ -83,7 +84,15 @@ LANE_SIGN = {"red": -1.0, "ir": 1.0}
 SH_Y = 14.0                                # tâm trục trượt
 SH_R = 4.0                                 # Ø8 mm
 SH_FLAT_Y = 16.5                           # mặt vát chống xoay (D-shaft)
-SH_X0, SH_X1 = 1.0, 111.0                  # đuôi cắm vào lỗ mù ở vách trái
+SH_X0, SH_X1 = 0.8, 111.0                  # đuôi cắm vào Ổ CHỮ D ở vách -X
+SH_TIP_CHAM = 1.0                          # vát côn đầu -X để dễ đẩy vào ổ
+# Ổ ĐỠ ĐUÔI TRỤC (vách -X): ổ chữ D, MẶT VÁT HƯỚNG LÊN — cùng chiều với mặt
+# vát của trục và lỗ D của carrier. Ổ chạy xuyên gân đặc trong vách rồi ăn
+# tiếp vào bệ đỡ đứng trên sàn, nên đuôi trục LUÔN có vật liệu đỡ bên dưới.
+SH_SEAT_X0, SH_SEAT_X1 = 0.6, 7.0          # đáy ổ .. miệng ổ (sâu 6.4 mm)
+SH_SEAT_CLR = 0.20                         # khe ổ: khít nhẹ, ma sát chống trôi dọc
+SH_BOSS_HZ = 6.0                           # nửa bề rộng bệ đỡ / gân vách theo Z
+SH_BOSS_TOP = 21.0                         # đỉnh bệ đỡ (bằng đỉnh cột +X)
 POST_X0, POST_X1 = 105.0, 111.0            # cột đỡ đầu trục
 POST_TOP = 21.0                            # đỉnh cột (thấp hơn trục quang 12 mm)
 POST_ZW = 12.0                             # bề rộng cột theo Z (chắn ít chùm tia)
@@ -148,7 +157,11 @@ ROD_KNOB_D, ROD_KNOB_T = 16.0, 8.0         # núm cầm in 3D ở đuôi thanh
 
 # --- lỗ ra cáp + chụp che sáng (khớp 4 trụ cắm) -------------------------------
 EX_Y0, EX_Y1 = 5.5, 13.5                   # lỗ xuyên vách 8 x 20 mm (hạ xuống, nhường bệ thanh trượt)
-EX_ZW = 20.0                               # bề rộng lỗ theo Z
+EX_ZW = 20.0                               # bề rộng lỗ theo Z (vách +X)
+# Vách -X: KHÔNG khoét liền 20 mm nữa — chừa gân đặc ±SH_BOSS_HZ ở giữa để đỡ
+# ổ chữ D của đuôi trục. Hai cửa hai bên vẫn đủ tiết diện luồn dây LED.
+EX_RIB_HZ = 6.2                            # nửa bề rộng gân đặc giữa hai cửa
+EX_Z_OUT = 10.5                            # mép ngoài cửa (< cửa chụp 10.75, < rãnh kín 11.5)
 HOOD_Y0, HOOD_Y1 = 1.5, 18.0               # bao ngoài bích chụp theo Y (dưới đỉnh bệ 18.8)
 HOOD_HZ = 17.75                            # nửa bề rộng bích chụp theo Z
 HOOD_PEG_D = 4.0                           # Ø trụ cắm (thay 2 vít M3 cũ)
@@ -642,6 +655,11 @@ def build_body():
         s = LANE_SIGN[ch]
         add.append(box(POST_X0, POST_X1, Y_FL, POST_TOP,
                        zc - POST_ZW / 2, zc + POST_ZW / 2))
+        # Bệ đỡ ĐUÔI trục ở đầu -X: đứng trên sàn, liền khối với vách -X.
+        # (a) đội ổ chữ D lên khỏi sàn và cho ổ đủ 6.4 mm chiều dài đỡ;
+        # (b) làm cữ chặn cứng cho carrier ở d = D_MAX (mặt sau carrier x=7.0).
+        add.append(box(X_IN0, SH_SEAT_X1, Y_FL, SH_BOSS_TOP,
+                       zc - SH_BOSS_HZ, zc + SH_BOSS_HZ))
         for zs in (s * Z_IN1, s * SEPT_HW):
             zi = zs - s * AP_RIB_T if abs(zs) > 10 else zs + s * AP_RIB_T
             for (rx0, rx1) in ((AP_X0 - AP_GUIDE_T, AP_X0),
@@ -659,10 +677,18 @@ def build_body():
     cuts = []
     for ch, zc in LANE_Z.items():
         s = LANE_SIGN[ch]
-        cuts.append(cyl_x(0.6, X_IN0 + 0.3, SH_Y, zc, SH_R + CLR, 40))       # lỗ mù giữ trục
+        # Ổ CHỮ D giữ đuôi trục — mặt vát HƯỚNG LÊN (trần phẳng ở
+        # SH_FLAT_Y + khe), khớp đúng chiều với mặt vát của trục và lỗ D của
+        # carrier. Trần ổ chỉ bắc qua dây cung 6.4 mm nên in được không support.
+        cuts.append(dif(cyl_x(SH_SEAT_X0, SH_SEAT_X1 + 0.05, SH_Y, zc,
+                              SH_R + SH_SEAT_CLR, 40),
+                        [box(SH_SEAT_X0 - 0.5, SH_SEAT_X1 + 0.5,
+                             SH_FLAT_Y + SH_SEAT_CLR, SH_Y + SH_R + 2.0,
+                             zc - SH_R - 2.0, zc + SH_R + 2.0)]))
         cuts.append(cyl_x(POST_X0 - 0.5, POST_X1 + 0.5, SH_Y, zc, SH_R + CLR, 40))
-        # Gối đầu +X mở lên trên: hạ ray từ nóc rồi đẩy đầu -X vào lỗ mù.
-        # Hai lỗ kín ở v3 chỉ kiểm tra vị trí cuối, chưa có đường đưa ray vào.
+        # Gối đầu +X mở lên trên (KHÔNG có trần): đây là đường đưa trục vào.
+        # Lắp: luồn carrier vào trục -> hạ cả cụm từ nóc xuống, đầu -X lệch
+        # +X ~6.4 mm -> đẩy trục về -X cho đuôi ăn hết vào ổ chữ D.
         cuts.append(box(POST_X0 - 0.5, POST_X1 + 0.5, SH_Y, POST_TOP + 0.5,
                         zc - SH_R - CLR, zc + SH_R + CLR))
         cuts.append(box(AP_X0, AP_X1, Y_FL - 1.1, Y_FL + 0.05, zc - 17.8, zc + 17.8))
@@ -696,8 +722,14 @@ def build_body():
                            ROD_BORE_R, 48))
         for sgn in (-1.0, 1.0):
             xw, xo, xi = _wall_out_x(sgn)
-            holes.append(box(xo + sgn * 0.5, xi - sgn * 0.5,
-                             EX_Y0, EX_Y1, zc - EX_ZW / 2, zc + EX_ZW / 2))
+            if sgn < 0:
+                # vách -X: hai cửa hai bên, chừa gân đặc ở giữa đỡ ổ chữ D
+                for za, zb in ((-EX_Z_OUT, -EX_RIB_HZ), (EX_RIB_HZ, EX_Z_OUT)):
+                    holes.append(box(xo + sgn * 0.5, xi - sgn * 0.5,
+                                     EX_Y0, EX_Y1, zc + za, zc + zb))
+            else:
+                holes.append(box(xo + sgn * 0.5, xi - sgn * 0.5,
+                                 EX_Y0, EX_Y1, zc - EX_ZW / 2, zc + EX_ZW / 2))
             holes += _seal_groove(sgn, zc)
             for dz in (-HOOD_PEG_Z, HOOD_PEG_Z):
                 for yp in HOOD_PEG_YS:
@@ -752,7 +784,10 @@ def build_lid():
 
 def build_shaft():
     """Trục trượt D (Ø8, vát phẳng chống xoay) + vạch chia 5 mm trên mặt vát."""
-    m = cyl_x(SH_X0, SH_X1, SH_Y, 0.0, SH_R, 40)
+    # Đầu -X vát côn 1 mm để dẫn hướng khi đẩy đuôi trục vào ổ chữ D (khe 0.20).
+    m = uni([cyl_x(SH_X0 + SH_TIP_CHAM, SH_X1, SH_Y, 0.0, SH_R, 40),
+             frustum_x(SH_X0, SH_X0 + SH_TIP_CHAM, SH_Y, 0.0,
+                       SH_R - SH_TIP_CHAM, SH_R, 40)])
     m = dif(m, [box(SH_X0 - 0.5, SH_X1 + 0.5, SH_FLAT_Y, SH_Y + SH_R + 2.0,
                     -SH_R - 2.0, SH_R + 2.0)])
     ticks, x = [], TICK_X0
@@ -1873,17 +1908,78 @@ def _pack_plate(placed, plate=A1_PLATE, margin=8.0, gap=6.0):
     return out
 
 
-def export_print_package(parts):
-    """Export unchanged geometry, per-part quantities and two complete A1 plates."""
-    pdir = os.path.join(OUT, "print_bambu")
+def _pack_multiple_plates(instances, bed_size, margin, gap=6.0):
+    """First-fit across beds; rigid rotation only, never shrink fitted hardware."""
+    bins = []
+    for instance in sorted(instances, key=lambda kv: -max(kv[1].extents[:2])):
+        name, mesh = instance
+        if mesh.extents[2] > bed_size + 1e-6:
+            raise ValueError(f"{name}: height exceeds {bed_size} mm")
+        # Fail on an oversized individual part rather than adding endless beds.
+        _pack_plate([instance], plate=bed_size, margin=margin, gap=gap)
+        for batch in bins:
+            try:
+                _pack_plate(batch + [instance], plate=bed_size, margin=margin, gap=gap)
+            except RuntimeError:
+                continue
+            batch.append(instance)
+            break
+        else:
+            bins.append([instance])
+    return [_pack_plate(batch, plate=bed_size, margin=margin, gap=gap) for batch in bins]
+
+
+def _customize_180_plate3(layouts):
+    """User's plate-3 selection: replace two blanks and its small-hole plate
+    with two Ø5 plates. The small-hole mesh in the supplied STL is Ø5, not Ø2.
+    Keep the positions of all other objects and the first two plates unchanged.
+    """
+    if len(layouts) != 3:
+        raise ValueError("Custom aperture selection requires the three-bed 180 mm layout")
+    third = layouts[2]
+    blank = "08_khau_do_biet.stl"
+    small = "10_khau_do_lo5mm.stl"
+    required = {f"{blank}#1", f"{blank}#2", f"{small}#2"}
+    if not required.issubset({item[0] for item in third}):
+        raise ValueError("Plate 3 layout changed; review aperture replacements before export")
+    template = next(mesh for name, mesh, _, _ in third if name == f"{small}#2")
+    replacement = []
+    copy_number = 2
+    for name, mesh, x, y in third:
+        if name == f"{small}#2":
+            continue
+        if name.startswith(blank + "#"):
+            plate = template.copy()
+            if not np.allclose(plate.extents[:2], mesh.extents[:2], atol=1e-4):
+                plate.apply_transform(rotation_matrix(math.pi / 2, [0, 0, 1]))
+                plate.apply_translation(-plate.bounds[0])
+            replacement.append((f"{small}#{copy_number}", plate, x, y))
+            copy_number += 1
+        else:
+            replacement.append((name, mesh, x, y))
+    return layouts[:2] + [replacement]
+
+
+def export_print_package(parts, bed_size=180):
+    """Export a full-size chamber kit for 180 or 256 mm beds."""
+    compact_bed = bed_size == 180
+    if compact_bed and SCALE != 1.0:
+        raise ValueError("Bộ 180 mm giữ scale=1 để nhận board 70×50 mm và trục Ø5; "
+                         "chỉ xếp lại bàn, không thu nhỏ các khớp.")
+    margin = 5.0 if compact_bed else 8.0
+    folder = "print_bambu_180" if compact_bed else "print_bambu"
+    pdir = os.path.join(OUT, folder)
     os.makedirs(pdir, exist_ok=True)
     idx = {p["name"]: p for p in parts}
     plates = {plate: [] for plate in PRINT_PLATES}
-    manifest = dict(revision="mechanical-v4", units="mm", scale=SCALE,
+    manifest = dict(revision="mechanical-v4-180" if compact_bed else "mechanical-v4",
+                    units="mm", scale=SCALE, build_volume_mm=[bed_size] * 3,
+                    edge_margin_mm=margin, part_gap_mm=6.0,
+                    board_mm=[70.0, 50.0, 1.6], board_pocket_mm=[70.7, 50.7, 1.8],
                     parts=[], plates=[], total_instances=0,
                     hardware=["2 x M3x8 carrier set screw", "2 x M3x6 knob set screw"],
-                    note="Print both plates once OR individual STLs at listed quantities. "
-                         "Install one aperture per lane; six plates are alternatives. "
+                    note="Print every numbered plate once OR individual STLs at listed quantities. "
+                         "Install one aperture per lane; remaining plates are alternatives. "
                          "Round rods: 100% infill, inspect support/brim in slicer; "
                          "steel rods of the same dimensions may replace printed rods.")
     for name, fname, mode, qty, plate in PRINT_SET:
@@ -1894,32 +1990,70 @@ def export_print_package(parts):
         m.export(path)
         with open(path, "rb") as fh:
             digest = hashlib.sha256(fh.read()).hexdigest()
-        manifest["parts"].append(dict(part=name, file=fname, quantity=qty, plate=plate,
+        manifest["parts"].append(dict(part=name, file=fname, quantity=qty,
                                       size_mm=m.extents.tolist(), sha256=digest))
         manifest["total_instances"] += qty
         for n in range(qty):
             plates[plate].append((f"{fname}#{n + 1}", m))
-        print(f"  {fname}: {qty} copies, {m.extents.round(2)} mm")
-    for number, instances in plates.items():
-        layout = _pack_plate(instances)
+        print(f"  {fname}: template {m.extents.round(2)} mm; final quantity in manifest")
+    if compact_bed:
+        layouts = _pack_multiple_plates([item for batch in plates.values() for item in batch],
+                                        bed_size, margin)
+        layouts = _customize_180_plate3(layouts)
+        plate_names = {n: f"00_ban_{n}_180mm.stl" for n in range(1, len(layouts) + 1)}
+    else:
+        layouts = [_pack_plate(batch) for batch in plates.values()]
+        plate_names = PRINT_PLATES
+    quantities = Counter(name.split("#")[0] for layout in layouts for name, *_ in layout)
+    for item in manifest["parts"]:
+        item["quantity"] = quantities[item["file"]]
+    manifest["total_instances"] = sum(quantities.values())
+    if compact_bed:
+        manifest["aperture_selection"] = {
+            "plate_3": {"blank": 0, "d2": 0, "d5": 2, "d16": 2},
+            "note": "Plate 3 small hole measured Ø5; replaced according to image positions. "
+                    "Plates 1 and 2 unchanged; the two Ø2 plates remain on plate 2."
+        }
+    for number, layout in enumerate(layouts, 1):
         packed, placements = [], []
         for instance, m, x, y in layout:
             c = m.copy()
             c.apply_translation([x, y, 0])
             packed.append(c)
             placements.append(dict(instance=instance, bounds_mm=c.bounds.tolist()))
-        fname = PRINT_PLATES[number]
+        fname = plate_names[number]
         cat(packed).export(os.path.join(pdir, fname))
-        manifest["plates"].append(dict(number=number, file=fname, instances=placements))
+        manifest["plates"].append(dict(number=number, file=fname, instances=placements,
+                                      size_mm=cat(packed).extents.tolist()))
         print(f"  {fname}: {len(packed)} instances; {cat(packed).extents.round(2)} mm")
-    keep = {f for _, f, _, _, _ in PRINT_SET} | set(PRINT_PLATES.values())
+    keep = {f for _, f, _, _, _ in PRINT_SET} | set(plate_names.values())
     for fn in sorted(os.listdir(pdir)):
         if fn.endswith(".stl") and fn not in keep:
             os.remove(os.path.join(pdir, fn))
             print(f"  Removed obsolete generated STL: {fn}")
     with open(os.path.join(pdir, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, ensure_ascii=False, indent=2)
-    print("  Print both 00_ban_*.stl plates once: 23 parts for two lanes + alternatives.")
+    if compact_bed:
+        instructions = (
+            "PPG SIMULATOR - BAMBU 180 x 180 x 180 mm\n\n"
+            f"In tat ca {len(layouts)} file 00_ban_*_180mm.stl, moi ban MOT lan.\n"
+            f"Tong {manifest['total_instances']} chi tiet; chi lap mot khau do moi lan.\n"
+            "Ban 3: 2 khau do D5 + 2 khau do D16; khong con tam bit.\n"
+            "Hai tam D2 van o ban 2. Mau tam bit roi co quantity=0, khong can in.\n"
+            "Hoac in cac file 01..13 theo quantity trong manifest.json.\n"
+            "GIU SCALE 100%, don vi mm. Than hop 170 x 103 x 64 mm.\n"
+            "Khay board 70.7 x 50.7 mm nhan board 70 x 50 mm, day danh nghia 1.6 mm.\n"
+            "Khe mep ban toi thieu 5 mm; khoang cach cac chi tiet toi thieu 6 mm.\n"
+            "Kiem tra brim/support trong slicer, khong de vuot mep ban.\n"
+            "Bo nay gom hop toi; khong gom de he thong va chan man hinh.\n"
+            "Khong dung auto-scale khi mo file, khong dung ZIP 256 mm cu.\n")
+        with zipfile.ZipFile(os.path.join(OUT, "print_bambu_180.zip"), "w",
+                             zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("README_IN.txt", instructions)
+            for fname in sorted(keep | {"manifest.json"}):
+                archive.write(os.path.join(pdir, fname), folder + "/" + fname)
+    print(f"  Print all {len(layouts)} 00_ban_*.stl plates once: "
+          f"{manifest['total_instances']} parts at scale {SCALE}.")
 
 
 def main():
@@ -1937,8 +2071,9 @@ def main():
                     help="chỉ build phần có tên chứa NAME (dùng nhiều lần, ví dụ "
                          "--only carrier). Dùng để chỉnh 1 chi tiết nhanh.")
     ap.add_argument("--bambu", action="store_true",
-                    help="xuất gói in Bambu Lab A1 (out/print_bambu/): chỉ hộp tối + "
-                         "chụp luồn dây + khẩu độ — bỏ phần gắn module.")
+                    help="xuất bộ hộp tối Bambu, mặc định bàn 180 mm, scale 100%.")
+    ap.add_argument("--bed-size", type=int, choices=(180, 256), default=180,
+                    help="khổ XYZ bàn in khi --bambu; 180 giữ nguyên chỗ board 5x7 cm.")
     ap.add_argument("--scale", type=float, default=1.0, metavar="S",
                     help="thu nhỏ đều toàn bộ mô hình, ví dụ 0.85 -> hộp "
                          "~127×57×68 mm. Các cặp lắp ghép (nắp-thân, khẩu độ-khe) "
@@ -1952,21 +2087,24 @@ def main():
     INCLUDE_VISUAL = not args.no_visual and not args.stl_only
     ONLY = args.only
     SCALE = max(0.3, min(2.0, args.scale))
+    if args.bambu and args.bed_size == 180 and args.scale != 1.0:
+        ap.error("Bộ 180 mm cần --scale 1 để giữ board 70×50 mm; đã tự chia nhiều bàn.")
 
     if args.bambu:
         # Gói in: luôn bản simple (ít boolean, bề mặt phẳng), không đụng viewer
         DETAIL = "simple"
         INCLUDE_VISUAL = False
         print("=" * 78)
-        print(f"PPG SIMULATOR — GÓI IN BAMBU LAB A1 (bàn {A1_PLATE:.0f}×{A1_PLATE:.0f} mm)")
+        print(f"PPG SIMULATOR — GÓI IN BAMBU (bàn {args.bed_size}×{args.bed_size}×{args.bed_size} mm)")
         print("  Chỉ: hộp tối (lỗ luồn dây + khe khẩu độ + máng dây) · nắp labyrinth"
-              " · 2 trục D + 2 carrier + 2 núm + 2 trục tròn · 8 khẩu độ · 4 chụp"
-              " · khung board — 23 chi tiết trên 2 bàn")
+              " · 2 trục D + 2 carrier + 2 núm + 2 trục tròn · khẩu độ theo lựa chọn · 4 chụp"
+              " · khung board — giữ nguyên kích thước lắp ghép")
         print("=" * 78)
         print("\nBuilding parts (manifold CSG) ...")
         parts = collect_parts()
-        export_print_package(parts)
-        print("\nDone. Copy file trong docs/system_3d/out/print_bambu/ vào "
+        export_print_package(parts, bed_size=args.bed_size)
+        folder = "print_bambu_180" if args.bed_size == 180 else "print_bambu"
+        print(f"\nDone. Copy file trong docs/system_3d/out/{folder}/ vào "
               "Bambu Studio (đơn vị mm).")
         return
 

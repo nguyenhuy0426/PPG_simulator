@@ -31,6 +31,7 @@ find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 echo "==> Chép đúng bộ file deploy cơ khí v4 từ $SRCDIR..."
 cp "$SRCDIR/viewer.html" "$WT/index.html"
 mkdir -p "$WT/out/stl" "$WT/out/print_bambu"
+cp "$SRCDIR/out/model.json" "$WT/out/model.json"
 cp "$SRCDIR"/out/stl/*.stl "$WT/out/stl/"
 cp "$SRCDIR"/out/print_bambu/*.stl "$WT/out/print_bambu/"
 cp "$SRCDIR/out/print_bambu/manifest.json" "$WT/out/print_bambu/"
