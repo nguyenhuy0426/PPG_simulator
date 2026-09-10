@@ -70,7 +70,7 @@ X_IN0, X_IN1 = WALL, X_TOT - WALL          # 3 .. 147 (lòng hộp theo X)
 Y0 = 0.0
 Y_FL = WALL                                # 3  mặt sàn trong
 Y_TOP = 64.0                               # mặt trên thành hộp
-LID_T = 3.0
+LID_T = 2.5                       # mặt nắp mỏng hơn; thành hộp vẫn cao tới Y_TOP
 Y_LID = Y_TOP + LID_T                      # 67
 Z0, Z1 = -40.0, 40.0
 Z_IN0, Z_IN1 = Z0 + WALL, Z1 - WALL        # -37 .. +37
@@ -575,13 +575,18 @@ SHADOW_D = 0.8                        # chiều sâu chỉ bóng (thành còn 2.
 BASE_CHAM = 8.0          # vát 2 góc ngoài mỗi nửa đế
 LID_CHAM = 1.5                        # vát vành mép trên nắp
 
-LID_GROOVE_W = 2.0          # bề rộng rãnh labyrinth trên đỉnh thành
+LID_GROOVE_W = 1.75         # bề rộng gân/mộng nắp sau khi chừa khe lắp
+LID_SEPTUM_GROOVE_W = 1.5   # gân giữa nhỏ hơn để không cấn khe vách ngăn
 LID_GROOVE_D = 4.0          # chiều sâu rãnh (Y_TOP-4 .. Y_TOP)
+LID_CAP_CLR = 0.5           # khe mỗi bên giữa lòng nắp và mặt ngoài thân hộp
+LID_CAP_WALL = 3.0          # bề dày thành chụp của nắp
+LID_CAP_SKIRT_D = 8.0       # chiều sâu thành chụp phủ xuống mặt ngoài hộp
 
 
 def _lid_groove_boxes(shrink=0.0):
     """Đường rãnh labyrinth: chạy giữa bề dày từng thành + trên vách ngăn."""
     h = LID_GROOVE_W / 2 - shrink
+    h_septum = LID_SEPTUM_GROOVE_W / 2 - shrink
     y0 = Y_TOP - LID_GROOVE_D + (0.2 if shrink else 0.0)
     y1 = Y_TOP + (0.0 if shrink else 0.2)
     cz_b, cz_f = (Z0 + Z_IN0) / 2, (Z1 + Z_IN1) / 2
@@ -591,7 +596,7 @@ def _lid_groove_boxes(shrink=0.0):
         box(X0, X_TOT, y0, y1, cz_f - h, cz_f + h),          # thành trước(+Z)
         box(cx_l - h, cx_l + h, y0, y1, Z0, Z1),             # thành trái (-X)
         box(cx_r - h, cx_r + h, y0, y1, Z0, Z1),             # thành phải (+X)
-        box(X_IN0, X_IN1, y0, y1, -h, h),                    # vách ngăn quang
+        box(X_IN0, X_IN1, y0, y1, -h_septum, h_septum),      # vách ngăn quang
     ]
 
 
@@ -764,13 +769,29 @@ def build_body():
 
 
 def build_lid():
-    """Nắp mặt ngoài phẳng; chỉ giữ mộng kín sáng chu vi và vách giữa.
+    """Nắp dạng chụp ngoài: phủ qua 4 thành hộp với lòng nắp có khe hở.
 
-    Hai rãnh ÂM nhận mép khẩu độ (0.8 mm overlap, 0.3 mm headroom).
-    Không có vấu chặn khung board hay gờ ngang nhô xuống lòng làn quang.
+    Thành chụp không còn cắm vào rãnh labyrinth ở mép ngoài thân. Chỉ giữ
+    gân giữa nhỏ để ăn vào rãnh cách ly quang; mặt ngoài vẫn có các cửa khẩu độ.
     """
-    m = box(X0, X_TOT, Y_TOP, Y_LID, Z0, Z1)
-    m = uni([m] + _lid_groove_boxes(shrink=CLR / 2))
+    inner_x0 = X0 - LID_CAP_CLR
+    inner_x1 = X_TOT + LID_CAP_CLR
+    inner_z0 = Z0 - LID_CAP_CLR
+    inner_z1 = Z1 + LID_CAP_CLR
+    outer_x0 = inner_x0 - LID_CAP_WALL
+    outer_x1 = inner_x1 + LID_CAP_WALL
+    outer_z0 = inner_z0 - LID_CAP_WALL
+    outer_z1 = inner_z1 + LID_CAP_WALL
+    skirt_y0 = Y_TOP - LID_CAP_SKIRT_D
+
+    # Dựng từ một khối vỏ rồi khoét lòng trong để tránh các mặt trùng ở 4 góc.
+    # Lòng trong rộng hơn thân hộp theo X/Z; thành chụp ôm mặt ngoài, không
+    # đi vào thành hộp. Chừa 0.01 mm ở miệng dao để phép boolean mở đáy sạch.
+    shell = box(outer_x0, outer_x1, skirt_y0, Y_LID, outer_z0, outer_z1)
+    cavity = box(inner_x0, inner_x1, skirt_y0 - 0.1, Y_TOP + 0.01,
+                 inner_z0, inner_z1)
+    m = dif(shell, [cavity])
+    m = uni([m, _lid_groove_boxes(shrink=CLR / 2)[-1]])
     ap_center = (AP_X0 + AP_X1) / 2
     cuts = [box(ap_center - AP_T / 2 - AP_LID_CLR,
                 ap_center + AP_T / 2 + AP_LID_CLR,
@@ -778,7 +799,8 @@ def build_lid():
                 zc - AP_W / 2 - AP_LID_CLR, zc + AP_W / 2 + AP_LID_CLR)
             for zc in LANE_Z.values()]
     if DETAIL == "full":
-        cuts += chamfer_edge_top(X0, X_TOT, Z0, Z1, Y_LID, LID_CHAM)
+        cuts += chamfer_edge_top(outer_x0, outer_x1, outer_z0, outer_z1,
+                                 Y_LID, LID_CHAM)
     return dif(m, cuts)
 
 

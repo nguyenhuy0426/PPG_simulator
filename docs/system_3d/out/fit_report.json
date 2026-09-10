@@ -1,7 +1,7 @@
 {
   "revision": "mechanical-v4",
-  "passed": 243,
-  "failed": 0,
+  "passed": 233,
+  "failed": 10,
   "checks": [
     {
       "label": "exact file set (16 STL)",
@@ -165,8 +165,8 @@
     },
     {
       "label": "body l\u1ed7 ra c\u00e1p m\u1edf",
-      "passed": true,
-      "detail": "(ray=out, cube=out, expect=out)"
+      "passed": false,
+      "detail": "(ray=in, cube=in, expect=out)"
     },
     {
       "label": "carrier max y = 40.0 (kh\u00f4ng c\u00f2n th\u00e1p nam ch\u00e2m)",
@@ -550,13 +550,13 @@
     },
     {
       "label": "cable passage actually opens through wall surfaces x=-1.95, z=-19.25",
-      "passed": true,
-      "detail": "(ray=out, cube=out, expect=out)"
+      "passed": false,
+      "detail": "(ray=in, cube=in, expect=out)"
     },
     {
       "label": "cable passage actually opens through wall surfaces x=2.95, z=-19.25",
-      "passed": true,
-      "detail": "(ray=out, cube=out, expect=out)"
+      "passed": false,
+      "detail": "(ray=in, cube=in, expect=out)"
     },
     {
       "label": "cable passage actually opens through wall surfaces x=147.05, z=-19.25",
@@ -570,13 +570,13 @@
     },
     {
       "label": "cable passage actually opens through wall surfaces x=-1.95, z=19.25",
-      "passed": true,
-      "detail": "(ray=out, cube=out, expect=out)"
+      "passed": false,
+      "detail": "(ray=in, cube=in, expect=out)"
     },
     {
       "label": "cable passage actually opens through wall surfaces x=2.95, z=19.25",
-      "passed": true,
-      "detail": "(ray=out, cube=out, expect=out)"
+      "passed": false,
+      "detail": "(ray=in, cube=in, expect=out)"
     },
     {
       "label": "cable passage actually opens through wall surfaces x=147.05, z=19.25",
@@ -711,7 +711,7 @@
     {
       "label": "full STL: all 339 assembled pairs incl. lid/apertures/frame/IR",
       "passed": true,
-      "detail": "max=6.0633e-13 mm3; collisions=[]"
+      "detail": "max=1.21266e-12 mm3; collisions=[]"
     },
     {
       "label": "full STL: red travel 15..90 mm, 151 positions",
@@ -770,13 +770,13 @@
     },
     {
       "label": "full STL: D rail red top-entry then 3 mm seating",
-      "passed": true,
-      "detail": "max=0 mm3"
+      "passed": false,
+      "detail": "max=99.5976 mm3"
     },
     {
       "label": "full STL: D rail ir top-entry then 3 mm seating",
-      "passed": true,
-      "detail": "max=0 mm3"
+      "passed": false,
+      "detail": "max=99.5976 mm3"
     },
     {
       "label": "full STL: lid closing with apertures/frame fitted",
@@ -795,8 +795,8 @@
     },
     {
       "label": "01_than_hop_toi.stl: same solid as source after rigid rotation",
-      "passed": true,
-      "detail": "symmetric difference=0.00637523 mm3"
+      "passed": false,
+      "detail": "symmetric difference=3067.53 mm3"
     },
     {
       "label": "01_than_hop_toi.stl: manifest hash",
@@ -810,8 +810,8 @@
     },
     {
       "label": "02_nap_labyrinth.stl: same solid as source after rigid rotation",
-      "passed": true,
-      "detail": "symmetric difference=1.45519e-11 mm3"
+      "passed": false,
+      "detail": "symmetric difference=698.25 mm3"
     },
     {
       "label": "02_nap_labyrinth.stl: manifest hash",
@@ -830,8 +830,8 @@
     },
     {
       "label": "03_truc_truot_D.stl: same solid as source after rigid rotation",
-      "passed": true,
-      "detail": "symmetric difference=0.000133162 mm3"
+      "passed": false,
+      "detail": "symmetric difference=37.3469 mm3"
     },
     {
       "label": "03_truc_truot_D.stl: manifest hash",

@@ -85,7 +85,8 @@ def main():
 
     ax = axes[1, 1]
     ax.set_title('04   Hai bàn in — đủ 23 chi tiết', loc='left', color=INK, weight='bold')
-    manifest = json.loads((OUT/'print_bambu'/'manifest.json').read_text())
+    # Bộ phát hành hiện tại dùng khổ Bambu 180 mm; không phụ thuộc gói cũ 256 mm.
+    manifest = json.loads((OUT/'print_bambu_180'/'manifest.json').read_text())
     for n, plate in enumerate(manifest['plates']):
         xoff = n*278
         ax.add_patch(Rectangle((xoff,0),256,256,fill=False,edgecolor='#82909e',lw=1))
@@ -100,7 +101,7 @@ def main():
         ax.text(xoff+128,-22,f"Bàn {n+1} · {len(plate['instances'])} chi tiết",ha='center',color=INK,fontsize=10)
     ax.text(267,-48,'Mã số khớp tên STL · đơn vị mm · scale 100%',ha='center',color=INK,fontsize=10)
     ax.set_xlim(-10,544);ax.set_ylim(-55,270)
-    fig.suptitle('PPG SIMULATOR  /  ĐỐI CHIẾU CƠ KHÍ V4',x=.05,ha='left',weight='bold',fontsize=20,color=INK)
+    fig.suptitle('PPG SIMULATOR  /  ĐỐI CHIẾU CƠ KHÍ — NẮP CHỤP NGOÀI',x=.05,ha='left',weight='bold',fontsize=20,color=INK)
     fig.text(.05,.018,'Hình lấy từ STL đã xuất. Khe hở CAD danh nghĩa; chưa đo co ngót, lực trượt hoặc rò sáng trên bản in.',color='#55616e',fontsize=10)
     fig.subplots_adjust(top=.90,bottom=.07,left=.045,right=.965,hspace=.23,wspace=.16)
     fig.savefig(OUT/'fit_review.png',dpi=160,facecolor=fig.get_facecolor())

@@ -126,12 +126,14 @@ for name in sorted(EXPECTED_FILES):
           f"{mesh.bounds[1][1]:8.2f},{mesh.bounds[1][2]:8.2f})")
     check(f"{name} watertight", bool(mesh.is_watertight))
 
-# Nắp là TẤM ĐẶC 3 mm (không còn ray/chặn/vạch chia của cần trượt nam châm):
-# y = 60.2 (mộng labyrinth) .. 67; vấu chặn y=56 đã bỏ.
+# Nắp là dạng chụp ngoài: lòng trong rộng hơn thành hộp, thành chụp đi từ
+# y = 56 .. 64 và mặt nắp đặc từ y = 64 .. 66.5.
 lid = m["lid"]
 lb = lid.bounds
-check("lid bounds y = 60.2..67 (no interior board stops)",
-      abs(lb[0][1] - 60.2) < 0.1 and abs(lb[1][1] - 67.0) < 0.1,
+check("lid bounds = outer cap x/z, skirt y=56..67",
+      abs(lb[0][0] + 3.5) < 0.1 and abs(lb[1][0] - 153.5) < 0.1 and
+      abs(lb[0][1] - 56.0) < 0.1 and abs(lb[1][1] - 66.5) < 0.1 and
+      abs(lb[0][2] + 43.5) < 0.1 and abs(lb[1][2] - 43.5) < 0.1,
       f"(y = {lb[0][1]:.2f}..{lb[1][1]:.2f})")
 # Thân mọc thêm bệ thanh trượt về -X (tới -18) và bệ nhô 2 mm ở cả 2 vách.
 bb = m["body"].bounds
@@ -397,7 +399,7 @@ expect(m["rod_knob_red"], (-39.0, 26.8, Z_RED), True, "knob socket radius <2.8 m
 # Measured nominal clearances, independently stated as assembly acceptance values.
 check("aperture slot side clearance 0.20 mm", abs((115.2-113.2-1.6)/2-0.2)<1e-9)
 check("lid pocket top clearance 0.30 mm", abs(65.1-m["aperture_red_blank"].bounds[1][1]-0.3)<2e-5)
-check("lid pocket roof thickness 1.90 mm", abs(67.0-65.1-1.9)<1e-9)
+check("lid pocket roof thickness 1.40 mm", abs(66.5-65.1-1.4)<1e-9)
 for name, mesh in m.items():
     check(f"{name}: one connected positive solid", len(connected_solids(mesh)) == 1 and mesh.volume > 0)
 assembly_audit(m, "full STL")

@@ -1,49 +1,62 @@
 {
-  "revision": "mechanical-v4",
+  "revision": "mechanical-v4-180",
   "units": "mm",
   "scale": 1.0,
+  "build_volume_mm": [
+    180,
+    180,
+    180
+  ],
+  "edge_margin_mm": 5.0,
+  "part_gap_mm": 6.0,
+  "board_mm": [
+    70.0,
+    50.0,
+    1.6
+  ],
+  "board_pocket_mm": [
+    70.7,
+    50.7,
+    1.8
+  ],
   "parts": [
     {
       "part": "body",
       "file": "01_than_hop_toi.stl",
       "quantity": 1,
-      "plate": 1,
       "size_mm": [
         170.0,
         103.0,
         64.0
       ],
-      "sha256": "5e770f9d82577bf4aae29cf5002f5c5c7ec9510526c3dc24b6766d15aba26dc1"
+      "sha256": "683a8cd8b9ab744efda8cc3441d997e49a06ac9064d544cff627ace64dbb205d"
     },
     {
       "part": "lid",
       "file": "02_nap_labyrinth.stl",
       "quantity": 1,
-      "plate": 1,
       "size_mm": [
-        150.0,
-        80.0,
-        6.799999237060552
+        157.0,
+        87.0,
+        10.500000000000005
       ],
-      "sha256": "764cfc8859f06eccbbe56610001ba5617ba6f7b154f51d422d094af2828b1de3"
+      "sha256": "7848de75d7f31a7334db2a98a84699719b81183df622323b06dcffa9e7bea62a"
     },
     {
       "part": "slide_shaft_red",
       "file": "03_truc_truot_D.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
-        110.0,
+        110.19999998807907,
         8.0,
         6.5
       ],
-      "sha256": "e2f7a2059172ccab8f9339609e3a8393a2158986b285754bcccd32fac6edcdae"
+      "sha256": "39363814c2d5a13ac5fd9c49e456a9dd52340fe08a035f1ac77223ec1fb83606"
     },
     {
       "part": "led_carrier_red",
       "file": "04_carrier_led.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
         25.0,
         18.000000000000004,
@@ -55,7 +68,6 @@
       "part": "rod_knob_red",
       "file": "05_num_thanh_truot.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
         16.0,
         15.524276733398438,
@@ -67,7 +79,6 @@
       "part": "hood_l_red",
       "file": "06_chup_luon_day_trai.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
         22.5,
         35.5,
@@ -79,7 +90,6 @@
       "part": "hood_r_red",
       "file": "07_chup_luon_day_phai.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
         22.5,
         35.5,
@@ -90,8 +100,7 @@
     {
       "part": "aperture_red_blank",
       "file": "08_khau_do_biet.stl",
-      "quantity": 2,
-      "plate": 2,
+      "quantity": 0,
       "size_mm": [
         62.89999999999999,
         34.900000000000006,
@@ -103,7 +112,6 @@
       "part": "aperture_red_d2",
       "file": "09_khau_do_lo2mm.stl",
       "quantity": 2,
-      "plate": 2,
       "size_mm": [
         62.90000307559967,
         34.900001525878906,
@@ -114,8 +122,7 @@
     {
       "part": "aperture_red_d5",
       "file": "10_khau_do_lo5mm.stl",
-      "quantity": 2,
-      "plate": 2,
+      "quantity": 3,
       "size_mm": [
         62.90000307559967,
         34.900001525878906,
@@ -127,7 +134,6 @@
       "part": "aperture_red_d16",
       "file": "11_khau_do_lo16mm.stl",
       "quantity": 2,
-      "plate": 2,
       "size_mm": [
         62.90000307559967,
         34.900001525878906,
@@ -139,7 +145,6 @@
       "part": "push_rod_red",
       "file": "12_truc_day_tron_D5x130.stl",
       "quantity": 2,
-      "plate": 1,
       "size_mm": [
         130.0,
         5.0,
@@ -151,7 +156,6 @@
       "part": "frame",
       "file": "13_khung_board_5x7.stl",
       "quantity": 1,
-      "plate": 2,
       "size_mm": [
         56.79999923706055,
         73.4000015258789,
@@ -163,35 +167,20 @@
   "plates": [
     {
       "number": 1,
-      "file": "00_ban_1_co_khi.stl",
+      "file": "00_ban_1_180mm.stl",
       "instances": [
         {
           "instance": "01_than_hop_toi.stl#1",
           "bounds_mm": [
             [
-              8.0,
-              8.0,
+              5.0,
+              5.0,
               0.0
             ],
             [
-              178.0,
-              111.0,
+              175.0,
+              108.0,
               64.0
-            ]
-          ]
-        },
-        {
-          "instance": "02_nap_labyrinth.stl#1",
-          "bounds_mm": [
-            [
-              8.0,
-              117.0,
-              0.0
-            ],
-            [
-              158.0,
-              197.0,
-              6.799999237060552
             ]
           ]
         },
@@ -199,13 +188,13 @@
           "instance": "12_truc_day_tron_D5x130.stl#1",
           "bounds_mm": [
             [
-              164.0,
-              117.0,
+              5.0,
+              114.0,
               0.0
             ],
             [
-              169.0,
-              247.0,
+              135.0,
+              119.0,
               5.0
             ]
           ]
@@ -214,13 +203,13 @@
           "instance": "12_truc_day_tron_D5x130.stl#2",
           "bounds_mm": [
             [
-              175.0,
-              117.0,
+              5.0,
+              125.0,
               0.0
             ],
             [
-              180.0,
-              247.0,
+              135.0,
+              130.0,
               5.0
             ]
           ]
@@ -229,13 +218,13 @@
           "instance": "03_truc_truot_D.stl#1",
           "bounds_mm": [
             [
-              8.0,
-              203.0,
+              5.0,
+              136.0,
               0.0
             ],
             [
-              118.0,
-              211.0,
+              115.19999998807907,
+              144.0,
               6.5
             ]
           ]
@@ -244,13 +233,13 @@
           "instance": "03_truc_truot_D.stl#2",
           "bounds_mm": [
             [
-              8.0,
-              217.0,
+              5.0,
+              150.0,
               0.0
             ],
             [
-              118.0,
-              225.0,
+              115.19999998807907,
+              158.0,
               6.5
             ]
           ]
@@ -259,13 +248,13 @@
           "instance": "06_chup_luon_day_trai.stl#1",
           "bounds_mm": [
             [
-              124.0,
-              203.0,
+              121.19999998807907,
+              136.0,
               0.0
             ],
             [
-              146.5,
-              238.5,
+              143.69999998807907,
+              171.5,
               16.500000000000004
             ]
           ]
@@ -274,43 +263,13 @@
           "instance": "06_chup_luon_day_trai.stl#2",
           "bounds_mm": [
             [
-              186.0,
-              8.0,
+              149.69999998807907,
+              114.0,
               0.0
             ],
             [
-              221.5,
-              30.500000000000004,
-              16.500000000000004
-            ]
-          ]
-        },
-        {
-          "instance": "07_chup_luon_day_phai.stl#1",
-          "bounds_mm": [
-            [
-              186.0,
-              36.5,
-              0.0
-            ],
-            [
-              221.5,
-              59.0,
-              16.500000000000004
-            ]
-          ]
-        },
-        {
-          "instance": "07_chup_luon_day_phai.stl#2",
-          "bounds_mm": [
-            [
-              184.0,
-              65.0,
-              0.0
-            ],
-            [
-              206.5,
-              100.5,
+              172.19999998807907,
+              149.5,
               16.500000000000004
             ]
           ]
@@ -319,79 +278,54 @@
           "instance": "04_carrier_led.stl#1",
           "bounds_mm": [
             [
-              227.5,
-              8.0,
+              149.69999998807907,
+              155.5,
               0.0
             ],
             [
-              245.5,
-              33.0,
+              174.69999998807907,
+              173.5,
               35.0
-            ]
-          ]
-        },
-        {
-          "instance": "04_carrier_led.stl#2",
-          "bounds_mm": [
-            [
-              227.5,
-              39.0,
-              0.0
-            ],
-            [
-              245.5,
-              64.0,
-              35.0
-            ]
-          ]
-        },
-        {
-          "instance": "05_num_thanh_truot.stl#1",
-          "bounds_mm": [
-            [
-              8.0,
-              231.0,
-              0.0
-            ],
-            [
-              23.524276733398438,
-              247.0,
-              8.000000000000002
-            ]
-          ]
-        },
-        {
-          "instance": "05_num_thanh_truot.stl#2",
-          "bounds_mm": [
-            [
-              29.524276733398438,
-              231.0,
-              0.0
-            ],
-            [
-              45.048553466796875,
-              247.0,
-              8.000000000000002
             ]
           ]
         }
+      ],
+      "size_mm": [
+        170.0,
+        168.5,
+        64.0
       ]
     },
     {
       "number": 2,
-      "file": "00_ban_2_khau_do_khung.stl",
+      "file": "00_ban_2_180mm.stl",
       "instances": [
+        {
+          "instance": "02_nap_labyrinth.stl#1",
+          "bounds_mm": [
+            [
+              5.0,
+              5.0,
+              0.0
+            ],
+            [
+              162.0,
+              92.0,
+              10.500000000000005
+            ]
+          ]
+        },
         {
           "instance": "13_khung_board_5x7.stl#1",
           "bounds_mm": [
             [
-              8.0,
-              8.0,
+              5.0,
+              98.0,
               0.0
             ],
             [
-              64.79999923706055,
-              81.4000015258789,
+              61.79999923706055,
+              171.4000015258789,
               4.000000000000008
             ]
           ]
@@ -400,13 +334,13 @@
           "instance": "09_khau_do_lo2mm.stl#1",
           "bounds_mm": [
             [
-              8.0,
-              87.4000015258789,
+              67.79999923706055,
+              98.0,
               0.0
             ],
             [
-              42.90000152587891,
-              150.30000460147858,
+              102.70000076293945,
+              160.90000307559967,
               1.600000023841864
             ]
           ]
@@ -415,13 +349,13 @@
           "instance": "09_khau_do_lo2mm.stl#2",
           "bounds_mm": [
             [
-              8.0,
-              156.30000460147858,
+              108.70000076293945,
+              98.0,
               0.0
             ],
             [
-              42.90000152587891,
-              219.20000767707825,
+              171.60000383853912,
+              132.9000015258789,
               1.600000023841864
             ]
           ]
@@ -430,43 +364,39 @@
           "instance": "10_khau_do_lo5mm.stl#1",
           "bounds_mm": [
             [
-              48.900001525878906,
-              87.4000015258789,
+              108.70000076293945,
+              138.9000015258789,
               0.0
             ],
             [
-              83.80000305175781,
-              150.30000460147858,
+              171.60000383853912,
+              173.8000030517578,
               1.600000023841864
             ]
           ]
-        },
-        {
-          "instance": "10_khau_do_lo5mm.stl#2",
-          "bounds_mm": [
-            [
-              70.79999923706055,
-              8.0,
-              0.0
-            ],
-            [
-              105.70000076293945,
-              70.90000307559967,
-              1.600000023841864
-            ]
-          ]
-        },
+        }
+      ],
+      "size_mm": [
+        166.60000383853912,
+        168.8000030517578,
+        10.500000000000005
+      ]
+    },
+    {
+      "number": 3,
+      "file": "00_ban_3_180mm.stl",
+      "instances": [
         {
           "instance": "11_khau_do_lo16mm.stl#1",
           "bounds_mm": [
             [
-              48.900001525878906,
-              156.30000460147858,
+              73.90000307559967,
+              5.0,
               0.0
             ],
             [
-              83.80000305175781,
-              219.20000767707825,
+              136.80000615119934,
+              39.900001525878906,
               1.600000023841864
             ]
           ]
@@ -475,54 +405,143 @@
           "instance": "11_khau_do_lo16mm.stl#2",
           "bounds_mm": [
             [
-              111.70000076293945,
-              8.0,
+              5.0,
+              45.900001525878906,
               0.0
             ],
             [
-              174.60000383853912,
-              42.900001525878906,
+              39.90000152587891,
+              108.80000460147858,
               1.600000023841864
             ]
           ]
         },
         {
-          "instance": "08_khau_do_biet.stl#1",
+          "instance": "10_khau_do_lo5mm.stl#2",
           "bounds_mm": [
             [
-              180.60000383853912,
-              8.0,
+              5.0,
+              114.80000460147858,
               0.0
             ],
             [
-              243.5000038385391,
-              42.900000000000006,
-              1.6000000000000003
+              67.90000307559967,
+              149.70000612735748,
+              1.600000023841864
             ]
           ]
         },
         {
-          "instance": "08_khau_do_biet.stl#2",
+          "instance": "10_khau_do_lo5mm.stl#3",
           "bounds_mm": [
             [
-              180.60000383853912,
-              48.900000000000006,
+              45.900001525878906,
+              45.900001525878906,
               0.0
             ],
             [
-              243.5000038385391,
-              83.80000000000001,
-              1.6000000000000003
+              80.80000305175781,
+              108.80000460147858,
+              1.600000023841864
+            ]
+          ]
+        },
+        {
+          "instance": "07_chup_luon_day_phai.stl#1",
+          "bounds_mm": [
+            [
+              142.80000615119934,
+              5.0,
+              0.0
+            ],
+            [
+              165.30000615119934,
+              40.5,
+              16.500000000000004
+            ]
+          ]
+        },
+        {
+          "instance": "07_chup_luon_day_phai.stl#2",
+          "bounds_mm": [
+            [
+              86.80000152587891,
+              45.900001525878906,
+              0.0
+            ],
+            [
+              122.30000152587891,
+              68.4000015258789,
+              16.500000000000004
+            ]
+          ]
+        },
+        {
+          "instance": "04_carrier_led.stl#2",
+          "bounds_mm": [
+            [
+              5.0,
+              155.70000460147858,
+              0.0
+            ],
+            [
+              30.0,
+              173.70000460147858,
+              35.0
+            ]
+          ]
+        },
+        {
+          "instance": "05_num_thanh_truot.stl#1",
+          "bounds_mm": [
+            [
+              36.0,
+              155.70000460147858,
+              0.0
+            ],
+            [
+              51.52427673339844,
+              171.70000460147858,
+              8.000000000000002
+            ]
+          ]
+        },
+        {
+          "instance": "05_num_thanh_truot.stl#2",
+          "bounds_mm": [
+            [
+              57.52427673339844,
+              155.70000460147858,
+              0.0
+            ],
+            [
+              73.04855346679688,
+              171.70000460147858,
+              8.000000000000002
             ]
           ]
         }
+      ],
+      "size_mm": [
+        160.30000615119934,
+        168.70000460147858,
+        35.0
       ]
     }
   ],
-  "total_instances": 23,
+  "total_instances": 22,
   "hardware": [
     "2 x M3x8 carrier set screw",
     "2 x M3x6 knob set screw"
   ],
-  "note": "Print both plates once OR individual STLs at listed quantities. Install one aperture per lane; six plates are alternatives. Round rods: 100% infill, inspect support/brim in slicer; steel rods of the same dimensions may replace printed rods."
+  "note": "Print every numbered plate once OR individual STLs at listed quantities. Install one aperture per lane; remaining plates are alternatives. Round rods: 100% infill, inspect support/brim in slicer; steel rods of the same dimensions may replace printed rods.",
+  "aperture_selection": {
+    "plate_3": {
+      "blank": 0,
+      "d2": 0,
+      "d5": 2,
+      "d16": 2
+    },
+    "note": "Plate 3 small hole measured Ø5; replaced according to image positions. Plates 1 and 2 unchanged; the two Ø2 plates remain on plate 2."
+  }
 }
