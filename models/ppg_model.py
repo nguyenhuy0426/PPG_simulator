@@ -374,7 +374,11 @@ class PPGModel:
     def set_parameters(self, params: PPGParameters):
         self.params = params.copy()
         if self.params.ac_ir_mv is not None:
-            self.params.perfusion_index = self.params.ac_ir_mv / self.params.dc_ir_mv * 100.0
+            # DC = 0 is the degenerate flatline (AC must be 0 there); PI is
+            # undefined, so report 0 instead of dividing by zero.
+            self.params.perfusion_index = (
+                self.params.ac_ir_mv / self.params.dc_ir_mv * 100.0
+                if self.params.dc_ir_mv > 0.0 else 0.0)
         self._apply_noise_config()
         self.set_respiration(RespirationConfig(**{k: getattr(self.params, v) for k, v in RESP_FIELDS.items()}))
         self._sync_ac_dc_from_params()
@@ -502,7 +506,7 @@ class PPGModel:
             limits.validate_dc_with_offset(dc, self.params.output_dc_offset_mv)
         ac = self.params.ac_ir_mv
         if self.params.lock_ac and ac is not None:
-            pi = ac / dc_ir_mv * 100.0
+            pi = ac / dc_ir_mv * 100.0 if dc_ir_mv > 0.0 else 0.0
         else:
             pi = self.params.perfusion_index
             ac = pi / 100.0 * dc_ir_mv
@@ -520,7 +524,7 @@ class PPGModel:
             limits.validate_dc_with_offset(dc, self.params.output_dc_offset_mv)
         self.params.dc_ir_mv, self.params.dc_red_mv = dc_ir_mv, dc_red_mv
         self.params.ac_ir_mv = ac_ir_mv
-        self.params.perfusion_index = ac_ir_mv / dc_ir_mv * 100.0
+        self.params.perfusion_index = ac_ir_mv / dc_ir_mv * 100.0 if dc_ir_mv > 0.0 else 0.0
         self.current_pi = self.params.perfusion_index
         self._sync_ac_dc_from_params()
 
@@ -529,7 +533,9 @@ class PPGModel:
         if ac_red_mv is not None:
             limits.AC_LEVEL_MV.validate(ac_red_mv)
         self.params.ac_ir_mv, self.params.ac_red_mv = ac_ir_mv, ac_red_mv
-        self.params.perfusion_index = ac_ir_mv / self.params.dc_ir_mv * 100.0
+        self.params.perfusion_index = (
+            ac_ir_mv / self.params.dc_ir_mv * 100.0
+            if self.params.dc_ir_mv > 0.0 else 0.0)
         self.current_pi = self.params.perfusion_index
 
     def set_lock(self, lock_ac=None, lock_dc=None):
@@ -771,7 +777,12 @@ class PPGModel:
         ac_ir = self.current_pi / 100.0 * self.dc_ir
         # Red AC derived so the reconstructed ratio-of-ratios equals R_target for
         # any DC pair:  AC_red = R · AC_ir · (DC_red/DC_ir).
-        ac_red = ac_red_from_target(r_value, ac_ir, self.dc_red, self.dc_ir)
+        # A zero DC (degenerate flatline inside the 0-1500 mV range) zeroes the
+        # channel AC; the derivation divides by the DC levels, so skip it.
+        if self.dc_ir > 0.0 and self.dc_red > 0.0:
+            ac_red = ac_red_from_target(r_value, ac_ir, self.dc_red, self.dc_ir)
+        else:
+            ac_red = 0.0
 
         if self.params.ac_red_mv is not None:
             variation = self.current_pi / self.params.perfusion_index if self.params.perfusion_index else 1.0

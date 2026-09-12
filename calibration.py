@@ -235,9 +235,10 @@ def validate_ac_dc(ac_mv: float, dc_mv: float,
 
     Enforces the hard safety/physical constraints so a caller cannot command an
     AC/DC pair that is non-physical or that cannot be represented within the
-    configured DAC full-scale (3.28 V = 3280 mV). Both above-DC and
-    below-DC polarities must fit, so the signal envelope [DC-AC, DC+AC] must lie
-    within [0, fullscale].
+    configured DAC full-scale (3.28 V = 3280 mV). The signal envelope
+    [DC-AC, DC+AC] must lie within [0, fullscale], which also means AC <= DC:
+    at DC = 0 (the degenerate flatline inside the project's 0-1500 mV range)
+    only AC = 0 is admissible.
 
     Args:
         ac_mv:        AC amplitude in mV (peak pulsatile, one-sided).
@@ -248,9 +249,9 @@ def validate_ac_dc(ac_mv: float, dc_mv: float,
         (float(ac_mv), float(dc_mv)) on success.
 
     Raises:
-        ValueError: if inputs are non-finite; DC <= 0; AC < 0; DC > full-scale;
+        ValueError: if inputs are non-finite; DC < 0; AC < 0; DC > full-scale;
             DC + AC > full-scale (above-DC peak clips); or DC - AC < 0 (below-DC
-            trough clips / goes non-physical).
+            trough clips / goes non-physical, which at DC = 0 rejects any AC > 0).
     """
     if not _is_finite_number(ac_mv):
         raise ValueError(f"AC (mV) must be a finite number, got {ac_mv!r}")
@@ -261,8 +262,8 @@ def validate_ac_dc(ac_mv: float, dc_mv: float,
     ac_mv = float(ac_mv)
     dc_mv = float(dc_mv)
     fs = float(fullscale_mv)
-    if dc_mv <= 0.0:
-        raise ValueError(f"DC must be > 0 mV, got {dc_mv!r}")
+    if dc_mv < 0.0:
+        raise ValueError(f"DC must be >= 0 mV, got {dc_mv!r}")
     if ac_mv < 0.0:
         raise ValueError(f"AC must be >= 0 mV, got {ac_mv!r}")
     if dc_mv > fs:

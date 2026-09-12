@@ -169,6 +169,23 @@ class PathologyFrame(ctk.CTkFrame):
         for key, (_, attr, _, _) in self.fields.items():
             self.vital_labels[key].cget("font").configure(size=44 if self.vital_labels[key].master.winfo_height() >= 75 else 30)
             self.vital_labels[key].configure(text=f"{getattr(p, attr):.2f}" if key == "pi" else f"{getattr(p, attr):.0f}")
+        # Reflect externally-applied values (e.g. BLE remote commands) into the
+        # sliders/entries, skipping the widget the user is currently editing.
+        focused = self.winfo_toplevel().focus_get()
+        for key, (_, attr, _, _) in self.fields.items():
+            value = getattr(p, attr)
+            entry = self.entries[key]
+            try:
+                current = float(self.slider_vars[key].get())
+            except (TypeError, ValueError):
+                continue
+            if abs(current - value) > max(1e-6, abs(value) * 1e-4) and focused is not entry:
+                self.slider_vars[key].set(value)
+                entry.delete(0, "end")
+                entry.insert(0, f"{value:g}")
+        condition_name = CONDITION_NAMES[p.condition]
+        if self.condition_menu.get() != condition_name:
+            self.condition_menu.set(condition_name)
         ac = p.perfusion_index / 100 * p.dc_ir_mv
         ratio = r_target_from_spo2(p.spo2, p.spo2_coeff_a, p.spo2_coeff_b)
         clamp = max(0.0, ratio)

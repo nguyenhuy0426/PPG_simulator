@@ -50,8 +50,8 @@ class AdvancedFrame(ctk.CTkFrame):
 
     def _amplitude(self, b):
         for row, fields in enumerate((
-            (("ac_ir_mv", "AC · IR", "0.1–300 mV"), ("ac_red_mv", "AC · RED", "Blank = derive from SpO₂")),
-            (("dc_ir_mv", "DC · IR", "100–3000 mV"), ("dc_red_mv", "DC · RED", "100–3000 mV")),
+            (("ac_ir_mv", "AC · IR", "0–1500 mV"), ("ac_red_mv", "AC · RED", "Blank = derive from SpO₂")),
+            (("dc_ir_mv", "DC · IR", "0–1500 mV"), ("dc_red_mv", "DC · RED", "0–1500 mV")),
             (("output_dc_offset_mv", "Output DC offset", "0–2000 mV; DC + offset ≤ 3000"), ("amplification", "AC gain", "0.1–5.0 ×")),
             (("dicrotic_notch", "Notch depth", "0–1, normalized"), ("spo2", "SpO₂ target", "0–100 %, calibration dependent")),
         )):

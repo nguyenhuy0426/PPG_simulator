@@ -175,13 +175,15 @@ class TestClipping(unittest.TestCase):
             self.assertLessEqual(v, config.DAC_FULLSCALE_V)
 
     def test_upper_clip_engages_at_full_scale(self):
-        # High DC + high PI drives the systolic peak above 3.28 V → must clamp
-        # exactly at the DAC ceiling, never above it.
+        # High PI + high AC gain at the 1500 mV DC ceiling drives the systolic
+        # peak above 3.28 V → must clamp exactly at the DAC ceiling, never
+        # above it.
         m = PPGModel()
         p = PPGParameters()
         p.condition = COND_STRONG_PERFUSION   # PI range keeps a high perfusion
-        p.perfusion_index = 18.0
-        p.dc_ir_mv = 3000.0; p.dc_red_mv = 3000.0
+        p.perfusion_index = 30.0
+        p.amplification = 5.0
+        p.dc_ir_mv = 1500.0; p.dc_red_mv = 1500.0
         m.set_parameters(p)
         ir, red, _, _ = _run_cycles(m, 2000)
         self.assertLessEqual(max(ir), config.DAC_FULLSCALE_V)
@@ -189,6 +191,28 @@ class TestClipping(unittest.TestCase):
         # The ceiling must actually be reached (clipping engaged), else the test
         # would silently pass without exercising the clamp.
         self.assertEqual(max(ir), config.DAC_FULLSCALE_V)
+
+    def test_zero_dc_channel_is_a_flatline_not_a_crash(self):
+        # DC = 0 is inside the project range (AC must be 0 there); generation
+        # must skip the ratio-of-ratios derivation instead of raising and must
+        # output the flat 0 V line (with zero offset and zero noise).
+        m = PPGModel()
+        m.set_dc_levels(0.0, 0.0)
+        for _ in range(100):
+            ir, red, disp_ir, disp_red = m.generate_both_samples(0.01)
+            for v in (ir, red, disp_ir, disp_red):
+                self.assertTrue(math.isfinite(v))
+                self.assertAlmostEqual(v, 0.0, places=9)
+
+    def test_one_zero_dc_channel_flattens_the_ac(self):
+        # With DC_ir = 0 the ratio-of-ratios is undefined; the AC goes to zero
+        # on both channels (IR flat at 0 V, Red flat at its 1.5 V DC) rather
+        # than raising.
+        m = PPGModel()
+        m.set_dc_levels(0.0, 1500.0)
+        ir, red, _, _ = m.generate_both_samples(0.01)
+        self.assertAlmostEqual(ir, 0.0, places=9)
+        self.assertAlmostEqual(red, 1.5, places=9)
 
 
 # ─────────────────────── AC above / below DC ───────────────────────
@@ -226,10 +250,11 @@ class TestPolarity(unittest.TestCase):
 class TestInvalidCombinations(unittest.TestCase):
     def test_validate_ac_dc_rejects_bad(self):
         bad_cases = [
-            (0.0, -100.0),     # DC <= 0
+            (0.0, -100.0),     # DC < 0
             (0.0, 4000.0),     # DC > full-scale (3280 mV)
             (200.0, 3200.0),   # DC + AC > full-scale
             (200.0, 100.0),    # DC - AC < 0 (envelope underflow)
+            (100.0, 0.0),      # DC = 0 admits only AC = 0
             (-5.0, 1500.0),    # AC < 0
         ]
         for ac, dc in bad_cases:
@@ -246,6 +271,10 @@ class TestInvalidCombinations(unittest.TestCase):
         self.assertEqual((ac, dc), (45.0, 1500.0))
         # Boundary: DC + AC exactly at full-scale is allowed.
         validate_ac_dc(200.0, 3000.0)
+        # Project-range extremes: the 1500/1500 envelope is [0, 3000] mV and
+        # the DC = 0 flatline admits only AC = 0.
+        validate_ac_dc(1500.0, 1500.0)
+        validate_ac_dc(0.0, 0.0)
 
     def test_perfusion_index_from_ac_dc_rejects_bad(self):
         for ac, dc in ((45.0, 0.0), (45.0, -1.0), (-1.0, 1500.0),

@@ -159,6 +159,20 @@ GUI interaction and screenshot check (requires a real display or Xvfb):
 The laptop environment verifier also audits Git hygiene and rejects committed
 virtual environments, bytecode and generated package caches.
 
+### 3. BLE remote control (Android app)
+
+The simulator can be driven from the Android app (`com.medical.simulator`)
+over BLE GATT: `pip install -r requirements/ble.txt`, then run with `--ble`
+(GUI) or `--ble-only` (headless). The phone advertises-pairs as central, sends
+JSON setpoint commands (HR/SpO₂/RR/PI/noise/condition plus AC/DC amplitude
+0–1500 mV per channel) and receives the 50 Hz waveform plus a 5 Hz status
+snapshot with bidirectional sync. Full contract: `docs/ble_protocol.md`.
+
+```bash
+PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble        # GUI + BLE
+PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble-only   # headless
+```
+
 ---
 
 ## Operation
@@ -208,8 +222,9 @@ PPG uses a normalized three-Gaussian shape. Respiratory depth defaults to 4% of
 AC per channel, with baseline/amplitude/RSA modulation individually selectable.
 Apnea suppresses respiratory modulation while cardiac pulses continue.
 
-Direct AC entry spans 0.1–300 mV and DC entry 100–3000 mV. PI-driven AC can exceed
-the direct AC range; output offset spans 0–2000 mV with DC+offset≤3000 mV. Gain,
+Direct AC entry spans 0–1500 mV and DC entry 0–1500 mV, matching the Android
+app. PI-driven AC stays inside the direct AC range at these limits; output
+offset spans 0–2000 mV with DC+offset≤3000 mV. Gain,
 noise and modulation can still exceed DAC headroom: the output clamps to the
 configured rails and the clipping counter reports it. A clipped waveform does
 not meet the requested amplitude or ratio.

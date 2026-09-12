@@ -45,11 +45,11 @@ def test_apply_ac_dc_sets_the_model_and_derives_pi(engine):
 
 
 def test_apply_ac_dc_allows_independent_red_dc(engine):
-    ok, msg = apply_ac_dc(engine, "45.0", "1500", "1800")
+    ok, msg = apply_ac_dc(engine, "45.0", "1500", "1200")
 
     assert ok, msg
     assert engine.ppg_params.dc_ir_mv == pytest.approx(1500.0)
-    assert engine.ppg_params.dc_red_mv == pytest.approx(1800.0)
+    assert engine.ppg_params.dc_red_mv == pytest.approx(1200.0)
 
 
 def test_apply_ac_dc_reports_a_non_numeric_entry_instead_of_raising(engine):
@@ -76,10 +76,10 @@ def test_apply_ac_dc_leaves_the_previous_setting_untouched_on_error(engine):
 
 
 def test_blank_red_dc_mirrors_the_ir_channel(engine):
-    ok, msg = apply_ac_dc(engine, "45.0", "1800", "")
+    ok, msg = apply_ac_dc(engine, "45.0", "1200", "")
 
     assert ok, msg
-    assert engine.ppg_params.dc_red_mv == pytest.approx(1800.0)
+    assert engine.ppg_params.dc_red_mv == pytest.approx(1200.0)
 
 
 # ─── PI <-> AC conversion (the Lock AC/DC path) ───

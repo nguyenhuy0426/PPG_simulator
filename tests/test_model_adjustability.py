@@ -152,18 +152,18 @@ class TestAcDcMastering(unittest.TestCase):
         model.set_ac_levels(20.0)
         self.assertAlmostEqual(_ac_swing_mv(model), 20.0, delta=0.5)
 
-    def test_ac_span_covers_the_aecg100_range(self):
+    def test_ac_span_covers_the_full_range(self):
         model = _quiet_model()
-        for ac_mv in (0.1, 30.0, 300.0):
+        for ac_mv in (0.0, 45.0, 1500.0):
             model.set_ac_levels(ac_mv)
             self.assertAlmostEqual(model.params.ac_ir_mv, ac_mv)
 
     def test_ac_out_of_range_raises(self):
         model = _quiet_model()
         with self.assertRaises(ValueError):
-            model.set_ac_levels(0.0)
+            model.set_ac_levels(-1.0)
         with self.assertRaises(ValueError):
-            model.set_ac_levels(500.0)
+            model.set_ac_levels(2000.0)
 
     def test_independent_red_ac_is_kept(self):
         model = _quiet_model()
@@ -194,9 +194,9 @@ class TestAcDcMastering(unittest.TestCase):
         model = _quiet_model()
         model.set_ac_levels(45.0)
         model.set_lock(lock_ac=True)
-        model.set_dc_levels(3000.0)
+        model.set_dc_levels(1500.0)
         self.assertAlmostEqual(model.params.ac_ir_mv, 45.0)
-        self.assertAlmostEqual(model.params.perfusion_index, 1.5, delta=0.01)
+        self.assertAlmostEqual(model.params.perfusion_index, 3.0, delta=0.01)
 
     def test_unlocked_dc_change_holds_pi_and_moves_ac(self):
         model = _quiet_model()
@@ -205,9 +205,9 @@ class TestAcDcMastering(unittest.TestCase):
         self.assertAlmostEqual(model.params.perfusion_index, 3.0)
         self.assertAlmostEqual(model.params.ac_ir_mv, 30.0, delta=0.01)
 
-    def test_dc_span_covers_the_aecg100_range(self):
+    def test_dc_span_covers_the_full_range(self):
         model = _quiet_model()
-        for dc_mv in (100.0, 625.0, 3000.0):
+        for dc_mv in (0.0, 625.0, 1500.0):
             model.set_dc_levels(dc_mv)
             self.assertAlmostEqual(model.params.dc_ir_mv, dc_mv)
 
@@ -230,9 +230,9 @@ class TestOutputDcOffset(unittest.TestCase):
 
     def test_dc_plus_offset_over_the_ceiling_raises(self):
         model = _quiet_model()
-        model.set_dc_levels(2500.0)
+        model.set_dc_levels(1500.0)
         with self.assertRaises(ValueError):
-            model.set_output_dc_offset(1000.0)   # 3500 > 3000 mV ceiling
+            model.set_output_dc_offset(1600.0)   # 1500 + 1600 = 3100 > 3000 mV ceiling
 
     def test_offset_span(self):
         model = _quiet_model()

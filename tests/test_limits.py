@@ -19,6 +19,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+from calibration import validate_ac_dc
 from models import limits
 
 
@@ -82,13 +83,15 @@ class TestAECG100Ranges(unittest.TestCase):
         self.assertLessEqual(limits.SPO2.minimum, 0.0)
         self.assertGreaterEqual(limits.SPO2.maximum, 100.0)
 
-    def test_dc_level_covers_100_to_3000_mv(self):
-        self.assertLessEqual(limits.DC_LEVEL_MV.minimum, 100.0)
-        self.assertGreaterEqual(limits.DC_LEVEL_MV.maximum, 3000.0)
+    def test_dc_level_is_exactly_0_to_1500_mv(self):
+        # Project range, matched to the companion Android app.
+        self.assertEqual(limits.DC_LEVEL_MV.minimum, 0.0)
+        self.assertEqual(limits.DC_LEVEL_MV.maximum, 1500.0)
 
-    def test_ac_level_covers_transmittance_range(self):
-        self.assertLessEqual(limits.AC_LEVEL_MV.minimum, 0.1)
-        self.assertGreaterEqual(limits.AC_LEVEL_MV.maximum, 300.0)
+    def test_ac_level_is_exactly_0_to_1500_mv(self):
+        # Project range, matched to the companion Android app.
+        self.assertEqual(limits.AC_LEVEL_MV.minimum, 0.0)
+        self.assertEqual(limits.AC_LEVEL_MV.maximum, 1500.0)
 
     def test_output_dc_offset_covers_0_to_2000_mv(self):
         self.assertEqual(limits.OUTPUT_DC_OFFSET_MV.minimum, 0.0)
@@ -132,10 +135,38 @@ class TestDcOffsetRule(unittest.TestCase):
 
     def test_sum_over_budget_raises(self):
         with self.assertRaises(ValueError):
-            limits.validate_dc_with_offset(2500.0, 1000.0)
+            limits.validate_dc_with_offset(1500.0, 1600.0)
 
     def test_boundary_sum_is_accepted(self):
         limits.validate_dc_with_offset(1000.0, 2000.0)
+
+
+class TestAcDcRangeExtremes(unittest.TestCase):
+    """The 0-1500 mV AC/DC span must be valid at its extremes and still
+    reject clipping combinations (calibration.validate_ac_dc)."""
+
+    def test_ac_and_dc_limits_are_exactly_0_to_1500_mv(self):
+        self.assertEqual((limits.AC_LEVEL_MV.minimum, limits.AC_LEVEL_MV.maximum),
+                         (0.0, 1500.0))
+        self.assertEqual((limits.DC_LEVEL_MV.minimum, limits.DC_LEVEL_MV.maximum),
+                         (0.0, 1500.0))
+
+    def test_validate_ac_dc_accepts_dc_1500_with_ac_1500(self):
+        # Above-DC envelope [DC-AC, DC+AC] = [0, 3000] mV, inside the 3280 mV
+        # full scale: the requested maximum must be accepted, not clipped.
+        ac, dc = validate_ac_dc(1500.0, 1500.0)
+        self.assertEqual((ac, dc), (1500.0, 1500.0))
+
+    def test_validate_ac_dc_rejects_ac_1500_at_dc_100(self):
+        # DC - AC = -1400 mV: the below-DC trough would clip at 0 mV.
+        with self.assertRaises(ValueError):
+            validate_ac_dc(1500.0, 100.0)
+
+    def test_validate_ac_dc_at_dc_zero_admits_only_ac_zero(self):
+        # The degenerate flatline is the only admissible pair at DC = 0.
+        validate_ac_dc(0.0, 0.0)
+        with self.assertRaises(ValueError):
+            validate_ac_dc(1.0, 0.0)
 
 
 class TestInhaleExhaleRatios(unittest.TestCase):

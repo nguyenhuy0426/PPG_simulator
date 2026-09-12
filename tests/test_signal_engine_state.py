@@ -46,12 +46,12 @@ def test_start_simulation_preserves_user_settings(engine):
 
 def test_start_simulation_preserves_dc_levels(engine):
     """Per-channel DC set through the AC/DC API must survive the start."""
-    engine.update_dc_levels(1200.0, 1800.0)
+    engine.update_dc_levels(1200.0, 900.0)
 
     engine.start_simulation(COND_NORMAL)
 
     assert engine.ppg_model.dc_ir == pytest.approx(1.2)
-    assert engine.ppg_model.dc_red == pytest.approx(1.8)
+    assert engine.ppg_model.dc_red == pytest.approx(0.9)
 
 
 def test_start_simulation_applies_requested_condition(engine):

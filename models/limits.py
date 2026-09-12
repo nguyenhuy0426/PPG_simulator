@@ -35,9 +35,16 @@ The union is used because this simulator drives ONE hardware output path, not
 two interchangeable optical modules; restricting it to the reflectance numbers
 alone would make the transmittance operating points unreachable.
 
+[PROJECT] Exception to the union: the per-channel AC and DC levels are pinned
+to the project's own 0-1500 mV span, chosen to match the companion Android
+MedicalSimulator app so both ends of the link expose identical ranges. The
+extremes stay inside the DAC headroom: DC 1500 + AC 1500 gives an envelope of
+[0, 3000] mV, within the 3280 mV full scale, and at DC = 0 the trough rule
+(DC - AC >= 0) admits only AC = 0.
+
 [HARDWARE] A range being reachable in software does NOT mean the analogue path
-reproduces it. The MCP4725 full scale on this board is 3.28 V, so a 3000 mV DC
-plus a 2000 mV offset (5000 mV) is rejected by validate_dc_with_offset() on
+reproduces it. The MCP4725 full scale on this board is 3.28 V, so a 1500 mV DC
+plus a 2000 mV offset (3500 mV) is rejected by validate_dc_with_offset() on
 the AECG100 rule alone, and the DAC clamp in models/ppg_model.py rejects the
 remainder. Nothing here has been validated against a bench measurement.
 
@@ -175,22 +182,33 @@ SPO2 = Limit(0.0, 100.0, 98.0, 1.0, " %", "SpO2")
 # Amplitude parameters (per channel)
 # ---------------------------------------------------------------------------
 
-DC_LEVEL_MV = Limit(100.0, 3000.0, 1500.0, 1.0, " mV", "DC level")
-"""Union of Table 7/10 (100-3000 mV) and Table 11/13 (300-3000 mV).
-Default stays 1500 mV: that is this project's existing persisted value and
-changing it would silently alter every saved config."""
+DC_LEVEL_MV = Limit(0.0, 1500.0, 1500.0, 1.0, " mV", "DC level")
+"""Project range, matched to the companion Android app: 0-1500 mV. The top of
+the old AECG100 union (3000 mV) exceeded what the shared 0-1500 mV AC span can
+ride on without clipping, so both ends were aligned instead. Default stays
+1500 mV: that is this project's existing persisted value and changing it would
+silently alter every saved config. DC = 0 is the degenerate flatline;
+validate_ac_dc admits only AC = 0 there."""
 
-AC_LEVEL_MV = Limit(0.1, 300.0, 45.0, 0.01, " mV", "AC level")
-"""Union of Table 7/10 (0.75-30 mV) and Table 11/13 (0.1-300 mV).
-Default 45 mV = PERFUSION_INDEX 3 % x DC_LEVEL_MV 1500 mV, this project's
-existing operating point."""
+AC_LEVEL_MV = Limit(0.0, 1500.0, 45.0, 1.0, " mV", "AC level")
+"""Project range, matched to the companion Android app: 0-1500 mV (was the
+AECG100 transmittance union 0.1-300 mV). Default 45 mV = PERFUSION_INDEX 3 % x
+DC_LEVEL_MV 1500 mV, this project's existing operating point. 0 is included so
+a flat line is expressible; the trough rule (DC - AC >= 0) still caps the AC
+at the DC level."""
 
 OUTPUT_DC_OFFSET_MV = Limit(0.0, 2000.0, 0.0, 1.0, " mV", "Output DC offset")
 """AECG100 Table 10 'Output DC': an extra DC pedestal added on top of the DC
-level, used to fine-tune a DUT's measured-vs-set PI mismatch (manual 4.6)."""
+level, used to fine-tune a DUT's measured-vs-set PI mismatch (manual 4.6).
+Kept at 0-2000 mV; see DC_PLUS_OFFSET_MAX_MV for how it interacts with the
+new 1500 mV DC ceiling."""
 
 DC_PLUS_OFFSET_MAX_MV = 3000.0
-"""AECG100 Table 10 constraint: DC + Output DC offset <= 3000 mV."""
+"""AECG100 Table 10 constraint: DC + Output DC offset <= 3000 mV.
+
+Kept at 3000 mV, which also keeps the sum inside the 3280 mV DAC full scale.
+With DC now capped at 1500 mV, an offset up to 1500 mV is admissible at the
+DC ceiling; the full 2000 mV offset is reachable only at DC <= 1000 mV."""
 
 # ---------------------------------------------------------------------------
 # Waveform morphology
@@ -202,11 +220,11 @@ Systolic Peak 150 ms, Dicrotic Notch 360 ms, Diastolic Peak 460 ms.
 Because they are specified at 60 BPM, the simulator stores them as a fraction
 of the cardiac cycle: fraction = time_ms / 1000."""
 
-FEATURE_AMPLITUDE_MV = Limit(0.0, 300.0, 12.5, 0.01, " mV", "Feature amplitude")
-"""AECG100 Table 7: SP/DN/DP each 0.75-30.00 mV. Extended to the
-transmittance AC ceiling (300 mV) for the same reason as AC_LEVEL_MV, and
-down to 0 so a feature can be switched off entirely (the AECG100 has no
-'no dicrotic notch' setting; this project's condition presets do)."""
+FEATURE_AMPLITUDE_MV = Limit(0.0, 1500.0, 12.5, 0.01, " mV", "Feature amplitude")
+"""AECG100 Table 7: SP/DN/DP each 0.75-30.00 mV. Ceiling follows the project
+AC span (1500 mV, like AC_LEVEL_MV), and 0 is included so a feature can be
+switched off entirely (the AECG100 has no 'no dicrotic notch' setting; this
+project's condition presets do)."""
 
 DICROTIC_NOTCH_DEPTH = Limit(0.0, 1.0, 0.25, 0.01, "", "Dicrotic notch depth")
 """Project-specific normalised notch depth, retained from v4."""

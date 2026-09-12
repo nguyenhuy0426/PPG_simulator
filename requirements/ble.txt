@@ -1,0 +1,5 @@
+# BLE remote control (optional) — Android app pairing via BlueZ GATT.
+# Install: .venv/bin/python -m pip install -r requirements/ble.txt
+# Requires BlueZ >= 5.50 with the peripheral role (Ubuntu 22.04/24.04 OK).
+# dbus-fast/dbus-next/bleak are pulled in transitively by bless.
+bless>=0.3.0,<0.4

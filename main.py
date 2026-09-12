@@ -3,17 +3,24 @@
 main.py — PPG Signal Simulator for Raspberry Pi 4 (CustomTkinter GUI)
 
 Usage:
-    python3 main.py                  # Normal mode (requires RPi hardware)
-    python3 main.py --dry-run        # Dry-run mode (no hardware, simulated I/O)
+    python3 main.py                        # Normal mode (requires RPi hardware)
+    python3 main.py --dry-run              # Dry-run mode (no hardware, simulated I/O)
+    python3 main.py --dry-run --ble        # Dry-run + BLE remote control (GUI)
+    python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
 """
 
 import sys
 import os
 import argparse
+import time
 
 # Parse --dry-run before importing config
 parser = argparse.ArgumentParser(description="PPG Signal Simulator for Raspberry Pi 4")
 parser.add_argument("--dry-run", action="store_true", help="Run without hardware (simulated I/O)")
+parser.add_argument("--ble", action="store_true",
+                    help="Start the BLE GATT server alongside the GUI")
+parser.add_argument("--ble-only", action="store_true",
+                    help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
 args = parser.parse_args()
 
 if args.dry_run:
@@ -25,6 +32,29 @@ from config_store import load_config, save_config, config_from_ppg_params, apply
 from core.signal_engine import SignalEngine
 from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
+
+
+def start_ble(engine):
+    """Start the BLE GATT server; returns the BleServer or None on failure."""
+    try:
+        from comm.ble_server import BleServer
+    except ImportError as exc:
+        log.error(f"BLE unavailable ({exc}) — install with: pip install -r requirements/ble.txt")
+        return None
+    ble = BleServer(engine)
+    ble.start()
+    return ble
+
+
+def save_current_config(engine):
+    try:
+        p = engine.get_ppg_params()
+        cfg = config_from_ppg_params(p)
+        cfg["condition"] = p.condition
+        save_config(cfg)
+    except Exception as e:
+        log.error(f"Failed to save config: {e}")
+
 
 def main():
     log.info("=" * 50)
@@ -49,29 +79,52 @@ def main():
     p = engine.get_ppg_params()
     apply_config_to_params(config, p)
     engine.load_parameters(p)
-    
+
+    # BLE remote control (optional; lazily imports bless)
+    ble_server = None
+    if args.ble or args.ble_only:
+        ble_server = start_ble(engine)
+
+    # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
+    if args.ble_only:
+        if ble_server is None:
+            rx.shutdown()
+            engine.shutdown()
+            sys.exit(1)
+        log.info("Headless BLE mode — simulation auto-starts, press Ctrl+C to stop")
+        try:
+            engine.start_simulation(engine.get_ppg_params().condition)
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            log.info("Interrupted by user")
+        finally:
+            if ble_server is not None:
+                ble_server.stop()
+            save_current_config(engine)
+            rx.shutdown()
+            engine.shutdown()
+            log.info("Shutdown complete.")
+        return
+
+    # ─── Normal GUI mode (optionally with BLE) ────────────────────────────────
     # Simulation will be started manually via the GUI
-    
+
     # Initialize UI
     app = CTkApp()
-    
+
     try:
         app.mainloop()
     except KeyboardInterrupt:
         log.info("Interrupted by user")
     finally:
-        # Save config
-        try:
-            p = engine.get_ppg_params()
-            cfg = config_from_ppg_params(p)
-            cfg["condition"] = p.condition
-            save_config(cfg)
-        except Exception as e:
-            log.error(f"Failed to save config: {e}")
-            
+        if ble_server is not None:
+            ble_server.stop()
+        save_current_config(engine)
         rx.shutdown()
         engine.shutdown()
         log.info("Shutdown complete.")
+
 
 if __name__ == "__main__":
     main()

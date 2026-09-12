@@ -182,22 +182,28 @@ def apply_config_to_params(config: dict, params):
         params.spo2_coeff_a = a
         params.spo2_coeff_b = b
 
-    # Phase 3: per-channel DC (mV) + polarity. Validate each DC against the DAC
-    # headroom (0 < DC <= full-scale) via validate_ac_dc with AC=0; fall back to
-    # the default DC on invalid/corrupt values rather than crashing. Polarity
-    # must be a known enum value, else fall back to above-DC.
+    # Phase 3: per-channel DC (mV) + polarity. Validate each DC against the
+    # declared 0-1500 mV range and the DAC headroom (via validate_ac_dc with
+    # AC=0); fall back to the default DC on invalid/corrupt values rather than
+    # crashing. Polarity must be a known enum value, else fall back to above-DC.
     dc_ir = config.get("dc_ir_mv", _DEFAULT_DC_MV)
     dc_red = config.get("dc_red_mv", _DEFAULT_DC_MV)
-    try:
-        _, dc_ir = validate_ac_dc(0.0, dc_ir)
-    except ValueError as e:
-        log.warning(f"Invalid persisted dc_ir_mv ({e}); using default {_DEFAULT_DC_MV}")
-        dc_ir = _DEFAULT_DC_MV
-    try:
-        _, dc_red = validate_ac_dc(0.0, dc_red)
-    except ValueError as e:
-        log.warning(f"Invalid persisted dc_red_mv ({e}); using default {_DEFAULT_DC_MV}")
-        dc_red = _DEFAULT_DC_MV
+    from models import limits
+    for name, stored in (("dc_ir_mv", dc_ir), ("dc_red_mv", dc_red)):
+        try:
+            validate_ac_dc(0.0, stored)
+        except ValueError as e:
+            log.warning(f"Invalid persisted {name} ({e}); using default {_DEFAULT_DC_MV}")
+            stored = _DEFAULT_DC_MV
+        if not limits.DC_LEVEL_MV.contains(stored):
+            log.warning(f"Persisted {name} {stored} outside "
+                        f"{limits.DC_LEVEL_MV.minimum:g}-{limits.DC_LEVEL_MV.maximum:g} mV; "
+                        f"using default {_DEFAULT_DC_MV}")
+            stored = _DEFAULT_DC_MV
+        if name == "dc_ir_mv":
+            dc_ir = stored
+        else:
+            dc_red = stored
     polarity = config.get("ac_polarity", POLARITY_ABOVE_DC)
     if polarity not in (POLARITY_ABOVE_DC, POLARITY_BELOW_DC):
         log.warning(f"Invalid persisted ac_polarity ({polarity!r}); using above-DC")
@@ -210,7 +216,6 @@ def apply_config_to_params(config: dict, params):
     from models.ppg_model import PPGParameters
     from models.waveform import validate_kind
     from models.noise import NOISE_KINDS
-    from models import limits
     defaults = PPGParameters()
     for name in _EXTRA_FIELDS:
         value = config.get(name, getattr(defaults, name))
@@ -255,7 +260,7 @@ def apply_config_to_params(config: dict, params):
                 setattr(params, name, getattr(defaults, name))
     for name in ("ac_ir_mv", "ac_red_mv"):
         value = getattr(params, name)
-        if value is not None and not 0 <= value <= 3000:
+        if value is not None and not limits.AC_LEVEL_MV.contains(value):
             setattr(params, name, None)
     if params.apnea_duration_s >= params.apnea_cycle_min * 60:
         params.apnea_enabled = False
