@@ -3,6 +3,7 @@ import time
 import os
 import threading
 import logging
+from pathlib import Path
 
 log = logging.getLogger("ppg_simulator")
 
@@ -16,14 +17,19 @@ class CSVLogger:
         self.writer = None
         self.is_logging = False
         self.lock = threading.Lock()
+        self.active_filename = ""
         
         if not os.path.exists(self.folder):
             os.makedirs(self.folder, exist_ok=True)
 
-    def start(self):
+    def start(self, filename=None):
         with self.lock:
             if not self.is_logging:
                 try:
+                    requested = Path(str(filename)).name if filename else ""
+                    if requested and not requested.lower().endswith(".csv"):
+                        requested += ".csv"
+                    self.active_filename = requested or self._next_filename()
                     # Always start fresh for a new recording
                     self.file = open(self.temp_filename, 'w', newline='')
                     self.writer = csv.writer(self.file)
@@ -32,6 +38,12 @@ class CSVLogger:
                     log.info(f"[CSVLogger] Started recording to {self.temp_filename}")
                 except Exception as e:
                     log.error(f"[CSVLogger] Failed to open {self.temp_filename}: {e}")
+
+    def _next_filename(self):
+        idx = 1
+        while os.path.exists(os.path.join(self.folder, f"data_{idx}.csv")):
+            idx += 1
+        return f"data_{idx}.csv"
 
     def stop(self, save=True):
         with self.lock:
@@ -55,14 +67,10 @@ class CSVLogger:
         if not os.path.exists(self.temp_filename):
             return
             
-        # Find next available data_N.csv
-        idx = 1
-        while True:
-            new_name = os.path.join(self.folder, f"data_{idx}.csv")
-            if not os.path.exists(new_name):
-                break
-            idx += 1
-            
+        new_name = os.path.join(self.folder, self.active_filename or self._next_filename())
+        # The active name is shared with the phone so both applications can
+        # select the same session. A new recording intentionally replaces an
+        # old file with that exact session name.
         os.rename(self.temp_filename, new_name)
         log.info(f"[CSVLogger] Saved recording as {new_name}")
 

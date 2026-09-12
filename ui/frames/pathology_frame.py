@@ -3,6 +3,7 @@ from core.signal_engine import SignalEngine
 from models.ppg_model import CONDITION_NAMES
 from models import limits
 from calibration import r_target_from_spo2
+from ui import focus_is_inside
 from ui.trace_view import TraceView
 from ui import theme as T
 
@@ -10,8 +11,8 @@ from ui import theme as T
 class PathologyFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.app, self.engine, self.logger = master, SignalEngine.get_instance(), master.csv_logger
-        self.is_recording = False
+        self.app, self.engine = master, SignalEngine.get_instance()
+        self._run_shown, self._rec_shown = None, None
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
@@ -130,6 +131,11 @@ class PathologyFrame(ctk.CTkFrame):
     def set_condition(self, idx):
         self.engine.change_condition(idx)
 
+    @property
+    def is_recording(self):
+        """Recording state lives on the engine (shared with BLE + status)."""
+        return bool(getattr(self.engine, "recording", False))
+
     def toggle_simulation(self):
         if self.engine._running:
             self.engine.stop_simulation()
@@ -144,25 +150,36 @@ class PathologyFrame(ctk.CTkFrame):
 
     def toggle_recording(self):
         if self.is_recording:
-            self.engine.set_recording(False)
-            self.record_tick()
-            self.logger.stop(save=True)
-            self.is_recording = False
+            self.engine.stop_recording()
             self.message.configure(text="CSV saved in dataset/", text_color=T.ACCENT)
         elif self.engine._running:
-            self.logger.start()
-            self.is_recording = self.logger.is_logging
-            if self.is_recording:
-                self.engine.set_recording(True)
+            if not self.engine.start_recording():
+                self.message.configure(text="Recording could not start.", text_color=T.ERROR)
         else:
             self.message.configure(text="Start simulation before recording.", text_color=T.MUTED)
-        self.record_btn.configure(text="Save recording" if self.is_recording else "Record CSV",
-                                  fg_color=T.ERROR if self.is_recording else T.INK)
+        self.periodic_update()
 
     def record_tick(self):
         if self.is_recording:
-            for sample in self.engine.drain_recording():
-                self.logger.log_data(*sample)
+            self.engine.pump_recording()
+
+    def sync_control_buttons(self):
+        """Mirror engine run/record state onto the toolbar buttons.
+
+        Cheap (configure only on change) and frame-visibility independent, so
+        CTkApp calls it every tick and a phone-side toggle is visible live
+        even while another tab is on screen.
+        """
+        run = bool(self.engine._running)
+        if run != self._run_shown:
+            self._run_shown = run
+            self.run_btn.configure(text="Stop output" if run else "Run simulation",
+                                   fg_color=T.ERROR if run else T.ACCENT)
+        recording = self.is_recording
+        if recording != self._rec_shown:
+            self._rec_shown = recording
+            self.record_btn.configure(text="Save recording" if recording else "Record CSV",
+                                      fg_color=T.ERROR if recording else T.INK)
 
     def periodic_update(self):
         p, m = self.engine.ppg_params, self.engine.ppg_model
@@ -179,7 +196,7 @@ class PathologyFrame(ctk.CTkFrame):
                 current = float(self.slider_vars[key].get())
             except (TypeError, ValueError):
                 continue
-            if abs(current - value) > max(1e-6, abs(value) * 1e-4) and focused is not entry:
+            if abs(current - value) > max(1e-6, abs(value) * 1e-4) and not focus_is_inside(focused, entry):
                 self.slider_vars[key].set(value)
                 entry.delete(0, "end")
                 entry.insert(0, f"{value:g}")
@@ -193,5 +210,4 @@ class PathologyFrame(ctk.CTkFrame):
         state = "RED AC manual • SpO₂ target uncoupled" if p.ac_red_mv is not None else ("Negative R • target outside calibration range" if ratio != clamp else "RED follows SpO₂ ratio")
         self.amp_label.configure(text=(f"NOMINAL  AC IR {ac:.2f} / RED {red:.2f} mV   ·   DC IR {p.dc_ir_mv:g} / RED {p.dc_red_mv:g} mV   ·   {state}"))
         self.trace.update_samples(self.engine.get_display_history())
-        self.run_btn.configure(text="Stop output" if self.engine._running else "Run simulation",
-                               fg_color=T.ERROR if self.engine._running else T.ACCENT)
+        self.sync_control_buttons()

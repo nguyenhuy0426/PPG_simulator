@@ -3,7 +3,6 @@ import customtkinter as ctk
 from comm.logger import log
 from config import DRY_RUN, FIRMWARE_VERSION
 from core.signal_engine import SignalEngine
-from core.csv_logger import CSVLogger
 from ui import theme as T
 from ui.frames.pathology_frame import PathologyFrame
 from ui.frames.calibration_frame import CalibrationFrame
@@ -20,7 +19,8 @@ class CTkApp(ctk.CTk):
         self.minsize(1024, 600)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
-        self.csv_logger = CSVLogger()
+        # Recording is engine-owned (one CSVLogger shared by GUI, BLE and the
+        # status echo); the engine creates it lazily on the first start.
         self.engine = SignalEngine.get_instance()
         self._closing = False
         header = ctk.CTkFrame(self, fg_color=T.DARK, corner_radius=0, height=66)
@@ -87,10 +87,21 @@ class CTkApp(ctk.CTk):
     def update_gui(self):
         if self._closing:
             return
-        if hasattr(self.active_frame, "periodic_update"):
-            self.active_frame.periodic_update()
         monitor = self.frames["Pathology"]
         monitor.record_tick()
+        # Phone-issued playback commands (protocol v2 "pb") are queued on the
+        # engine by the bless thread and applied here on the Tk thread, even
+        # while the Playback tab is hidden.
+        request = self.engine.take_playback_request()
+        if request is not None:
+            self.frames["Playback"].handle_playback_request(*request)
+        # BLE can mutate engine state while any tab is visible. Refresh every
+        # frame, not only the active one, so returning to a tab never appears
+        # to be the moment the command was received. This also advances a
+        # phone-selected playback while the Pi is on another tab.
+        for frame in self.frames.values():
+            if hasattr(frame, "periodic_update"):
+                frame.periodic_update()
         stats = self.engine.get_stats()
         if not DRY_RUN:
             dac = self.engine.dac_manager
@@ -108,10 +119,8 @@ class CTkApp(ctk.CTk):
         self._closing = True
         if hasattr(self, "_after_id"):
             self.after_cancel(self._after_id)
-        if hasattr(self, "csv_logger") and self.csv_logger.is_logging:
-            self.engine.set_recording(False)
-            self.frames["Pathology"].record_tick()
-            self.csv_logger.stop(save=True)
         if hasattr(self, "engine"):
+            if getattr(self.engine, "recording", False):
+                self.engine.stop_recording()
             self.engine.stop_simulation()
         self.destroy()

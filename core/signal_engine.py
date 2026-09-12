@@ -34,6 +34,18 @@ SIG_STOPPED = 0
 SIG_RUNNING = 1
 SIG_PAUSED  = 2
 
+# Playback status codes published on the engine and echoed over BLE
+# (protocol v2 status key "pb"). The engine holds them as the single source of
+# truth: the bless thread reads them for the status frame, the Tk thread writes
+# them from PlaybackFrame, and Tk polls the pending request.
+PB_INACTIVE = 0
+PB_PLAYING  = 1
+PB_PAUSED   = 2
+
+# How often the recording pump drains the sample buffer to the CSV sink.
+# 6000 queued samples at 100 Hz is 60 s, so a slow pump can never lose rows.
+RECORD_PUMP_INTERVAL_S = 0.25
+
 
 class SignalEngine:
     """Signal generation engine running PPG model in a background thread."""
@@ -88,6 +100,24 @@ class SignalEngine:
         self._buf_lock = threading.Lock()
         self._running = False
         self._sample_count = 0
+
+        # ─── Protocol v2 shared control state ───
+        # Recording: the engine owns the CSV sink and its pump thread so BLE,
+        # the Tk GUI and the status echo all read/write ONE source of truth.
+        self._csv_logger = None
+        self._record_ctl_lock = threading.Lock()
+        self._record_pump = None
+        self._record_pump_stop = threading.Event()
+        self._record_pump_stop.set()
+        self._record_file = ""
+        # Playback: plain thread-safe attributes (bless thread reads for the
+        # status frame, Tk thread writes from PlaybackFrame) plus a bounded
+        # command queue the Tk loop drains.
+        self._playback_lock = threading.Lock()
+        self._playback_requests = deque(maxlen=16)
+        self.pb_active = False
+        self.pb_state = ""   # "playing" | "paused" | ""
+        self.pb_file = ""
 
         # Both persisted locks make PI read-only; single locks define which
         # amplitude parameter is held when PI changes.
@@ -441,6 +471,126 @@ class SignalEngine:
             batch = list(self._record_samples)
             self._record_samples.clear()
             return batch
+
+    @property
+    def recording(self) -> bool:
+        """Recording state shared by the Tk GUI, BLE commands and status echo."""
+        return self._recording
+
+    @property
+    def record_file(self) -> str:
+        """Short shared basename for the current engine recording."""
+        return self._record_file if self._recording else ""
+
+    def set_csv_logger(self, logger):
+        """Replace the CSV sink (tests/headless runs). Stops any live recording."""
+        if logger is self._csv_logger:
+            return
+        if self._recording:
+            self.stop_recording()
+        self._csv_logger = logger
+
+    def start_recording(self, filename=None) -> bool:
+        """Start CSV recording from the engine. Idempotent — returns the state.
+
+        Requires a running simulation: the sample pump is fed by the 100 Hz
+        model tick, so recording a stopped engine would write an empty file.
+        """
+        if self._recording:
+            return True
+        if not self._running:
+            log.warning("[SignalEngine] start_recording ignored — simulation is stopped")
+            return False
+        with self._record_ctl_lock:
+            if self._recording:
+                return True
+            if self._csv_logger is None:
+                from core.csv_logger import CSVLogger
+                self._csv_logger = CSVLogger()
+            logger = self._csv_logger
+            logger.start(filename)
+            if not logger.is_logging:
+                return False
+            self._record_file = str(getattr(logger, "active_filename", "") or "")
+            self.set_recording(True)
+            self._record_pump_stop.clear()
+            self._record_pump = threading.Thread(
+                target=self._record_pump_loop, daemon=True, name="RecordPump")
+            self._record_pump.start()
+            log.info("[SignalEngine] Recording started (engine-owned sink)")
+            return True
+
+    def stop_recording(self, save: bool = True) -> bool:
+        """Stop CSV recording and flush/discard the buffered tail. Idempotent."""
+        with self._record_ctl_lock:
+            if not self._recording and (self._csv_logger is None
+                                        or not self._csv_logger.is_logging):
+                return False
+            self.set_recording(False)
+            self._record_pump_stop.set()
+            pump, self._record_pump = self._record_pump, None
+            if pump is not None:
+                pump.join(timeout=2.0)
+            self.pump_recording()
+            logger = self._csv_logger
+            if logger is not None:
+                logger.stop(save=save)
+            log.info("[SignalEngine] Recording stopped")
+            return True
+
+    def pump_recording(self) -> int:
+        """Drain buffered model rows into the CSV sink. Returns rows written.
+
+        Safe from any thread: draining is lock-guarded and every row is written
+        by exactly one caller because the buffer is emptied atomically.
+        """
+        logger = self._csv_logger
+        if logger is None or not logger.is_logging:
+            return 0
+        rows = 0
+        for sample in self.drain_recording():
+            logger.log_data(*sample)
+            rows += 1
+        return rows
+
+    def _record_pump_loop(self):
+        while not self._record_pump_stop.wait(RECORD_PUMP_INTERVAL_S):
+            self.pump_recording()
+
+    # ─── Playback shared state (protocol v2 "pb") ───
+    def set_playback_state(self, active: bool, state: str = "", filename: str = ""):
+        with self._playback_lock:
+            self.pb_active = bool(active)
+            self.pb_state = str(state) if self.pb_active else ""
+            self.pb_file = str(filename) if self.pb_active else ""
+
+    def get_playback_state(self):
+        with self._playback_lock:
+            return self.pb_active, self.pb_state, self.pb_file
+
+    def request_playback(self, action: str, filename: str = "") -> bool:
+        """Queue a programmatic playback action for the Tk thread to apply."""
+        with self._playback_lock:
+            if len(self._playback_requests) == self._playback_requests.maxlen:
+                return False
+            self._playback_requests.append((str(action), str(filename)))
+            return True
+
+    def take_playback_request(self):
+        with self._playback_lock:
+            return self._playback_requests.popleft() if self._playback_requests else None
+
+    @property
+    def is_running(self) -> bool:
+        return bool(self._running)
+
+    @property
+    def pb_code(self) -> int:
+        """Playback state as the protocol v2 enum (0 inactive, 1 playing, 2 paused)."""
+        with self._playback_lock:
+            if not self.pb_active:
+                return PB_INACTIVE
+            return PB_PAUSED if self.pb_state == "paused" else PB_PLAYING
 
     def update_signal_settings(self, values):
         # Validate the complete form on a private copy before touching a live tick.

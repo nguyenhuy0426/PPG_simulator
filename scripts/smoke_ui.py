@@ -47,9 +47,8 @@ def main():
 
     try:
         with tempfile.TemporaryDirectory(prefix="ppg-ui-record-") as temporary:
-            app.csv_logger = CSVLogger(temporary)
+            engine.set_csv_logger(CSVLogger(temporary))
             monitor = app.frames["Pathology"]
-            monitor.logger = app.csv_logger
             app.geometry("1280x800+0+0")
             pump()
             engine.update_heart_rate(90)

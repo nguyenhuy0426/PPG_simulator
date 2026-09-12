@@ -1,15 +1,25 @@
+import time
+
 import customtkinter as ctk
 from core.signal_engine import SignalEngine
 from models.respiration import RespirationConfig
 from models.waveform import WAVEFORM_KINDS
 from models.noise import NOISE_KINDS
 from ui import theme as T
+from ui import focus_is_inside
+
+# Amplitude entries the phone can change live (BLE delta merge); a checkbox
+# the user has just clicked gets this hold-off before the engine truth wins.
+LIVE_ENTRY_KEYS = ("ac_ir_mv", "ac_red_mv", "dc_ir_mv", "dc_red_mv", "spo2")
+LIVE_LOCK_KEYS = ("lock_ac", "lock_dc")
+USER_HOLD_S = 8.0
 
 
 class AdvancedFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.engine = SignalEngine.get_instance()
+        self._user_hold = {}
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         T.label(self, "Signal setup", 22, True, anchor="w").grid(row=0, column=0, sticky="w", pady=(0, 8))
@@ -39,10 +49,10 @@ class AdvancedFrame(ctk.CTkFrame):
         if hint: T.label(box, hint, 10, text_color=T.MUTED, anchor="w").grid(row=1, column=0, columnspan=2, sticky="w")
         self.entries[key] = entry
 
-    def _check(self, body, row, column, key, title):
+    def _check(self, body, row, column, key, title, command=None):
         var = ctk.BooleanVar(value=False)
         self.vars[key] = var
-        ctk.CTkCheckBox(body, text=title, variable=var).grid(row=row, column=column, sticky="w", padx=12, pady=10)
+        ctk.CTkCheckBox(body, text=title, variable=var, command=command).grid(row=row, column=column, sticky="w", padx=12, pady=10)
 
     def _note(self, body, row, text):
         T.label(body, text, 11, text_color=T.MUTED, anchor="w", justify="left").grid(
@@ -60,8 +70,8 @@ class AdvancedFrame(ctk.CTkFrame):
         self.waveform_menu.grid(row=4, column=0, sticky="ew", padx=12, pady=8)
         self.polarity_menu = ctk.CTkOptionMenu(b, values=["AC above DC", "AC below DC"])
         self.polarity_menu.grid(row=4, column=1, sticky="ew", padx=12, pady=8)
-        self._check(b, 5, 0, "lock_ac", "Hold AC when DC changes")
-        self._check(b, 5, 1, "lock_dc", "Hold DC when PI changes")
+        self._check(b, 5, 0, "lock_ac", "Hold AC when DC changes", command=lambda: self._mark_user_edit("lock_ac"))
+        self._check(b, 5, 1, "lock_dc", "Hold DC when PI changes", command=lambda: self._mark_user_edit("lock_dc"))
         self._note(b, 6, "Feature timing at 60 bpm  ·  SP < DN < DP  ·  scales with the cardiac cycle")
         for row, kind, title in ((7, "sp", "Systolic peak"), (8, "dn", "Dicrotic notch"), (9, "dp", "Diastolic peak")):
             for col, ch in enumerate(("ir", "red")):
@@ -167,13 +177,54 @@ class AdvancedFrame(ctk.CTkFrame):
     def on_apply_coefficients(self):
         self._apply(lambda: self.engine.update_spo2_coefficients(self._number("spo2_coeff_a"), self._number("spo2_coeff_b")))
 
+    def _display_value(self, p, key):
+        """Entry text for one engine parameter, with the derived-AC rule.
+
+        AC IR None is displayed as its nominal PI/100 x DC value (what the
+        generator actually outputs); a derived AC RED stays blank, matching
+        the "Blank = derive from SpO2" hint.
+        """
+        value = getattr(p, key)
+        if key == "ac_ir_mv" and value is None:
+            value = p.perfusion_index * p.dc_ir_mv / 100
+        return "" if value is None else f"{value:g}"
+
+    def _mark_user_edit(self, key):
+        """A checkbox click holds off the engine mirror for USER_HOLD_S, long
+        enough to click Apply; afterwards the engine truth always wins."""
+        self._user_hold[key] = time.monotonic() + USER_HOLD_S
+
+    def periodic_update(self):
+        """Mirror engine truth into the phone-addressable widgets every tick.
+
+        - The entry under keyboard focus is never touched (the user may be
+          mid-edit); any other entry always shows the engine value.
+        - Lock checkboxes revert to engine truth once their hold-off expires.
+        """
+        p = self.engine.ppg_params
+        focused = self.winfo_toplevel().focus_get()
+        for key in LIVE_ENTRY_KEYS:
+            entry = self.entries.get(key)
+            if entry is None or focus_is_inside(focused, entry):
+                continue
+            target = self._display_value(p, key)
+            if entry.get() != target:
+                entry.delete(0, "end")
+                entry.insert(0, target)
+        now = time.monotonic()
+        for key in LIVE_LOCK_KEYS:
+            var = self.vars.get(key)
+            if var is None or var.get() == bool(getattr(p, key)):
+                continue
+            if self._user_hold.get(key, 0.0) > now:
+                continue
+            var.set(bool(getattr(p, key)))
+
     def on_show(self):
         p = self.engine.ppg_params
         for key, entry in self.entries.items():
-            value = getattr(p, key)
-            if key == "ac_ir_mv" and value is None: value = p.perfusion_index * p.dc_ir_mv / 100
             entry.delete(0, "end")
-            entry.insert(0, "" if value is None else f"{value:g}")
+            entry.insert(0, self._display_value(p, key))
         for key, var in self.vars.items(): var.set(getattr(p, key))
         self.waveform_menu.set(p.waveform)
         self.noise_menu.set(p.noise_kind)

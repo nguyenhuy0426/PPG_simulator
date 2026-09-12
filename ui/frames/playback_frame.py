@@ -2,6 +2,8 @@ import bisect
 import time
 from pathlib import Path
 import customtkinter as ctk
+from comm.logger import log
+from core.signal_engine import SignalEngine
 from ui.recordings import load_recording
 from ui.trace_view import TraceView
 from ui import theme as T
@@ -10,6 +12,7 @@ from ui import theme as T
 class PlaybackFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+        self.engine = SignalEngine.get_instance()
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
         T.label(self, "Recorded sessions", 22, True).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
@@ -38,6 +41,8 @@ class PlaybackFrame(ctk.CTkFrame):
         self.is_playing = False
         self.position = 0.0
         self._origin = 0.0
+        self.current_name = ""
+        self.engine.set_playback_state(False, "", "")
 
     def on_show(self):
         for child in self.files.winfo_children(): child.destroy()
@@ -52,7 +57,9 @@ class PlaybackFrame(ctk.CTkFrame):
                           command=lambda p=path: self.load_data(p)).pack(fill="x", padx=4, pady=4)
 
     def on_hide(self):
-        if self.is_playing: self.toggle_playback()
+        # Playback is a shared BLE state. Changing the Pi layout must not
+        # pause a session that was started by the phone (or vice versa).
+        pass
 
     def load_data(self, path):
         try:
@@ -63,22 +70,91 @@ class PlaybackFrame(ctk.CTkFrame):
         self.samples, self.parameters = samples, parameters
         self.times = [s[0] for s in samples]
         self.position, self.is_playing = 0.0, False
+        self.current_name = Path(path).name
         self.title_label.configure(text=Path(path).name)
         self.info.configure(text=f"{len(samples):,} samples   ·   {self.times[-1]:.2f} s   ·   {timing}")
         self.status.configure(text="Model commands only; optical reproduction is not recorded here.", text_color=T.MUTED)
         self.play_btn.configure(text="Play", state="normal")
+        self._publish_state()
         self._render(0)
+
+    # ─── Playback primitives (Tk thread; also driven by phone "pb" commands) ──
+    def play(self):
+        if self.is_playing or not self.samples:
+            return
+        if self.position >= self.times[-1]: self.position = 0.0
+        self._origin = time.monotonic() - self.position
+        self.is_playing = True
+        self.play_btn.configure(text="Pause")
+        self._publish_state()
+
+    def pause_playback(self):
+        if self.samples and self.is_playing:
+            self.position = min(self.times[-1], time.monotonic() - self._origin)
+            self.is_playing = False
+            self.play_btn.configure(text="Play")
+        self._publish_state()
+
+    def resume_playback(self):
+        self.play()
+
+    def stop_playback(self):
+        self.is_playing = False
+        self.position = 0.0
+        if self.samples:
+            self.play_btn.configure(text="Play")
+            self._render(0)
+        self._publish_state()
+
+    def start_named_playback(self, basename):
+        """Phone-commanded playback of one saved recording by file name."""
+        name = Path(str(basename)).name  # strip any caller-supplied directories
+        if not name:
+            log.warning("[Playback] pb start without a usable pb_file name")
+            return False
+        if not name.lower().endswith(".csv"):
+            name += ".csv"
+        path = self.dataset_dir / name
+        if not path.is_file():
+            log.warning(f"[Playback] pb_file not found: {name}")
+            self.status.configure(text=f"Recording not found: {name}", text_color=T.ERROR)
+            return False
+        self.load_data(path)
+        if not self.samples:
+            return False
+        self.play()
+        return True
+
+    def handle_playback_request(self, action, filename=""):
+        """Apply one queued phone 'pb' command (called from the Tk thread)."""
+        if action == "start":
+            if filename:
+                self.start_named_playback(filename)
+            elif self.samples:
+                self.play()
+            else:
+                log.warning("[Playback] pb start with no pb_file and nothing loaded")
+        elif action == "stop":
+            self.stop_playback()
+        elif action == "pause":
+            self.pause_playback()
+        elif action == "resume":
+            self.resume_playback()
+
+    def _publish_state(self):
+        if self.is_playing:
+            self.engine.set_playback_state(True, "playing", self.current_name)
+        elif self.samples and self.current_name and 0.0 < self.position < self.times[-1]:
+            self.engine.set_playback_state(True, "paused", self.current_name)
+        else:
+            self.engine.set_playback_state(False, "", self.current_name)
 
     def toggle_playback(self):
         if not self.samples: return
         if self.is_playing:
-            self.position = min(self.times[-1], time.monotonic() - self._origin)
-            self.is_playing = False
+            self.pause_playback()
         else:
-            if self.position >= self.times[-1]: self.position = 0.0
-            self._origin = time.monotonic() - self.position
-            self.is_playing = True
-        self.play_btn.configure(text="Pause" if self.is_playing else "Play")
+            self.play()
 
     def _render(self, idx):
         self.trace.update_samples(self.samples[max(0, idx-1200):idx+1])
@@ -93,3 +169,4 @@ class PlaybackFrame(ctk.CTkFrame):
         if self.position >= self.times[-1]:
             self.is_playing = False
             self.play_btn.configure(text="Replay")
+            self._publish_state()
