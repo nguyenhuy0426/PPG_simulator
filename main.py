@@ -12,6 +12,7 @@ Usage:
 import sys
 import os
 import argparse
+import signal
 import time
 
 # Parse --dry-run before importing config
@@ -120,6 +121,15 @@ def main():
 
     # Initialize UI
     app = CTkApp()
+
+    # Do not let SIGINT/SIGTERM raise KeyboardInterrupt in the middle of a Tk
+    # widget callback.  The handler only flips a Python flag; the regular 40 ms
+    # UI tick then performs the same orderly shutdown as the window close button.
+    def request_gui_shutdown(_signum, _frame):
+        app.request_shutdown()
+
+    signal.signal(signal.SIGINT, request_gui_shutdown)
+    signal.signal(signal.SIGTERM, request_gui_shutdown)
 
     try:
         app.mainloop()

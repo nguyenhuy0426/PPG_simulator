@@ -156,6 +156,17 @@ GUI interaction and screenshot check (requires a real display or Xvfb):
 .venv/bin/python scripts/smoke_ui.py --output docs/ui
 ```
 
+Install the PPG Simulator icon in the Raspberry Pi application dashboard and
+place a trusted shortcut on the desktop:
+
+```bash
+./scripts/install_desktop_launcher.sh
+```
+
+The launcher uses this checkout's `.venv`, starts the normal GUI with BLE,
+prevents duplicate instances and writes startup logs to
+`~/.local/state/ppg-simulator/launcher.log`.
+
 The laptop environment verifier also audits Git hygiene and rejects committed
 virtual environments, bytecode and generated package caches.
 

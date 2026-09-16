@@ -15,7 +15,9 @@ from ui.responsive import profile_for_screen
 class CTkApp(ctk.CTk):
     def __init__(self):
         T.install()
-        super().__init__()
+        # Match packaging/linux/ppg-simulator.desktop.in so GNOME associates
+        # the running Tk window with the dashboard icon that launched it.
+        super().__init__(className="PPGSimulator")
         self.layout = profile_for_screen(self.winfo_screenwidth(), self.winfo_screenheight())
         # CustomTkinter does not automatically scale widgets on Linux.  Scale
         # from the actual desktop resolution so 1024x600 touch panels stay
@@ -30,6 +32,7 @@ class CTkApp(ctk.CTk):
         # status echo); the engine creates it lazily on the first start.
         self.engine = SignalEngine.get_instance()
         self._closing = False
+        self._shutdown_requested = False
         header = ctk.CTkFrame(self, fg_color=T.DARK, corner_radius=0,
                               height=58 if self.layout.compact else 66)
         header.grid(row=0, column=0, sticky="ew")
@@ -168,6 +171,9 @@ class CTkApp(ctk.CTk):
             self.open_signal_setup()
 
     def update_gui(self):
+        if self._shutdown_requested:
+            self.on_closing()
+            return
         if self._closing:
             return
         monitor = self.frames["Pathology"]
@@ -206,6 +212,8 @@ class CTkApp(ctk.CTk):
         self._after_id = self.after(40, self.update_gui)
 
     def on_closing(self):
+        if self._closing:
+            return
         log.info("[CTkApp] Closing window")
         self._closing = True
         if hasattr(self, "_after_id"):
@@ -217,3 +225,7 @@ class CTkApp(ctk.CTk):
         if self.signal_setup_window is not None:
             self.close_signal_setup()
         self.destroy()
+
+    def request_shutdown(self):
+        """Ask the Tk event loop to close safely on its next scheduled tick."""
+        self._shutdown_requested = True

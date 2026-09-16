@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=PPG Simulator
+Name[vi]=Mô phỏng tín hiệu PPG
+GenericName=Medical signal simulator
+GenericName[vi]=Trình mô phỏng tín hiệu y sinh
+Comment=Generate, monitor and control dual-channel PPG signals
+Comment[vi]=Tạo, giám sát và điều khiển tín hiệu PPG hai kênh
+Exec=@PROJECT_ROOT@/scripts/launch_ppg_simulator.sh
+TryExec=@PROJECT_ROOT@/.venv/bin/python
+Path=@PROJECT_ROOT@
+Icon=ppg-simulator
+Terminal=false
+StartupNotify=true
+StartupWMClass=Ppgsimulator
+DBusActivatable=false
+Categories=Science;MedicalSoftware;
+Keywords=PPG;medical;simulator;signal;Raspberry Pi;
+X-GNOME-UsesNotifications=true

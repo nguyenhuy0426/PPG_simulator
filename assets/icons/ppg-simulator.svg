@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="512" height="512" viewBox="0 0 108 108" role="img"
+     aria-labelledby="title description">
+  <title id="title">PPG Simulator</title>
+  <desc id="description">Dark rounded square with a green PPG waveform</desc>
+  <!-- Matches MedicalSimulator's Android adaptive launcher icon. -->
+  <rect width="108" height="108" rx="24" fill="#0B1117"/>
+  <circle cx="54" cy="54" r="46" fill="#00FF88" fill-opacity="0.15"/>
+  <path d="M12 54 L28 54 L34 38 L40 70 L46 32 L52 76 L58 54
+           L64 54 L70 44 L76 64 L82 54 L96 54"
+        fill="none" stroke="#00FF88" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
