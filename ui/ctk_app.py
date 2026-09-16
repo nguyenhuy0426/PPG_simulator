@@ -45,8 +45,9 @@ class CTkApp(ctk.CTk):
         nav = ctk.CTkFrame(self, fg_color=T.PANEL, corner_radius=0)
         nav.grid(row=1, column=0, sticky="ew")
         self.nav_buttons = {}
-        for key, title in (("Pathology", "01   Monitor"), ("Advanced", "02   Signal setup"),
-                           ("Calibration", "03   Calibration / RX"), ("Playback", "04   Recordings")):
+        for key, title in (("Pathology", "01   Monitor"),
+                           ("Calibration", "02   Calibration / RX"),
+                           ("Playback", "03   Recordings")):
             btn = ctk.CTkButton(nav, text=title, width=self.layout.nav_width, height=40, corner_radius=0,
                                 command=lambda k=key: self._show_frame(k))
             btn.pack(side="left", padx=(8 if self.layout.compact else 12, 0),
@@ -54,10 +55,20 @@ class CTkApp(ctk.CTk):
             self.nav_buttons[key] = btn
         self.frames = {
             "Pathology": PathologyFrame(self, fg_color="transparent"),
-            "Advanced": AdvancedFrame(self, fg_color="transparent"),
             "Calibration": CalibrationFrame(self, fg_color="transparent"),
             "Playback": PlaybackFrame(self, fg_color="transparent"),
         }
+        self.signal_setup_window = None
+        self.signal_setup_panel = None
+        bubble_size = 44 if self.layout.compact else 50
+        self.signal_setup_bubble = ctk.CTkButton(
+            nav, text="⚙", width=bubble_size, height=bubble_size,
+            corner_radius=bubble_size // 2, fg_color=T.ACCENT,
+            hover_color=T.HOVER, border_width=2, border_color=T.BG,
+            font=ctk.CTkFont(family="DejaVu Sans", size=19, weight="bold"),
+            command=self.toggle_signal_setup)
+        self.signal_setup_bubble.pack(side="right", padx=14 if self.layout.compact else 22,
+                                      pady=4 if self.layout.compact else 6)
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=3, column=0, sticky="ew")
         self.status_label = T.label(footer, "Ready", 11, text_color=T.MUTED)
@@ -107,7 +118,54 @@ class CTkApp(ctk.CTk):
         self._show_frame("Playback")
 
     def select_advanced(self):
-        self._show_frame("Advanced")
+        self.open_signal_setup()
+
+    def open_signal_setup(self):
+        """Open the former Signal Setup page as a non-modal floating editor."""
+        window = self.signal_setup_window
+        if window is not None and window.winfo_exists():
+            window.deiconify()
+            window.lift()
+            window.focus_set()
+            return
+
+        width, height = self.layout.setup_popup_size
+        self.update_idletasks()
+        x = self.winfo_rootx() + max(0, (self.winfo_width() - width) // 2)
+        y = self.winfo_rooty() + max(0, (self.winfo_height() - height) // 2)
+        window = ctk.CTkToplevel(self)
+        window.title("Signal setup")
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.minsize(min(620, width), min(380, height))
+        window.configure(fg_color=T.BG)
+        window.grid_columnconfigure(0, weight=1)
+        window.grid_rowconfigure(0, weight=1)
+        window.transient(self)
+        window.protocol("WM_DELETE_WINDOW", self.close_signal_setup)
+        window.bind("<Escape>", lambda _event: self.close_signal_setup())
+        panel = AdvancedFrame(window, fg_color="transparent")
+        panel.grid(row=0, column=0, sticky="nsew",
+                   padx=self.layout.outer_pad, pady=self.layout.outer_pady)
+        self.signal_setup_window = window
+        self.signal_setup_panel = panel
+        self.signal_setup_bubble.configure(text="×", fg_color=T.ERROR)
+        panel.on_show()
+        window.after_idle(window.lift)
+
+    def close_signal_setup(self):
+        window = self.signal_setup_window
+        if window is not None and window.winfo_exists():
+            window.destroy()
+        self.signal_setup_window = None
+        self.signal_setup_panel = None
+        self.signal_setup_bubble.configure(text="⚙", fg_color=T.ACCENT)
+
+    def toggle_signal_setup(self):
+        window = self.signal_setup_window
+        if window is not None and window.winfo_exists():
+            self.close_signal_setup()
+        else:
+            self.open_signal_setup()
 
     def update_gui(self):
         if self._closing:
@@ -127,6 +185,8 @@ class CTkApp(ctk.CTk):
         for frame in self.frames.values():
             if hasattr(frame, "periodic_update"):
                 frame.periodic_update()
+        if self.signal_setup_panel is not None:
+            self.signal_setup_panel.periodic_update()
         stats = self.engine.get_stats()
         if not DRY_RUN:
             dac = self.engine.dac_manager
@@ -154,4 +214,6 @@ class CTkApp(ctk.CTk):
             if getattr(self.engine, "recording", False):
                 self.engine.stop_recording()
             self.engine.stop_simulation()
+        if self.signal_setup_window is not None:
+            self.close_signal_setup()
         self.destroy()

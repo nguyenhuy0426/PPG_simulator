@@ -43,7 +43,7 @@ def main():
         pump()
         x, y = app.winfo_rootx(), app.winfo_rooty()
         ImageGrab.grab(xdisplay=os.environ.get("DISPLAY"),
-                      bbox=(x, y, x+app.winfo_width(), y+app.winfo_height())).save(output / name)
+                       bbox=(x, y, x+app.winfo_width(), y+app.winfo_height())).save(output / name)
 
     try:
         with tempfile.TemporaryDirectory(prefix="ppg-ui-record-") as temporary:
@@ -59,12 +59,17 @@ def main():
             monitor.toggle_recording()
             before = config_from_ppg_params(engine.ppg_params)
             beat_count = engine.get_beat_count()
-            for page in ("Advanced", "Calibration", "Playback", "Pathology"):
+            for page in ("Calibration", "Playback", "Pathology"):
                 app._show_frame(page)
                 pump(.2)
                 assert config_from_ppg_params(engine.ppg_params) == before
                 assert engine._running
                 assert engine.get_beat_count() >= beat_count
+            app.open_signal_setup()
+            pump(.2)
+            assert config_from_ppg_params(engine.ppg_params) == before
+            assert engine._running
+            app.close_signal_setup()
             monitor.toggle_recording()
             recordings = list(Path(temporary).glob("data_*.csv"))
             assert len(recordings) == 1
@@ -77,11 +82,11 @@ def main():
             monitor.on_show()
             pump(8.2)
             screenshot("monitor-1280.png")
-            for page, filename in (("Advanced", "setup-1280.png"), ("Calibration", "calibration-1280.png")):
-                app._show_frame(page)
-                screenshot(filename)
+            app.select_calibration()
+            screenshot("calibration-1280.png")
             app.select_advanced()
-            advanced = app.frames["Advanced"]
+            advanced = app.signal_setup_panel
+            screenshot("setup-1280.png")
             advanced.tabs.set("Respiration")
             screenshot("respiration-1280.png")
             advanced.on_apply_respiration()
@@ -99,6 +104,7 @@ def main():
             advanced.on_apply_signal()
             assert config_from_ppg_params(engine.ppg_params) == before
             assert "number" in advanced.status.cget("text")
+            app.close_signal_setup()
             app.select_calibration()
             calibration = app.frames["Calibration"]
             calibration.toggle()
@@ -124,6 +130,7 @@ def main():
             screenshot("monitor-1024.png")
             app.select_advanced()
             screenshot("setup-1024.png")
+            app.close_signal_setup()
         print("PASS: navigation, parameter entry, invalid input, recording across pages, playback, calibration, 1024x600 metrics")
     finally:
         app.on_closing()

@@ -35,7 +35,10 @@ class PathologyFrame(ctk.CTkFrame):
             title.pack(side="left", fill="x", expand=True)
         monitor = ctk.CTkFrame(self, fg_color="transparent")
         monitor.grid(row=1, column=0, sticky="nsew")
-        monitor.grid_columnconfigure(0, weight=4)
+        # The trace is the primary instrument surface.  A 7:1 allocation keeps
+        # the setpoint strip readable while giving the waveforms noticeably
+        # more horizontal history on both 7-inch and desktop displays.
+        monitor.grid_columnconfigure(0, weight=7)
         monitor.grid_columnconfigure(1, weight=1, minsize=self.layout.vital_min_width)
         monitor.grid_rowconfigure(0, weight=1)
         waves = ctk.CTkFrame(monitor, fg_color=T.DARK)
@@ -52,7 +55,10 @@ class PathologyFrame(ctk.CTkFrame):
         vitals = ctk.CTkFrame(monitor, fg_color=T.PANEL)
         vitals.grid(row=0, column=1, sticky="nsew")
         vitals.grid_columnconfigure(0, weight=1)
-        T.label(vitals, "SETPOINTS", 11, True, text_color=T.MUTED).grid(row=0, column=0, sticky="w", padx=18, pady=(10, 0))
+        setpoint_label_size = 13 if self.layout.compact else 14
+        setpoint_value_size = 34 if self.layout.compact else 38
+        T.label(vitals, "SETPOINTS", 12 if self.layout.compact else 13, True,
+                text_color=T.MUTED).grid(row=0, column=0, sticky="w", padx=14, pady=(10, 2))
         self.vital_labels = {}
         for i, (key, title, unit) in enumerate((("hr", "Heart rate", "bpm"), ("spo2", "SpO₂ target", "%"),
                                                 ("rr", "Respiration", "brpm"), ("pi", "Perfusion index", "%"))):
@@ -61,10 +67,11 @@ class PathologyFrame(ctk.CTkFrame):
             vitals.grid_rowconfigure(i+1, weight=1)
             row.grid_columnconfigure(1, weight=1)
             row.grid_rowconfigure(0, weight=1)
-            T.label(row, title + " / " + unit, 11, text_color=T.MUTED,
-                    wraplength=92, justify="left", anchor="w").grid(row=0, column=0, padx=10, sticky="w")
-            value = T.label(row, "—", 30, True, anchor="e")
-            value.grid(row=0, column=1, padx=10, sticky="e")
+            T.label(row, title + " / " + unit, setpoint_label_size, True,
+                    text_color=T.MUTED, wraplength=82 if self.layout.compact else 104,
+                    justify="left", anchor="w").grid(row=0, column=0, padx=(8, 4), sticky="w")
+            value = T.label(row, "—", setpoint_value_size, True, anchor="e")
+            value.grid(row=0, column=1, padx=(2, 8), sticky="e")
             self.vital_labels[key] = value
         self.amp_label = T.label(self, "", 11, text_color=T.MUTED, anchor="w")
         self.amp_label.grid(row=2, column=0, sticky="ew", pady=(6, 4))
@@ -209,7 +216,10 @@ class PathologyFrame(ctk.CTkFrame):
     def periodic_update(self):
         p, m = self.engine.ppg_params, self.engine.ppg_model
         for key, (_, attr, _, _) in self.fields.items():
-            self.vital_labels[key].cget("font").configure(size=44 if self.vital_labels[key].master.winfo_height() >= 75 else 30)
+            row_height = self.vital_labels[key].master.winfo_height()
+            value_size = (48 if self.layout.compact else 52) if row_height >= 75 else (
+                34 if self.layout.compact else 38)
+            self.vital_labels[key].cget("font").configure(size=value_size)
             self.vital_labels[key].configure(text=f"{getattr(p, attr):.2f}" if key == "pi" else f"{getattr(p, attr):.0f}")
         # Reflect externally-applied values (e.g. BLE remote commands) into the
         # sliders/entries, skipping the widget the user is currently editing.

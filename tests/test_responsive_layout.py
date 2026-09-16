@@ -10,6 +10,10 @@ class TestResponsiveLayout(unittest.TestCase):
         self.assertEqual(profile.geometry, "1024x600+0+0")
         self.assertEqual(profile.minimum_size, (800, 480))
         self.assertLess(profile.widget_scale, 1.0)
+        self.assertLessEqual(profile.vital_min_width, 190)
+        popup_width, popup_height = profile.setup_popup_size
+        self.assertLessEqual(popup_width, profile.screen_width)
+        self.assertLessEqual(popup_height, profile.screen_height)
 
     def test_common_laptop_resolution_uses_regular_layout(self):
         profile = profile_for_screen(1366, 768)
@@ -24,10 +28,13 @@ class TestResponsiveLayout(unittest.TestCase):
         self.assertTrue(qhd.large)
         self.assertGreater(full_hd.widget_scale, 1.0)
         self.assertEqual(qhd.widget_scale, 1.5)
+        self.assertGreater(qhd.setup_popup_size[0], full_hd.setup_popup_size[0] - 1)
 
     def test_small_resolution_minimum_does_not_exceed_screen(self):
         profile = profile_for_screen(640, 400)
         self.assertEqual(profile.minimum_size, (640, 400))
+        self.assertLessEqual(profile.setup_popup_size[0], 640)
+        self.assertLessEqual(profile.setup_popup_size[1], 400)
 
 
 if __name__ == "__main__":

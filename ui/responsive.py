@@ -30,6 +30,16 @@ class LayoutProfile:
     vital_min_width: int
 
     @property
+    def setup_popup_size(self):
+        """Keep the signal editor inside the usable desktop on every panel."""
+        horizontal_margin = 24 if self.compact else 80
+        vertical_margin = 42 if self.compact else 90
+        maximum_width = 860 if not self.large else 980
+        maximum_height = 620 if not self.large else 760
+        return (max(1, min(maximum_width, self.screen_width - horizontal_margin)),
+                max(1, min(maximum_height, self.screen_height - vertical_margin)))
+
+    @property
     def geometry(self):
         return f"{self.screen_width}x{self.screen_height}+0+0"
 
@@ -50,11 +60,11 @@ def profile_for_screen(width, height):
     if compact:
         return LayoutProfile(width, height, scale, True, False,
                              outer_pad=8, outer_pady=6, nav_width=154,
-                             trace_height=165, vital_min_width=220)
+                             trace_height=165, vital_min_width=188)
     if large:
         return LayoutProfile(width, height, scale, False, True,
                              outer_pad=22, outer_pady=16, nav_width=205,
-                             trace_height=260, vital_min_width=280)
+                             trace_height=260, vital_min_width=238)
     return LayoutProfile(width, height, scale, False, False,
                          outer_pad=16, outer_pady=12, nav_width=190,
-                         trace_height=220, vital_min_width=250)
+                         trace_height=220, vital_min_width=214)
