@@ -12,30 +12,41 @@ class PathologyFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.app, self.engine = master, SignalEngine.get_instance()
+        self.layout = master.layout
         self._run_shown, self._rec_shown = None, None
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        T.label(toolbar, "Signal monitor", 22, True).pack(side="left")
-        self.run_btn = ctk.CTkButton(toolbar, text="Run simulation", height=38,
+        actions = ctk.CTkFrame(toolbar, fg_color="transparent")
+        self.run_btn = ctk.CTkButton(actions, text="Run" if self.layout.compact else "Run simulation", height=38,
                                     fg_color=T.ACCENT, command=self.toggle_simulation)
         self.run_btn.pack(side="right", padx=(8, 0))
-        self.record_btn = ctk.CTkButton(toolbar, text="Record CSV", width=120, height=38,
+        self.record_btn = ctk.CTkButton(actions, text="Record" if self.layout.compact else "Record CSV",
+                                       width=105 if self.layout.compact else 120, height=38,
                                        command=self.toggle_recording)
         self.record_btn.pack(side="right")
+        title = T.label(toolbar, "Signal monitor", 20 if self.layout.compact else 22, True)
+        if self.layout.compact:
+            title.pack(side="left")
+            actions.pack(side="left", padx=(14, 0))
+        else:
+            actions.pack(side="right")
+            title.pack(side="left", fill="x", expand=True)
         monitor = ctk.CTkFrame(self, fg_color="transparent")
         monitor.grid(row=1, column=0, sticky="nsew")
         monitor.grid_columnconfigure(0, weight=4)
-        monitor.grid_columnconfigure(1, weight=1, minsize=250)
+        monitor.grid_columnconfigure(1, weight=1, minsize=self.layout.vital_min_width)
         monitor.grid_rowconfigure(0, weight=1)
         waves = ctk.CTkFrame(monitor, fg_color=T.DARK)
-        waves.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        waves.grid(row=0, column=0, sticky="nsew", padx=(0, 7 if self.layout.compact else 12))
         waves.grid_rowconfigure(1, weight=1)
         waves.grid_columnconfigure(0, weight=1)
-        T.label(waves, "TRANSMIT  /  AC + modulation     •     8 s window     •     Auto scale per channel",
+        trace_caption = ("TRANSMIT  /  8 s  /  Auto scale" if self.layout.compact else
+                         "TRANSMIT  /  AC + modulation     •     8 s window     •     Auto scale per channel")
+        T.label(waves, trace_caption,
                 11, text_color="#C4CED5", anchor="w").grid(row=0, column=0, sticky="ew", padx=18, pady=(10, 0))
-        self.trace = TraceView(waves, height=220)
+        self.trace = TraceView(waves, height=self.layout.trace_height)
         self.trace.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 6))
         self.canvas = self.trace
         vitals = ctk.CTkFrame(monitor, fg_color=T.PANEL)
@@ -69,27 +80,37 @@ class PathologyFrame(ctk.CTkFrame):
         }
         for i, (key, (title, attr, span, unit)) in enumerate(self.fields.items()):
             box = ctk.CTkFrame(controls, fg_color="transparent")
-            box.grid(row=i//2, column=i%2, sticky="ew", padx=16, pady=8)
-            box.grid_columnconfigure(1, weight=1)
-            T.label(box, title, 12, anchor="w", width=106).grid(row=0, column=0, sticky="w")
+            box.grid(row=i//2, column=i%2, sticky="ew",
+                     padx=9 if self.layout.compact else 16,
+                     pady=5 if self.layout.compact else 8)
+            slider_column = 2 if self.layout.compact else 1
+            entry_column = 1 if self.layout.compact else 2
+            box.grid_columnconfigure(slider_column, weight=1)
+            field_title = f"{title} / {unit}" if self.layout.compact else title
+            T.label(box, field_title, 12, anchor="w", width=112 if self.layout.compact else 106).grid(
+                row=0, column=0, sticky="w")
             var = ctk.DoubleVar(value=getattr(self.engine.ppg_params, attr))
             self.slider_vars[key] = var
             slider = ctk.CTkSlider(box, from_=span.minimum, to=span.maximum, variable=var,
                                   command=lambda value, k=key: self.update_param(k, value))
-            slider.grid(row=0, column=1, sticky="ew", padx=10)
+            slider.grid(row=0, column=slider_column, sticky="ew", padx=6 if self.layout.compact else 10)
             self.sliders[key] = slider
-            entry = ctk.CTkEntry(box, width=70, height=32)
-            entry.grid(row=0, column=2)
+            entry = ctk.CTkEntry(box, width=62 if self.layout.compact else 70, height=32)
+            entry.grid(row=0, column=entry_column)
             entry.bind("<Return>", lambda event, k=key: self.apply_entry(k))
             self.entries[key] = entry
-            T.label(box, unit, 11, width=34, text_color=T.MUTED).grid(row=0, column=3)
+            if not self.layout.compact:
+                T.label(box, unit, 11, width=34, text_color=T.MUTED).grid(row=0, column=3)
         bottom = ctk.CTkFrame(controls, fg_color="transparent")
-        bottom.grid(row=2, column=0, columnspan=2, sticky="ew", padx=16, pady=(2, 10))
+        bottom.grid(row=2, column=0, columnspan=2, sticky="ew",
+                    padx=9 if self.layout.compact else 16,
+                    pady=(2, 6 if self.layout.compact else 10))
         T.label(bottom, "Condition", 12).pack(side="left", padx=(0, 12))
         self.condition_menu = ctk.CTkOptionMenu(bottom, values=CONDITION_NAMES, width=158,
                                                command=lambda name: self.set_condition(CONDITION_NAMES.index(name)))
         self.condition_menu.pack(side="left")
-        self.message = T.label(bottom, "Enter a value, then press Enter to apply.", 11, text_color=T.MUTED)
+        prompt = "Enter value, then Enter." if self.layout.compact else "Enter a value, then press Enter to apply."
+        self.message = T.label(bottom, prompt, 11, text_color=T.MUTED)
         self.message.pack(side="left", padx=16)
 
     def on_show(self):
@@ -173,12 +194,16 @@ class PathologyFrame(ctk.CTkFrame):
         run = bool(self.engine._running)
         if run != self._run_shown:
             self._run_shown = run
-            self.run_btn.configure(text="Stop output" if run else "Run simulation",
+            run_text = ("Stop" if run else "Run") if self.layout.compact else (
+                "Stop output" if run else "Run simulation")
+            self.run_btn.configure(text=run_text,
                                    fg_color=T.ERROR if run else T.ACCENT)
         recording = self.is_recording
         if recording != self._rec_shown:
             self._rec_shown = recording
-            self.record_btn.configure(text="Save recording" if recording else "Record CSV",
+            record_text = ("Save" if recording else "Record") if self.layout.compact else (
+                "Save recording" if recording else "Record CSV")
+            self.record_btn.configure(text=record_text,
                                       fg_color=T.ERROR if recording else T.INK)
 
     def periodic_update(self):
@@ -208,6 +233,9 @@ class PathologyFrame(ctk.CTkFrame):
         clamp = max(0.0, ratio)
         red = p.ac_red_mv if p.ac_red_mv is not None else clamp * ac * p.dc_red_mv / p.dc_ir_mv
         state = "RED AC manual • SpO₂ target uncoupled" if p.ac_red_mv is not None else ("Negative R • target outside calibration range" if ratio != clamp else "RED follows SpO₂ ratio")
-        self.amp_label.configure(text=(f"NOMINAL  AC IR {ac:.2f} / RED {red:.2f} mV   ·   DC IR {p.dc_ir_mv:g} / RED {p.dc_red_mv:g} mV   ·   {state}"))
+        amp_text = (f"AC IR {ac:.2f} / RED {red:.2f} mV  ·  DC IR {p.dc_ir_mv:g} / RED {p.dc_red_mv:g} mV"
+                    if self.layout.compact else
+                    f"NOMINAL  AC IR {ac:.2f} / RED {red:.2f} mV   ·   DC IR {p.dc_ir_mv:g} / RED {p.dc_red_mv:g} mV   ·   {state}")
+        self.amp_label.configure(text=amp_text, wraplength=max(320, self.winfo_width() - 12))
         self.trace.update_samples(self.engine.get_display_history())
         self.sync_control_buttons()

@@ -24,7 +24,7 @@ optical accuracy or compatibility with a particular pulse oximeter.
 
 ### What's complete in v5
 
-- Light controls, charcoal IR/RED plots, large setpoints, timestamp axes and a 1024×600 minimum layout.
+- Light controls, charcoal IR/RED plots, large setpoints and timestamp axes. The UI scales automatically from compact 7-inch 1024×600 panels through Full-HD/QHD desktop displays.
 - HR 10–300 bpm; respiration 1–150 brpm; SpO₂ target 0–100%; PI convenience input 0.01–30%.
 - Independent IR/RED AC and DC, AC/DC ownership, output offset, gain and polarity.
 - PPG, sine, triangle and square waveforms; independent SP/DN/DP timing for each channel.

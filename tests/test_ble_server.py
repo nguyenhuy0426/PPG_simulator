@@ -380,3 +380,27 @@ def test_ble_server_wraps_engine_without_bless(real_engine):
     server.on_write(b"garbage")
     assert server._android_grace_until == grace  # failed parse must not extend it
     assert server.status_bytes() == b"{}"  # status loop not running yet
+
+
+def test_ble_server_start_reports_background_failure(real_engine, monkeypatch):
+    """A failed async backend startup is visible to the synchronous caller."""
+    async def fail_start(self):
+        raise ModuleNotFoundError("No module named 'bless'")
+
+    server = BleServer(real_engine)
+    monkeypatch.setattr(BleServer, "_run", fail_start)
+
+    with pytest.raises(RuntimeError, match="No module named 'bless'"):
+        server.start(timeout=1.0)
+
+
+def test_ble_server_start_reports_false_backend_result(real_engine, monkeypatch):
+    """A backend that refuses advertising must never be reported as ready."""
+    async def fail_start(self):
+        raise RuntimeError("bless server.start() returned False — advertising failed")
+
+    server = BleServer(real_engine)
+    monkeypatch.setattr(BleServer, "_run", fail_start)
+
+    with pytest.raises(RuntimeError, match="advertising failed"):
+        server.start(timeout=1.0)

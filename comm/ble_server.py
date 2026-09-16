@@ -69,6 +69,15 @@ PB_ACTIONS = ("start", "stop", "pause", "resume")
 # used to exercise the Pi→phone sync direction in headless/CI runs.
 CMD_FILE_PATH = os.environ.get("PPG_BLE_CMD_FILE")
 
+# Raspberry Pi kernels affected by the BlueZ extended-advertising regression
+# reject LEAdvertisement1 registration after the GATT application has already
+# been registered.  In that deployment, advertising is supplied separately by
+# a legacy ``btmgmt add-adv`` instance; keep the GATT event loop alive instead
+# of tearing down an otherwise valid application.
+EXTERNAL_ADVERTISING = os.environ.get("PPG_BLE_EXTERNAL_ADV", "").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+
 
 def _to_float(value, default):
     try:
@@ -412,6 +421,8 @@ class BleServer:
         self._loop = None
         self._shutdown_evt = None
         self._server = None
+        self._startup_evt = threading.Event()
+        self._startup_error = None
         self._seq = 0
         self._android_grace_until = 0.0
         self._android_echo_snapshot = None
@@ -420,11 +431,30 @@ class BleServer:
 
     # ─── Lifecycle (Tk thread) ───────────────────────────────────────────────
 
-    def start(self):
+    def start(self, timeout=10.0):
+        """Start advertising and wait until BlueZ confirms readiness.
+
+        BLE initialization happens in a background asyncio loop, but callers
+        must not continue as if the server were healthy when that loop exits
+        immediately (for example when ``bless`` is not installed).
+        """
         if self._thread is not None and self._thread.is_alive():
-            return
+            if self._server is not None:
+                return True
+            if not self._startup_evt.wait(timeout):
+                raise RuntimeError("BLE startup timed out")
+            if self._startup_error is not None:
+                raise RuntimeError(f"BLE startup failed: {self._startup_error}") from self._startup_error
+            return True
+        self._startup_evt.clear()
+        self._startup_error = None
         self._thread = threading.Thread(target=self._thread_main, daemon=True, name="ble-server")
         self._thread.start()
+        if not self._startup_evt.wait(timeout):
+            raise RuntimeError("BLE startup timed out")
+        if self._startup_error is not None:
+            raise RuntimeError(f"BLE startup failed: {self._startup_error}") from self._startup_error
+        return True
 
     def stop(self):
         loop, evt, thread = self._loop, self._shutdown_evt, self._thread
@@ -441,7 +471,10 @@ class BleServer:
         try:
             asyncio.run(self._run())
         except Exception as exc:
+            self._startup_error = exc
             log.error(f"[BLE] Server thread died: {exc}")
+        finally:
+            self._startup_evt.set()
 
     # ─── asyncio side ─────────────────────────────────────────────────────────
 
@@ -474,14 +507,40 @@ class BleServer:
             GATTAttributePermissions.readable,
         )
 
-        if not await server.start():
-            log.error("[BLE] server.start() returned False — advertising failed")
+        using_external_advertising = False
+        try:
+            started = await server.start()
+        except Exception as exc:
+            # bless registers the GATT application before it registers its
+            # LEAdvertisement1 object.  On the affected Pi kernel only the
+            # second operation fails, so an explicitly configured legacy MGMT
+            # advertiser can safely provide discoverability while this loop
+            # continues serving the already-registered GATT application.
+            if EXTERNAL_ADVERTISING and "Failed to register advertisement" in str(exc):
+                using_external_advertising = True
+                log.warning(
+                    "[BLE] BlueZ D-Bus advertising failed; keeping GATT server "
+                    "alive with external btmgmt advertising: %s", exc,
+                )
+            else:
+                raise
+        else:
+            if not started:
+                raise RuntimeError("bless server.start() returned False — advertising failed")
         self._server = server
-        log.info(
-            "[BLE] Server running and advertising as '%s' (service %s, "
-            f"waveform {WAVEFORM_RATE_HZ:g} Hz, status {STATUS_RATE_HZ:g} Hz)",
-            ADVERTISED_NAME, SERVICE_UUID,
-        )
+        self._startup_evt.set()
+        if using_external_advertising:
+            log.info(
+                "[BLE] GATT server running as '%s' with external advertising "
+                "(service %s, waveform %g Hz, status %g Hz)",
+                ADVERTISED_NAME, SERVICE_UUID, WAVEFORM_RATE_HZ, STATUS_RATE_HZ,
+            )
+        else:
+            log.info(
+                "[BLE] Server running and advertising as '%s' (service %s, "
+                f"waveform {WAVEFORM_RATE_HZ:g} Hz, status {STATUS_RATE_HZ:g} Hz)",
+                ADVERTISED_NAME, SERVICE_UUID,
+            )
 
         wave_task = asyncio.create_task(self._waveform_loop())
         status_task = asyncio.create_task(self._status_loop())

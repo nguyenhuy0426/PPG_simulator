@@ -3,9 +3,9 @@
 main.py — PPG Signal Simulator for Raspberry Pi 4 (CustomTkinter GUI)
 
 Usage:
-    python3 main.py                        # Normal mode (requires RPi hardware)
-    python3 main.py --dry-run              # Dry-run mode (no hardware, simulated I/O)
-    python3 main.py --dry-run --ble        # Dry-run + BLE remote control (GUI)
+    python3 main.py                        # Normal mode + BLE (requires RPi hardware)
+    python3 main.py --dry-run              # Dry-run + BLE (no hardware, simulated I/O)
+    python3 main.py --no-ble               # Diagnostic GUI mode without BLE
     python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
 """
 
@@ -18,7 +18,9 @@ import time
 parser = argparse.ArgumentParser(description="PPG Signal Simulator for Raspberry Pi 4")
 parser.add_argument("--dry-run", action="store_true", help="Run without hardware (simulated I/O)")
 parser.add_argument("--ble", action="store_true",
-                    help="Start the BLE GATT server alongside the GUI")
+                    help="Deprecated compatibility flag; BLE starts by default")
+parser.add_argument("--no-ble", action="store_true",
+                    help="Disable the BLE GATT server (diagnostics only)")
 parser.add_argument("--ble-only", action="store_true",
                     help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
 args = parser.parse_args()
@@ -42,7 +44,11 @@ def start_ble(engine):
         log.error(f"BLE unavailable ({exc}) — install with: pip install -r requirements/ble.txt")
         return None
     ble = BleServer(engine)
-    ble.start()
+    try:
+        ble.start()
+    except RuntimeError as exc:
+        log.error(f"BLE unavailable: {exc}")
+        return None
     return ble
 
 
@@ -80,9 +86,11 @@ def main():
     apply_config_to_params(config, p)
     engine.load_parameters(p)
 
-    # BLE remote control (optional; lazily imports bless)
+    # BLE remote control starts with every normal Pi app launch.  --no-ble is
+    # retained only as a recovery/diagnostic escape hatch; --ble remains a
+    # harmless compatibility flag for existing launchers.
     ble_server = None
-    if args.ble or args.ble_only:
+    if not args.no_ble or args.ble_only:
         ble_server = start_ble(engine)
 
     # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
@@ -107,7 +115,7 @@ def main():
             log.info("Shutdown complete.")
         return
 
-    # ─── Normal GUI mode (optionally with BLE) ────────────────────────────────
+    # ─── Normal GUI mode (BLE enabled by default) ─────────────────────────────
     # Simulation will be started manually via the GUI
 
     # Initialize UI
