@@ -1,0 +1,13 @@
+References,Value,Package,Qty,Notes
+"D1,D2",BPW34,Vishay leaded top-view photodiode,2,Cathode-marked lead -> square K pad
+"U1,U2",OPA333AIDBVR,SOT-23-5,2,MCP6001T-I/OT is a pin-compatible low-cost alternative
+"R1,R2",1M 1%,0805,2,TIA feedback; reduce to 330k if output saturates
+"C1,C2",22pF C0G/NP0 50V,0805,2,TIA stability capacitor
+"R3,R4",100R,0805,2,ADC/cable output isolation
+"R5,R6",100k 1%,0805,2,VREF divider top
+"R7,R8",10k 1%,0805,2,VREF divider bottom
+"C3,C4",100nF X7R 25V,0805,2,VREF filter
+"C5,C6",100nF X7R 25V,0805,2,Op-amp supply bypass
+"J1,J2",1x4 male 2.00mm,THT vertical,2,Grove A2 RED and A0 IR
+J3,1x4 male 2.54mm,THT vertical,1,"OUT_RED,GND_RED,OUT_IR,GND_IR"
+H1-H4,M3 NPTH,3.2mm drill,4,M3x4 into adapter pilot holes

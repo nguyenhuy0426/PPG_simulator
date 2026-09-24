@@ -26,6 +26,12 @@ dist/
 # CAD virtual environment (trimesh/manifold3d — 190 MB, tạo lại bằng pip)
 .cad_venv/
 
+# KiCad local UI state, locks and embedded edit history.
+.history/
+*.kicad_prl
+*.lck
+*-backups/
+
 # Local configuration and credentials. Commit only the documented template.
 .env
 .env.*

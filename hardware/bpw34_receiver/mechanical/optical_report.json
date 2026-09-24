@@ -1,0 +1,160 @@
+{
+  "method": "Boolean intersection of nominal rays with the actual enclosure/aperture STL meshes",
+  "aperture_plane_x_mm": 114.2,
+  "lanes": {
+    "red": {
+      "source_tip_x_mm": 95.0,
+      "sensor_surface_x_range_mm": [
+        134.2,
+        134.4
+      ],
+      "axis_y_mm": 32.0,
+      "axis_z_mm": -19.25,
+      "active_area_mm": [
+        3.0,
+        2.5
+      ],
+      "projected_active_corner_radius_at_aperture_mm": [
+        0.9563571031722438,
+        0.9515024985876127
+      ],
+      "half_intensity_cone_radius_at_aperture_mm": 10.453107036575974,
+      "d2_covers_full_nominal_active_rectangle": true,
+      "d5_covers_full_nominal_active_rectangle": true,
+      "d16_covers_full_nominal_active_rectangle": true
+    },
+    "ir": {
+      "source_tip_x_mm": 35.0,
+      "sensor_surface_x_range_mm": [
+        134.2,
+        134.4
+      ],
+      "axis_y_mm": 32.0,
+      "axis_z_mm": 19.25,
+      "active_area_mm": [
+        3.0,
+        2.5
+      ],
+      "projected_active_corner_radius_at_aperture_mm": [
+        1.558900640957175,
+        1.5557640199492129
+      ],
+      "half_intensity_cone_radius_at_aperture_mm": 22.721576040544917,
+      "d2_covers_full_nominal_active_rectangle": false,
+      "d5_covers_full_nominal_active_rectangle": true,
+      "d16_covers_full_nominal_active_rectangle": true
+    }
+  },
+  "checks": [
+    {
+      "check": "red LED and BPW34 are coaxial",
+      "pass": true
+    },
+    {
+      "check": "red chief ray blocked by blank",
+      "pass": true,
+      "intersection_mm3": 0.01199970396099744
+    },
+    {
+      "check": "red chief ray passes d2",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray passes d5",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray passes d16",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of body",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of lid",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of new_frame",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of d16_aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red cross-channel ray blocked by centre partition",
+      "pass": true,
+      "intersection_mm3": 0.04625371128592409
+    },
+    {
+      "check": "ir LED and BPW34 are coaxial",
+      "pass": true
+    },
+    {
+      "check": "ir chief ray blocked by blank",
+      "pass": true,
+      "intersection_mm3": 0.01199970396099744
+    },
+    {
+      "check": "ir chief ray passes d2",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray passes d5",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray passes d16",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of body",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of lid",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of new_frame",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of d16_aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir cross-channel ray blocked by centre partition",
+      "pass": true,
+      "intersection_mm3": 0.06218587770854356
+    }
+  ],
+  "passed": 20,
+  "total": 20,
+  "conclusion": {
+    "nominal_alignment": "Both LED axes pass through their aperture centres and the nominal BPW34 active-area centres.",
+    "separation": "The solid centre partition blocks a direct ray from either LED to the other photodiode.",
+    "scope": "This is a geometric line-of-sight result, not a measured optical-sensitivity or leakage result."
+  },
+  "limitations": [
+    "No LED radiant-power, scattering, reflection, print translucency or assembly-gap model.",
+    "Purchased BPW34 package and lead forming were not physically measured.",
+    "A physical dark-box leakage and signal-range test is still required."
+  ]
+}

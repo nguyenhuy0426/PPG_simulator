@@ -1,0 +1,1 @@
+(fp_lib_table (version 7) (lib (name "PPG") (type "KiCad") (uri "${KIPRJMOD}/PPG.pretty") (options "") (descr "Vendored KiCad 10 footprints")))

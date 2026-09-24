@@ -1,0 +1,161 @@
+{
+  "method": "Boolean intersection of thin nominal rays with actual exported STL meshes",
+  "aperture_plane_x_mm": 114.2,
+  "lanes": {
+    "red": {
+      "source_tip_x_mm": 95.0,
+      "sensor_window_x_range_mm": [
+        126.5,
+        132.0
+      ],
+      "axis_y_mm": 32.0,
+      "axis_z_mm": -19.25,
+      "active_area_mm": [
+        2.29,
+        2.29
+      ],
+      "projected_active_corner_radius_at_aperture_mm": [
+        0.9869863795304802,
+        0.840272187978652
+      ],
+      "half_intensity_cone_radius_at_aperture_mm": 10.453107036575974,
+      "d2_covers_full_nominal_active_square": true,
+      "d5_covers_full_nominal_active_square": true,
+      "d16_covers_full_nominal_active_square": true
+    },
+    "ir": {
+      "source_tip_x_mm": 35.0,
+      "sensor_window_x_range_mm": [
+        126.5,
+        132.0
+      ],
+      "axis_y_mm": 32.0,
+      "axis_z_mm": 19.25,
+      "active_area_mm": [
+        2.29,
+        2.29
+      ],
+      "projected_active_corner_radius_at_aperture_mm": [
+        1.4016015594561941,
+        1.3221293060849666
+      ],
+      "half_intensity_cone_radius_at_aperture_mm": 22.721576040544917,
+      "d2_covers_full_nominal_active_square": false,
+      "d5_covers_full_nominal_active_square": true,
+      "d16_covers_full_nominal_active_square": true
+    }
+  },
+  "checks": [
+    {
+      "check": "red nominal LED and sensor are coaxial",
+      "pass": true
+    },
+    {
+      "check": "red chief ray blocked by blank",
+      "pass": true,
+      "intersection_mm3": 0.01199970396099744
+    },
+    {
+      "check": "red chief ray passes d2 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray passes d5 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray passes d16 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of body",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of lid",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of new_frame",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red chief ray clear of d16_aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "red direct cross-channel ray blocked by enclosure separator",
+      "pass": true,
+      "intersection_mm3": 0.04322924023507613
+    },
+    {
+      "check": "ir nominal LED and sensor are coaxial",
+      "pass": true
+    },
+    {
+      "check": "ir chief ray blocked by blank",
+      "pass": true,
+      "intersection_mm3": 0.01199970396099744
+    },
+    {
+      "check": "ir chief ray passes d2 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray passes d5 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray passes d16 aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of body",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of lid",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of new_frame",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir chief ray clear of d16_aperture",
+      "pass": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "check": "ir direct cross-channel ray blocked by enclosure separator",
+      "pass": true,
+      "intersection_mm3": 0.05801412589789834
+    }
+  ],
+  "passed": 20,
+  "total": 20,
+  "conclusion": {
+    "nominal_alignment": "Both intended LED axes pass through their aperture centres and OPT101 active-area centres.",
+    "separation": "The solid centre partition blocks a straight ray aimed from either LED at the other sensor.",
+    "aperture": "Blank plates block the intended chief rays. D5 and D16 cover each full nominal active square; D2 is marginal for red and clips nominal IR active-area corners."
+  },
+  "limitations": [
+    "Sensor X uses the conservative socket-plus-IC envelope because the purchased socket height was not measured.",
+    "The TI package drawing does not specify photodiode-die centring tolerance; nominal package centre is assumed.",
+    "No model of LED radiant power, reflection, scattering, printed-plastic translucency, gaps, or cable openings.",
+    "A physical dark-box leakage test and measured sensor response are still required before fabrication confidence."
+  ]
+}

@@ -1,0 +1,1298 @@
+{
+  "kicad_version": "10.0.6",
+  "checks": [
+    {
+      "check": "/3V3_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/GND_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "J1.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "J2.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "25 physical footprints",
+      "pass": true
+    },
+    {
+      "check": "two copper layers",
+      "pass": true
+    },
+    {
+      "check": "1.6 mm substrate",
+      "pass": true
+    },
+    {
+      "check": "four closed straight board edges",
+      "pass": true
+    },
+    {
+      "check": "70 mm board length",
+      "pass": true
+    },
+    {
+      "check": "32 mm board width",
+      "pass": true
+    },
+    {
+      "check": "D1 BPW34 lead pitch 5.1 mm",
+      "pass": true
+    },
+    {
+      "check": "D1 cathode uses square pad 1",
+      "pass": true
+    },
+    {
+      "check": "D2 BPW34 lead pitch 5.1 mm",
+      "pass": true
+    },
+    {
+      "check": "D2 cathode uses square pad 1",
+      "pass": true
+    },
+    {
+      "check": "optical lane separation 38.5 mm",
+      "pass": true
+    },
+    {
+      "check": "both optical centres at board y=116 mm",
+      "pass": true
+    },
+    {
+      "check": "J1 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J1 lower-edge placement",
+      "pass": true
+    },
+    {
+      "check": "J2 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J2 lower-edge placement",
+      "pass": true
+    },
+    {
+      "check": "J3 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J3 lower-edge placement",
+      "pass": true
+    },
+    {
+      "check": "U1 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "U1 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "U2 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "U2 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R1 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R1 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R2 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R2 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R3 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R3 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R4 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R4 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R5 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R5 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R6 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R6 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R7 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R7 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "R8 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "R8 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C1 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C1 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C2 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C2 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C3 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C3 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C4 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C4 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C5 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C5 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "C6 is on rear copper",
+      "pass": true
+    },
+    {
+      "check": "C6 stays outside 3 mm optical partition",
+      "pass": true
+    },
+    {
+      "check": "three connectors share lower-edge row",
+      "pass": true
+    },
+    {
+      "check": "R1 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "C1 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "U1 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R2 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "C2 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "U2 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R5 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R7 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R6 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R8 remains on aligned layout grid",
+      "pass": true
+    },
+    {
+      "check": "R1 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "C1 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "U1 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "R2 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "C2 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "U2 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "R5 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "R7 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "R6 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "R8 reference reads horizontally",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/3V3_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/VREF_RED routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C5.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C5.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C6.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C6.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R8.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R8.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C4.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C4.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.5 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.5 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "H1 3.2 mm NPTH",
+      "pass": true
+    },
+    {
+      "check": "H2 3.2 mm NPTH",
+      "pass": true
+    },
+    {
+      "check": "H3 3.2 mm NPTH",
+      "pass": true
+    },
+    {
+      "check": "H4 3.2 mm NPTH",
+      "pass": true
+    },
+    {
+      "check": "rear DATN title present",
+      "pass": true
+    },
+    {
+      "check": "rear author names present",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking J1 A2 RED",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking J3 ADS",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking J2 A0 IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking R",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking N",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking V",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking GR",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking I",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking GI",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking K",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking A",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking D1 RED",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking D2 IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking R=OUT_RED  I=OUT_IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking V=3V3  N=NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin marking GR/GI=CHANNEL GND",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: K",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J1 A2 RED",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: D1 RED",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: A",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J3 ADS",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: Nguyen Nhat Huy - Pham Thanh Vy",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R=OUT_RED  I=OUT_IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V=3V3  N=NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GR/GI=CHANNEL GND",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: K",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: D2 IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J2 A0 IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: A",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: N",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: I",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GI",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: I",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: N",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GI",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: DATN: PPG-Simulator",
+      "pass": true
+    }
+  ],
+  "passed": 323
+}

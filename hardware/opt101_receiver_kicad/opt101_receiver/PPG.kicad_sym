@@ -1,0 +1,67 @@
+(kicad_symbol_lib (version 20250114) (generator "kicad_symbol_editor")
+(symbol "OPT101P"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
+(property "Reference" "U" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "OPT101P" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "OPT101P_0_1"
+(rectangle (start -7.62 10.16) (end 7.62 -10.16) (stroke (width 0.254) (type default)) (fill (type background)))
+)
+(symbol "OPT101P_1_1"
+(pin power_in line (at -12.7 7.62 0) (length 5.08) (name "VS" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(pin input line (at -12.7 2.54 0) (length 5.08) (name "-IN" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
+(pin power_in line (at -12.7 -2.54 0) (length 5.08) (name "-V" (effects (font (size 1 1)))) (number "3" (effects (font (size 1 1)))))
+(pin input line (at 12.7 -7.62 180) (length 5.08) (name "1M_FB" (effects (font (size 1 1)))) (number "4" (effects (font (size 1 1)))))
+(pin output line (at 12.7 -2.54 180) (length 5.08) (name "OUT" (effects (font (size 1 1)))) (number "5" (effects (font (size 1 1)))))
+(pin no_connect line (at 12.7 2.54 180) (length 5.08) (name "NC" (effects (font (size 1 1)))) (number "6" (effects (font (size 1 1)))))
+(pin no_connect line (at 12.7 7.62 180) (length 5.08) (name "NC" (effects (font (size 1 1)))) (number "7" (effects (font (size 1 1)))))
+(pin passive line (at -12.7 -7.62 0) (length 5.08) (name "COMMON" (effects (font (size 1 1)))) (number "8" (effects (font (size 1 1)))))
+))
+(symbol "Grove_Analog"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
+(property "Reference" "J" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "Grove_Analog" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "Grove_Analog_0_1"
+(rectangle (start -5.08 10.16) (end 5.08 -10.16) (stroke (width 0.254) (type default)) (fill (type background)))
+)
+(symbol "Grove_Analog_1_1"
+(pin passive line (at -10.16 7.62 0) (length 5.08) (name "SIGNAL" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(pin passive line (at -10.16 2.54 0) (length 5.08) (name "UNUSED" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
+(pin passive line (at -10.16 -2.54 0) (length 5.08) (name "3V3" (effects (font (size 1 1)))) (number "3" (effects (font (size 1 1)))))
+(pin passive line (at -10.16 -7.62 0) (length 5.08) (name "GND" (effects (font (size 1 1)))) (number "4" (effects (font (size 1 1)))))
+))
+(symbol "C" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
+(property "Reference" "C" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "C" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "C_0_1"
+(polyline (pts (xy -2.54 -0.762) (xy 2.54 -0.762)) (stroke (width 0.254) (type default)) (fill (type none)))
+(polyline (pts (xy -2.54 0.762) (xy 2.54 0.762)) (stroke (width 0.254) (type default)) (fill (type none)))
+)
+(symbol "C_1_1"
+(pin passive line (at 0 3.81 270) (length 3.048) (name "~" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(pin passive line (at 0 -3.81 90) (length 3.048) (name "~" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
+))
+(symbol "PWR_FLAG" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
+(property "Reference" "#FLG" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "PWR_FLAG" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "PWR_FLAG_0_1"
+(polyline (pts (xy 0 0) (xy 0 2.54) (xy 1.27 3.81) (xy 0 5.08) (xy -1.27 3.81) (xy 0 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+)
+(symbol "PWR_FLAG_1_1"
+(pin power_out line (at 0 0 90) (length 0) (name "pwr" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+))
+(symbol "MountingHole"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
+(property "Reference" "H" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "MountingHole" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "MountingHole_0_1"
+(circle (center 0 0) (radius 2.54) (stroke (width 0.254) (type default)) (fill (type none)))
+)
+(symbol "MountingHole_1_1"
+))
+(symbol "ADS_Output"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
+(property "Reference" "J" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "ADS_Output" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "ADS_Output_0_1"
+(rectangle (start -5.08 10.16) (end 5.08 -10.16) (stroke (width 0.254) (type default)) (fill (type background)))
+)
+(symbol "ADS_Output_1_1"
+(pin passive line (at -10.16 2.54 0) (length 5.08) (name "RED" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(pin passive line (at -10.16 -2.54 0) (length 5.08) (name "IR" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
+)))

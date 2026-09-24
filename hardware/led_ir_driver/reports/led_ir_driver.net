@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/led_ir_driver/led_ir_driver.kicad_sch</source>
+    <date>2026-09-24T16:42:56</date>
+    <tool>Eeschema 10.0.6</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>DATN: PPG-Simulator - LED / IR driver</title>
+        <company/>
+        <rev>1.3</rev>
+        <date/>
+        <source>led_ir_driver.kicad_sch</source>
+        <comment number="1" value="Nguyen Nhat Huy - Pham Thanh Vy"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="C2">
+      <value>DNP loop comp</value>
+      <footprint>TX:C</footprint>
+      <fields>
+        <field name="Footprint">TX:C</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="C" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <property name="dnp"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>aba09ffe-1e17-595b-b7c8-cdb3315e5961</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C4">
+      <value>DNP loop comp</value>
+      <footprint>TX:C</footprint>
+      <fields>
+        <field name="Footprint">TX:C</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="C" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <property name="dnp"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3ddac8c3-f47c-52f3-9884-9969d0df910b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C5">
+      <value>100nF X7R 50V</value>
+      <footprint>TX:C</footprint>
+      <fields>
+        <field name="Footprint">TX:C</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="C" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c6973372-75d9-5957-bd03-391240d11f5d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C7">
+      <value>10uF 16V</value>
+      <footprint>TX:CP</footprint>
+      <fields>
+        <field name="Footprint">TX:CP</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="CP" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>27425358-24ae-59c0-8efa-fb9dbd652378</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="H1">
+      <value>M3 / 3.2mm</value>
+      <footprint>TX:Hole</footprint>
+      <fields>
+        <field name="Footprint">TX:Hole</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Hole" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5f59e3ba-ed84-5574-9789-c205e93259c4</tstamps>
+      <units>
+        <unit name="A">
+          <pins/>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="H2">
+      <value>M3 / 3.2mm</value>
+      <footprint>TX:Hole</footprint>
+      <fields>
+        <field name="Footprint">TX:Hole</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Hole" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f0446bb6-8e7b-5131-970c-24a246a88481</tstamps>
+      <units>
+        <unit name="A">
+          <pins/>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="H3">
+      <value>M3 / 3.2mm</value>
+      <footprint>TX:Hole</footprint>
+      <fields>
+        <field name="Footprint">TX:Hole</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Hole" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4ac1d48c-9c9c-5d76-8d3a-9415bc8a5425</tstamps>
+      <units>
+        <unit name="A">
+          <pins/>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="H4">
+      <value>M3 / 3.2mm</value>
+      <footprint>TX:Hole</footprint>
+      <fields>
+        <field name="Footprint">TX:Hole</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Hole" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>315d0124-83bc-5bfb-8d05-a27da4596371</tstamps>
+      <units>
+        <unit name="A">
+          <pins/>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J1">
+      <value>MCP4725 IR 0x60</value>
+      <footprint>TX:Socket6</footprint>
+      <fields>
+        <field name="Footprint">TX:Socket6</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Socket6" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>1070610e-3fd2-53cb-86e2-782afde23d41</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>PI I2C INPUT / IR OUT</value>
+      <footprint>TX:Header6</footprint>
+      <fields>
+        <field name="Footprint">TX:Header6</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Conn6" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f7f188c1-7073-5eb5-92fc-33d494d1dc29</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J3">
+      <value>MCP4725 RED 0x61</value>
+      <footprint>TX:Socket6</footprint>
+      <fields>
+        <field name="Footprint">TX:Socket6</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Socket6" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>a444e6f6-2698-50a0-b398-c8848de14c02</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J5">
+      <value>IR LED A / K</value>
+      <footprint>TX:Header2</footprint>
+      <fields>
+        <field name="Footprint">TX:Header2</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Conn2" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bb0073f4-f295-59ea-8102-0fc21195b29e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J6">
+      <value>RED LED A / K</value>
+      <footprint>TX:Header2</footprint>
+      <fields>
+        <field name="Footprint">TX:Header2</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Conn2" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bde6de58-5300-504c-b279-0f81ad697295</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J7">
+      <value>5V INPUT / GND</value>
+      <footprint>TX:Header2</footprint>
+      <fields>
+        <field name="Footprint">TX:Header2</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="Conn2" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5798af43-5c4d-5770-86c7-6964ce10eebd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q1">
+      <value>2N4401 / E-B-C</value>
+      <footprint>TX:NPN</footprint>
+      <fields>
+        <field name="Footprint">TX:NPN</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="NPN" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e7e790b1-c1c7-5995-851a-b6874b3ac6c6</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q2">
+      <value>2N4401 / E-B-C</value>
+      <footprint>TX:NPN</footprint>
+      <fields>
+        <field name="Footprint">TX:NPN</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="NPN" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>423f53b0-23a3-5091-b54c-6221fb69f97f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1">
+      <value>10k 1%</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7f5e495a-cf38-5e31-94a9-7382e51b15c1</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2">
+      <value>10k 1%</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9d7de4da-03c7-5b47-9cbc-103a2d101276</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R3">
+      <value>1k</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>06200ed2-840e-5123-a8b0-d6c6498b9086</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4">
+      <value>82R 1% 0.25W</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ccbca06f-af8c-533f-ab38-564bb715fdf3</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R6">
+      <value>10k 1%</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0c9f48ef-35f5-55f1-b191-29b473589689</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R7">
+      <value>10k 1%</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>fbadea86-23d9-529e-ba95-14debf50bec0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R8">
+      <value>1k</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>6975ad81-9555-5877-8dea-3ae877878b2a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R9">
+      <value>100R 1% 0.25W</value>
+      <footprint>TX:R</footprint>
+      <fields>
+        <field name="Footprint">TX:R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="R" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5f7da467-b5be-5e17-89b0-28ee3ee2adc0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>LM358P / DIP8 socket</value>
+      <footprint>TX:DIP8</footprint>
+      <fields>
+        <field name="Footprint">TX:DIP8</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="TX" part="LM358P" description=""/>
+      <property name="Sheetname" value="led_ir_driver"/>
+      <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5d76f153-92a0-5f49-af80-b3dc5651078c 44f05839-4495-58ac-b41c-fbb0d9cdd293 0f8befd3-432a-5f49-83fc-cdb225b188bc</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="7"/>
+          </pins>
+        </unit>
+        <unit name="C">
+          <pins>
+            <pin num="8"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="TX" part="C">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="CP">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">CP</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="+" type="passive"/>
+        <pin num="2" name="-" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="Conn2">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn2</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="Conn6">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn6</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="OUT" type="passive"/>
+        <pin num="2" name="GND" type="passive"/>
+        <pin num="3" name="SCL" type="passive"/>
+        <pin num="4" name="SDA" type="passive"/>
+        <pin num="5" name="3V3" type="passive"/>
+        <pin num="6" name="GND" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="Hole">
+      <fields>
+        <field name="Reference">H</field>
+        <field name="Value">Hole</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+    </libpart>
+    <libpart lib="TX" part="LM358P">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">LM358P</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="OUT" type="output"/>
+        <pin num="2" name="-" type="input"/>
+        <pin num="3" name="+" type="input"/>
+        <pin num="4" name="V-" type="power_in"/>
+        <pin num="5" name="+" type="input"/>
+        <pin num="6" name="-" type="input"/>
+        <pin num="7" name="OUT" type="output"/>
+        <pin num="8" name="V+" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="NPN">
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">NPN</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="E" type="passive"/>
+        <pin num="2" name="B" type="input"/>
+        <pin num="3" name="C" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="R">
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="TX" part="Socket6">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">MCP4725</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="OUT" type="passive"/>
+        <pin num="2" name="GND" type="passive"/>
+        <pin num="3" name="SCL" type="passive"/>
+        <pin num="4" name="SDA" type="passive"/>
+        <pin num="5" name="3V3" type="passive"/>
+        <pin num="6" name="GND" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="TX">
+      <uri>${KIPRJMOD}/TX.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="/3V3" class="Default">
+      <node ref="J1" pin="5" pinfunction="3V3_5" pintype="passive"/>
+      <node ref="J2" pin="5" pinfunction="3V3_5" pintype="passive"/>
+      <node ref="J3" pin="5" pinfunction="3V3_5" pintype="passive"/>
+    </net>
+    <net code="2" name="/5V" class="Default">
+      <node ref="C5" pin="1" pintype="passive"/>
+      <node ref="C7" pin="1" pinfunction="+_1" pintype="passive"/>
+      <node ref="J5" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="J6" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="J7" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U1" pin="8" pinfunction="V+_8" pintype="power_in"/>
+    </net>
+    <net code="3" name="/AMP_IR" class="Default">
+      <node ref="C2" pin="1" pintype="passive"/>
+      <node ref="R3" pin="1" pintype="passive"/>
+      <node ref="U1" pin="1" pinfunction="OUT_1" pintype="output"/>
+    </net>
+    <net code="4" name="/AMP_RED" class="Default">
+      <node ref="C4" pin="1" pintype="passive"/>
+      <node ref="R8" pin="1" pintype="passive"/>
+      <node ref="U1" pin="7" pinfunction="OUT_7" pintype="output"/>
+    </net>
+    <net code="5" name="/BASE_IR" class="Default">
+      <node ref="Q1" pin="2" pinfunction="B_2" pintype="input"/>
+      <node ref="R3" pin="2" pintype="passive"/>
+    </net>
+    <net code="6" name="/BASE_RED" class="Default">
+      <node ref="Q2" pin="2" pinfunction="B_2" pintype="input"/>
+      <node ref="R8" pin="2" pintype="passive"/>
+    </net>
+    <net code="7" name="/CMD_IR" class="Default">
+      <node ref="R1" pin="2" pintype="passive"/>
+      <node ref="R2" pin="1" pintype="passive"/>
+      <node ref="U1" pin="3" pinfunction="+_3" pintype="input"/>
+    </net>
+    <net code="8" name="/CMD_RED" class="Default">
+      <node ref="R6" pin="2" pintype="passive"/>
+      <node ref="R7" pin="1" pintype="passive"/>
+      <node ref="U1" pin="5" pinfunction="+_5" pintype="input"/>
+    </net>
+    <net code="9" name="/DAC_IR" class="Default">
+      <node ref="J1" pin="1" pinfunction="OUT_1" pintype="passive"/>
+      <node ref="J2" pin="1" pinfunction="OUT_1" pintype="passive"/>
+      <node ref="R1" pin="1" pintype="passive"/>
+    </net>
+    <net code="10" name="/DAC_RED" class="Default">
+      <node ref="J3" pin="1" pinfunction="OUT_1" pintype="passive"/>
+      <node ref="R6" pin="1" pintype="passive"/>
+    </net>
+    <net code="11" name="/GND" class="Default">
+      <node ref="C5" pin="2" pintype="passive"/>
+      <node ref="C7" pin="2" pinfunction="-_2" pintype="passive"/>
+      <node ref="J1" pin="2" pinfunction="GND_2" pintype="passive"/>
+      <node ref="J1" pin="6" pinfunction="GND_6" pintype="passive"/>
+      <node ref="J2" pin="2" pinfunction="GND_2" pintype="passive"/>
+      <node ref="J2" pin="6" pinfunction="GND_6" pintype="passive"/>
+      <node ref="J3" pin="2" pinfunction="GND_2" pintype="passive"/>
+      <node ref="J3" pin="6" pinfunction="GND_6" pintype="passive"/>
+      <node ref="J7" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="R4" pin="2" pintype="passive"/>
+      <node ref="R7" pin="2" pintype="passive"/>
+      <node ref="R9" pin="2" pintype="passive"/>
+      <node ref="U1" pin="4" pinfunction="V-_4" pintype="power_in"/>
+    </net>
+    <net code="12" name="/LED_K_IR" class="Default">
+      <node ref="J5" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="Q1" pin="3" pinfunction="C_3" pintype="passive"/>
+    </net>
+    <net code="13" name="/LED_K_RED" class="Default">
+      <node ref="J6" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="Q2" pin="3" pinfunction="C_3" pintype="passive"/>
+    </net>
+    <net code="14" name="/SCL" class="Default">
+      <node ref="J1" pin="3" pinfunction="SCL_3" pintype="passive"/>
+      <node ref="J2" pin="3" pinfunction="SCL_3" pintype="passive"/>
+      <node ref="J3" pin="3" pinfunction="SCL_3" pintype="passive"/>
+    </net>
+    <net code="15" name="/SDA" class="Default">
+      <node ref="J1" pin="4" pinfunction="SDA_4" pintype="passive"/>
+      <node ref="J2" pin="4" pinfunction="SDA_4" pintype="passive"/>
+      <node ref="J3" pin="4" pinfunction="SDA_4" pintype="passive"/>
+    </net>
+    <net code="16" name="/SENSE_IR" class="Default">
+      <node ref="C2" pin="2" pintype="passive"/>
+      <node ref="Q1" pin="1" pinfunction="E_1" pintype="passive"/>
+      <node ref="R4" pin="1" pintype="passive"/>
+      <node ref="U1" pin="2" pinfunction="-_2" pintype="input"/>
+    </net>
+    <net code="17" name="/SENSE_RED" class="Default">
+      <node ref="C4" pin="2" pintype="passive"/>
+      <node ref="Q2" pin="1" pinfunction="E_1" pintype="passive"/>
+      <node ref="R9" pin="1" pintype="passive"/>
+      <node ref="U1" pin="6" pinfunction="-_6" pintype="input"/>
+    </net>
+  </nets>
+</export>

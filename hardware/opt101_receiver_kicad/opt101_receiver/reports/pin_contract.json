@@ -1,0 +1,630 @@
+{
+  "kicad_version": "10.0.6",
+  "checks": [
+    {
+      "check": "/3V3_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/GND_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/OUT_RED exact pin set",
+      "pass": true
+    },
+    {
+      "check": "U1.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "U1.6 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "U1.7 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "J1.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "/3V3_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/GND_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR exact pin set",
+      "pass": true
+    },
+    {
+      "check": "U2.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "U2.6 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "U2.7 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "J2.2 intentionally isolated",
+      "pass": true
+    },
+    {
+      "check": "11 physical footprints",
+      "pass": true
+    },
+    {
+      "check": "2 copper layers",
+      "pass": true
+    },
+    {
+      "check": "1.6mm substrate",
+      "pass": true
+    },
+    {
+      "check": "four closed straight board edges",
+      "pass": true
+    },
+    {
+      "check": "70mm length",
+      "pass": true
+    },
+    {
+      "check": "32mm width (<50mm)",
+      "pass": true
+    },
+    {
+      "check": "U1 DIP row spacing 7.62mm",
+      "pass": true
+    },
+    {
+      "check": "U1 DIP lead pitch 2.54mm",
+      "pass": true
+    },
+    {
+      "check": "U1 eight socket holes",
+      "pass": true
+    },
+    {
+      "check": "U2 DIP row spacing 7.62mm",
+      "pass": true
+    },
+    {
+      "check": "U2 DIP lead pitch 2.54mm",
+      "pass": true
+    },
+    {
+      "check": "U2 eight socket holes",
+      "pass": true
+    },
+    {
+      "check": "lane separation 38.5mm",
+      "pass": true
+    },
+    {
+      "check": "J1 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J1 moved to lower edge",
+      "pass": true
+    },
+    {
+      "check": "J2 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J2 moved to lower edge",
+      "pass": true
+    },
+    {
+      "check": "J3 header pitch",
+      "pass": true
+    },
+    {
+      "check": "J3 moved to lower edge",
+      "pass": true
+    },
+    {
+      "check": "track 1 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 2 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 3 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 4 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 5 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 6 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 7 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 8 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 9 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 10 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 11 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 12 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 13 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 14 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 15 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 16 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 17 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 18 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 19 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 20 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 21 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 22 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 23 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 24 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 25 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 26 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 27 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 28 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 29 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 30 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "H1 local copper clearance is 1.0mm",
+      "pass": true
+    },
+    {
+      "check": "H1 routed copper stays >=1.0mm from drill edge",
+      "pass": true
+    },
+    {
+      "check": "H2 local copper clearance is 1.0mm",
+      "pass": true
+    },
+    {
+      "check": "H2 routed copper stays >=1.0mm from drill edge",
+      "pass": true
+    },
+    {
+      "check": "H3 local copper clearance is 1.0mm",
+      "pass": true
+    },
+    {
+      "check": "H3 routed copper stays >=1.0mm from drill edge",
+      "pass": true
+    },
+    {
+      "check": "H4 local copper clearance is 1.0mm",
+      "pass": true
+    },
+    {
+      "check": "H4 routed copper stays >=1.0mm from drill edge",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.3 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.4 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.5 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.6 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.7 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U1.8 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.3 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J1.4 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C1.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C1.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.3 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.4 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.5 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.6 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.7 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.8 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.3 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.4 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "H1 3.2mm non-plated hole",
+      "pass": true
+    },
+    {
+      "check": "H2 3.2mm non-plated hole",
+      "pass": true
+    },
+    {
+      "check": "H3 3.2mm non-plated hole",
+      "pass": true
+    },
+    {
+      "check": "H4 3.2mm non-plated hole",
+      "pass": true
+    },
+    {
+      "check": "rear marking DATN: PPG-Simulator",
+      "pass": true
+    },
+    {
+      "check": "rear marking Nguyen Nhat Huy - Pham Thanh Vy",
+      "pass": true
+    },
+    {
+      "check": "rear marking J1 A2 RED",
+      "pass": true
+    },
+    {
+      "check": "rear marking J2 A0 IR",
+      "pass": true
+    },
+    {
+      "check": "rear marking J3 ADS",
+      "pass": true
+    },
+    {
+      "check": "rear marking R",
+      "pass": true
+    },
+    {
+      "check": "rear marking I",
+      "pass": true
+    },
+    {
+      "check": "rear marking NC",
+      "pass": true
+    },
+    {
+      "check": "rear marking V",
+      "pass": true
+    },
+    {
+      "check": "rear marking GR",
+      "pass": true
+    },
+    {
+      "check": "rear marking GI",
+      "pass": true
+    },
+    {
+      "check": "rear marking G",
+      "pass": true
+    },
+    {
+      "check": "rear marking FB",
+      "pass": true
+    },
+    {
+      "check": "rear marking OUT",
+      "pass": true
+    },
+    {
+      "check": "rear marking U1 RED OPT101",
+      "pass": true
+    },
+    {
+      "check": "rear marking U2 IR OPT101",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: G",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: FB",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: U1 RED OPT101",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J1 A2 RED",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: G",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: OUT",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J3 ADS",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: Nguyen Nhat Huy - Pham Thanh Vy",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R=OUT_RED  I=OUT_IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V=3V3  GR/GI=GND",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: G",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: FB",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: J2 A0 IR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: U2 IR OPT101",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: G",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: OUT",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GR",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: R",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: I",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: I",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: NC",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: V",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: GI",
+      "pass": true
+    },
+    {
+      "check": "rear pin label has no numeric prefix: DATN: PPG-Simulator",
+      "pass": true
+    }
+  ],
+  "passed": 156
+}
