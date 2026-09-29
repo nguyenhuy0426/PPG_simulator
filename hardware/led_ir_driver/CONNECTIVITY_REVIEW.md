@@ -1,4 +1,9 @@
-# Rà soát kết nối — driver v1.3
+# Rà soát kết nối — driver v1.6
+
+Rà soát ngày 2026-09-29: xem `ELECTRICAL_AUDIT.md`. Không phát hiện nối sai
+trong 17 net hiện tại; tất cả 92 đoạn đồng được giữ nguyên sau khi kiểm tra.
+V1.6 sửa cách trình bày schematic và thêm nhãn cấu hình ADDR trên PCB.
+Các bus chung nối bằng nhãn cùng tên; không còn đường bus xuyên thân header.
 
 ## Kết luận về đầu cáp Pi
 
@@ -17,12 +22,12 @@ ghi người dùng đã đo 3,28 V; lần rà soát này không đo lại phần
 | Hai bộ điều khiển/bus riêng | Không thuộc cấu hình thiết kế; không nối trực tiếp như vậy |
 | Nối OUT của hai module với nhau hoặc vào một ngõ ra chủ động khác | Không được; hai DAC có thể tranh chấp điện áp |
 
-J4 đã được bỏ khỏi schematic, PCB, BOM và Gerber. Việc an toàn của dây thực
+J4 hiện là header OUT_RED/GND 1×2 bước 2,54 mm trong schematic, PCB, BOM và Gerber. Việc an toàn của dây thực
 vẫn phụ thuộc đúng đầu cáp, đúng chiều và đúng điện áp.
 
 ## Ánh xạ cáp bốn lõi
 
-J2 là header đực 1×6 bước 2,54 mm duy nhất và nối 1:1 với J1.
+J2 gồm hai header đực rời: OUT/GND 1×2 bước 2,54 mm và SCL/SDA/3V3/GND 1×4 bước 2,00 mm; nối 1:1 với J1.
 Dây I²C dùng nhóm **3–6**:
 
 | Tín hiệu trên HAT/Pi | Chân trên J2 |
@@ -34,8 +39,7 @@ Dây I²C dùng nhóm **3–6**:
 
 Chân 1 = OUT DAC, chân 2 = GND phụ. Không trượt bẹ bốn lõi lên chân 1–4.
 Không suy ra thứ tự bằng màu dây; kiểm tra nhãn/tính thông mạch của cáp.
-Đầu Grove bước 2,0 mm không cắm trực tiếp vào header bước 2,54 mm này;
-cần đầu chuyển/dây tách chân phù hợp. Không nhầm số chân J2 với số
+Nhóm bốn chân dùng header trần bước 2,00 mm; kiểm tra vỏ đầu cáp và thứ tự SCL/SDA/3V3/GND trước khi cắm. Không nhầm số chân J2 với số
 chân vật lý trên header 40 chân của Raspberry Pi.
 
 ## Các phần đã đối chiếu
@@ -63,13 +67,13 @@ chân vật lý trên header 40 chân của Raspberry Pi.
 
 Hai chân GND của J1 và J3 (pin 2, pin 6) đều đi vào vùng đồng GND mặt dưới.
 Vùng đồng này nối tới J2.2/J2.6, U1.4, R2.2, R4.2, R7.2, R9.2,
-C5.2, C7.2 và J7.2. Như vậy GND DAC, GND LM358, GND nguồn LED 5 V và
+C5.2, C7.2, J4.2 và J7.2. Như vậy GND DAC, GND LM358, GND nguồn LED 5 V và
 GND Pi là cùng một mốc điện áp. Dòng LED chạy về J7.2 qua vùng đồng;
 không chạy qua board OPT101.
 
 ## Sửa ở v1.3
 
-- Bỏ J4 và toàn bộ sáu lỗ/đường đồng/nhãn liên quan. Chỉ J2 nhận cáp Pi.
+- v1.3 bỏ J4 sáu chân. v1.5 dùng lại tên J4 cho hai chân OUT_RED/GND; chỉ J2 nhận cáp Pi.
 - J3 vẫn nhận 3,3 V, GND, SDA và SCL từ bus chung; J3.1 chỉ đi vào kênh Red.
 - Schematic, PCB, BOM, pin map, Gerber và ảnh kiểm tra được sinh lại đồng bộ.
 

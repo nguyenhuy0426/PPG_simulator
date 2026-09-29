@@ -19,7 +19,7 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         op.extend([pin(plus,'+','input',-5,2,0),pin(minus,'-','input',-5,-2,0),pin(outpin,'OUT','output',5,0,180),')'])
     op+=['(symbol "LM358P_3_1" (rectangle (start -5.08 7.62) (end 5.08 -7.62) (stroke (width .254) (type default)) (fill (type background)))',pin(8,'V+','power_in',0,5,270),pin(4,'V-','power_in',0,-5,90),'))']
     shapes['LM358P']='\n'.join(op)
-    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.3") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy"))','(lib_symbols',*shapes.values(),')']
+    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.6") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy"))','(lib_symbols',*shapes.values(),')']
     byref={d['ref']:d for d in parts}; segments=[]; placed=set(); anchors=set()
     def wire(*points): segments.extend(zip(points,points[1:]))
     def label(net,x,y):
@@ -58,14 +58,14 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
             yy=15+2*i
             if jwire:
                 w((20,yy),(22,yy),(45,yy)); l(net,31,yy)
-            elif i == 0:
-                w((20,yy),(22,yy)); l(net,22,yy)
+            else:
+                w((20,yy),(26,yy)); l(net,26,yy)
+        # Equal net labels explicitly join the power and signal-return grounds.
+        # Do not draw a GND wire through the SCL/SDA/VCC rows or socket body.
+        text('Module ADDR: '+('GND -> 0x60' if unit==1 else 'VCC -> 0x61'),offset+40,28,1.2)
+        text('Both GND pins share 0 V. OUT is a separate signal.',offset+40,31,1.1)
         if jwire:
-            w((24,17),(24,25))
-        else:
-            # J3.6 is the second module ground. A short labelled stub avoids
-            # crossing the SCL/SDA/3V3 rows on the way back to the GND bus.
-            w((20,25),(22,25)); l('GND',22,25)
+            text('J2: OUT/GND = 2.54 mm; SCL/SDA/3V3/GND = 2.00 mm',40,34,1.0)
         w((22,15),(22,13),(7,13),(7,47),(14,47))
         pl(rtop,16,47,90); w((18,47),(24,47),(32,47)); l('CMD_'+ch,25,47)
         pl(rbot,24,56); w((24,47),(24,54)); w((24,58),(24,70),(64,70))
@@ -83,11 +83,10 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         pl(comp,40,81,90); w((31,81),(38,81)); w((42,81),(51,81))
         l('AMP_'+ch,31,81); l('SENSE_'+ch,51,81)
         text(comp+': DNP - DO NOT FIT until loop measured',offset+40,85,1.0)
-    # Four separate horizontal nets. Keeping one row per signal avoids any
-    # graphical crossing being interpreted as an electrical junction.
-    for net,row in [('GND',17),('SCL',19),('SDA',21),('3V3',23)]:
-        wire((45,row),(100,row))
-        label(net,65,row)
+    # RED output breakout mirrors J2's IR output pair, with a ground return.
+    place('J4',130,16)
+    wire((102,15),(126,15))
+    wire((100,17),(126,17))
     # Shared supply shown as actual rails, including both capacitor polarities.
     text('SHARED SUPPLY: U1A + U1B + U1C = ONE LM358 DIP-8',42,91,1.3)
     # J7 has left-facing pins at x=8, y=100/102; route supply around it.
@@ -102,11 +101,11 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
     text('C5: ceramic, non-polar. C7: electrolytic, + to 5V.',39,112,1.0)
     for i in range(1,5): place(f'H{i}',70+i*10,97)
     text('MCP4725 VCC = 3.3 V ONLY; J2 is the only Pi cable input.',112,91,1.1)
-    text('C2/C4 optional. Removed: R5/R10, C1/C3, C6.',112,94,1.1)
+    text('ADDR is configured on each module, not by this carrier PCB.',112,94,1.1)
     text('J2 powers and controls both DAC modules over one shared Pi I2C bus.',94,101,1.1)
     text('OUT pins are DAC outputs: never connect them together.',94,104,1.1)
-    text('Four shared nets above are NOT shorted to one another.',94,107,1.1)
-    text('Crossings without dots = no connection.',94,110,1.1)
+    text('Matching labels connect SCL, SDA, 3V3 and GND between modules.',94,107,1.1)
+    text('For RED: remove the old ADDR-GND bridge before selecting VCC.',94,110,1.1)
     assert {d['ref'] for d in parts}<=placed
     # Split T junctions into explicit wire endpoints; crossings without endpoints
     # remain crossings. Add junction dots wherever three wire ends meet.

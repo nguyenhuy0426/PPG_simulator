@@ -1,13 +1,15 @@
-# DATN: PPG-Simulator — LED / IR driver v1.3
+# DATN: PPG-Simulator — LED / IR driver v1.6
 
 Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 55 mm**,
 FR4 1,6 mm; socket module và linh kiện xuyên lỗ để dễ hàn/thay thế.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.3 dùng dây nối trực tiếp cho từng kênh. Đọc
+Schematic v1.6 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
+không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
+rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
 chân nối; `reports/wiring_guide.png` thể hiện đường đồng hai lớp có màu.
 
-Mặt sau PCB ghi tên tín hiệu cạnh từng pad của J1/J2/J3, J5/J6/J7, socket
+Mặt sau PCB ghi tên tín hiệu cạnh từng pad của J1/J2/J3/J4, J5/J6/J7, socket
 LM358 và hai transistor. Nhãn chân không có tiền tố số; tên connector và
 reference linh kiện vẫn được giữ để đối chiếu schematic.
 
@@ -34,7 +36,7 @@ J1–J2 nối **1:1 đủ sáu chân**. J3 dùng chung GND, 3,3 V, SCL và SDA
 với J1/J2; OUT Red chỉ đi từ J3 vào mạch Red, không nối OUT IR.
 J2 là header đực duy nhất để đưa I²C/3,3 V từ Pi vào board.
 **Bẹ I²C bốn lõi vào chân 3–6: SCL, SDA, 3V3, GND; không vào 1–4.**
-Không còn J4 và không cần bẹ dây thứ hai.
+J4 là header đực 1×2 bước 2,54 mm: chân 1 = OUT_RED, chân 2 = GND. J2.1/J2.2 là OUT_IR/GND. Nhóm I²C 2,00 mm của J2 vẫn là đầu cáp Pi dùng chung.
 Pin OUT là ngõ ra DAC để đo/lấy tín hiệu, không nối vào ngõ ra khác.
 
 Hai chân GND của mỗi module (pin 2 và pin 6) nối vào vùng đồng GND mặt dưới.
@@ -42,6 +44,9 @@ Vùng này cũng nối J2.2/J2.6, LM358 pin 4, đầu dưới các điện trở
 cực âm C5/C7 và J7.2. Vì vậy nguồn 5 V tại J7 phải chung GND với Pi.
 
 Đặt jumper địa chỉ trên module: **IR = 0x60, Red = 0x61** theo cấu hình source.
+Với module MCP4725A0: IR đặt ADDR về GND, RED đặt ADDR về VCC (3,3 V).
+Gỡ cầu hàn ADDR–GND nếu có trước khi nối ADDR–VCC; không nối tắt cả ba pad.
+Hai chân GND của module vẫn giữ chung GND ở cả hai cấu hình địa chỉ.
 Header sáu chân không đưa chân ADDR ra ngoài. Kiểm tra jumper và quét I²C
 trước khi chạy; không để hai module cùng địa chỉ. Module đã có pull-up I²C,
 board không thêm pull-up; cần kiểm tra tải pull-up khi dùng chung Grove HAT.
@@ -113,8 +118,8 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 ## Kiểm tra và file gia công
 
 KiCad 10.0.6: **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm; 0 kết nối còn thiếu;
-0 sai khác schematic/PCB; 152 kiểm tra hợp đồng chân, hình học và đi dây đạt**.
-File khoan có 62 lỗ mạ (38 lỗ Ø0,8 mm, 24 lỗ Ø1,0 mm) và bốn lỗ
+0 sai khác schematic/PCB; 244 kiểm tra hợp đồng chân, giá trị, hình học và đi dây đạt**.
+File khoan có 64 lỗ mạ (42 lỗ Ø0,8 mm, 22 lỗ Ø1,0 mm) và bốn lỗ
 không mạ Ø3,2 mm. Gia công hai lớp đồng, FR4 1,6 mm, đồng 1 oz.
 
 - `reports/erc.rpt`: kiểm tra schematic.
@@ -143,3 +148,7 @@ Nguồn: sơ đồ `docs/hardware/PPG_PROTOTYPE_SCHEMATIC.md`,
 datasheet MCP4725 và LM358 trong `docs/ds_linhkien/`.
 Footprint/model từ KiCad 10: CC-BY-SA 4.0 với ngoại lệ sử dụng trong thiết kế
 điện tử, [KiCad Library License](https://www.kicad.org/libraries/license/).
+
+## J2 revision v1.4
+
+J2 gồm hai đoạn header đực rời: OUT/GND (pad 1–2) bước 2,54 mm; SCL/SDA/3V3/GND (pad 3–6) bước 2,00 mm. Khoảng cách tâm pad 2 đến pad 3 là 3,96 mm để tách hai thân nhựa. Mua một header 1×2 2,54 mm và một header 1×4 2,00 mm, không dùng một thanh 1×6. Socket cái J1/J3 vẫn bước 2,54 mm.

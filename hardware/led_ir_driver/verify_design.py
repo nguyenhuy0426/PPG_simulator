@@ -24,7 +24,7 @@ for ch,socket,cable,base,div,shunt,sense,qref,led,cmdcap,loopcap,rbe,amp_p,minus
         if cable: required.add((cable,str(pin)))
         check(f'{socket}'+(f'/{cable}' if cable else '')+f' pin {pin}: {net}',required<=nets[net])
     expected={
-      'DAC':({(socket,'1'),(div,'1')} | ({(cable,'1')} if cable else set())),
+      'DAC':({(socket,'1'),(div,'1')} | ({(cable,'1')} if cable else {('J4','1')})),
       'CMD':{(div,'2'),(shunt,'1'),('U1',plus_p)},
       'AMP':{('U1',amp_p),(base,'1'),(loopcap,'1')},
       'BASE':{(base,'2'),(qref,'2')},
@@ -36,24 +36,31 @@ check('5V isolated from all module/cable pins',nets['5V']=={('J7','1'),('J5','1'
 check('3V3 only module/cable supply',nets['3V3']=={(j,'5') for j in ('J1','J2','J3')})
 check('I2C SDA shared on pin4',nets['SDA']=={(j,'4') for j in ('J1','J2','J3')})
 check('I2C SCL shared on pin3',nets['SCL']=={(j,'3') for j in ('J1','J2','J3')})
-check('Ground exact pin set',nets['GND']==({(j,pin) for j in ('J1','J2','J3') for pin in ('2','6')} | {('U1','4'),('R2','2'),('R4','2'),('R7','2'),('R9','2'),('C5','2'),('C7','2'),('J7','2')}))
+check('Ground exact pin set',nets['GND']==({(j,pin) for j in ('J1','J2','J3') for pin in ('2','6')} | {('U1','4'),('R2','2'),('R4','2'),('R7','2'),('R9','2'),('C5','2'),('C7','2'),('J7','2'),('J4','2')}))
 critical=['GND','3V3','5V','SCL','SDA','DAC_IR','DAC_RED']
 for i,a in enumerate(critical):
     for other in critical[i+1:]:
         check(a+' and '+other+' have no shared pins',nets[a].isdisjoint(nets[other]))
-check('Only one Pi cable header remains',all(('J4',str(pin)) not in pins for pins in nets.values() for pin in range(1,7)))
+check('J4 is RED output and ground only',nets['DAC_RED'] >= {('J4','1')} and nets['GND'] >= {('J4','2')})
 check('Four-wire cable maps to J2 pads 3..6',all(('J2',str(pin)) in nets[net] for pin,net in [(3,'SCL'),(4,'SDA'),(5,'3V3'),(6,'GND')]))
 fps={fp.GetReference():fp for fp in board.GetFootprints()}
+# Audit fitted values independently of the generator, not just net names.
+for ref,value in [('R1','10k 1%'),('R2','10k 1%'),('R6','10k 1%'),('R7','10k 1%'),
+                  ('R3','1k'),('R8','1k'),('C5','100nF X7R 50V'),('C7','10uF 16V'),
+                  ('Q1','2N4401 / E-B-C'),('Q2','2N4401 / E-B-C'),('U1','LM358P / DIP8 socket')]:
+    check(ref+' fitted value',fps[ref].GetValue()==value and not (fps[ref].GetAttributes() & p.FP_DNP))
+check('C7 positive pad on 5V, negative on GND',('C7','1') in nets['5V'] and ('C7','2') in nets['GND'])
 for ref,fp in fps.items():
     for pad in fp.Pads():
         if pad.GetNumber(): check(ref+'.'+pad.GetNumber()+' PCB/netlist match',(ref,pad.GetNumber()) in nets[pad.GetNetname().lstrip('/')])
-check('J4 footprint removed', 'J4' not in fps)
+j4pads=sorted(fps['J4'].Pads(),key=lambda pad:pad.GetNumber())
+check('J4 has two pins at 2.54 mm pitch',len(j4pads)==2 and abs(p.ToMM(j4pads[1].GetPosition().y-j4pads[0].GetPosition().y)-2.54)<1e-6)
 for ref in ('J1','J2','J3'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' has six holes',len(pads)==6)
     for i in range(1,6):
         a=pads[str(i)].GetPosition(); b=pads[str(i+1)].GetPosition()
-        check(ref+f' pitch {i}',abs(p.ToMM(b.y-a.y)-2.54)<1e-6 and a.x==b.x)
+        check(ref+f' pitch {i}',abs(p.ToMM(b.y-a.y)-((2.54,3.96,2.0,2.0,2.0)[i-1] if ref=='J2' else 2.54))<1e-6 and a.x==b.x)
 for ref in ('Q1','Q2'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' physical pin order 1=E,2=B,3=C',pads['1'].GetPosition().x<pads['2'].GetPosition().x<pads['3'].GetPosition().x)

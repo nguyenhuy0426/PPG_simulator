@@ -1,4 +1,4 @@
-# Tra chân PCB driver v1.3
+# Tra chân PCB driver v1.6
 
 Số chân dưới đây đọc trực tiếp từ PCB đã đi dây. Hai hình trong wiring_guide.png
 đều nhìn từ mặt linh kiện; mặt đồng B.Cu được nhìn xuyên board, không lật ảnh.
@@ -16,6 +16,7 @@ Nét đứt xám nối hai pad R/C chỉ biểu diễn thân linh kiện, không
 | J1 | MCP4725 IR 0x60 | 1 → DAC_IR, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
 | J2 | PI I2C INPUT / IR OUT | 1 → DAC_IR, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
 | J3 | MCP4725 RED 0x61 | 1 → DAC_RED, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
+| J4 | RED DAC OUT / GND | 1 → DAC_RED, 2 → GND |
 | J5 | IR LED A / K | 1 → 5V, 2 → LED_K_IR |
 | J6 | RED LED A / K | 1 → 5V, 2 → LED_K_RED |
 | J7 | 5V INPUT / GND | 1 → 5V, 2 → GND |

@@ -7,7 +7,7 @@ hai socket module dùng chung GND, 3,3 V, SCL và SDA.
 ## Phần đã xác định
 
 - Hai MCP4725 dạng module, cắm hai socket cái 1×6 bước 2,54 mm.
-- Một header đực J2 1×6 cho dây Pi. J4 đã bỏ ở v1.3.
+- J2 gồm header đực 1×2 2,54 mm (OUT/GND) và 1×4 2,00 mm (SCL/SDA/3V3/GND) cho dây Pi. J4 là header đực OUT_RED/GND 1×2 bước 2,54 mm.
 - LM358P dùng socket DIP-8, khoảng cách hai hàng 7,62 mm.
 - Q1/Q2 chọn 2N4401 TO-92 theo datasheet onsemi, chân 1 E, 2 B, 3 C.
   Không cắm C1815 vào cùng footprint: thứ tự E/C/B khác nhau.

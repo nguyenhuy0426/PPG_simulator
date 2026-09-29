@@ -1,4 +1,7 @@
-# Vì sao giữ các linh kiện này? — driver v1.3
+# Vì sao giữ các linh kiện này? — driver v1.6
+
+Giá trị linh kiện giữ nguyên từ v1.3; v1.6 đã đối chiếu lại nguồn, cực tụ,
+chân LM358/2N4401 và hai vòng hồi tiếp. Xem `ELECTRICAL_AUDIT.md`.
 
 ## Tụ phân cực và tụ hóa có phải hai nhóm cần lắp riêng?
 
@@ -81,7 +84,8 @@ thể sáng trước khi phần mềm đặt DAC về 0; board không có khóa 
 
 ## Cách đọc schematic mới
 
-- Hai socket module dùng chung bus; một header đực J2 nhận cáp Pi ở phần trên.
+- Hai socket module dùng chung bus qua nhãn SCL/SDA/3V3/GND; J2 nhận cáp Pi.
+- J2.1/2 lấy OUT_IR/GND; J4.1/2 lấy OUT_RED/GND, bước chân 2,54 mm.
 - OUT DAC đi bằng dây liền xuống cầu chia rồi vào chân `+` của LM358.
 - Ngõ ra LM358 qua 1 kΩ đến B; C nối cathode LED; E nối đầu trên R_sense.
 - Dây từ đầu trên R_sense quay về chân `−` chính là hồi tiếp âm.
