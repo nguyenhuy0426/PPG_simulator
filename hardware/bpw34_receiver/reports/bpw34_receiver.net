@@ -2,14 +2,14 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/bpw34_receiver/bpw34_receiver.kicad_sch</source>
-    <date>2026-09-24T22:37:17</date>
+    <date>2026-09-29T20:31:50</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>DATN: PPG-Simulator - Dual BPW34 receiver</title>
         <company/>
-        <rev>1.1</rev>
-        <date>2026-09-24</date>
+        <rev>1.2</rev>
+        <date>2026-09-29</date>
         <source>bpw34_receiver.kicad_sch</source>
         <comment number="1" value="Nguyen Nhat Huy - Pham Thanh Vy"/>
         <comment number="2" value="70 x 32 mm / Grove A2 RED + A0 IR / ADS1115 output"/>
@@ -32,7 +32,7 @@
         <field name="Datasheet"/>
         <field name="Description"/>
       </fields>
-      <libsource lib="PPG" part="C" description=""/>
+      <libsource lib="PPG" part="CF" description=""/>
       <property name="Sheetname" value="bpw34_receiver"/>
       <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
       <sheetpath names="/" tstamps="/"/>
@@ -54,7 +54,7 @@
         <field name="Datasheet"/>
         <field name="Description"/>
       </fields>
-      <libsource lib="PPG" part="C" description=""/>
+      <libsource lib="PPG" part="CF" description=""/>
       <property name="Sheetname" value="bpw34_receiver"/>
       <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
       <sheetpath names="/" tstamps="/"/>
@@ -617,6 +617,19 @@
         <pin num="2" name="" type="passive"/>
       </pins>
     </libpart>
+    <libpart lib="PPG" part="CF">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">CF</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
     <libpart lib="PPG" part="Grove">
       <fields>
         <field name="Reference">J</field>
@@ -628,8 +641,8 @@
       <pins>
         <pin num="1" name="SIGNAL" type="passive"/>
         <pin num="2" name="UNUSED" type="passive"/>
-        <pin num="3" name="3V3" type="passive"/>
-        <pin num="4" name="GND" type="passive"/>
+        <pin num="3" name="3V3" type="power_out"/>
+        <pin num="4" name="GND" type="power_out"/>
       </pins>
     </libpart>
     <libpart lib="PPG" part="MountingHole">
@@ -679,13 +692,13 @@
   <nets>
     <net code="1" name="/3V3_IR" class="Default">
       <node ref="C6" pin="1" pintype="passive"/>
-      <node ref="J2" pin="3" pinfunction="3V3_3" pintype="passive"/>
+      <node ref="J2" pin="3" pinfunction="3V3_3" pintype="power_out"/>
       <node ref="R6" pin="2" pintype="passive"/>
       <node ref="U2" pin="5" pinfunction="V+_5" pintype="power_in"/>
     </net>
     <net code="2" name="/3V3_RED" class="Default">
       <node ref="C5" pin="1" pintype="passive"/>
-      <node ref="J1" pin="3" pinfunction="3V3_3" pintype="passive"/>
+      <node ref="J1" pin="3" pinfunction="3V3_3" pintype="power_out"/>
       <node ref="R5" pin="2" pintype="passive"/>
       <node ref="U1" pin="5" pinfunction="V+_5" pintype="power_in"/>
     </net>
@@ -705,7 +718,7 @@
       <node ref="C4" pin="2" pintype="passive"/>
       <node ref="C6" pin="2" pintype="passive"/>
       <node ref="D2" pin="2" pinfunction="A_2" pintype="passive"/>
-      <node ref="J2" pin="4" pinfunction="GND_4" pintype="passive"/>
+      <node ref="J2" pin="4" pinfunction="GND_4" pintype="power_out"/>
       <node ref="J3" pin="4" pinfunction="GND_IR_4" pintype="passive"/>
       <node ref="R8" pin="1" pintype="passive"/>
       <node ref="U2" pin="2" pinfunction="V-_2" pintype="power_in"/>
@@ -714,7 +727,7 @@
       <node ref="C3" pin="2" pintype="passive"/>
       <node ref="C5" pin="2" pintype="passive"/>
       <node ref="D1" pin="2" pinfunction="A_2" pintype="passive"/>
-      <node ref="J1" pin="4" pinfunction="GND_4" pintype="passive"/>
+      <node ref="J1" pin="4" pinfunction="GND_4" pintype="power_out"/>
       <node ref="J3" pin="2" pinfunction="GND_RED_2" pintype="passive"/>
       <node ref="R7" pin="1" pintype="passive"/>
       <node ref="U1" pin="2" pinfunction="V-_2" pintype="power_in"/>

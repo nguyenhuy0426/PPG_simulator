@@ -1,5 +1,11 @@
 {
   "kicad_version": "10.0.6",
+  "hole_track_clearance_mm": {
+    "H1": 0.7,
+    "H2": 0.7,
+    "H3": 1.7,
+    "H4": 1.7
+  },
   "checks": [
     {
       "check": "/3V3_RED exact pin set",
@@ -886,6 +892,38 @@
       "pass": true
     },
     {
+      "check": "J3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
       "check": "J2.1 PCB agrees with netlist",
       "pass": true
     },
@@ -899,14 +937,6 @@
     },
     {
       "check": "J2.4 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D1.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D1.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -926,86 +956,6 @@
       "pass": true
     },
     {
-      "check": "D2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.3 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.4 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R7.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R7.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C5.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C5.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R6.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R6.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C1.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C1.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R4.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R4.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
       "check": "C6.1 PCB agrees with netlist",
       "pass": true
     },
@@ -1014,19 +964,11 @@
       "pass": true
     },
     {
-      "check": "R8.1 PCB agrees with netlist",
+      "check": "C1.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "R8.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C4.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C4.2 PCB agrees with netlist",
+      "check": "C1.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1050,6 +992,78 @@
       "pass": true
     },
     {
+      "check": "R1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C4.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C4.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C5.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C5.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
       "check": "C3.1 PCB agrees with netlist",
       "pass": true
     },
@@ -1058,19 +1072,19 @@
       "pass": true
     },
     {
+      "check": "R8.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R8.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
       "check": "R3.1 PCB agrees with netlist",
       "pass": true
     },
     {
       "check": "R3.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R1.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R1.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1094,14 +1108,6 @@
       "pass": true
     },
     {
-      "check": "R5.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R5.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
       "check": "H1 3.2 mm NPTH",
       "pass": true
     },
@@ -1115,6 +1121,30 @@
     },
     {
       "check": "H4 3.2 mm NPTH",
+      "pass": true
+    },
+    {
+      "check": "H1 copper-to-drill edge at least 0.69 mm",
+      "pass": true
+    },
+    {
+      "check": "H2 copper-to-drill edge at least 0.69 mm",
+      "pass": true
+    },
+    {
+      "check": "H3 copper-to-drill edge at least 0.69 mm",
+      "pass": true
+    },
+    {
+      "check": "H4 copper-to-drill edge at least 0.69 mm",
+      "pass": true
+    },
+    {
+      "check": "H3 lower-hole track margin at least 1.5 mm",
+      "pass": true
+    },
+    {
+      "check": "H4 lower-hole track margin at least 1.5 mm",
       "pass": true
     },
     {
@@ -1294,5 +1324,5 @@
       "pass": true
     }
   ],
-  "passed": 323
+  "passed": 329
 }

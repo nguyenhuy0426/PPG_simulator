@@ -48,6 +48,17 @@
 (pin passive line (at 0 5.08 270) (length 5.08) (name "~" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
 (pin passive line (at 0 -5.08 90) (length 5.08) (name "~" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
 ))
+(symbol "CF" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
+(property "Reference" "C" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "CF" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "CF_0_1"
+(polyline (pts (xy -0.762 -2.54) (xy -0.762 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+(polyline (pts (xy 0.762 -2.54) (xy 0.762 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+)
+(symbol "CF_1_1"
+(pin passive line (at -5.08 0 0) (length 5.08) (name "~" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(pin passive line (at 5.08 0 180) (length 5.08) (name "~" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
+))
 (symbol "Grove"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
 (property "Reference" "J" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
 (property "Value" "Grove" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
@@ -57,8 +68,8 @@
 (symbol "Grove_1_1"
 (pin passive line (at -10.16 7.62 0) (length 5.08) (name "SIGNAL" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
 (pin passive line (at -10.16 2.54 0) (length 5.08) (name "UNUSED" (effects (font (size 1 1)))) (number "2" (effects (font (size 1 1)))))
-(pin passive line (at -10.16 -2.54 0) (length 5.08) (name "3V3" (effects (font (size 1 1)))) (number "3" (effects (font (size 1 1)))))
-(pin passive line (at -10.16 -7.62 0) (length 5.08) (name "GND" (effects (font (size 1 1)))) (number "4" (effects (font (size 1 1)))))
+(pin power_out line (at -10.16 -2.54 0) (length 5.08) (name "3V3" (effects (font (size 1 1)))) (number "3" (effects (font (size 1 1)))))
+(pin power_out line (at -10.16 -7.62 0) (length 5.08) (name "GND" (effects (font (size 1 1)))) (number "4" (effects (font (size 1 1)))))
 ))
 (symbol "ADS"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
 (property "Reference" "J" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
@@ -72,14 +83,26 @@
 (pin passive line (at -10.16 -2.54 0) (length 5.08) (name "OUT_IR" (effects (font (size 1 1)))) (number "3" (effects (font (size 1 1)))))
 (pin passive line (at -10.16 -7.62 0) (length 5.08) (name "GND_IR" (effects (font (size 1 1)))) (number "4" (effects (font (size 1 1)))))
 ))
-(symbol "PWR_FLAG" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
-(property "Reference" "#FLG" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
-(property "Value" "PWR_FLAG" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
-(symbol "PWR_FLAG_0_1"
-(polyline (pts (xy 0 0) (xy 0 2.54) (xy 1.27 3.81) (xy 0 5.08) (xy -1.27 3.81) (xy 0 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+(symbol "Rail" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
+(property "Reference" "#PWR" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "Rail" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "Rail_0_1"
+(polyline (pts (xy 0 0) (xy 0 2.54) (xy -2.54 2.54) (xy 0 5.08) (xy 2.54 2.54) (xy 0 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
 )
-(symbol "PWR_FLAG_1_1"
-(pin power_out line (at 0 0 90) (length 0) (name "pwr" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+(symbol "Rail_1_1"
+(pin passive line (at 0 0 90) (length 0) (name "~" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
+))
+(symbol "Return" (pin_numbers (hide yes)) (pin_names (offset 0.5) (hide yes)) (in_bom yes) (on_board yes)
+(property "Reference" "#PWR" (at 0 13.97 0) (effects (font (size 1.27 1.27))))
+(property "Value" "Return" (at 0 11.43 0) (effects (font (size 1.27 1.27))))
+(symbol "Return_0_1"
+(polyline (pts (xy -2.54 -2.54) (xy 2.54 -2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+(polyline (pts (xy -1.65 -3.81) (xy 1.65 -3.81)) (stroke (width 0.254) (type default)) (fill (type none)))
+(polyline (pts (xy -0.76 -5.08) (xy 0.76 -5.08)) (stroke (width 0.254) (type default)) (fill (type none)))
+(polyline (pts (xy 0 0) (xy 0 -2.54)) (stroke (width 0.254) (type default)) (fill (type none)))
+)
+(symbol "Return_1_1"
+(pin passive line (at 0 0 90) (length 0) (name "~" (effects (font (size 1 1)))) (number "1" (effects (font (size 1 1)))))
 ))
 (symbol "MountingHole"  (pin_names (offset 0.5) ) (in_bom yes) (on_board yes)
 (property "Reference" "H" (at 0 13.97 0) (effects (font (size 1.27 1.27))))

@@ -99,7 +99,7 @@ def plot():
         ncol=4,
         frameon=False,
     )
-    fig.suptitle("Dual BPW34 receiver v1.1 - actual routed copper and pad numbers", fontsize=16)
+    fig.suptitle("Dual BPW34 receiver v1.2 - actual routed copper and pad numbers", fontsize=16)
     fig.savefig(HERE / "reports/wiring_guide.png", dpi=180)
     fig.savefig(HERE / "reports/wiring_guide.pdf")
     plt.close(fig)

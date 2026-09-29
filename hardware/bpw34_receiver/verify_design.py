@@ -114,6 +114,26 @@ for ref in ("H1", "H2", "H3", "H4"):
     pads = list(fps[ref].Pads())
     check(ref + " 3.2 mm NPTH", len(pads) == 1 and pads[0].GetAttribute() == p.PAD_ATTRIB_NPTH and abs(p.ToMM(pads[0].GetDrillSize().x) - 3.2) < 1e-6)
 
+# Check the actual routed copper centre-lines against every drilled opening.
+# The measurement subtracts the 1.6 mm hole radius and half the track width;
+# the two lower mounting holes receive extra room for a screw and washer.
+hole_clearances = {}
+for ref in ("H1", "H2", "H3", "H4"):
+    centre = fps[ref].GetPosition()
+    cx, cy = p.ToMM(centre.x), p.ToMM(centre.y)
+    distances = []
+    for track in board.GetTracks():
+        a, b = track.GetStart(), track.GetEnd()
+        ax, ay, bx, by = p.ToMM(a.x), p.ToMM(a.y), p.ToMM(b.x), p.ToMM(b.y)
+        dx, dy = bx - ax, by - ay
+        scale = max(0, min(1, ((cx - ax) * dx + (cy - ay) * dy) / (dx * dx + dy * dy))) if dx * dx + dy * dy else 0
+        radius = p.ToMM(track.GetWidth(track.GetLayer()) if isinstance(track, p.PCB_VIA) else track.GetWidth()) / 2
+        distances.append(math.hypot(cx - (ax + scale * dx), cy - (ay + scale * dy)) - 1.6 - radius)
+    hole_clearances[ref] = min(distances)
+    check(ref + " copper-to-drill edge at least 0.69 mm", hole_clearances[ref] >= 0.69)
+for ref in ("H3", "H4"):
+    check(ref + " lower-hole track margin at least 1.5 mm", hole_clearances[ref] >= 1.5)
+
 texts = {(item.GetText(), item.GetLayer()) for item in board.GetDrawings() if isinstance(item, p.PCB_TEXT)}
 check("rear DATN title present", ("DATN: PPG-Simulator", p.B_SilkS) in texts)
 check("rear author names present", ("Nguyen Nhat Huy - Pham Thanh Vy", p.B_SilkS) in texts)
@@ -128,6 +148,6 @@ for item in board.GetDrawings():
     if isinstance(item, p.PCB_TEXT) and item.GetLayer() == p.B_SilkS:
         check("rear pin label has no numeric prefix: " + item.GetText(), not __import__("re").match(r"^[1-4](?:\s|[A-Z])", item.GetText()))
 
-report = {"kicad_version": p.Version(), "checks": checks, "passed": len(checks)}
+report = {"kicad_version": p.Version(), "hole_track_clearance_mm": hole_clearances, "checks": checks, "passed": len(checks)}
 (HERE / "reports/pin_contract.json").write_text(json.dumps(report, indent=2) + "\n")
 print(f"Passed {len(checks)} BPW34 receiver checks")

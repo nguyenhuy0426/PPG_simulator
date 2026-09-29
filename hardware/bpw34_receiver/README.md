@@ -12,6 +12,8 @@ The 100 ohm output resistor isolates the op-amp from cable and ADC input capacit
 
 The preferred amplifier is `OPA333AIDBVR` in SOT-23-5. The lower-cost `MCP6001T-I/OT` has the same pinout and footprint, but higher offset and drift. The board does not support LM358 because its input/output headroom is a poor match for a 3.3 V photodiode TIA.
 
+The schematic now draws R1/C1 and R2/C2 as two visible parallel feedback branches between each BPW34 cathode (SUM) and the OPA333 output (FB). A supply arrow marks each channel's `3V3_RED` or `3V3_IR` net; a ground symbol marks `GND_RED` or `GND_IR`. The two channel grounds remain separate. The former diamond-shaped `PWR_FLAG` symbols have been removed; the Grove connector power pins are declared as the external source for KiCad ERC.
+
 ## Connectors
 
 | Connector | Pin 1 | Pin 2 | Pin 3 | Pin 4 |
@@ -42,6 +44,11 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
   the opposite layer where needed, so they do not cut through the TIA loops.
 - Every routed copper segment on F.Cu and B.Cu is horizontal or vertical; the
   layout intentionally contains no diagonal track segments.
+- The 3.3 V supply traces now approach the lower connectors on the inside of
+  each mounting hole and run around the outer edge on the rear. The closest
+  routed copper stays 0.7 mm from any M3 drill opening, and at least 1.7 mm
+  from either lower opening H3/H4. These are copper-edge to drill-edge values;
+  the drilled opening does not sever a trace.
 - Both sides carry pin markings. On the rear, every J1/J2/J3 pad is labelled
   individually with an abbreviation; the nearby legend
   defines `R=OUT_RED`, `I=OUT_IR`, `V=3V3`, `N=NC`, and `GR/GI=channel GND`.

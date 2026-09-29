@@ -51,11 +51,15 @@ PINS = {
         ("1", "~", "passive", 0, 5.08, 270),
         ("2", "~", "passive", 0, -5.08, 90),
     ],
+    "CF": [
+        ("1", "~", "passive", -5.08, 0, 0),
+        ("2", "~", "passive", 5.08, 0, 180),
+    ],
     "Grove": [
         ("1", "SIGNAL", "passive", -10.16, 7.62, 0),
         ("2", "UNUSED", "passive", -10.16, 2.54, 0),
-        ("3", "3V3", "passive", -10.16, -2.54, 0),
-        ("4", "GND", "passive", -10.16, -7.62, 0),
+        ("3", "3V3", "power_out", -10.16, -2.54, 0),
+        ("4", "GND", "power_out", -10.16, -7.62, 0),
     ],
     "ADS": [
         ("1", "OUT_RED", "passive", -10.16, 7.62, 0),
@@ -63,7 +67,8 @@ PINS = {
         ("3", "OUT_IR", "passive", -10.16, -2.54, 0),
         ("4", "GND_IR", "passive", -10.16, -7.62, 0),
     ],
-    "PWR_FLAG": [("1", "pwr", "power_out", 0, 0, 90)],
+    "Rail": [("1", "~", "passive", 0, 0, 90)],
+    "Return": [("1", "~", "passive", 0, 0, 90)],
     "MountingHole": [],
 }
 
@@ -74,14 +79,16 @@ def lib_symbol(name):
         "OPA333": "U",
         "R": "R",
         "C": "C",
+        "CF": "C",
         "Grove": "J",
         "ADS": "J",
-        "PWR_FLAG": "#FLG",
+        "Rail": "#PWR",
+        "Return": "#PWR",
         "MountingHole": "H",
     }
-    hide = "(pin_numbers (hide yes))" if name in ("R", "C", "PWR_FLAG") else ""
+    hide = "(pin_numbers (hide yes))" if name in ("R", "C", "CF", "Rail", "Return") else ""
     out = [
-        f'(symbol "PPG:{name}" {hide} (pin_names (offset 0.5) {"(hide yes)" if name in ("R", "C", "PWR_FLAG") else ""}) (in_bom yes) (on_board yes)',
+        f'(symbol "PPG:{name}" {hide} (pin_names (offset 0.5) {"(hide yes)" if name in ("R", "C", "CF", "Rail", "Return") else ""}) (in_bom yes) (on_board yes)',
         f'(property "Reference" "{refs[name]}" (at 0 13.97 0) {effects()})',
         f'(property "Value" "{name}" (at 0 11.43 0) {effects()})',
         f'(symbol "{name}_0_1"',
@@ -106,13 +113,22 @@ def lib_symbol(name):
             '(polyline (pts (xy -2.54 -0.762) (xy 2.54 -0.762)) (stroke (width 0.254) (type default)) (fill (type none)))',
             '(polyline (pts (xy -2.54 0.762) (xy 2.54 0.762)) (stroke (width 0.254) (type default)) (fill (type none)))',
         ])
-    elif name == "PWR_FLAG":
-        out.append('(polyline (pts (xy 0 0) (xy 0 2.54) (xy 1.27 3.81) (xy 0 5.08) (xy -1.27 3.81) (xy 0 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))')
+    elif name == "CF":
+        out.extend([
+            '(polyline (pts (xy -0.762 -2.54) (xy -0.762 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))',
+            '(polyline (pts (xy 0.762 -2.54) (xy 0.762 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))',
+        ])
+    elif name == "Rail":
+        out.append('(polyline (pts (xy 0 0) (xy 0 2.54) (xy -2.54 2.54) (xy 0 5.08) (xy 2.54 2.54) (xy 0 2.54)) (stroke (width 0.254) (type default)) (fill (type none)))')
+    elif name == "Return":
+        for half_width, yy in ((2.54, -2.54), (1.65, -3.81), (0.76, -5.08)):
+            out.append(f'(polyline (pts (xy {-half_width} {yy}) (xy {half_width} {yy})) (stroke (width 0.254) (type default)) (fill (type none)))')
+        out.append('(polyline (pts (xy 0 0) (xy 0 -2.54)) (stroke (width 0.254) (type default)) (fill (type none)))')
     else:
         out.append('(circle (center 0 0) (radius 2.54) (stroke (width 0.254) (type default)) (fill (type none)))')
     out += [")", f'(symbol "{name}_1_1"']
     for num, label, kind, x, y, angle in PINS[name]:
-        length = 0 if name == "PWR_FLAG" else 5.08
+        length = 0 if name in ("Rail", "Return") else 5.08
         out.append(f'(pin {kind} line (at {x} {y} {angle}) (length {length}) (name {q(label)} {effects(1)}) (number "{num}" {effects(1)}))')
     return "\n".join(out + ["))"])
 
@@ -120,7 +136,7 @@ def lib_symbol(name):
 def write_schematic():
     out = [
         f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {ROOT}) (paper "A3")',
-        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-09-24") (rev "1.1") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 32 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
+        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-09-29") (rev "1.2") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 32 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
         "(lib_symbols",
         *(lib_symbol(name) for name in PINS),
         ")",
@@ -143,17 +159,21 @@ def write_schematic():
         out.append(f'(no_connect (at {x} {y}) (uuid {uid("nc" + ref + str((x,y))) }))')
 
     def place(kind, ref, value, x, y, fp="", angle=0):
-        out.append(f'(symbol (lib_id "PPG:{kind}") (at {x} {y} {angle}) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid {uid(ref)})')
+        annotation = kind in ("Rail", "Return")
+        out.append(f'(symbol (lib_id "PPG:{kind}") (at {x} {y} {angle}) (unit 1) (in_bom {"no" if annotation else "yes"}) (on_board {"no" if annotation else "yes"}) (dnp no) (uuid {uid(ref)})')
         for prop, val, py, hide in [
             ("Reference", ref, y - 14, False),
             ("Value", value, y - 11, False),
             ("Footprint", fp, y, True),
         ]:
             px = x
-            if kind in ("R", "C") and prop in ("Reference", "Value"):
+            if kind in ("R", "C", "CF") and prop in ("Reference", "Value"):
                 px = x + 1.27
                 py = y + (-2.54 if prop == "Reference" else 2.54)
-            if kind in ("PWR_FLAG", "MountingHole"):
+            if kind == "OPA333" and prop in ("Reference", "Value"):
+                px = x - 15.24
+                py = y + (22.86 if prop == "Reference" else 25.4)
+            if kind in ("MountingHole", "Rail", "Return"):
                 py = y - 5 if prop == "Reference" else y - 3
             out.append(f'(property "{prop}" {q(val)} (at {px} {py} 0) (effects (font (size 1.05 1.05)) {"(hide yes)" if hide or ref.startswith("#") else ""}))')
         for num, *_ in PINS[kind]:
@@ -162,85 +182,95 @@ def write_schematic():
         placed.add(ref)
 
     channels = [
-        dict(ch="RED", idx=1, y=73.66, grove="A2 / RED"),
-        dict(ch="IR", idx=2, y=157.48, grove="A0 / IR"),
+        dict(ch="RED", idx=1, y=83.82, grove="A2 / RED"),
+        dict(ch="IR", idx=2, y=175.26, grove="A0 / IR"),
     ]
     for data in channels:
         ch, idx, y = data["ch"], data["idx"], data["y"]
-        top, bottom = y - 30.48, y + 30.48
         refs = {
             "d": f"D{idx}", "u": f"U{idx}", "rf": f"R{idx}", "cf": f"C{idx}",
             "rout": f"R{idx+2}", "rtop": f"R{idx+4}", "rbot": f"R{idx+6}",
             "cvref": f"C{idx+2}", "cdec": f"C{idx+4}", "j": f"J{idx}",
         }
-        text(f"{ch} CHANNEL - BPW34 -> 1 Mohm TIA -> {data['grove']}", 116.84, top - 7.62, 1.5)
+        text(f"{ch}  /  BPW34 -> OPA333 -> {data['grove']}", 116.84, y - 43.18, 1.5)
         place("BPW34", refs["d"], f"BPW34 {ch}", 63.5, y - 2.54, "PPG:BPW34_THT")
         place("OPA333", refs["u"], "OPA333AIDBVR", 111.76, y, "PPG:SOT23_5_Hand")
-        place("R", refs["rf"], "1M 1%", 111.76, y - 20.32, "PPG:R0805_Hand")
-        place("C", refs["cf"], "22pF C0G", 101.6, y - 10.16, "PPG:C0805_Hand")
-        place("R", refs["rout"], "100R", 139.7, y, "PPG:R0805_Hand")
+        place("R", refs["rf"], "1M 1%", 111.76, y - 33.02, "PPG:R0805_Hand")
+        place("CF", refs["cf"], "22pF C0G", 111.76, y - 22.86, "PPG:C0805_Hand")
+        place("R", refs["rout"], "100R", 149.86, y, "PPG:R0805_Hand")
         place("Grove", refs["j"], data["grove"], 185.42, y, "PPG:Header_1x04_P2mm")
 
-        # Main optical and feedback path.  The photodiode anode is grounded;
-        # reverse photocurrent therefore drives the TIA output upward.
-        wire((68.58, y - 2.54), (96.52, y - 2.54))
-        label(f"SUM_{ch}", 78.74, y - 2.54)
-        wire((96.52, y - 2.54), (96.52, y - 20.32))
-        wire((96.52, y - 20.32), (106.68, y - 20.32))
-        wire((116.84, y - 20.32), (127, y - 20.32))
-        wire((127, y - 20.32), (127, y))
-        wire((127, y), (134.62, y))
-        label(f"FB_{ch}", 127, y)
-        wire((96.52, y - 2.54), (101.6, y - 2.54))
-        wire((101.6, y - 2.54), (101.6, y - 15.24))
-        wire((101.6, y - 15.24), (101.6, y - 15.24))
-        wire((101.6, y - 5.08), (127, y - 5.08))
-        wire((127, y - 5.08), (127, y))
-        junction(96.52, y - 2.54, ch)
-        junction(127, y, ch)
-        wire((144.78, y), (175.26, y))
-        wire((175.26, y), (175.26, y - 7.62))
-        label(f"OUT_{ch}", 149.86, y)
+        # C1/C2 and R1/R2 are two distinct parallel branches.  The upper
+        # feedback loop never passes through the op-amp body or its power pin.
+        wire((68.58, y - 2.54), (86.36, y - 2.54))
+        wire((86.36, y - 2.54), (96.52, y - 2.54))
+        label(f"SUM_{ch}", 75.0, y - 2.54)
+        wire((86.36, y - 2.54), (86.36, y - 22.86))
+        wire((86.36, y - 22.86), (86.36, y - 33.02))
+        wire((86.36, y - 33.02), (106.68, y - 33.02))
+        wire((86.36, y - 22.86), (106.68, y - 22.86))
+        wire((116.84, y - 33.02), (137.16, y - 33.02))
+        wire((116.84, y - 22.86), (137.16, y - 22.86))
+        wire((137.16, y - 33.02), (137.16, y - 22.86))
+        wire((137.16, y - 22.86), (137.16, y))
+        wire((127, y), (137.16, y))
+        wire((137.16, y), (144.78, y))
+        label(f"FB_{ch}", 129.0, y)
+        wire((154.94, y), (167.64, y))
+        wire((167.64, y), (167.64, y - 7.62))
+        wire((167.64, y - 7.62), (175.26, y - 7.62))
+        label(f"OUT_{ch}", 157.0, y)
+        for x, yy, tag in ((86.36, y - 2.54, "sum"), (86.36, y - 22.86, "cap-left"),
+                           (137.16, y - 22.86, "cap-right"), (137.16, y, "feedback")):
+            junction(x, yy, ch + tag)
 
-        # Reference: 3.3 V -> 100k -> VREF (~0.30 V) -> 10k -> GND.
+        # Photodiode anode returns to its own channel ground.
+        wire((58.42, y - 2.54), (53.34, y - 2.54))
+        wire((53.34, y - 2.54), (53.34, y + 5.08))
+        place("Return", f"#PWR{idx*10+1}", "GND", 53.34, y + 5.08)
+        label(f"GND_{ch}", 53.34, y + 5.08)
+
+        # Filtered 100k/10k reference at the non-inverting input.
         place("R", refs["rtop"], "100k 1%", 35.56, y - 12.7, "PPG:R0805_Hand", 90)
         place("R", refs["rbot"], "10k 1%", 35.56, y + 12.7, "PPG:R0805_Hand", 90)
         place("C", refs["cvref"], "100nF X7R", 45.72, y + 12.7, "PPG:C0805_Hand")
-        place("C", refs["cdec"], "100nF X7R", 149.86, y + 12.7, "PPG:C0805_Hand")
         wire((35.56, y - 22.86), (35.56, y - 17.78))
+        place("Rail", f"#PWR{idx*10+2}", "3V3", 35.56, y - 22.86)
         label(f"3V3_{ch}", 35.56, y - 22.86)
-        wire((35.56, y - 7.62), (35.56, y + 7.62))
+        wire((35.56, y - 7.62), (35.56, y + 2.54))
+        wire((35.56, y + 2.54), (35.56, y + 7.62))
+        wire((35.56, y + 2.54), (45.72, y + 2.54))
+        wire((45.72, y + 2.54), (96.52, y + 2.54))
+        wire((45.72, y + 7.62), (45.72, y + 2.54))
+        label(f"VREF_{ch}", 60.96, y + 2.54)
+        junction(35.56, y + 2.54, ch + "vref")
+        junction(45.72, y + 2.54, ch + "vref-cap")
         wire((35.56, y + 17.78), (35.56, y + 22.86))
-        label(f"GND_{ch}", 35.56, y + 22.86)
-        wire((35.56, y), (96.52, y))
-        wire((96.52, y), (96.52, y + 2.54))
-        label(f"VREF_{ch}", 50.8, y)
-        wire((45.72, y + 7.62), (45.72, y))
-        wire((45.72, y), (35.56, y))
         wire((45.72, y + 17.78), (45.72, y + 22.86))
-        label(f"GND_{ch}", 45.72, y + 22.86)
-        junction(35.56, y, ch + "vref")
+        for x, number in ((35.56, 3), (45.72, 4)):
+            place("Return", f"#PWR{idx*10+number}", "GND", x, y + 22.86)
+            label(f"GND_{ch}", x, y + 22.86)
 
-        # Channel-local supply labels avoid graphical crossings. Every repeated
-        # label below is the same electrical net and is shown beside its pin.
-        wire((58.42, y - 2.54), (53.34, y - 2.54))
-        label(f"GND_{ch}", 53.34, y - 2.54)
-        wire((111.76, y - 12.7), (111.76, y - 17.78))
-        label(f"3V3_{ch}", 111.76, y - 17.78)
-        place("PWR_FLAG", f"#FLG{idx}1", "PWR_FLAG", 111.76, y - 17.78)
-        wire((111.76, y + 12.7), (111.76, y + 17.78))
-        label(f"GND_{ch}", 111.76, y + 17.78)
-        place("PWR_FLAG", f"#FLG{idx}2", "PWR_FLAG", 111.76, y + 17.78)
-        wire((149.86, y + 7.62), (154.94, y + 7.62))
-        label(f"3V3_{ch}", 154.94, y + 7.62)
-        wire((149.86, y + 17.78), (154.94, y + 17.78))
-        label(f"GND_{ch}", 154.94, y + 17.78)
-        wire((175.26, y + 2.54), (170.18, y + 2.54))
-        label(f"3V3_{ch}", 170.18, y + 2.54)
-        wire((175.26, y + 7.62), (170.18, y + 7.62))
-        label(f"GND_{ch}", 170.18, y + 7.62)
+        # Supply markers attach directly to the op-amp power pins.  The Grove
+        # connector declares the external supply for ERC, so no PWR_FLAG is
+        # needed in the signal drawing.
+        place("Rail", f"#PWR{idx*10+5}", "3V3", 111.76, y - 12.7)
+        label(f"3V3_{ch}", 111.76, y - 12.7)
+        place("Return", f"#PWR{idx*10+6}", "GND", 111.76, y + 12.7)
+        label(f"GND_{ch}", 111.76, y + 12.7)
+        place("C", refs["cdec"], "100nF X7R", 149.86, y + 17.78, "PPG:C0805_Hand")
+        wire((149.86, y + 12.7), (160.02, y + 12.7))
+        wire((149.86, y + 22.86), (160.02, y + 22.86))
+        for yy, net, kind, number in ((y + 12.7, f"3V3_{ch}", "Rail", 7),
+                                       (y + 22.86, f"GND_{ch}", "Return", 8)):
+            place(kind, f"#PWR{idx*10+number}", net, 160.02, yy)
+            label(net, 160.02, yy)
+        for pin_y, net in ((y + 2.54, f"3V3_{ch}"),
+                           (y + 7.62, f"GND_{ch}")):
+            wire((175.26, pin_y), (170.18, pin_y))
+            label(net, 170.18, pin_y)
         nc(175.26, y - 2.54, refs["j"])
-        text("Grove: 1=signal, 2=NC, 3=3V3, 4=GND", 185.42, bottom + 7.62, 1.0)
+        text("Grove: 1=signal, 2=NC, 3=3V3, 4=GND", 190.5, y + 20.32, 1.0)
 
     # Paired return pins make the external ADS1115 connection unambiguous.
     place("ADS", "J3", "ADS1115: RED/GND/IR/GND", 243.84, 115.57, "PPG:Header_1x04_P2.54mm")
@@ -516,9 +546,9 @@ def write_pcb(share, cli):
 
             # Supply stays at the outside edge until it reaches the local
             # decoupler and op-amp; this keeps it away from the summing node.
-            via("3V3_RED", 102.2, 125.5)
-            route("3V3_RED", [j_vdd, (j_vdd[0], 130.0), (106.8, 130.0), (106.8, 125.5), (102.2, 125.5)], p.F_Cu, 0.4)
-            route("3V3_RED", [(102.2, 125.5), (102.2, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
+            via("3V3_RED", 108.0, 125.0)
+            route("3V3_RED", [j_vdd, (j_vdd[0], 130.0), (108.0, 130.0), (108.0, 125.0)], p.F_Cu, 0.4)
+            route("3V3_RED", [(108.0, 125.0), (101.0, 125.0), (101.0, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
             route("3V3_RED", [rt_vdd, (111.55, rt_vdd[1]), (111.55, cd_vdd[1]), cd_vdd], p.B_Cu, 0.35)
             via("3V3_RED", 112.5, 102.5)
             via("3V3_RED", 116.5, 108.5)
@@ -544,9 +574,9 @@ def write_pcb(share, cli):
             route("VREF_IR", [(159.5, 106.5), (159.5, 104.0), (153.5, 104.0), (153.5, 113.0)], p.F_Cu, 0.22)
             route("VREF_IR", [(153.5, 113.0), (u_ref[0], 113.0), u_ref], p.B_Cu, 0.22)
 
-            via("3V3_IR", 167.8, 125.5)
-            route("3V3_IR", [j_vdd, (j_vdd[0], 130.0), (163.2, 130.0), (163.2, 125.5), (167.8, 125.5)], p.F_Cu, 0.4)
-            route("3V3_IR", [(167.8, 125.5), (167.8, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
+            via("3V3_IR", 162.0, 125.0)
+            route("3V3_IR", [j_vdd, (j_vdd[0], 130.0), (162.0, 130.0), (162.0, 125.0)], p.F_Cu, 0.4)
+            route("3V3_IR", [(162.0, 125.0), (169.0, 125.0), (169.0, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
             route("3V3_IR", [rt_vdd, (158.45, rt_vdd[1]), (158.45, cd_vdd[1]), cd_vdd], p.B_Cu, 0.35)
             via("3V3_IR", 157.5, 102.5)
             via("3V3_IR", 148.5, 108.5)
@@ -595,7 +625,7 @@ def write_pcb(share, cli):
         line((cx - 1, 116), (cx + 1, 116), p.Dwgs_User, 0.1)
         line((cx, 115), (cx, 117), p.Dwgs_User, 0.1)
     silk("R GR I GI", 125.81, 130.5, 0.8)
-    silk("PPG BPW34 RX v1.1", 135, 102.0, 0.9)
+    silk("PPG BPW34 RX v1.2", 135, 102.0, 0.9)
     silk("3.3V ONLY", 135, 104.5, 0.8)
     silk("70 x 32 mm", 135, 107.0, 0.8)
     silk("BPW34 MARK = K", 135, 120.0, 0.8)
