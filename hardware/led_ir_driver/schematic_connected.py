@@ -78,7 +78,7 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         w((64,52),(64,58),(64,62)); pl(rsense,64,64); w((64,66),(64,70))
         w((32,51),(30,51),(30,58),(64,58)); l('SENSE_'+ch,47,58)
         l('GND',40,70)
-        text('I_LED approximately V_DAC / (2 x '+('82' if unit==1 else '100')+' ohm)',offset+43,74)
+        text('I_LED approximately V_DAC / (2 x 100 ohm)',offset+43,74)
         # Only optional compensation uses labels, in a clearly separate area.
         pl(comp,40,81,90); w((31,81),(38,81)); w((42,81),(51,81))
         l('AMP_'+ch,31,81); l('SENSE_'+ch,51,81)

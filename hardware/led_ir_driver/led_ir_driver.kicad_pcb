@@ -6039,7 +6039,7 @@
 				)
 			)
 		)
-		(property "Value" "82R 1% 0.25W"
+		(property "Value" "100R 1% 0.25W"
 			(at 3.81 2.37 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -6722,7 +6722,7 @@
 			)
 		)
 	)
-	(gr_text "82R"
+	(gr_text "100R"
 		(at 115.8 148.2 0)
 		(layer "F.SilkS")
 		(uuid "2069ec6b-d9c9-4c88-8614-155b0250a578")

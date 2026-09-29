@@ -16,9 +16,9 @@ hai socket module dùng chung GND, 3,3 V, SCL và SDA.
 - Mỗi DAC qua cầu chia 10 kΩ / 10 kΩ 1% đến ngõ vào không đảo LM358.
 - IR: LM358 chân 1 OUT, 2 feedback, 3 command; Red: 7 OUT, 6 feedback,
   5 command. LM358 chân 4 GND, chân 8 +5 V.
-- Điện trở base 1 kΩ; sense IR 82 Ω 1%, Red 100 Ω 1%, công suất 0,25 W.
-- Dòng emitter xấp xỉ VDAC/(2 Rsense): tại 3,28 V là 20,00 mA IR và
-  16,40 mA Red; tại 3,30 V là 20,12 mA và 16,50 mA. Dòng LED collector
+- Điện trở base 1 kΩ; sense IR 100 Ω 1%, Red 100 Ω 1%, công suất 0,25 W.
+- Dòng emitter xấp xỉ VDAC/(2 Rsense): tại 3,28 V là 16,40 mA IR và
+  16,40 mA Red; tại 3,30 V là 16,50 mA và 16,50 mA. Dòng LED collector
   nhỏ hơn dòng emitter bởi dòng base; không coi các số này là dòng đã đo.
 - Tụ bypass LM358 C5 100 nF; đầu nguồn 5 V có C7 10 µF.
 - Chỉ giữ hai vị trí bù vòng C2/C4 (DNP). Bỏ C1/C3, C6, R5/R10 để

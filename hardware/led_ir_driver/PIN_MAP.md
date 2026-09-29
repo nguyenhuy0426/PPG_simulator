@@ -25,7 +25,7 @@ Nét đứt xám nối hai pad R/C chỉ biểu diễn thân linh kiện, không
 | R1 | 10k 1% | 1 → DAC_IR, 2 → CMD_IR |
 | R2 | 10k 1% | 1 → CMD_IR, 2 → GND |
 | R3 | 1k | 1 → AMP_IR, 2 → BASE_IR |
-| R4 | 82R 1% 0.25W | 1 → SENSE_IR, 2 → GND |
+| R4 | 100R 1% 0.25W | 1 → SENSE_IR, 2 → GND |
 | R6 | 10k 1% | 1 → DAC_RED, 2 → CMD_RED |
 | R7 | 10k 1% | 1 → CMD_RED, 2 → GND |
 | R8 | 1k | 1 → AMP_RED, 2 → BASE_RED |

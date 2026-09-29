@@ -72,7 +72,7 @@ check('Tracks at least 0.35mm',all(p.ToMM(t.GetWidth())>=.3499 for t in tracks))
 check('5V and LED cathodes at least 0.6mm',all(p.ToMM(t.GetWidth())>=.5999 for t in tracks if t.GetNetname() in ('/5V','/LED_K_IR','/LED_K_RED')))
 check('I2C buses stay in upper module region',all(max(p.ToMM(t.GetStart().y),p.ToMM(t.GetEnd().y))<125 for t in tracks if t.GetNetname() in ('/SDA','/SCL')))
 check('Bottom GND plane present',any(z.GetLayer()==p.B_Cu and z.GetNetname()=='/GND' for z in board.Zones()))
-for ref,value in [('R4','82R 1% 0.25W'),('R9','100R 1% 0.25W')]: check(ref+' sense value',fps[ref].GetValue()==value)
+for ref,value in [('R4','100R 1% 0.25W'),('R9','100R 1% 0.25W')]: check(ref+' sense value',fps[ref].GetValue()==value)
 edges=[d for d in board.GetDrawings() if d.GetLayer()==p.Edge_Cuts]
 xy=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
 check('70x55mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-55)<1e-6)

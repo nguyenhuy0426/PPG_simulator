@@ -51,9 +51,9 @@ chân vật lý trên header 40 chân của Raspberry Pi.
 - 2N4401: pad 1=E, 2=B, 3=C; không thay C1815 cùng chiều chân.
 - J5/J6: anode=5 V, cathode=collector; không đưa cathode thẳng xuống GND.
 - Chia áp 10k/10k: command khoảng VDAC/2. Với VDAC=3,3 V,
-  dòng emitter danh nghĩa IR=20,12 mA (82 Ω), RED=16,50 mA (100 Ω).
+  dòng emitter danh nghĩa IR=16,50 mA (100 Ω), RED=16,50 mA (100 Ω).
   Dòng collector LED thấp hơn một lượng bằng dòng base.
-- Tại danh nghĩa trên, điện trở sense tiêu tán khoảng 33,2/27,2 mW,
+- Tại danh nghĩa trên, điện trở sense tiêu tán khoảng 27,2/27,2 mW,
   thấp hơn công suất linh kiện 250 mW. Đây không phải chứng nhận dòng
   LED tuyệt đối: dung sai nguồn/điện trở/op-amp, Vf và headroom vẫn tác động.
 - C5=100 nF gốm bypass, C7=10 µF tụ hóa lọc nguồn; C2/C4 là DNP.

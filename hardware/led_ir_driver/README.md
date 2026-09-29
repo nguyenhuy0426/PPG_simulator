@@ -72,12 +72,12 @@ Footprint rộng 2,54 mm mỗi chân, cần uốn chân theo lỗ; đối chiế
 vỏ và datasheet linh kiện mua thực. **C1815 không thay trực tiếp** vì E–C–B.
 
 Hai điện trở 10 kΩ 1% chia đôi điện áp DAC. LM358 điều khiển base qua 1 kΩ
-để giữ điện áp emitter bằng điện áp command. R4 = 82 Ω cho IR, R9 = 100 Ω
+để giữ điện áp emitter bằng điện áp command. R4 = 100 Ω cho IR, R9 = 100 Ω
 cho Red, metal-film 1%, 1/4 W, bước chân 7,62 mm.
 
 `I_emitter ≈ V_DAC / (2 × R_sense)`.
-Tại nguồn DAC 3,28 V và gần full-scale: khoảng 20,00 mA IR / 16,40 mA Red.
-Nguồn 3,30 V cho khoảng 20,12 mA / 16,50 mA. Dòng LED collector nhỏ hơn bởi
+Tại nguồn DAC 3,28 V và gần full-scale: khoảng 16,40 mA IR / 16,40 mA Red.
+Nguồn 3,30 V cho khoảng 16,50 mA / 16,50 mA. Dòng LED collector nhỏ hơn bởi
 dòng base; đây là tính toán danh nghĩa, chưa gồm sai số và chưa đo thực.
 
 C5 là tụ gốm đĩa **100 nF X7R 50 V**, không phân cực, pitch 2,50 mm,

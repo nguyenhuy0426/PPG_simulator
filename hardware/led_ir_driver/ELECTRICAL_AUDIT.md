@@ -71,15 +71,15 @@ ADDR. Không thể vô hiệu hóa pull-up nằm trên module chỉ bằng sửa
 | R1/R2, R6/R7 | 10 kΩ/10 kΩ, 1% | Chia OUT DAC xuống một nửa |
 | R3/R8 | 1 kΩ từ OUT op-amp tới base | Tách tải base và hạn chế dòng kích |
 | Q1/Q2 | onsemi 2N4401: 1=E, 2=B, 3=C | E tới sense; C tới cathode LED |
-| R4/R9 | 82 Ω/100 Ω, 1%, 0,25 W; đầu dưới→GND | Đặt dòng emitter |
+| R4/R9 | 100 Ω/100 Ω, 1%, 0,25 W; đầu dưới→GND | Đặt dòng emitter |
 | J5/J6 | 1→5 V/anode; 2→collector/cathode | Không nối cathode trực tiếp GND |
 | C5 | 100 nF X7R 50 V, không phân cực, 5 V–GND | Bypass gần chân 8 U1 |
 | C7 | 10 µF 16 V; +→5 V, −→GND | Lọc/dự trữ nguồn đầu vào |
 | C2/C4 | OUT op-amp→sense, DNP | Không lắp khi chưa đo vòng điều khiển |
 
 Ở OUT DAC xấp xỉ 3,3 V, command xấp xỉ 1,65 V. Dòng emitter danh nghĩa
-IR=20,12 mA, RED=16,50 mA; dòng LED collector thấp hơn bởi dòng base.
-R4 tiêu tán khoảng 33,2 mW, R9 khoảng 27,2 mW, dưới định mức 250 mW.
+IR=16,50 mA, RED=16,50 mA; dòng LED collector thấp hơn bởi dòng base.
+R4 tiêu tán khoảng 27,2 mW, R9 khoảng 27,2 mW, dưới định mức 250 mW.
 Tải DAC của mỗi cầu chia khoảng 20 kΩ, tương ứng 0,165 mA full-scale.
 
 Command 0–1,65 V nằm trong vùng common-mode LM358 dùng nguồn 5 V.

@@ -64,7 +64,7 @@ for i,ch in enumerate(['IR','RED']):
       (f'R{1+i*5}','10k 1%',[f'DAC_{ch}',f'CMD_{ch}'],(9 if left else 46,27),(sx,114.3),0,False),
       (f'R{2+i*5}','10k 1%',[f'CMD_{ch}','GND'],(16.62 if left else 53.62,31),(sx,147.32),180,False),
       (f'R{3+i*5}','1k',[f'AMP_{ch}',f'BASE_{ch}'],(23 if left else 46,29.5 if left else 35),(sx+33.02,114.3),270 if left else 0,False),
-      (f'R{4+i*5}','82R 1% 0.25W' if left else '100R 1% 0.25W',[f'SENSE_{ch}','GND'],(12 if left else 48,46),(sx+66.04,187.96),0,False),
+      (f'R{4+i*5}','100R 1% 0.25W',[f'SENSE_{ch}','GND'],(12 if left else 48,46),(sx+66.04,187.96),0,False),
     ]: part(ref,'R',val,ns,'R',xy,sc,ang,dnp)
     part(f'C{2+i*2}','C','DNP loop comp',[f'AMP_{ch}',f'SENSE_{ch}'],'C',(27 if left else 43,38),(sx+99.06,187.96),270,True)
     part(f'J{5+i}','Conn2',f'{ch} LED A / K',['5V',f'LED_K_{ch}'],'Header2',(23 if left else 46,50),(sx+99.06,114.3),90)
@@ -183,7 +183,7 @@ def board(share,cli):
             line(a,c,p.F_SilkS)
     silk('J2 PI: SCL SDA 3V3 GND',35,54,.8,True)
     silk('C2 / C4: DNP',35,41.5,.8)
-    silk('82R',15.8,48.2,.8); silk('100R',51.8,48.2,.8)
+    silk('100R',15.8,48.2,.8); silk('100R',51.8,48.2,.8)
     for x in (18,47):
         for i,s in enumerate(('E','B','C')): silk(s,x+2.54*i,44,.8)
 

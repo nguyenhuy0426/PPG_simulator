@@ -35,7 +35,7 @@ Mỗi kênh dùng bốn điện trở; hai kênh tổng cộng tám chiếc.
 |---|---|---|
 | R1 + R2 / R6 + R7 | Hai chiếc 10 kΩ, 1% | Chia điện áp DAC xuống một nửa: 0–3,3 V thành khoảng 0–1,65 V. |
 | R3 / R8 | 1 kΩ | Giới hạn dòng nạp/base và tách ngõ ra LM358 khỏi tải điện dung của transistor. Không phải điện trở đặt dòng LED chính. |
-| R4 / R9 | 82 Ω / 100 Ω, 1%, 0,25 W | Biến dòng emitter thành điện áp hồi tiếp để LM358 điều chỉnh dòng. |
+| R4 / R9 | 100 Ω / 100 Ω, 1%, 0,25 W | Biến dòng emitter thành điện áp hồi tiếp để LM358 điều chỉnh dòng. |
 
 **Không bỏ cầu chia rồi giữ nguyên phần còn lại.** LM358 dùng 5 V không phải
 op-amp rail-to-rail. Đẩy command lên 3,3 V đòi hỏi emitter lên 3,3 V và ngõ ra
@@ -58,7 +58,7 @@ I_LED = I_collector = I_emitter − I_base
 
 Ở VDAC ≈ 3,3 V:
 
-- IR: 1,65 / 82 ≈ 20,12 mA; công suất R4 ≈ 1,65²/82 = 0,033 W.
+- IR: 1,65 / 100 = 16,50 mA; công suất R4 ≈ 1,65²/100 = 0,027 W.
 - Red: 1,65 / 100 = 16,50 mA; công suất R9 ≈ 0,027 W.
 
 Chọn điện trở 0,25 W vì công suất thấp hơn đáng kể định mức, dễ mua và dễ
