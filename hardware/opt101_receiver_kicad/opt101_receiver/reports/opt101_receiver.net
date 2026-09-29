@@ -2,7 +2,7 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/opt101_receiver_kicad/opt101_receiver/opt101_receiver.kicad_sch</source>
-    <date>2026-09-24T22:49:31</date>
+    <date>2026-09-29T21:11:43</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
