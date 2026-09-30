@@ -38,6 +38,10 @@ class FixedRateTicker:
         """Re-base the schedule on `now` (used when the loop (re)starts)."""
         self._next_deadline = now + self._period
 
+    def wait_seconds(self, now: float, maximum: float) -> float:
+        """Sleep only within the remaining budget, excluding time spent on I/O."""
+        return max(0.0, min(maximum, self._next_deadline - now))
+
     def due(self, now: float) -> int:
         """Return how many periods have elapsed since the last call.
 

@@ -2,7 +2,8 @@
 signal_engine.py — PPG signal generation engine with real-time DAC output.
 
 Port of signal_engine.cpp. Replaces FreeRTOS task with Python threading.
-Pipeline: PPGModel (100 Hz) → Linear interpolation (10×) → Ring buffer (1 kHz) → MCP4725 DACs
+Pipeline: PPGModel (100 Hz) → Linear interpolation → Ring buffer → MCP4725 DACs
+DAC rate: FS_TIMER_HZ (500 Hz by default on Pi, configurable).
 """
 
 import copy
@@ -388,7 +389,9 @@ class SignalEngine:
                     break
                 self.dac_manager.set_values(sample[0], sample[1])
 
-            time.sleep(LOOP_YIELD_S)
+            # Two I2C writes already consume much of a 1 ms tick on Pi 4.
+            # A fixed extra 0.5 ms sleep here caused sustained buffer growth.
+            time.sleep(ticker.wait_seconds(time.perf_counter(), LOOP_YIELD_S))
 
         self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
 

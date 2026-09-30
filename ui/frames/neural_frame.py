@@ -61,6 +61,7 @@ class NeuralFrame(ctk.CTkFrame):
         self._process = None
         self._stdout = self._stderr = None
         self._busy, self._was_playing, self._pending = False, False, None
+        self._last_live_render = 0.0
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(4, weight=1)
         self.title_label = T.label(self,'',20,True,anchor='w')
@@ -298,6 +299,11 @@ class NeuralFrame(ctk.CTkFrame):
                 self._finish_inference('GAN inference timed out after 120 s')
         playing=self.engine.is_waveform_playing
         if playing:
+            # Redraw at 10 fps; acquisition and DAC timing remain independent.
+            now=time.monotonic()
+            if now-self._last_live_render<.1:
+                return
+            self._last_live_render=now
             self.trace.update_samples(self.engine.get_display_history())
             rx_status=self._render_rx() if self.comparison=='rx' else self.rx.channel_status(0)
             self.status.configure(text=COPY[self.language]['running'].format(

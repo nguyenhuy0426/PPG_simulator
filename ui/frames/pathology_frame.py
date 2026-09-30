@@ -209,6 +209,10 @@ class PathologyFrame(ctk.CTkFrame):
                                       fg_color=T.ERROR if recording else T.INK)
 
     def periodic_update(self):
+        # This method only paints widgets. Recording is pumped by the engine;
+        # do not redraw hidden canvases/fonts while the DAC writer is active.
+        if not self.winfo_ismapped():
+            return
         p, m = self.engine.ppg_params, self.engine.ppg_model
         for key, (_, attr, _, _) in self.fields.items():
             row_height = self.vital_labels[key].master.winfo_height()

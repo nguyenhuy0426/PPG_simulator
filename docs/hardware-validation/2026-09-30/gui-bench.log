@@ -1,0 +1,14 @@
+2026-09-30 21:06:13 [INFO   ] ppg_simulator: PPG Signal Simulator v5.0.0 — Logger initialized
+2026-09-30 21:06:14 [INFO   ] ppg_simulator: [DACManager] Both DACs initialized (IR: 0x60, Red: 0x61)
+2026-09-30 21:06:14 [INFO   ] ppg_simulator: [SignalEngine] Initialized
+2026-09-30 21:06:14 [INFO   ] ppg_simulator: [OPT101Rx] Grove ADC ready (addr 0x08, enabled=(0,), 100 Hz/ch, probe raw=187)
+2026-09-30 21:06:14 [INFO   ] ppg_simulator: [OPT101Rx] Acquisition thread started
+2026-09-30 21:06:14 [INFO   ] ppg_simulator: [BLE] Server running and advertising as 'MedicalSimulatorRPi' (service 12345678-1234-5678-1234-56789abcdef0, waveform 50 Hz, status 5 Hz)
+2026-09-30 21:06:24 [INFO   ] ppg_simulator: [SignalEngine] Starting PPG simulation, condition=0
+2026-09-30 21:06:24 [INFO   ] ppg_simulator: [SignalEngine] PPG running: Normal
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [CTkApp] Closing window
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [SignalEngine] Simulation stopped
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [BLE] Server stopped, advertising released
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [OPT101Rx] Shutdown — acquisition stopped
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [SignalEngine] Simulation stopped
+2026-09-30 21:06:55 [INFO   ] ppg_simulator: [DACManager] Shutdown — outputs parked at safe idle (0 V)

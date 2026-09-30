@@ -1,0 +1,13 @@
+{
+  "pi_cpu": "Cortex-A72",
+  "python": "3.12.3",
+  "torch": "2.5.1",
+  "numpy": "2.5.3",
+  "seed": 42,
+  "output_samples": 1200,
+  "native_fs_hz": 40,
+  "model_sha256": "6e527b320b37ac330a20f57868598a9c69b987170c82efd27219e2c6cb42879a",
+  "laptop_torch": "2.10.0",
+  "max_abs_error_v": 2.4139881205087477e-08,
+  "max_normalized_error": 5.364418045574995e-07
+}

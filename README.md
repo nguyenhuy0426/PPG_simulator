@@ -16,7 +16,10 @@
 ## 📋 Overview
 
 The Raspberry Pi runtime synthesizes IR/RED signals at 100 Hz, interpolates them
-for a nominal 1 kHz dual-MCP4725 output, and acquires OPT101 signals separately.
+for a nominal 500 Hz dual-MCP4725 output on ARM64, and acquires OPT101 signals separately.
+`PPG_DAC_RATE_HZ` supports 100/200/500/1000 Hz; desktop default is 1000 Hz.
+Pi GUI + BLE + A0 verification at 500 Hz completed 30 seconds without buffer
+overruns or dropped samples. Optical waveform fidelity is still unverified.
 The empirical SpO₂ mapping is configurable; a realistic plot does not establish
 optical accuracy or compatibility with a particular pulse oximeter.
 
@@ -60,7 +63,7 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 | UI Library             | CustomTkinter                                   |
 | DAC                    | MCP4725 (12-bit, I2C) × 2 — IR & Red channels   |
 | Model Rate             | 100 Hz                                          |
-| DAC Rate               | 1 kHz target; Linux/I²C timing requires measurement |
+| DAC Rate               | Pi: 500 Hz target; configurable; Linux/I²C timing requires measurement |
 | Data Recording         | 100 Hz model commands, timestamped CSV in `dataset/` |
 | DAC Voltage Range      | Configured 0–3.28 V (0 → 0, 3.28 V → 4095) |
 

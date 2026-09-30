@@ -79,3 +79,13 @@ def test_reset_rebases_the_deadline():
 def test_period_must_be_positive():
     with pytest.raises(ValueError):
         FixedRateTicker(period_s=0.0, now=0.0)
+
+
+def test_io_time_is_subtracted_from_sleep_budget():
+    ticker = FixedRateTicker(period_s=.001, now=0.)
+    assert ticker.due(.001) == 1
+    # 0.8 ms spent writing the DAC pair leaves only 0.2 ms, not another 0.5 ms.
+    assert ticker.wait_seconds(.0018, .0005) == pytest.approx(.0002)
+    assert ticker.wait_seconds(.0021, .0005) == 0
+    assert ticker.due(.0021) == 1
+    assert ticker.wait_seconds(.0021, .0005) == .0005

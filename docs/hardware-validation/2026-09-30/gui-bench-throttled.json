@@ -1,0 +1,20 @@
+{
+  "engine": {
+    "record_dropped": 0,
+    "clipped_samples": 0,
+    "overruns": 187,
+    "underruns": 9,
+    "dropped_samples": 729,
+    "samples_generated": 30000,
+    "buffer_fill": 1011
+  },
+  "dac_errors": [
+    0,
+    0
+  ],
+  "a0_count": 1024,
+  "a2_count": 0,
+  "a2_status": "disabled",
+  "playing": false,
+  "seed": 2913183043
+}

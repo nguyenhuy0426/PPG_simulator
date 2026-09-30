@@ -49,6 +49,37 @@ def main():
                          mean_acf_rmse=float(np.sqrt(np.mean((f[0].mean(0)-ref[0].mean(0))**2))),
                          mean_log_psd_rmse=float(np.sqrt(np.mean((f[1].mean(0)-ref[1].mean(0))**2))))
     (args.output/'metrics.json').write_text(json.dumps(result,indent=2)+'\n')
+    # Fixed first validation strip / first seed: no selection for visual appeal.
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig,axes=plt.subplots(2,3,figsize=(14,7),layout='constrained')
+    groups=[('Real validation',real,'#245e65'),('LSM v2',generated,'#c36638'),
+            ('Gaussian 75 bpm',fixed,'#746285')]
+    for i,(label,rows,color) in enumerate(groups):
+        axes[0,0].plot(np.arange(1200)/40,rows[0]+i*1.2,color=color,label=label,lw=.8)
+        f=features(rows)
+        axes[0,1].plot(np.arange(1,201)/40,f[0].mean(0),color=color,label=label)
+        axes[0,2].plot(np.arange(1,201)*.1,f[1].mean(0),color=color,label=label)
+    axes[0,0].set(xlim=(0,12),xlabel='Time (s)',ylabel='Normalized amplitude + offset',title='Fixed examples (not paired)')
+    axes[0,1].set(xlabel='Lag (s)',ylabel='Mean normalized ACF',title='Autocorrelation')
+    axes[0,2].set(xlabel='Frequency (Hz)',ylabel='Mean log10 normalized power',title='Welch spectrum')
+    axes[0,0].legend(fontsize=8)
+    keys=['real_validation','lsm_v2','fixed_gaussian_75']
+    for ax,key,title in [(axes[1,0],'ibi_cv_p10_p50_p90','Inter-peak interval CV'),
+                         (axes[1,1],'peak_amplitude_cv_p10_p50_p90','Peak amplitude CV')]:
+        for i,(label,_,color) in enumerate(groups):
+            lo,mid,hi=result[keys[i]][key]
+            ax.errorbar(i,mid,yerr=[[mid-lo],[hi-mid]],fmt='o',color=color,capsize=5)
+        ax.set(xticks=range(3),xticklabels=['Real','LSM v2','Gaussian'],ylabel='CV (median; p10–p90)',title=title)
+    axes[1,2].bar(['Real','LSM v2','Gaussian'],[100*result[k]['above_5hz_power_fraction_mean'] for k in keys],color=[g[2] for g in groups])
+    axes[1,2].set(yscale='log',ylabel='Power above 5 Hz (%)',title='High-frequency energy')
+    for ax in axes.flat:
+        ax.grid(alpha=.2)
+    fig.suptitle('Exploratory: test previously viewed | Real preprocessed 0.9–5 Hz | Gaussian HR distribution unmatched',fontsize=11)
+    fig.savefig(args.output/'comparison.png',dpi=180)
+    fig.savefig(args.output/'comparison.pdf')
+    plt.close(fig)
     print(json.dumps(result,indent=2))
 
 if __name__=='__main__':main()

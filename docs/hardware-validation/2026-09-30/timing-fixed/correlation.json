@@ -1,0 +1,16 @@
+{
+  "interval_s": [
+    2,
+    28
+  ],
+  "detrended": true,
+  "lag_search_s": [
+    -0.25,
+    0.25
+  ],
+  "lag_step_s": 0.01,
+  "maximum_absolute_correlation": 0.04545570198338116,
+  "signed_correlation": 0.04545570198338116,
+  "lag_s": -0.019999999999999796,
+  "interpretation": "Descriptive lag search, not statistical significance or proof of optical fidelity."
+}

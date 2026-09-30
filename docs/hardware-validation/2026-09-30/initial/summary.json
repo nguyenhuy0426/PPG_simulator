@@ -1,0 +1,55 @@
+{
+  "source": "lsm",
+  "seed": 42,
+  "model_sha256": "6e527b320b37ac330a20f57868598a9c69b987170c82efd27219e2c6cb42879a",
+  "inference_seconds": 5.009970385000088,
+  "output_start_monotonic_s": 1631.864055991,
+  "dry_run": false,
+  "rx_enabled": [
+    0
+  ],
+  "rx_a2_status": "disabled",
+  "rx_a2_count": 0,
+  "engine": {
+    "record_dropped": 0,
+    "clipped_samples": 0,
+    "overruns": 713,
+    "underruns": 9,
+    "dropped_samples": 802,
+    "samples_generated": 30000,
+    "buffer_fill": 1012
+  },
+  "dac_write_errors_ir": 0,
+  "dac_write_errors_red": 0,
+  "dac_final_codes": [
+    0,
+    0
+  ],
+  "adc_errors": 0,
+  "adc_saturations": 0,
+  "caveat": "TX CSV is commanded voltage, not measured DAC/LED voltage. A0 readings do not prove optical isolation or SpO2 calibration.",
+  "before": {
+    "count": 200,
+    "raw_min": 23,
+    "raw_max": 259,
+    "raw_mean": 115.525,
+    "raw_std": 56.33204571999849,
+    "measured_sample_rate_hz": 99.9945585875705
+  },
+  "output": {
+    "count": 3103,
+    "raw_min": 0,
+    "raw_max": 403,
+    "raw_mean": 176.9245891073155,
+    "raw_std": 104.97064082252996,
+    "measured_sample_rate_hz": 99.99999493552583
+  },
+  "after": {
+    "count": 201,
+    "raw_min": 45,
+    "raw_max": 360,
+    "raw_mean": 137.3781094527363,
+    "raw_std": 84.50038310377379,
+    "measured_sample_rate_hz": 100.00158547513895
+  }
+}

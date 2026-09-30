@@ -1,0 +1,21 @@
+........................................................................ [  9%]
+.............................................. [ 16%]
+............................................................................................. [ 28%]
+........................................................................................................ [ 42%]
+........................................................ [ 50%]
+................................................................................................................. [ 65%]
+........................................................................ [ 75%]
+................................................................... [ 84%]
+........................................................................ [ 94%]
+.........................................                                                         [100%]
+=============================== warnings summary ===============================
+tests/test_neural_preview.py::test_real_inference_is_repeatable_and_does_not_mutate_batchnorm
+tests/test_neural_preview.py::test_real_inference_is_repeatable_and_does_not_mutate_batchnorm
+tests/test_neural_preview.py::test_real_inference_is_repeatable_and_does_not_mutate_batchnorm
+tests/test_neural_preview.py::test_real_inference_is_repeatable_and_does_not_mutate_batchnorm
+tests/test_neural_preview.py::test_real_inference_is_repeatable_and_does_not_mutate_batchnorm
+  /home/huynn/final_project/PPG_simulator_raspi/.venv/lib/python3.12/site-packages/torch/jit/_serialization.py:176: DeprecationWarning: `torch.jit.load` is deprecated. Please switch to `torch.export`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+736 passed, 1 skipped, 5 warnings, 288 subtests passed in 7.10s

@@ -8,6 +8,7 @@ Port of the ESP32-S3 config.h to Python.
 """
 
 import os
+import platform
 
 # ============================================================================
 # SYSTEM IDENTIFICATION
@@ -78,7 +79,11 @@ BTN_DEBOUNCE_MS = 200   # Debounce interval in ms
 
 # Timer master frequency (internal buffer rate)
 # MCP4725 I2C can sustain ~1 kHz writes in fast mode
-FS_TIMER_HZ = 1000             # Hz — DAC output rate
+# Pi desktop + shared I2C may not sustain 1 kHz. Keep a validated integer
+# multiple of the 100 Hz model rate; deployment can select 500 Hz explicitly.
+FS_TIMER_HZ = int(os.environ.get("PPG_DAC_RATE_HZ", "500" if platform.machine() == "aarch64" else "1000"))
+if FS_TIMER_HZ not in (100, 200, 500, 1000):
+    raise ValueError("PPG_DAC_RATE_HZ must be 100, 200, 500 or 1000")
 SAMPLE_RATE_HZ = FS_TIMER_HZ   # Alias
 
 # PPG model generation rate
@@ -93,7 +98,7 @@ MODEL_DT_PPG = 1.0 / MODEL_SAMPLE_RATE_PPG  # 10 ms
 MODEL_TICK_US_PPG = 1_000_000 // MODEL_SAMPLE_RATE_PPG  # 10000 us
 
 # Upsample ratio: interpolation from model rate to timer rate
-UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 10
+UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 5 on Pi; 10 at 1 kHz
 
 # ============================================================================
 # MCP4725 DAC CONFIGURATION (12-bit)

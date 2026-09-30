@@ -2,7 +2,7 @@ import time
 import tkinter as tk
 import customtkinter as ctk
 from comm.logger import log
-from config import DRY_RUN, FIRMWARE_VERSION
+from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ
 from core.signal_engine import SignalEngine
 from ui import theme as T
 from ui.frames.pathology_frame import PathologyFrame
@@ -258,11 +258,11 @@ class CTkApp(ctk.CTk):
 
         running = text(self.language, "running") if self.engine._running else text(self.language, "standby")
         if self.layout.compact:
-            status = (f"{running}  •  Buffer {stats['buffer_fill']}  •  "
+            status = (f"{running}  •  DAC {FS_TIMER_HZ} Hz  •  Buffer {stats['buffer_fill']}  •  "
                       f"Lost {stats['dropped_samples']}  •  "
                       f"Clip {stats['clipped_samples']}  •  {time.strftime('%H:%M:%S')}")
         else:
-            status = (f"{running}  /  TX model 100 Hz → DAC target 1 kHz   |   "
+            status = (f"{running}  /  TX model 100 Hz → DAC target {FS_TIMER_HZ} Hz   |   "
                       f"Buffer {stats['buffer_fill']}   Lost {stats['dropped_samples']}   "
                       f"Clipped {stats['clipped_samples']}   |   {time.strftime('%H:%M:%S')}")
         self.status_label.configure(text=status)

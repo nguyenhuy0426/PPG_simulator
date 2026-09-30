@@ -64,6 +64,8 @@ class CalibrationFrame(ctk.CTkFrame):
             self.engine.stop_simulation()
 
     def periodic_update(self):
+        if not self.winfo_ismapped():
+            return
         self.run_btn.configure(text="Stop calibration" if self.engine.is_calibrating else "Start calibration",
                                fg_color=T.ERROR if self.engine.is_calibrating else T.INK)
         self.trace.update_samples(self.engine.get_display_history() if self.engine.is_calibrating else [])

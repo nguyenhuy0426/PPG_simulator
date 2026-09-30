@@ -10,7 +10,7 @@ import statistics
 import sys
 import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from config import DRY_RUN
+from config import DRY_RUN, FS_TIMER_HZ
 from core.neural_preview import LSMSequenceGenerator, gaussian_preview
 from core.waveform_clip import WaveformClip
 from core.signal_engine import SignalEngine
@@ -45,10 +45,12 @@ def main():
         if not engine.dac_manager.is_ready:raise RuntimeError('DAC unavailable')
         if not rx.begin():raise RuntimeError('ADC unavailable')
         rx.start();capture(2,'before')
+        output_start=time.monotonic()
         engine.start_waveform(clip);capture(31,'output')
         engine.stop_simulation();capture(2,'after')
         result=dict(source=args.source,seed=preview.seed,model_sha256=preview.model_sha256,
-                    inference_seconds=inference_s,dry_run=False,rx_enabled=[0],rx_a2_status=rx.channel_status(2),
+                    inference_seconds=inference_s,output_start_monotonic_s=output_start,
+                    dry_run=False,dac_target_hz=FS_TIMER_HZ,rx_enabled=[0],rx_a2_status=rx.channel_status(2),
                     rx_a2_count=rx.sample_count(2),engine=engine.get_stats(),
                     dac_write_errors_ir=engine.dac_manager.error_count_ir,
                     dac_write_errors_red=engine.dac_manager.error_count_red,

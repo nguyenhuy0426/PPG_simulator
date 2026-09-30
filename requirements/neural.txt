@@ -1,4 +1,7 @@
 # Optional Neural lab inference. Install into the same environment as the app.
-# Use a CPU wheel on x86_64; use the supported aarch64 wheel on Raspberry Pi.
+# Use a CPU wheel on x86_64. Pi 4 Cortex-A72 lacks ARMv8.1 LSE:
+# torch 2.10.0 crashes at import in libc10/mimalloc on this CPU.
+# 2.5.1 is verified with the bundled trusted TorchScript generator on Pi 4.
 numpy>=1.26,<3
-torch==2.10.0
+torch==2.10.0; platform_machine != 'aarch64'
+torch==2.5.1; platform_machine == 'aarch64'

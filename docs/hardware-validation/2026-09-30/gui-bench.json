@@ -1,0 +1,21 @@
+{
+  "dac_target_hz": 500,
+  "engine": {
+    "record_dropped": 0,
+    "clipped_samples": 0,
+    "overruns": 0,
+    "underruns": 5,
+    "dropped_samples": 0,
+    "samples_generated": 15000,
+    "buffer_fill": 22
+  },
+  "dac_errors": [
+    0,
+    0
+  ],
+  "a0_count": 1024,
+  "a2_count": 0,
+  "a2_status": "disabled",
+  "playing": false,
+  "seed": 3242211662
+}
