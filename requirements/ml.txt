@@ -1,0 +1,7 @@
+# Isolated research environment, not required by the simulator runtime.
+numpy>=1.26,<3
+scipy>=1.12,<2
+neurokit2==0.2.13
+torch>=2.5,<3
+matplotlib>=3.8,<4
+pytest>=8,<10

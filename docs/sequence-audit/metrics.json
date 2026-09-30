@@ -1,0 +1,156 @@
+{
+  "exploratory": true,
+  "no_retraining": true,
+  "no_checkpoint_selection": true,
+  "validation_strips": 112,
+  "validation_subjects": 7,
+  "model_sha256": "6e527b320b37ac330a20f57868598a9c69b987170c82efd27219e2c6cb42879a",
+  "windows_sha256": "193cd745a55445d593370842d6edb265af8134a32df3e09a3e76498b36cc119e",
+  "seeds": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016,
+    1017,
+    1018,
+    1019,
+    1020,
+    1021,
+    1022,
+    1023,
+    1024,
+    1025,
+    1026,
+    1027,
+    1028,
+    1029,
+    1030,
+    1031,
+    1032,
+    1033,
+    1034,
+    1035,
+    1036,
+    1037,
+    1038,
+    1039,
+    1040,
+    1041,
+    1042,
+    1043,
+    1044,
+    1045,
+    1046,
+    1047,
+    1048,
+    1049,
+    1050,
+    1051,
+    1052,
+    1053,
+    1054,
+    1055,
+    1056,
+    1057,
+    1058,
+    1059,
+    1060,
+    1061,
+    1062,
+    1063
+  ],
+  "caveats": [
+    "Test previously viewed; exploratory",
+    "Real reference is 0.9\u20135 Hz preprocessed BIDMC, not raw PPG",
+    "Fixed 75-bpm Gaussian is a control, not a distribution-matched competitor",
+    "Peak variability alone does not prove human physiology; 30 s is not long-term HRV"
+  ],
+  "real_validation": {
+    "dominant_bpm_median": 90.0,
+    "dominant_bpm_p05_p95": [
+      90.0,
+      108.0
+    ],
+    "above_5hz_power_fraction_mean": 3.1615661555406405e-06,
+    "mean_abs_second_difference": 0.027260204777121544,
+    "mean_pointwise_std": 0.24530594050884247,
+    "algorithm": "find_peaks distance=10 at 40 Hz; prominence=.15; heuristic, not clinical HRV",
+    "valid_strips": 112,
+    "peak_count_median": 46.0,
+    "ibi_cv_p10_p50_p90": [
+      0.01947870698850811,
+      0.05940215096341809,
+      0.3707899051494553
+    ],
+    "peak_amplitude_cv_p10_p50_p90": [
+      0.04063629992306232,
+      0.08145808801054955,
+      0.2861585021018982
+    ],
+    "mean_acf_rmse": 0.0,
+    "mean_log_psd_rmse": 0.0
+  },
+  "lsm_v2": {
+    "dominant_bpm_median": 90.0,
+    "dominant_bpm_p05_p95": [
+      78.0,
+      102.00000000000001
+    ],
+    "above_5hz_power_fraction_mean": 0.00019227331534098105,
+    "mean_abs_second_difference": 0.02274457422415597,
+    "mean_pointwise_std": 0.24803540524293255,
+    "algorithm": "find_peaks distance=10 at 40 Hz; prominence=.15; heuristic, not clinical HRV",
+    "valid_strips": 64,
+    "peak_count_median": 46.0,
+    "ibi_cv_p10_p50_p90": [
+      0.1820414626901199,
+      0.20241492503056008,
+      0.24106785813757944
+    ],
+    "peak_amplitude_cv_p10_p50_p90": [
+      0.11307939482324217,
+      0.1559889162234473,
+      0.19708293600300614
+    ],
+    "mean_acf_rmse": 0.25731523876923507,
+    "mean_log_psd_rmse": 1.7677761367433291
+  },
+  "fixed_gaussian_75": {
+    "dominant_bpm_median": 78.0,
+    "dominant_bpm_p05_p95": [
+      78.0,
+      78.0
+    ],
+    "above_5hz_power_fraction_mean": 0.00274650832994248,
+    "mean_abs_second_difference": 0.024960920731006368,
+    "mean_pointwise_std": 0.0,
+    "algorithm": "find_peaks distance=10 at 40 Hz; prominence=.15; heuristic, not clinical HRV",
+    "valid_strips": 1,
+    "peak_count_median": 38.0,
+    "ibi_cv_p10_p50_p90": [
+      1.3877787807814454e-16,
+      1.3877787807814454e-16,
+      1.3877787807814454e-16
+    ],
+    "peak_amplitude_cv_p10_p50_p90": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "mean_acf_rmse": 0.5619526451744474,
+    "mean_log_psd_rmse": 2.0672549777724836
+  }
+}

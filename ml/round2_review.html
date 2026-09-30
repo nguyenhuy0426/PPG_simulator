@@ -1,0 +1,55 @@
+<!doctype html><html lang="vi"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PPG · Kiểm duyệt hình thái</title>
+<style>
+body{font:16px system-ui;background:#f1f4f3;color:#192b31;margin:24px auto;max-width:1080px;padding:0 20px}
+h1{font-size:26px}button,select,input{font:inherit;padding:9px;margin:4px;border:1px solid #aabbbb;border-radius:5px;background:white}
+button{cursor:pointer}canvas{background:white;width:100%;height:320px;border:1px solid #bbb}
+.note{color:#486269;font-size:14px}#status{font-weight:600;min-height:24px}textarea{width:95%;height:50px;font:inherit;padding:8px}
+</style>
+<h1>PPG · Kiểm duyệt hình thái</h1>
+<p>Chưa có nhãn nào được duyệt sẵn. Chọn chất lượng và đánh dấu mốc trên từng xung.
+Nếu không chắc notch, chọn <b>Không chắc</b>; không ép xung vào một nhóm.</p>
+<p class="note">Đây là xung đã chuẩn hóa theo pha, không phải dữ liệu thô.
+Không hiển thị nhãn detector cũ. Gói chỉ chứa train/validation; không phải test độc lập.</p>
+<label>Người kiểm duyệt <input id="reviewer" placeholder="Tên / mã người kiểm duyệt"></label>
+<button id="save">Xuất nhãn JSON</button><label>Nạp lại JSON <input id="load" type="file" accept=".json"></label>
+<p id="status"></p>
+<button id="prev">← Trước</button><button id="next">Tiếp →</button><button id="pending">Tới mẫu chưa duyệt</button>
+<span id="counter"></span><p id="context"></p>
+<canvas id="plot" width="1040" height="320"></canvas>
+<p>Chọn mốc rồi nhấn lên đường sóng:
+<select id="marker"><option>SP</option><option>DN</option><option>DP</option></select>
+<button id="clear">Xóa mốc</button><span id="marks"></span></p>
+<label>Chất lượng <select id="decision"><option value="pending">Chưa duyệt</option><option value="accept">Chấp nhận</option><option value="uncertain">Không chắc</option><option value="reject">Loại</option></select></label>
+<label>Notch <select id="notch"><option value="">Chưa quyết định</option><option value="present">Có notch rõ</option><option value="absent">Không thấy notch rõ</option></select></label>
+<p><textarea id="notes" placeholder="Ghi chú"></textarea></p>
+<p class="note">Nhấn Chấp nhận chỉ khi SP đã được đánh dấu. Nếu có notch, cần SP &lt; DN &lt; DP.
+Xuất JSON để lưu tiến độ; đóng trang khi chưa xuất sẽ mất thay đổi.</p>
+<script>
+let data=__REVIEW_DATA__, index=0, dirty=false;
+const el=id=>document.getElementById(id), canvas=el('plot'), ctx=canvas.getContext('2d');
+function store(){let r=data.cases[index];for(let k of ['decision','notch','notes'])r[k]=el(k).value;data.reviewer=el('reviewer').value;dirty=true;}
+function show(){let r=data.cases[index];for(let k of ['decision','notch','notes'])el(k).value=r[k];
+el('counter').textContent=(index+1)+' / '+data.cases.length;
+el('context').textContent='Mã '+r.id+' · bệnh nhân '+r.subject+' · '+r.split+' · HR nguồn '+r.hr.toFixed(1)+' bpm · record '+r.record+', sample '+r.start_sample;
+ctx.clearRect(0,0,1040,320);ctx.strokeStyle='#d8e0de';ctx.fillStyle='#496065';ctx.font='13px system-ui';
+for(let j=0;j<=10;j++){let xx=50+j*94;ctx.beginPath();ctx.moveTo(xx,20);ctx.lineTo(xx,280);ctx.stroke();ctx.fillText((j/10).toFixed(1),xx-9,305);}
+ctx.strokeStyle='#155d65';ctx.lineWidth=2;ctx.beginPath();r.waveform.forEach((v,j)=>{let x=50+j/255*940,y=280-v*250;j?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+for(let [k,col] of [['sp','#d55e00'],['dn','#0072b2'],['dp','#a04488']])if(r[k]!=null){let xx=50+r[k]*940;ctx.strokeStyle=col;ctx.beginPath();ctx.moveTo(xx,20);ctx.lineTo(xx,280);ctx.stroke();ctx.fillStyle=col;ctx.fillText(k.toUpperCase(),xx+3,30);}
+el('marks').textContent=['sp','dn','dp'].map(k=>k.toUpperCase()+': '+(r[k]==null?'—':r[k].toFixed(3))).join(' · ');
+el('status').textContent='Đã quyết định '+data.cases.filter(r=>r.decision!='pending').length+'/'+data.cases.length+' · chấp nhận '+data.cases.filter(r=>r.decision=='accept').length;
+}
+canvas.onclick=e=>{store();let bounds=canvas.getBoundingClientRect(),x=(e.clientX-bounds.left)*1040/bounds.width;
+if(x<=50||x>=990)return;data.cases[index][el('marker').value.toLowerCase()]=(x-50)/940;show();};
+for(let k of ['decision','notch','notes','reviewer'])el(k).onchange=()=>{store();show()};
+el('prev').onclick=()=>{store();index=Math.max(0,index-1);show()};el('next').onclick=()=>{store();index=Math.min(data.cases.length-1,index+1);show()};
+el('pending').onclick=()=>{store();let j=data.cases.findIndex((r,j)=>j>index&&r.decision=='pending');index=j>=0?j:Math.max(0,data.cases.findIndex(r=>r.decision=='pending'));show()};
+el('clear').onclick=()=>{store();data.cases[index].sp=data.cases[index].dn=data.cases[index].dp=null;show()};
+el('save').onclick=()=>{store();if(!data.reviewer.trim()){alert('Nhập người kiểm duyệt trước khi xuất.');return;}
+for(let r of data.cases)if(r.decision=='accept'&&(!(r.sp>0&&r.sp<1)||!['present','absent'].includes(r.notch)||(r.notch=='present'&&!(r.sp<r.dn&&r.dn<r.dp&&r.dp<1)))){alert('Mẫu '+r.id+': thiếu quyết định notch hoặc mốc SP < DN < DP.');return;}
+data.reviewed_at=new Date().toISOString();let a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.href=url;a.download='ppg-reviewed-labels.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);dirty=false;};
+el('load').onchange=async e=>{try{let v=JSON.parse(await e.target.files[0].text());if(v.prepared_sha256!=data.prepared_sha256||v.schema!==1||!Array.isArray(v.cases)||v.cases.length!==data.cases.length)throw Error('Sai gói dữ liệu');
+const original=new Map(data.cases.map(r=>[r.id,r]));for(let r of v.cases){const src=original.get(r.id);if(!src||r.split!==src.split||r.subject!==src.subject)throw Error('Sai mẫu');r.waveform=src.waveform;original.delete(r.id);}data=v;index=0;el('reviewer').value=data.reviewer;dirty=false;show();}catch(err){alert(err.message)}};
+window.onbeforeunload=e=>{if(dirty){e.preventDefault();e.returnValue='';}};show();
+</script></html>

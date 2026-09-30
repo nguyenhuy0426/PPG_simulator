@@ -7,6 +7,10 @@ BioSignalSimulatorPro-main/
 # hardcode absolute paths. Each machine recreates its own with
 # scripts/setup_laptop_venv.sh or scripts/setup_rpi_ubuntu.sh.
 .venv/
+.venv-ml/
+ml/runs/
+assets/neural/*.ts
+!assets/neural/lsm_generator.ts
 venv/
 env/
 

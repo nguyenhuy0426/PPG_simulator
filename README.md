@@ -20,6 +20,21 @@ for a nominal 1 kHz dual-MCP4725 output, and acquires OPT101 signals separately.
 The empirical SpO₂ mapping is configurable; a realistic plot does not establish
 optical accuracy or compatibility with a particular pulse oximeter.
 
+**Touch and sequence update (30 September 2026):** Numeric controls use sliders;
+Settings and calibration include −/+ fine steps. **04 PPG morphology** offers
+fitted Gaussian and an exploratory **LSM-GAN 30-second sequence**, a real training
+reference, and live **OPT101 A0**. **A2 is disabled until its sensor is installed.**
+Play/Stop uses the shared MCP4725 writer; clips stop at 30 seconds or when leaving
+the page. Opening the page does not emit output. Classic Gaussian is preserved.
+
+LSM keeps native 40 Hz timing and has no HR/notch conditioning. The existing v2
+checkpoint has excessive beat variability relative to median validation data;
+it is a development baseline, not a validated human-PPG replacement. IR/RED share
+one shape with nominal scaling. See [architecture choice, measured sequence audit
+and touch/output details](docs/ppg_touch_sequence_output_2026-09-30.md).
+The [earlier morphology comparison](docs/ppg_morphology_selection_2026-09-28.md)
+remains a historical exploratory result; test has already been viewed.
+
 ![PPG monitor, running in dry-run mode](docs/ui/monitor-1280.png)
 
 ### What's complete in v5

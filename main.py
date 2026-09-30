@@ -24,6 +24,8 @@ parser.add_argument("--no-ble", action="store_true",
                     help="Disable the BLE GATT server (diagnostics only)")
 parser.add_argument("--ble-only", action="store_true",
                     help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
+parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
+                    default="Pathology", help="Initial GUI page; output stays off")
 args = parser.parse_args()
 
 if args.dry_run:
@@ -53,11 +55,13 @@ def start_ble(engine):
     return ble
 
 
-def save_current_config(engine):
+def save_current_config(engine, language="en"):
     try:
         p = engine.get_ppg_params()
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
+        from ui.i18n import normalise_language
+        cfg["language"] = normalise_language(language)
         save_config(cfg)
     except Exception as e:
         log.error(f"Failed to save config: {e}")
@@ -110,7 +114,7 @@ def main():
         finally:
             if ble_server is not None:
                 ble_server.stop()
-            save_current_config(engine)
+            save_current_config(engine, config.get("language", "en"))
             rx.shutdown()
             engine.shutdown()
             log.info("Shutdown complete.")
@@ -120,7 +124,8 @@ def main():
     # Simulation will be started manually via the GUI
 
     # Initialize UI
-    app = CTkApp()
+    app = CTkApp(language=config.get("language", "en"))
+    app._show_frame(args.page)
 
     # Do not let SIGINT/SIGTERM raise KeyboardInterrupt in the middle of a Tk
     # widget callback.  The handler only flips a Python flag; the regular 40 ms
@@ -138,7 +143,7 @@ def main():
     finally:
         if ble_server is not None:
             ble_server.stop()
-        save_current_config(engine)
+        save_current_config(engine, app.language)
         rx.shutdown()
         engine.shutdown()
         log.info("Shutdown complete.")

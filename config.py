@@ -169,6 +169,7 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 # so per-tick RX at 1 kHz does not fit; PPG bandwidth is 0.5–10 Hz, so 100 Hz
 # per channel gives 10x Nyquist margin while adding only ~2 ADC transactions
 # per 10 ms to the shared bus.
+RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR,)  # Only OPT101 on A0 is installed; A2 disabled.
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
 RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale

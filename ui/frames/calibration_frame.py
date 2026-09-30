@@ -5,6 +5,8 @@ from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED, DRY_RUN
 from ui.trace_view import TraceView
 from ui import theme as T
+from ui.touch_slider import TouchSlider
+from config import DAC_FULLSCALE_MV
 
 
 class CalibrationFrame(ctk.CTkFrame):
@@ -18,11 +20,11 @@ class CalibrationFrame(ctk.CTkFrame):
         controls.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         T.label(controls, "Sine output", 14, True).pack(side="left", padx=16, pady=14)
         T.label(controls, "Frequency / Hz").pack(side="left", padx=8)
-        self.frequency = ctk.CTkEntry(controls, width=75)
+        self.frequency = TouchSlider(controls, 1, 10, 0.1, value=1, width=160)
         self.frequency.insert(0, "1")
         self.frequency.pack(side="left")
         T.label(controls, "0 to peak / mV").pack(side="left", padx=8)
-        self.amplitude = ctk.CTkEntry(controls, width=85)
+        self.amplitude = TouchSlider(controls, 100, DAC_FULLSCALE_MV, 10, value=1000, width=170)
         self.amplitude.insert(0, "1000")
         self.amplitude.pack(side="left")
         self.run_btn = ctk.CTkButton(controls, text="Start calibration", command=self.toggle, height=36)
@@ -69,7 +71,9 @@ class CalibrationFrame(ctk.CTkFrame):
         for channel, name in ((ADC_CHANNEL_IR, "IR  ·  A0"), (ADC_CHANNEL_RED, "RED  ·  A2")):
             sample = self.rx.get_latest(channel)
             status = self.rx.channel_status(channel)
-            if DRY_RUN or self.rx.is_simulated:
+            if status == "disabled":
+                text = "—   disabled / chưa gắn cảm biến"
+            elif DRY_RUN or self.rx.is_simulated:
                 text = "—   simulation mode; no physical ADC samples"
             elif sample is None or self.rx.is_stale(channel):
                 text = f"—   {status} / no fresh sample"

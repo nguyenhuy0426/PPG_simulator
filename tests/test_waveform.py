@@ -92,7 +92,7 @@ class TestSimpleShapes(unittest.TestCase):
 
 
 class TestPulseMorphology(unittest.TestCase):
-    def test_defaults_match_allen_2007_positions(self):
+    def test_defaults_preserve_project_component_positions(self):
         morph = PulseMorphology()
         self.assertAlmostEqual(morph.systolic_pos, 0.15)
         self.assertAlmostEqual(morph.notch_pos, 0.30)
@@ -128,6 +128,61 @@ class TestPulseMorphology(unittest.TestCase):
 
 
 class TestPpgShape(unittest.TestCase):
+    def test_notch_depth_is_fraction_of_local_envelope(self):
+        """The setting is not a fraction subtracted from the systolic peak."""
+        for depth in (0.0, 0.1, 0.25, 0.35, 0.5, 1.0):
+            for factor in (0.0, 0.4, 1.0):
+                with self.subTest(depth=depth, factor=factor):
+                    shaper = PulseShaper(PulseMorphology(dicrotic_depth=depth))
+                    phase = shaper.morphology.notch_pos
+                    envelope = shaper._raw_ppg(phase, 0.0)
+                    self.assertAlmostEqual(shaper._raw_ppg(phase, factor),
+                                           envelope * (1.0 - depth * factor), places=12)
+
+    def test_full_notch_range_does_not_need_negative_clipping(self):
+        for depth in (0.0, 0.1, 0.25, 0.35, 0.5, 1.0):
+            for diastolic in (0.25, 0.4, 0.6):
+                with self.subTest(depth=depth, diastolic=diastolic):
+                    shaper = PulseShaper(PulseMorphology(
+                        dicrotic_depth=depth, diastolic_amplitude=diastolic))
+                    raw = [shaper._raw_ppg(i / 10000) for i in range(2500, 3501)]
+                    self.assertGreaterEqual(min(raw), 0.0)
+                    # At depth=1 a single point may reach zero, never a flat interval.
+                    self.assertLessEqual(sum(value == 0.0 for value in raw), 1)
+
+    def test_cycle_boundary_has_zero_value_and_slope(self):
+        for depth in (0.0, 0.25, 0.35, 1.0):
+            with self.subTest(depth=depth):
+                shaper = PulseShaper(PulseMorphology(dicrotic_depth=depth))
+                eps = 1e-7
+                left = shaper.sample('ppg', 1.0 - eps)
+                right = shaper.sample('ppg', eps)
+                self.assertEqual(shaper.sample('ppg', 0.0), 0.0)
+                self.assertEqual(shaper.sample('ppg', 1.0), 0.0)
+                self.assertLess(abs(right - left), 1e-9)
+                self.assertLess(abs(left / eps), 1e-4)
+                self.assertLess(abs(right / eps), 1e-4)
+
+    def test_fading_overlapping_notch_preserves_unit_peak_without_clipping(self):
+        # With overlapping features, normalization must track the actual factor.
+        shaper = PulseShaper(PulseMorphology(
+            notch_pos=0.16, notch_width=0.08, dicrotic_depth=0.7))
+        for factor in (1.0, 0.4, 0.0):
+            with self.subTest(factor=factor):
+                values = _sweep(lambda phase: shaper.sample('ppg', phase, factor), 4000)
+                self.assertAlmostEqual(max(values), 1.0, places=4)
+                peak_raw = max(_sweep(lambda phase: shaper._raw_ppg(phase, factor), 4000))
+                self.assertLessEqual(peak_raw / shaper._scale, 1.0 + 1e-8)
+
+    def test_factor_changes_invalidate_scale_once(self):
+        shaper = PulseShaper()
+        shaper.sample('ppg', 0.15, 1.0)
+        count = shaper.peak_search_count
+        shaper.sample('ppg', 0.2, 0.4)
+        self.assertEqual(shaper.peak_search_count, count + 1)
+        shaper.sample('ppg', 0.3, 0.4)
+        self.assertEqual(shaper.peak_search_count, count + 1)
+
     def test_normalised_peak_is_exactly_one(self):
         shaper = PulseShaper()
         values = _sweep(lambda p: shaper.sample(waveform.WAVE_PPG, p))

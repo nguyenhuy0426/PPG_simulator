@@ -1,0 +1,30 @@
+{
+  "Original": {
+    "csv_sha256": "fdc01d2e9c05623cdad4ea1719a16ad0fb0bed35278f3b020bada4a0a90061d9",
+    "model_sha256": "d01ae3d83f29d8aedb659a804f393fd4ccd7e0973b28b06eef5d67899ef3b440",
+    "rows": 3000
+  },
+  "Balanced": {
+    "csv_sha256": "18075f91902ebc8dd69adb9a1e56fe219e8e6d1dbfbc20732de3adb26a1a765a",
+    "model_sha256": "b1adee046cf91d31c12ec3c1d93523b3a33be5fcdada49636775f6259f97b58c",
+    "rows": 3000
+  },
+  "No notch": {
+    "csv_sha256": "3c2232073aa903c26420934a1c08ac8564a5615ac0793a593dd1e6143475ffbe",
+    "model_sha256": "b1adee046cf91d31c12ec3c1d93523b3a33be5fcdada49636775f6259f97b58c",
+    "rows": 3000
+  },
+  "With notch": {
+    "csv_sha256": "ecb7ab09b717dcd81aa1bf309576b6f23e9e86c0c7b316679bd342e20bc10a75",
+    "model_sha256": "b1adee046cf91d31c12ec3c1d93523b3a33be5fcdada49636775f6259f97b58c",
+    "rows": 3000
+  },
+  "original_source_unchanged": true,
+  "fit_asset_matches_run": true,
+  "test_results": {
+    "passed": 713,
+    "skipped": 1,
+    "subtests_passed": 288,
+    "ui": "1280x800 and 1024x600, dry-run only"
+  }
+}

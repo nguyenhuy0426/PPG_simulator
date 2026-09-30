@@ -1,0 +1,165 @@
+{
+  "Gaussian (original)": {
+    "rows": 3000,
+    "native_fs": 100,
+    "csv_sha256": "fdc01d2e9c05623cdad4ea1719a16ad0fb0bed35278f3b020bada4a0a90061d9"
+  },
+  "cWGAN-GP": {
+    "rows": 3000,
+    "native_fs": 100,
+    "csv_sha256": "b7a0c74552a4fa8962811e15df3d90b0fada05fdb7e4a044618b0d980afac6de"
+  },
+  "LSM-GAN": {
+    "rows": 1200,
+    "native_fs": 40,
+    "csv_sha256": "a618f6de82056054e814c1e1b3cccde777d91f4ef676f78bb16d0a9e43b65de6"
+  },
+  "TCN-FiLM": {
+    "rows": 3000,
+    "native_fs": 100,
+    "csv_sha256": "347f60810b2ff83b4cc3cb79b229e224b3348d816e7dbc4e91a88ea0b1818ed1"
+  },
+  "smoke": {
+    "status": "PIPELINE_SMOKE_ONLY",
+    "results": [
+      {
+        "arm": "control",
+        "seed": 42,
+        "best_step": 1,
+        "before": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.048039212822914124,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.013158113695681095,
+          "phase_log_psd_rmse": 0.1922099387908695,
+          "above_5hz_power_fraction": 0.008772870936870337,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008079950930550694,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.09602135315121216
+        },
+        "after": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.048039212822914124,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.012847666628658772,
+          "phase_log_psd_rmse": 0.19142591879336587,
+          "above_5hz_power_fraction": 0.008880910873161316,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008113962830975652,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.0955244641481485
+        },
+        "checkpoint_kept_parent": false,
+        "export_parity": true,
+        "generator_updated": true,
+        "discriminator_updated": true
+      },
+      {
+        "arm": "relative_derivative",
+        "seed": 42,
+        "best_step": 1,
+        "before": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.048039212822914124,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.013158113695681095,
+          "phase_log_psd_rmse": 0.1922099387908695,
+          "above_5hz_power_fraction": 0.008772870936870337,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008079950930550694,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.09602135315121216
+        },
+        "after": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.048039212822914124,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.012846395373344421,
+          "phase_log_psd_rmse": 0.1912080803095603,
+          "above_5hz_power_fraction": 0.008880924950866672,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008095735101960599,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.09550139496674823
+        },
+        "checkpoint_kept_parent": false,
+        "export_parity": true,
+        "generator_updated": true,
+        "discriminator_updated": true
+      },
+      {
+        "arm": "time_warp",
+        "seed": 42,
+        "best_step": 1,
+        "before": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.048039212822914124,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.013158113695681095,
+          "phase_log_psd_rmse": 0.1922099387908695,
+          "above_5hz_power_fraction": 0.008772870936870337,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008079950930550694,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.09602135315121216
+        },
+        "after": {
+          "sp_phase_mae": 0.023039216175675392,
+          "dn_phase_mae": 0.06960783898830414,
+          "dp_phase_mae": 0.047549016773700714,
+          "requested_notch_recall": 1.0,
+          "requested_no_notch_specificity": 1.0,
+          "phase_acf_rmse": 0.012341056950390339,
+          "phase_log_psd_rmse": 0.19381833279728528,
+          "above_5hz_power_fraction": 0.008918846028525735,
+          "real_above_5hz_power_fraction": 0.01996413738483449,
+          "roughness": 0.0008112629875540733,
+          "real_roughness": 0.0004819573659915477,
+          "boundary_value_jump": 0.0,
+          "development_score": 0.09509661170260424
+        },
+        "checkpoint_kept_parent": false,
+        "export_parity": true,
+        "generator_updated": true,
+        "discriminator_updated": true
+      }
+    ],
+    "installed_in_app": false,
+    "external_test_performed": false
+  },
+  "bundle_sha256": "954cb871965590d321c03a946a1a52a1755c0542a9ffb09c2f982d30ac3c282b",
+  "checks": {
+    "pytest_passed": 709,
+    "pytest_skipped": 1,
+    "subtests_passed": 288,
+    "ui_resolutions": [
+      "1280x800",
+      "1024x600"
+    ],
+    "ui_hardware_mode": "DRY_RUN",
+    "human_reviewed_cases": 0,
+    "physical_pi_verified": false
+  },
+  "source_sha256": {
+    "ml/round2_finetune.py": "4860de70b06d5b42eb597f769874e797b6c04a0ce9f434f376b0470ca3599c1f",
+    "ml/round2_review.py": "f957018c74325cedbf079b29f89d46dc37d28c6c120c338019862939417bffc7",
+    "ml/independent_ppg_eval.py": "1f99763ade0d86e74626cfc51aacd28806ac13f589b81d0cd06b4cf404551bd1",
+    "assets/neural/manifest.json": "df79b280881ff07e179954eca56be37cbf04cf330cb1deae160717b379529986"
+  }
+}

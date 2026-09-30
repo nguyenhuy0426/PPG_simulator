@@ -2,12 +2,12 @@
 ppg_model.py — PPG waveform synthesis model (Raspberry Pi 4 port)
 
 Faithful port of ppg_model.cpp (823 lines).
-3-component Gaussian sum model (Allen 2007) with 6 clinical conditions,
+Gaussian envelope with bounded local notch attenuation and 6 condition presets,
 dual-channel (IR/Red) generation, respiratory modulations (BW, AM, FM/RSA),
 and beat-to-beat HR/PI variability.
 
 References:
-  - Allen J (2007): PPG base morphology
+  - docs/ppg_morphology.md: shape model, evidence and non-clinical parameter semantics
   - Sun X et al. (2024): PI beat-to-beat variability
   - Charlton et al. (2018): Respiratory modulations
 """
@@ -39,21 +39,21 @@ from calibration import (
     SPO2_COEFF_B_DEFAULT,
 )
 
-# ─── PPG Model Constants (Allen 2007, aligned with ppg_model.cpp) ───
+# ─── Project morphology presets (not clinical reference intervals) ───
 # --- Temporal positions (fraction of RR cycle) ---
 PPG_SYSTOLIC_POS    = 0.15    # Systolic peak: ~15% of cycle
-PPG_NOTCH_POS       = 0.30    # Dicrotic notch: ~30% (aortic valve closure)
+PPG_NOTCH_POS       = 0.30    # Local attenuation centre; measured notch may shift
 PPG_DIASTOLIC_POS   = 0.40    # Diastolic peak: ~40% (reflected wave)
 
 # --- Gaussian widths (normalized std deviation) ---
 PPG_SYSTOLIC_WIDTH  = 0.055   # σ systolic (sharp peak)
 PPG_DIASTOLIC_WIDTH = 0.10    # σ diastolic (broader)
-PPG_NOTCH_WIDTH     = 0.02    # σ notch (fast valvular event)
+PPG_NOTCH_WIDTH     = 0.02    # σ of the synthetic local indentation
 
 # --- Base normalized amplitudes ---
 PPG_BASE_SYSTOLIC_AMPL   = 1.0    # Systolic amplitude (reference)
-PPG_BASE_DIASTOLIC_RATIO = 0.4    # Diastolic/systolic ratio (Allen 2007)
-PPG_BASE_DICROTIC_DEPTH  = 0.25   # Notch depth (≥20% for normal)
+PPG_BASE_DIASTOLIC_RATIO = 0.4    # Component amplitude ratio, not measured DP/SP
+PPG_BASE_DICROTIC_DEPTH  = 0.25   # 25% local envelope attenuation; not a normality threshold
 
 # --- Pulse-shape normalisation search (see PPGModel._find_raw_pulse_peak) ---
 PULSE_PEAK_SCAN_STEPS   = 1000  # coarse scan resolution over one cycle
@@ -244,7 +244,7 @@ def _clamp(val, mn, mx):
 class PPGModel:
     """
     Physiological PPG waveform generator.
-    3-component Gaussian sum (Allen 2007) with respiratory modulations.
+    Gaussian envelope / bounded local notch with respiratory modulations.
     """
 
     def __init__(self):
@@ -575,6 +575,7 @@ class PPGModel:
         self.params.amplification = limits.AMPLIFICATION.validate(value)
 
     def set_dicrotic_notch(self, value):
+        """Set local envelope attenuation [0, 1], not a measured DN/SP ratio."""
         self.params.dicrotic_notch = limits.DICROTIC_NOTCH_DEPTH.validate(value)
         self.dicrotic_depth = self.params.dicrotic_notch
 

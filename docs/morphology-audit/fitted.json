@@ -1,0 +1,20 @@
+{
+  "model": "Gaussian (fitted)",
+  "model_sha256": "b1adee046cf91d31c12ec3c1d93523b3a33be5fcdada49636775f6259f97b58c",
+  "variant": "train_fit_With notch",
+  "condition": null,
+  "native_fs_hz": 100,
+  "duration_s": 30,
+  "seed": null,
+  "hr_target": 75,
+  "discriminator_score": null,
+  "dc_v": 1.5,
+  "ac_ir_v": 0.045,
+  "ac_red_v": 0.0216,
+  "same_shape_both_channels": true,
+  "nominal_spo2_target": 98,
+  "calibration_a": 110,
+  "calibration_b": 25,
+  "provenance": null,
+  "note": "Preview only; no added output filter; not measured SpO2; no DAC output. LSM has no HR/notch control. cWGAN critic weights were not saved. TCN critic is an unbounded diagnostic score. Gaussian variant identifies original or train-fitted preset. Real reference is a processed, time-scaled and repeated train exemplar, not raw paired IR/RED."
+}

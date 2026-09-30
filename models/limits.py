@@ -226,8 +226,13 @@ AC span (1500 mV, like AC_LEVEL_MV), and 0 is included so a feature can be
 switched off entirely (the AECG100 has no 'no dicrotic notch' setting; this
 project's condition presets do)."""
 
-DICROTIC_NOTCH_DEPTH = Limit(0.0, 1.0, 0.25, 0.01, "", "Dicrotic notch depth")
-"""Project-specific normalised notch depth, retained from v4."""
+DICROTIC_NOTCH_DEPTH = Limit(0.0, 1.0, 0.25, 0.01, "", "Local notch attenuation")
+"""Project control: fractional attenuation of the local Gaussian envelope.
+0 disables the extra indentation; 1 reaches the baseline at the notch centre
+(an extreme test setting, not a healthy reference). This is NOT DN/SP or a
+clinical normal range. Numeric config/BLE range is retained; waveform semantics
+are corrected from legacy absolute subtraction. See docs/ppg_morphology.md.
+"""
 
 AMPLIFICATION = Limit(0.1, 5.0, 1.0, 0.01, " x", "Amplification")
 """Project-specific overall AC gain multiplier, retained from v4."""

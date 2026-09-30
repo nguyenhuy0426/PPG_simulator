@@ -45,6 +45,7 @@ from config import (
     ADC_MAX_VALUE,
     ADC_VOLTAGE_REF,
     RX_SAMPLE_RATE_HZ,
+    RX_ENABLED_CHANNELS,
     RX_BUFFER_SIZE,
     RX_STALE_THRESHOLD_S,
     RX_DISCONNECT_ERROR_THRESHOLD,
@@ -119,11 +120,12 @@ class OPT101Receiver:
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls(enabled_channels=RX_ENABLED_CHANNELS)
         return cls._instance
 
     def __init__(self, adc=None, sample_rate_hz: Optional[float] = None,
-                 buffer_size: Optional[int] = None, dry_run: Optional[bool] = None):
+                 buffer_size: Optional[int] = None, dry_run: Optional[bool] = None,
+                 enabled_channels=None):
         """`adc`, `sample_rate_hz`, `buffer_size`, `dry_run` are injectable
         for hardware-free tests; production code uses the config defaults."""
         self._adc = adc
@@ -135,6 +137,14 @@ class OPT101Receiver:
             ADC_CHANNEL_IR: _ChannelState("IR", ADC_CHANNEL_IR, size),
             ADC_CHANNEL_RED: _ChannelState("Red", ADC_CHANNEL_RED, size),
         }
+        self.enabled_channels = tuple((ADC_CHANNEL_IR, ADC_CHANNEL_RED)
+                                      if enabled_channels is None else enabled_channels)
+        if not self.enabled_channels or len(set(self.enabled_channels)) != len(self.enabled_channels) or any(
+                ch not in self._channels for ch in self.enabled_channels):
+            raise ValueError("Enabled RX channels must be A0 and/or A2")
+        for ch, state in self._channels.items():
+            if ch not in self.enabled_channels:
+                state.status = "disabled"
         self._lock = threading.Lock()
         self._ready = False
         self._running = False
@@ -151,7 +161,8 @@ class OPT101Receiver:
                      "buffers stay empty, statuses report 'dry-run'")
             with self._lock:
                 for state in self._channels.values():
-                    state.status = RX_STATUS_DRY_RUN
+                    if state.channel in self.enabled_channels:
+                        state.status = RX_STATUS_DRY_RUN
             self._ready = True
             return True
 
@@ -166,14 +177,14 @@ class OPT101Receiver:
         # Probe: one real read on the IR channel proves the hat is reachable.
         # grove.adc calls sys.exit(2) on IOError, hence SystemExit here.
         try:
-            probe = self._adc.read_raw(ADC_CHANNEL_IR)
+            probe = self._adc.read_raw(self.enabled_channels[0])
         except (SystemExit, Exception) as e:
             log.error(f"[OPT101Rx] Grove ADC (0x{GROVE_ADC_ADDR:02X}) probe read failed: {e!r}")
             return False
 
         self._ready = True
         log.info(f"[OPT101Rx] Grove ADC ready (addr 0x{GROVE_ADC_ADDR:02X}, "
-                 f"IR=A{ADC_CHANNEL_IR}, Red=A{ADC_CHANNEL_RED}, "
+                 f"enabled={self.enabled_channels}, "
                  f"{self._rate:.0f} Hz/ch, probe raw={probe})")
         return True
 
@@ -235,8 +246,8 @@ class OPT101Receiver:
     def _acquire_once(self):
         """Read both channels, IR first then Red. A failure on one channel
         must not block or contaminate the other."""
-        self._read_channel(self._channels[ADC_CHANNEL_IR])
-        self._read_channel(self._channels[ADC_CHANNEL_RED])
+        for channel in self.enabled_channels:
+            self._read_channel(self._channels[channel])
 
     def _read_channel(self, state: _ChannelState):
         try:

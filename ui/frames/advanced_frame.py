@@ -7,12 +7,13 @@ from models.waveform import WAVEFORM_KINDS
 from models.noise import NOISE_KINDS
 from ui import theme as T
 from ui import focus_is_inside
+from ui.touch_slider import TouchSlider
+from models import limits
 
 # Amplitude entries the phone can change live (BLE delta merge); a checkbox
 # the user has just clicked gets this hold-off before the engine truth wins.
 LIVE_ENTRY_KEYS = ("ac_ir_mv", "ac_red_mv", "dc_ir_mv", "dc_red_mv", "spo2")
 LIVE_LOCK_KEYS = ("lock_ac", "lock_dc")
-USER_HOLD_S = 8.0
 
 
 class AdvancedFrame(ctk.CTkFrame):
@@ -44,10 +45,35 @@ class AdvancedFrame(ctk.CTkFrame):
         box.grid(row=row, column=column, sticky="ew", padx=12, pady=5)
         box.grid_columnconfigure(0, weight=1)
         T.label(box, title, 12, anchor="w").grid(row=0, column=0, sticky="w")
-        entry = ctk.CTkEntry(box, width=120, height=34)
-        entry.grid(row=0, column=1)
-        if hint: T.label(box, hint, 10, text_color=T.MUTED, anchor="w").grid(row=1, column=0, columnspan=2, sticky="w")
+        span = self._slider_range(key)
+        entry = TouchSlider(box, *span, optional=key in ("ac_red_mv", "noise_seed"),
+                            command=lambda _value: self._mark_user_edit(key))
+        entry.grid(row=1, column=0, columnspan=2, sticky="ew")
+        if hint: T.label(box, hint, 10, text_color=T.MUTED, anchor="w").grid(row=2, column=0, columnspan=2, sticky="w")
         self.entries[key] = entry
+
+    @staticmethod
+    def _slider_range(key):
+        spans = {
+            "ac_ir_mv": limits.AC_LEVEL_MV, "ac_red_mv": limits.AC_LEVEL_MV,
+            "dc_ir_mv": limits.DC_LEVEL_MV, "dc_red_mv": limits.DC_LEVEL_MV,
+            "output_dc_offset_mv": limits.OUTPUT_DC_OFFSET_MV,
+            "amplification": limits.AMPLIFICATION, "dicrotic_notch": limits.DICROTIC_NOTCH_DEPTH,
+            "spo2": limits.SPO2, "resp_rate": limits.RESP_RATE,
+            "resp_variation_ir_pct": limits.RESP_VARIATION_PCT,
+            "resp_variation_red_pct": limits.RESP_VARIATION_PCT,
+            "apnea_duration_s": limits.APNEA_DURATION_S, "apnea_cycle_min": limits.APNEA_CYCLE_MIN,
+            "noise_amplitude_mv": limits.NOISE_AMPLITUDE_MV, "noise_level": limits.NOISE_LEVEL,
+        }
+        if key.startswith(("sp_ms_", "dn_ms_", "dp_ms_")):
+            span = limits.FEATURE_TIME_MS
+        else:
+            span = spans.get(key)
+        if span:
+            return span.minimum, span.maximum, span.step
+        return {"resp_ie_ratio": (1,5,1), "noise_freq_hz": (0,49.99,0.01),
+                "noise_seed": (0,4294967295,1), "spo2_coeff_a": (0,200,0.1),
+                "spo2_coeff_b": (0.1,200,0.1)}[key]
 
     def _check(self, body, row, column, key, title, command=None):
         var = ctk.BooleanVar(value=False)
@@ -60,10 +86,10 @@ class AdvancedFrame(ctk.CTkFrame):
 
     def _amplitude(self, b):
         for row, fields in enumerate((
-            (("ac_ir_mv", "AC · IR", "0–1500 mV"), ("ac_red_mv", "AC · RED", "Blank = derive from SpO₂")),
+            (("ac_ir_mv", "AC · IR", "0–1500 mV"), ("ac_red_mv", "AC · RED", "Auto = derive from SpO₂")),
             (("dc_ir_mv", "DC · IR", "0–1500 mV"), ("dc_red_mv", "DC · RED", "0–1500 mV")),
             (("output_dc_offset_mv", "Output DC offset", "0–2000 mV; DC + offset ≤ 3000"), ("amplification", "AC gain", "0.1–5.0 ×")),
-            (("dicrotic_notch", "Notch depth", "0–1, normalized"), ("spo2", "SpO₂ target", "0–100 %, calibration dependent")),
+            (("dicrotic_notch", "Local notch attenuation", "0–1; 0.25 = 25% local reduction"), ("spo2", "SpO₂ target", "0–100 %, calibration dependent")),
         )):
             for col, (key, title, hint) in enumerate(fields): self._entry(b, row, col, key, title, hint)
         self.waveform_menu = ctk.CTkOptionMenu(b, values=list(WAVEFORM_KINDS))
@@ -72,7 +98,7 @@ class AdvancedFrame(ctk.CTkFrame):
         self.polarity_menu.grid(row=4, column=1, sticky="ew", padx=12, pady=8)
         self._check(b, 5, 0, "lock_ac", "Hold AC when DC changes", command=lambda: self._mark_user_edit("lock_ac"))
         self._check(b, 5, 1, "lock_dc", "Hold DC when PI changes", command=lambda: self._mark_user_edit("lock_dc"))
-        self._note(b, 6, "Feature timing at 60 bpm  ·  SP < DN < DP  ·  scales with the cardiac cycle")
+        self._note(b, 6, "Component centres at 60 bpm · SP < DN < DP · actual extrema may shift.\nNotch 0 = no extra indentation; a natural valley may remain. Not a clinical normal range.")
         for row, kind, title in ((7, "sp", "Systolic peak"), (8, "dn", "Dicrotic notch"), (9, "dp", "Diastolic peak")):
             for col, ch in enumerate(("ir", "red")):
                 self._entry(b, row, col, kind + "_ms_" + ch, title + " · " + ch.upper(), "ms / 0–1000")
@@ -81,7 +107,7 @@ class AdvancedFrame(ctk.CTkFrame):
 
     def _respiration(self, b):
         for row, fields in enumerate((
-            (("resp_rate", "Respiration rate", "1–150 breaths/min"), ("resp_ie_ratio", "Inhale : exhale", "Enter N for 1:N, N = 1…5")),
+            (("resp_rate", "Respiration rate", "1–150 breaths/min"), ("resp_ie_ratio", "Inhale : exhale", "1:N, N = 1…5")),
             (("resp_variation_ir_pct", "Variation · IR", "1–16 % of AC"), ("resp_variation_red_pct", "Variation · RED", "1–16 % of AC")),
             (("apnea_duration_s", "Apnea duration", "1–60 s"), ("apnea_cycle_min", "Apnea cycle", "1–10 min; duration < cycle")),
         )):
@@ -112,7 +138,7 @@ class AdvancedFrame(ctk.CTkFrame):
         self.noise_menu.grid(row=1, column=0, sticky="ew", padx=12, pady=8)
         self._entry(b, 1, 1, "noise_amplitude_mv", "Amplitude", "mV; white/motion RMS, sine peak")
         self._entry(b, 2, 0, "noise_freq_hz", "Frequency", "Hz; model Nyquist limit < 50 Hz")
-        self._entry(b, 2, 1, "noise_seed", "Random seed", "Integer, or blank for random")
+        self._entry(b, 2, 1, "noise_seed", "Random seed", "Auto = random; + / − = one seed")
         self._entry(b, 3, 0, "noise_level", "Proportional noise", "0–1; only used by proportional kind")
         ctk.CTkButton(b, text="Apply noise", height=36, command=self.on_apply_noise).grid(
             row=3, column=1, sticky="ew", padx=12, pady=8)
@@ -132,6 +158,7 @@ class AdvancedFrame(ctk.CTkFrame):
     def _apply(self, callback):
         try:
             callback()
+            self._user_hold.clear()
             self.status.configure(text="Applied. Settings will be saved on exit.", text_color=T.ACCENT)
         except (ValueError, TypeError) as exc:
             self.status.configure(text=str(exc), text_color=T.ERROR)
@@ -190,9 +217,8 @@ class AdvancedFrame(ctk.CTkFrame):
         return "" if value is None else f"{value:g}"
 
     def _mark_user_edit(self, key):
-        """A checkbox click holds off the engine mirror for USER_HOLD_S, long
-        enough to click Apply; afterwards the engine truth always wins."""
-        self._user_hold[key] = time.monotonic() + USER_HOLD_S
+        """Keep an unapplied touch edit until Apply or the form is reopened."""
+        self._user_hold[key] = float("inf")
 
     def periodic_update(self):
         """Mirror engine truth into the phone-addressable widgets every tick.
@@ -205,7 +231,7 @@ class AdvancedFrame(ctk.CTkFrame):
         focused = self.winfo_toplevel().focus_get()
         for key in LIVE_ENTRY_KEYS:
             entry = self.entries.get(key)
-            if entry is None or focus_is_inside(focused, entry):
+            if entry is None or focus_is_inside(focused, entry) or self._user_hold.get(key, 0) > time.monotonic():
                 continue
             target = self._display_value(p, key)
             if entry.get() != target:
@@ -222,6 +248,7 @@ class AdvancedFrame(ctk.CTkFrame):
 
     def on_show(self):
         p = self.engine.ppg_params
+        self._user_hold.clear()
         for key, entry in self.entries.items():
             entry.delete(0, "end")
             entry.insert(0, self._display_value(p, key))

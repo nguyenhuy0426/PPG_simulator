@@ -1,0 +1,29 @@
+{
+  "model": "Real reference",
+  "model_sha256": "19227cc7260bb6b5f3d43442e5d0c3788892ed0c37d5e00a540ee4e118b513eb",
+  "variant": "train_reference_With notch",
+  "condition": null,
+  "native_fs_hz": 100,
+  "duration_s": 30,
+  "seed": null,
+  "hr_target": 75,
+  "discriminator_score": null,
+  "dc_v": 1.5,
+  "ac_ir_v": 0.045,
+  "ac_red_v": 0.0216,
+  "same_shape_both_channels": true,
+  "nominal_spo2_target": 98,
+  "calibration_a": 110,
+  "calibration_b": 25,
+  "provenance": {
+    "prepared_sha256": "25c830dc1613a0dbf9c3775fc87b95b966492fc0962a828c84543422fa278dcf",
+    "train_exemplar_index": 16740,
+    "source_sample_rate_hz": 125,
+    "rendered_sample_rate_hz": 100,
+    "preprocessing": "12 Hz lowpass; foot baseline; 256-point phase resampling",
+    "transformation": "Repeated train pulse; time-scaled to requested HR; nominal IR/RED voltages",
+    "independent_validation": false,
+    "paired_ir_red": false
+  },
+  "note": "Preview only; no added output filter; not measured SpO2; no DAC output. LSM has no HR/notch control. cWGAN critic weights were not saved. TCN critic is an unbounded diagnostic score. Gaussian variant identifies original or train-fitted preset. Real reference is a processed, time-scaled and repeated train exemplar, not raw paired IR/RED."
+}

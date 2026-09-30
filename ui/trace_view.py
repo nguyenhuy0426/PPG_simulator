@@ -7,6 +7,7 @@ class TraceView(tk.Canvas):
     def __init__(self, master, **kwargs):
         super().__init__(master, bg=DARK, highlightthickness=0, **kwargs)
         self.samples = []
+        self.channels = ((1, "IR", IR), (2, "RED", RED))
         self.window_s = 8.0
         self.empty_text = "Ready to generate  /  Press Run"
         self.bind("<Configure>", lambda event: self.render())
@@ -33,12 +34,13 @@ class TraceView(tk.Canvas):
         for i in range(9):
             x = left + (right - left) * i / 8
             self.create_line(x, top, x, bottom, fill=GRID, dash=(2, 5))
-            self.create_text(x, h - 12, text=f"{start + i * self.window_s / 8:.0f}",
+            tick = start + i * self.window_s / 8
+            self.create_text(x, h - 12, text=f"{tick:.2f}" if self.window_s < 2 else f"{tick:.0f}",
                              fill="#A5B3BC", font=("DejaVu Sans", axis_font))
         self.create_text(20, h - 12, text="s", fill="#A5B3BC")
-        lane = (bottom - top) / 2
-        for ch, title, color in ((1, "IR", IR), (2, "RED", RED)):
-            y0 = top + (ch - 1) * lane
+        lane = (bottom - top) / len(self.channels)
+        for lane_index, (ch, title, color) in enumerate(self.channels):
+            y0 = top + lane_index * lane
             self.create_text(left, y0 - 4, text=title + " / mV", fill=color, anchor="sw",
                              font=("DejaVu Sans", lane_font, "bold"))
             values = [p[ch] * 1000 for p in points]

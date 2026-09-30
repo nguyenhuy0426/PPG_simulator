@@ -1,0 +1,4 @@
+# Optional Neural lab inference. Install into the same environment as the app.
+# Use a CPU wheel on x86_64; use the supported aarch64 wheel on Raspberry Pi.
+numpy>=1.26,<3
+torch==2.10.0

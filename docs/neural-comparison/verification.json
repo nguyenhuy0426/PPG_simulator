@@ -1,0 +1,91 @@
+{
+  "source_sha256": "a0ff8319a281285768b34a290065ee1dc3ac112dcda7b8d54a40d013c6ddf47b",
+  "artifacts_equal_previous": {
+    "configuration.json": "25c3af63322265b95b82ba591de29a5c5b5315b2fbea99b3b5e6de5c555a7d75",
+    "comparison.json": "5ee3e49f9697c9554131d4af914b17e2cc7a18250d1ec3830f13f1c7afb9843f",
+    "manifest.json": "0ed6020e4e0fa185ce54a3a5cb437e5c299a4a230246f8eda3cd6e20f0ac1a68",
+    "windows.npz": "193cd745a55445d593370842d6edb265af8134a32df3e09a3e76498b36cc119e",
+    "comparison_samples.npz": "30a9f77aa07c7ad375084d1c924e73b9ad80a7ad143de31756ef31f8009c43ac",
+    "lsm_paper/best.pt": "deea991356374d22ae478367914d0dc03de83f59304c88bb49eae32a5918bba7",
+    "lsm_paper/last_training_state.pt": "bc5ec96056cfe5f57a0713b81c59505b17e74b032e58931cea92d7bdb7150481",
+    "lsm_paper/generator_cpu.ts": "e49e2b5ed046f610ee4b3c70ac95c28d7ae37d81cb8bf199a8d3959e9581f2b5",
+    "lsm_paper/discriminator_cpu.ts": "048d515532bf3f83ce1947509a5f3682bbfb2f43b2cf7a91a157c167001db131",
+    "lsm_paper/metrics.json": "51b36244c1d2f312cb9d6fc9c6f56c2817dfd809610000213f5ad191d166c2c1",
+    "lsm_paper/history.json": "1823ff7c725ad8cc511cf703e42e7c568006eb0b7c573935a3679724e1bb4a3f",
+    "lsm_paper/samples.npz": "5df64d44159891455c96c8f23e37b356bcd8a752dee5446fa5e9877732ecdd22",
+    "lsm_repo_corrected/best.pt": "bf8d7170bfc9c488e9b249980c7bc7dc0fc07dbf4abcdc76fc0397f328d69f1c",
+    "lsm_repo_corrected/last_training_state.pt": "dc34592d15b17ea2c0f00109b607fd37b6e3f694aa115568ae72ccad11816760",
+    "lsm_repo_corrected/generator_cpu.ts": "6e527b320b37ac330a20f57868598a9c69b987170c82efd27219e2c6cb42879a",
+    "lsm_repo_corrected/discriminator_cpu.ts": "2a748230b8eda6643a4f354f68df52b42824c683782c1fd479c5d07f90d9c84f",
+    "lsm_repo_corrected/metrics.json": "621a3d5b858f82bd3e42157422f5b2def8ff15c08a83a8138d437cc5d247b535",
+    "lsm_repo_corrected/history.json": "980266d59cd4579e2b95e4ed2452517fb6d31a5f906efd1d81b244f50de57026",
+    "lsm_repo_corrected/samples.npz": "a35a6f45c7b650bbc492eddc4a30e8165b0a6001309030eb773623c3979651f1",
+    "dcgan1200_no_spectral/best.pt": "96f19e4062c169eab3615fffd492d6bc18c75a553364e2c80a282d41b819e91b",
+    "dcgan1200_no_spectral/last_training_state.pt": "6ad362101e449f798cebc432a6ad461210a0d9c8840628ca068a3873564ad7bf",
+    "dcgan1200_no_spectral/generator_cpu.ts": "ff55f5ccdb0a97d1a13cb3b9e8f5796def1354e2495d5973f5b03158390c25c6",
+    "dcgan1200_no_spectral/discriminator_cpu.ts": "11c7246676180a2291108737c0e3a8f1e47343c4d74f184cf64f768632bf064f",
+    "dcgan1200_no_spectral/metrics.json": "df8fd1d8b8f2942da90a276f5afb6114b14ec1d2e0ff63aa48924a60aa43a1b0",
+    "dcgan1200_no_spectral/history.json": "fd54fe9257d8c5f2d344e7269c419a5f67345acca28b1912b5511a912f515746",
+    "dcgan1200_no_spectral/samples.npz": "1b90123cd4771b5ed3f63136f969332c6be2693507ba0042e1ed0ff6edc611e3"
+  },
+  "metrics_recomputed": true,
+  "last_checkpoints": {
+    "lsm_paper": {
+      "step": 1500,
+      "finite_g_d_and_optimizers": true
+    },
+    "lsm_repo_corrected": {
+      "step": 1500,
+      "finite_g_d_and_optimizers": true
+    },
+    "dcgan1200_no_spectral": {
+      "step": 1500,
+      "finite_g_d_and_optimizers": true
+    }
+  },
+  "csv_checks": {
+    "ml/runs/lsm-v2-verification/download/lsm_comparison/lsm_paper/example_ir_red_40hz.csv": {
+      "rows": 1200,
+      "fs_hz": 40,
+      "duration_s": 30.0,
+      "ac_ratio": 0.48000000000000215,
+      "min_v": 1.5,
+      "max_v": 1.545
+    },
+    "ml/runs/lsm-v2-verification/download/lsm_comparison/lsm_repo_corrected/example_ir_red_40hz.csv": {
+      "rows": 1200,
+      "fs_hz": 40,
+      "duration_s": 30.0,
+      "ac_ratio": 0.48000000000000215,
+      "min_v": 1.5,
+      "max_v": 1.545
+    },
+    "ml/runs/lsm-v2-verification/download/lsm_comparison/dcgan1200_no_spectral/example_ir_red_40hz.csv": {
+      "rows": 1200,
+      "fs_hz": 40,
+      "duration_s": 30.0,
+      "ac_ratio": 0.48000000000000215,
+      "min_v": 1.5,
+      "max_v": 1.545
+    },
+    "ml/runs/kaggle-v1/ppg_run/ir_red_100hz.csv": {
+      "rows": 400,
+      "fs_hz": 100,
+      "duration_s": 4.0,
+      "ac_ratio": 0.48000000000000176,
+      "min_v": 1.5,
+      "max_v": 1.5449997694704536
+    },
+    "ml/runs/kaggle-v1/ppg_run/ir_red_1000hz.csv": {
+      "rows": 4000,
+      "fs_hz": 1000,
+      "duration_s": 4.0,
+      "ac_ratio": 0.4800000000000008,
+      "min_v": 1.5,
+      "max_v": 1.5449997694873878
+    }
+  },
+  "cwgan_export_matches_best": true,
+  "cwgan_critic": "Not saved in pilot v1; cannot recover",
+  "note": "No retraining or test-based checkpoint selection; exploratory only"
+}

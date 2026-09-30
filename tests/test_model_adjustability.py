@@ -244,6 +244,35 @@ class TestOutputDcOffset(unittest.TestCase):
 
 
 class TestAmplificationAndNotch(unittest.TestCase):
+    def test_corrected_notch_preserves_dual_channel_ac_and_ratio(self):
+        for depth in (0.0, 0.25, 0.35, 0.5, 1.0):
+            for polarity in (0, 1):
+                with self.subTest(depth=depth, polarity=polarity):
+                    model = _quiet_model(hr=60.0)
+                    model.set_dicrotic_notch(depth)
+                    model.set_ac_levels(45.0, None)
+                    model.set_polarity(polarity)
+                    model.set_spo2(98.0)
+                    rows = _run(model, 3.0)
+                    ir = [row[2] for row in rows]
+                    red = [row[3] for row in rows]
+                    ir_swing = max(ir) - min(ir)
+                    red_swing = max(red) - min(red)
+                    self.assertAlmostEqual(ir_swing, 0.045, delta=0.0001)
+                    self.assertAlmostEqual(red_swing / ir_swing, 0.48, places=10)
+                    self.assertEqual(model.clipped_samples, 0)
+
+    def test_notch_attenuation_reaches_both_channel_shapes(self):
+        model = _quiet_model()
+        for channel in ('ir', 'red'):
+            with self.subTest(channel=channel):
+                model.set_dicrotic_notch(0.0)
+                envelope = model._compute_pulse_shape(0.3, channel=channel)
+                model.set_dicrotic_notch(0.35)
+                indented = model._compute_pulse_shape(0.3, channel=channel)
+                self.assertGreater(indented, 0.0)
+                self.assertLess(indented, envelope)
+
     def test_amplification_scales_the_ac(self):
         model = _quiet_model()
         model.set_ac_levels(20.0)
@@ -264,8 +293,8 @@ class TestAmplificationAndNotch(unittest.TestCase):
         flat = [s[2] for s in _run(model, 2.0)]
         model.set_dicrotic_notch(0.5)
         deep = [s[2] for s in _run(model, 2.0)]
-        # The shape is clamped to [0, 1], so both troughs bottom out at exactly
-        # zero and min() cannot tell them apart. A deeper notch removes area
+        # The cycle endpoints are zero for either setting, so min() cannot
+        # distinguish them. A deeper local notch removes area
         # from the middle of every cycle, so compare the cycle mean instead.
         self.assertLess(sum(deep) / len(deep), sum(flat) / len(flat))
 
@@ -311,7 +340,7 @@ class TestWaveformKind(unittest.TestCase):
 
 
 class TestFeatureTimes(unittest.TestCase):
-    def test_default_times_match_allen_2007(self):
+    def test_default_times_preserve_project_component_centres(self):
         model = PPGModel()
         self.assertAlmostEqual(model.params.sp_ms_ir, 150.0)
         self.assertAlmostEqual(model.params.dn_ms_ir, 300.0)

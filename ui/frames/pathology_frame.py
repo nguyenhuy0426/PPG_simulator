@@ -99,12 +99,12 @@ class PathologyFrame(ctk.CTkFrame):
             var = ctk.DoubleVar(value=getattr(self.engine.ppg_params, attr))
             self.slider_vars[key] = var
             slider = ctk.CTkSlider(box, from_=span.minimum, to=span.maximum, variable=var,
+                                  height=34, button_length=26,
                                   command=lambda value, k=key: self.update_param(k, value))
             slider.grid(row=0, column=slider_column, sticky="ew", padx=6 if self.layout.compact else 10)
             self.sliders[key] = slider
-            entry = ctk.CTkEntry(box, width=62 if self.layout.compact else 70, height=32)
+            entry = T.label(box, "", 14, True, width=62 if self.layout.compact else 70, height=34)
             entry.grid(row=0, column=entry_column)
-            entry.bind("<Return>", lambda event, k=key: self.apply_entry(k))
             self.entries[key] = entry
             if not self.layout.compact:
                 T.label(box, unit, 11, width=34, text_color=T.MUTED).grid(row=0, column=3)
@@ -116,30 +116,26 @@ class PathologyFrame(ctk.CTkFrame):
         self.condition_menu = ctk.CTkOptionMenu(bottom, values=CONDITION_NAMES, width=158,
                                                command=lambda name: self.set_condition(CONDITION_NAMES.index(name)))
         self.condition_menu.pack(side="left")
-        prompt = "Enter value, then Enter." if self.layout.compact else "Enter a value, then press Enter to apply."
+        self.gaussian_btn = ctk.CTkButton(bottom, text="3-Gaussian", width=105,
+                                         command=self.select_gaussian)
+        self.gaussian_btn.pack(side="left", padx=8)
+        prompt = "Trượt để chỉnh / Slide to adjust"
         self.message = T.label(bottom, prompt, 11, text_color=T.MUTED)
         self.message.pack(side="left", padx=16)
 
+    def select_gaussian(self):
+        self.engine.update_waveform("ppg")
+        self.message.configure(text="Original 3-Gaussian selected", text_color=T.ACCENT)
+
     def on_show(self):
         p = self.engine.ppg_params
-        self.entries["pi"].configure(state="normal")
         for key, (_, attr, _, _) in self.fields.items():
             value = getattr(p, attr)
             self.slider_vars[key].set(value)
-            self.entries[key].delete(0, "end")
-            self.entries[key].insert(0, f"{value:g}")
+            self.entries[key].configure(text=f"{value:g}")
         self.condition_menu.set(CONDITION_NAMES[p.condition])
         self.sliders["pi"].configure(state="disabled" if self.engine.ac_dc_locked else "normal")
-        self.entries["pi"].configure(state="disabled" if self.engine.ac_dc_locked else "normal")
         self.periodic_update()
-
-    def apply_entry(self, key):
-        try:
-            value = float(self.entries[key].get())
-            self.fields[key][2].validate(value)
-            self.update_param(key, value)
-        except ValueError as exc:
-            self.message.configure(text=str(exc), text_color=T.ERROR)
 
     def update_param(self, key, value):
         span = self.fields[key][2]
@@ -150,8 +146,7 @@ class PathologyFrame(ctk.CTkFrame):
             callbacks[key](value)
             actual = getattr(self.engine.ppg_params, self.fields[key][1])
             self.slider_vars[key].set(actual)
-            self.entries[key].delete(0, "end")
-            self.entries[key].insert(0, f"{actual:g}")
+            self.entries[key].configure(text=f"{actual:g}")
             self.message.configure(text="Applied to generator", text_color=T.ACCENT)
         except ValueError as exc:
             self.message.configure(text=str(exc), text_color=T.ERROR)
@@ -233,8 +228,7 @@ class PathologyFrame(ctk.CTkFrame):
                 continue
             if abs(current - value) > max(1e-6, abs(value) * 1e-4) and not focus_is_inside(focused, entry):
                 self.slider_vars[key].set(value)
-                entry.delete(0, "end")
-                entry.insert(0, f"{value:g}")
+                entry.configure(text=f"{value:g}")
         condition_name = CONDITION_NAMES[p.condition]
         if self.condition_menu.get() != condition_name:
             self.condition_menu.set(condition_name)

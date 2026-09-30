@@ -1,0 +1,59 @@
+{
+  "models": {
+    "cwgan_generator": {
+      "file": "cwgan_generator.ts",
+      "sha256": "27f25f9c1a0f3d330374f29d40f08ec7e1e93850004065f1082e56448c79b724"
+    },
+    "lsm_generator": {
+      "file": "lsm_generator.ts",
+      "sha256": "6e527b320b37ac330a20f57868598a9c69b987170c82efd27219e2c6cb42879a"
+    },
+    "lsm_discriminator": {
+      "file": "lsm_discriminator.ts",
+      "sha256": "2a748230b8eda6643a4f354f68df52b42824c683782c1fd479c5d07f90d9c84f"
+    },
+    "tcn_generator": {
+      "file": "tcn_generator.ts",
+      "sha256": "b008a872c63602d35cea4cc9962176a83e5eefca441a5d2111111f9811c7da62"
+    },
+    "tcn_critic": {
+      "file": "tcn_critic.ts",
+      "sha256": "835ea655b216bf78a2da387b6100396484c52a8208827c68ccb39d3deff62ae2"
+    }
+  },
+  "cwgan_condition": [
+    0.375,
+    0.3921568691730499,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "condition_presets": {
+    "No notch": [
+      0.375,
+      0.3921568691730499,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "With notch": [
+      0.375,
+      0.4588235318660736,
+      0.658823549747467,
+      0.729411780834198,
+      0.20809032022953033,
+      0.3864024579524994,
+      1.0
+    ]
+  },
+  "tcn_selected_run": "seed_42",
+  "condition_source": "Training exemplar nearest 75 bpm; HR is adjustable in preview",
+  "lsm_variant": "lsm_repo_corrected",
+  "lsm_revision": "v2: consistent D train-mode during G update",
+  "lsm_source_sha256": "a0ff8319a281285768b34a290065ee1dc3ac112dcda7b8d54a40d013c6ddf47b",
+  "note": "Research preview only. No cWGAN critic artifact exists for pilot v1."
+}

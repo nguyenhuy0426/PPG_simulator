@@ -9,11 +9,13 @@ from ui.frames.pathology_frame import PathologyFrame
 from ui.frames.calibration_frame import CalibrationFrame
 from ui.frames.playback_frame import PlaybackFrame
 from ui.frames.advanced_frame import AdvancedFrame
+from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
+from ui.i18n import LANGUAGES, normalise_language, text
 
 
 class CTkApp(ctk.CTk):
-    def __init__(self):
+    def __init__(self, language="en"):
         T.install()
         # Match packaging/linux/ppg-simulator.desktop.in so GNOME associates
         # the running Tk window with the dashboard icon that launched it.
@@ -23,7 +25,8 @@ class CTkApp(ctk.CTk):
         # from the actual desktop resolution so 1024x600 touch panels stay
         # usable and Full-HD/QHD displays do not render tiny controls.
         ctk.set_widget_scaling(self.layout.widget_scale)
-        self.title("PPG Simulator • Optical signal workstation")
+        self.language = normalise_language(language)
+        self.title(text(self.language, "title"))
         self.geometry(self.layout.geometry)
         self.minsize(*self.layout.minimum_size)
         self.grid_columnconfigure(0, weight=1)
@@ -39,19 +42,21 @@ class CTkApp(ctk.CTk):
         header_pad = 14 if self.layout.compact else 24
         T.label(header, "PPG", 24 if self.layout.compact else 27, True,
                 text_color="white").pack(side="left", padx=(header_pad, 12), pady=10)
+        self.workstation_label = None
         if not self.layout.compact:
-            T.label(header, "OPTICAL SIGNAL WORKSTATION", 13, True,
-                    text_color="#C8D2D9").pack(side="left")
-        self.mode_label = T.label(header, "SIMULATION / NO HARDWARE" if DRY_RUN else "HARDWARE MODE",
+            self.workstation_label = T.label(header, text(self.language, "workstation"), 13, True,
+                                              text_color="#C8D2D9")
+            self.workstation_label.pack(side="left")
+        self.mode_label = T.label(header, text(self.language, "simulation") if DRY_RUN else text(self.language, "hardware"),
                                   12, True, text_color=T.IR)
         self.mode_label.pack(side="right", padx=header_pad)
         nav = ctk.CTkFrame(self, fg_color=T.PANEL, corner_radius=0)
         nav.grid(row=1, column=0, sticky="ew")
         self.nav_buttons = {}
-        for key, title in (("Pathology", "01   Monitor"),
-                           ("Calibration", "02   Calibration / RX"),
-                           ("Playback", "03   Recordings")):
-            btn = ctk.CTkButton(nav, text=title, width=self.layout.nav_width, height=40, corner_radius=0,
+        self.nav_keys = (("Pathology", "classic"), ("Calibration", "calibration"),
+                         ("Playback", "recordings"), ("Neural", "neural"))
+        for key, text_key in self.nav_keys:
+            btn = ctk.CTkButton(nav, text=text(self.language, text_key), width=self.layout.nav_width, height=40, corner_radius=0,
                                 command=lambda k=key: self._show_frame(k))
             btn.pack(side="left", padx=(8 if self.layout.compact else 12, 0),
                      pady=6 if self.layout.compact else 8)
@@ -60,6 +65,7 @@ class CTkApp(ctk.CTk):
             "Pathology": PathologyFrame(self, fg_color="transparent"),
             "Calibration": CalibrationFrame(self, fg_color="transparent"),
             "Playback": PlaybackFrame(self, fg_color="transparent"),
+            "Neural": NeuralFrame(self, fg_color="transparent"),
         }
         self.signal_setup_window = None
         self.signal_setup_panel = None
@@ -74,11 +80,14 @@ class CTkApp(ctk.CTk):
                                       pady=4 if self.layout.compact else 6)
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=3, column=0, sticky="ew")
-        self.status_label = T.label(footer, "Ready", 11, text_color=T.MUTED)
+        self.status_label = T.label(footer, text(self.language, "ready"), 11, text_color=T.MUTED)
         self.status_label.pack(side="left", padx=20, pady=4)
         if not self.layout.compact:
-            T.label(footer, f"Research simulator   •   v{FIRMWARE_VERSION}", 11,
-                    text_color=T.MUTED).pack(side="right", padx=20)
+            self.research_label = T.label(footer, f"{text(self.language, 'research')}   •   v{FIRMWARE_VERSION}", 11,
+                                          text_color=T.MUTED)
+            self.research_label.pack(side="right", padx=20)
+        else:
+            self.research_label = None
         self.active_frame = None
         self._show_frame("Pathology")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -137,23 +146,71 @@ class CTkApp(ctk.CTk):
         x = self.winfo_rootx() + max(0, (self.winfo_width() - width) // 2)
         y = self.winfo_rooty() + max(0, (self.winfo_height() - height) // 2)
         window = ctk.CTkToplevel(self)
-        window.title("Signal setup")
+        window.title(text(self.language, "settings"))
         window.geometry(f"{width}x{height}+{x}+{y}")
         window.minsize(min(620, width), min(380, height))
         window.configure(fg_color=T.BG)
         window.grid_columnconfigure(0, weight=1)
-        window.grid_rowconfigure(0, weight=1)
+        window.grid_rowconfigure(1, weight=1)
         window.transient(self)
         window.protocol("WM_DELETE_WINDOW", self.close_signal_setup)
         window.bind("<Escape>", lambda _event: self.close_signal_setup())
+        language_bar = ctk.CTkFrame(window, fg_color=T.PANEL)
+        language_bar.grid(row=0, column=0, sticky="ew", padx=self.layout.outer_pad, pady=(self.layout.outer_pady, 0))
+        language_bar.grid_columnconfigure(2, weight=1)
+        self.language_label = T.label(language_bar, text(self.language, "language"), 12, True)
+        self.language_label.grid(row=0, column=0, padx=(12, 8), pady=8)
+        self.language_menu = ctk.CTkOptionMenu(language_bar, values=list(LANGUAGES.values()), width=125,
+                                                command=self._set_language_from_label)
+        self.language_menu.set(LANGUAGES[self.language])
+        self.language_menu.grid(row=0, column=1, padx=(0, 10), pady=8)
+        self.language_hint = T.label(language_bar, text(self.language, "language_hint"), 10, text_color=T.MUTED, anchor="w")
+        self.language_hint.grid(row=0, column=2, sticky="ew", padx=(0, 12), pady=8)
         panel = AdvancedFrame(window, fg_color="transparent")
-        panel.grid(row=0, column=0, sticky="nsew",
+        panel.grid(row=1, column=0, sticky="nsew",
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
         self.signal_setup_bubble.configure(text="×", fg_color=T.ERROR)
         panel.on_show()
         window.after_idle(window.lift)
+
+    def _set_language_from_label(self, label):
+        code = next((key for key, value in LANGUAGES.items() if value == label), "en")
+        self.set_language(code)
+
+    def set_language(self, language):
+        """Apply and persist a shell language without touching signal parameters."""
+        language = normalise_language(language)
+        if language == self.language:
+            return
+        self.language = language
+        self.title(text(language, "title"))
+        if self.workstation_label is not None:
+            self.workstation_label.configure(text=text(language, "workstation"))
+        self.mode_label.configure(text=text(language, "simulation") if DRY_RUN else text(language, "hardware"))
+        for key, text_key in self.nav_keys:
+            self.nav_buttons[key].configure(text=text(language, text_key))
+        self.frames["Neural"].set_language(language)
+        if self.research_label is not None:
+            self.research_label.configure(text=f"{text(language, 'research')}   •   v{FIRMWARE_VERSION}")
+        window = self.signal_setup_window
+        if window is not None and window.winfo_exists():
+            window.title(text(language, "settings"))
+            self.language_label.configure(text=text(language, "language"))
+            self.language_menu.set(LANGUAGES[language])
+            self.language_hint.configure(text=text(language, "language_hint"))
+            self.signal_setup_panel.status.configure(text=text(language, "language_applied"), text_color=T.ACCENT)
+        self._save_language()
+
+    def _save_language(self):
+        try:
+            from config_store import load_config, save_config
+            config = load_config()
+            config["language"] = self.language
+            save_config(config)
+        except OSError:
+            log.exception("Could not save UI language")
 
     def close_signal_setup(self):
         window = self.signal_setup_window
@@ -196,10 +253,10 @@ class CTkApp(ctk.CTk):
         stats = self.engine.get_stats()
         if not DRY_RUN:
             dac = self.engine.dac_manager
-            self.mode_label.configure(text="TX DAC READY" if dac.is_ready else "TX DAC UNAVAILABLE",
+            self.mode_label.configure(text=text(self.language, "tx_ready") if dac.is_ready else text(self.language, "tx_unavailable"),
                                       text_color=T.IR if dac.is_ready else T.RED)
 
-        running = "RUNNING" if self.engine._running else "STANDBY"
+        running = text(self.language, "running") if self.engine._running else text(self.language, "standby")
         if self.layout.compact:
             status = (f"{running}  •  Buffer {stats['buffer_fill']}  •  "
                       f"Lost {stats['dropped_samples']}  •  "
@@ -222,6 +279,7 @@ class CTkApp(ctk.CTk):
             if getattr(self.engine, "recording", False):
                 self.engine.stop_recording()
             self.engine.stop_simulation()
+        self.frames["Neural"].shutdown()
         if self.signal_setup_window is not None:
             self.close_signal_setup()
         self.destroy()

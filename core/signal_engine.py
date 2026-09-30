@@ -97,6 +97,8 @@ class SignalEngine:
         self._record_dropped = 0
         self._calibration = None
         self._cal_time = 0.0
+        self._waveform_clip = None
+        self._clip_tick = 0
         self._buf_lock = threading.Lock()
         self._running = False
         self._sample_count = 0
@@ -139,12 +141,16 @@ class SignalEngine:
         log.info("[SignalEngine] Initialized")
         return True
 
-    def start_simulation(self, condition: int = COND_NORMAL, *, calibration=None) -> bool:
+    def start_simulation(self, condition: int = COND_NORMAL, *, calibration=None, waveform_clip=None) -> bool:
         """Start PPG simulation with the given condition."""
+        if waveform_clip is not None:
+            waveform_clip.validate()
+            if calibration is not None:
+                raise ValueError("Only one output source can run")
         log.info(f"[SignalEngine] Starting PPG simulation, condition={condition}")
 
         with self._lock:
-            if self._running:
+            if self._running or any(t and t.is_alive() for t in (self._thread, self._dac_thread)):
                 self._stop_thread()
 
             # Reset buffers
@@ -165,10 +171,17 @@ class SignalEngine:
             with self._model_lock:
                 self._display_history.clear()
                 self._calibration = calibration
+                self._waveform_clip = waveform_clip
+                self._clip_tick = 0
                 self._cal_time = 0.0
                 self.ppg_params.condition = condition
                 self.ppg_model.set_parameters(self.ppg_params)
                 self.ppg_model.reset()
+
+            if waveform_clip is not None:
+                ir, red = waveform_clip.at(0)
+                self._prev_ir = self._curr_ir = self._v_to_dac(ir)
+                self._prev_red = self._curr_red = self._v_to_dac(red)
 
             # Do not pre-fill buffer with DC baseline; start generating immediately
             self._write_idx = 0
@@ -217,6 +230,8 @@ class SignalEngine:
         for thread in (self._thread, self._dac_thread):
             if thread and thread.is_alive():
                 thread.join(timeout=2.0)
+                if thread.is_alive():
+                    raise RuntimeError("Output worker did not stop; refusing a second writer")
 
     # ─── DAC Conversion (Volts → 12-bit) ───
     @staticmethod
@@ -287,7 +302,16 @@ class SignalEngine:
         self._prev_disp_red = self._curr_disp_red
 
         with self._model_lock:
-            if self._calibration is None:
+            if self._waveform_clip is not None:
+                stamp = self._clip_tick * MODEL_DT_PPG
+                if stamp >= self._waveform_clip.duration:
+                    self.state = SIG_STOPPED
+                    self._running = False
+                    return
+                ir_v, red_v = self._waveform_clip.at(stamp)
+                disp_ir, disp_red = ir_v, red_v
+                self._clip_tick += 1
+            elif self._calibration is None:
                 ir_v, red_v, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
                 stamp = self.ppg_model.simulated_time_s
             else:
@@ -301,7 +325,8 @@ class SignalEngine:
                 if len(self._record_samples) == self._record_samples.maxlen:
                     self._record_dropped += 1
                 self._record_samples.append((self._v_to_dac(ir_v), self._v_to_dac(red_v),
-                    p.heart_rate, p.spo2, p.resp_rate, p.perfusion_index, CONDITION_NAMES[p.condition], stamp))
+                    p.heart_rate, p.spo2, p.resp_rate, p.perfusion_index,
+                    self._waveform_clip.name if self._waveform_clip is not None else CONDITION_NAMES[p.condition], stamp))
 
         # DAC voltage mapping: 0 V → 0, 3.28 V → 4095 (12-bit)
         self._curr_ir = self._v_to_dac(ir_v)
@@ -340,6 +365,8 @@ class SignalEngine:
                 continue
 
             for _ in range(ticker.due(time.perf_counter())):
+                if not self._running:
+                    break
                 self._generate_one_tick()
 
             time.sleep(LOOP_YIELD_S)
@@ -362,6 +389,20 @@ class SignalEngine:
                 self.dac_manager.set_values(sample[0], sample[1])
 
             time.sleep(LOOP_YIELD_S)
+
+        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+
+    def start_waveform(self, clip):
+        """Play one finite clip through the same single DAC writer as Classic."""
+        if not self.dac_manager.is_ready:
+            raise RuntimeError("MCP4725 output is unavailable")
+        if self.recording:
+            raise RuntimeError("Stop the Classic recording before playing a waveform clip")
+        return self.start_simulation(self.ppg_params.condition, waveform_clip=clip)
+
+    @property
+    def is_waveform_playing(self):
+        return self._running and self._waveform_clip is not None
 
     # Model mutations and generation share one lock, so a tick sees complete settings.
     def _update_model(self, method, *args, **kwargs):
@@ -498,6 +539,9 @@ class SignalEngine:
         """
         if self._recording:
             return True
+        if self.is_waveform_playing:
+            log.warning("[SignalEngine] Use waveform CSV export for clips; Classic setpoints do not describe GAN output")
+            return False
         if not self._running:
             log.warning("[SignalEngine] start_recording ignored — simulation is stopped")
             return False
