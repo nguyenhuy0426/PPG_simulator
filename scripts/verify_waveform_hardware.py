@@ -65,9 +65,9 @@ def main():
                                raw_std=statistics.pstdev(values) if values else None,
                                measured_sample_rate_hz=(len(rows)-1)/(rows[-1][1]-rows[0][1]) if len(rows)>1 else 0)
         with (args.output/'rx_a0.csv').open('w') as f:
-            w=csv.writer(f);w.writerow(['phase','monotonic_s','raw','saturated']);w.writerows(received)
+            w=csv.writer(f,lineterminator='\n');w.writerow(['phase','monotonic_s','raw','saturated']);w.writerows(received)
         with (args.output/'tx_commanded.csv').open('w') as f:
-            w=csv.writer(f);w.writerow(['time_s','ir_v','red_v']);w.writerows(tx)
+            w=csv.writer(f,lineterminator='\n');w.writerow(['time_s','ir_v','red_v']);w.writerows(tx)
         (args.output/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps(result,indent=2))
     finally:
