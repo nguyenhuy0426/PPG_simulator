@@ -136,7 +136,7 @@ def lib_symbol(name):
 def write_schematic():
     out = [
         f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {ROOT}) (paper "A3")',
-        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-09-29") (rev "1.2") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 32 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
+        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-09-29") (rev "1.3") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 30 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
         "(lib_symbols",
         *(lib_symbol(name) for name in PINS),
         ")",
@@ -168,14 +168,14 @@ def write_schematic():
         ]:
             px = x
             if kind in ("R", "C", "CF") and prop in ("Reference", "Value"):
-                px = x + 1.27
+                px = x + (-8.89 if angle == 90 else 8.89 if kind == "C" else 1.27)
                 py = y + (-2.54 if prop == "Reference" else 2.54)
             if kind == "OPA333" and prop in ("Reference", "Value"):
                 px = x - 15.24
                 py = y + (22.86 if prop == "Reference" else 25.4)
             if kind in ("MountingHole", "Rail", "Return"):
                 py = y - 5 if prop == "Reference" else y - 3
-            out.append(f'(property "{prop}" {q(val)} (at {px} {py} 0) (effects (font (size 1.05 1.05)) {"(hide yes)" if hide or ref.startswith("#") else ""}))')
+            out.append(f'(property "{prop}" {q(val)} (at {px} {py} {angle if kind == "R" else 0}) (effects (font (size 1.05 1.05)) {"(hide yes)" if hide or ref.startswith("#") else ""}))')
         for num, *_ in PINS[kind]:
             out.append(f'(pin "{num}" (uuid {uid(ref + num)}))')
         out.append(f'(instances (project "{NAME}" (path "/{ROOT}" (reference "{ref}") (unit 1)))))')
@@ -197,7 +197,7 @@ def write_schematic():
         place("OPA333", refs["u"], "OPA333AIDBVR", 111.76, y, "PPG:SOT23_5_Hand")
         place("R", refs["rf"], "1M 1%", 111.76, y - 33.02, "PPG:R0805_Hand")
         place("CF", refs["cf"], "22pF C0G", 111.76, y - 22.86, "PPG:C0805_Hand")
-        place("R", refs["rout"], "100R", 149.86, y, "PPG:R0805_Hand")
+        place("R", refs["rout"], "1k 1%", 149.86, y, "PPG:R0805_Hand")
         place("Grove", refs["j"], data["grove"], 185.42, y, "PPG:Header_1x04_P2mm")
 
         # C1/C2 and R1/R2 are two distinct parallel branches.  The upper
@@ -220,6 +220,12 @@ def write_schematic():
         wire((167.64, y), (167.64, y - 7.62))
         wire((167.64, y - 7.62), (175.26, y - 7.62))
         label(f"OUT_{ch}", 157.0, y)
+        place("C", f"C{idx+6}", "1uF X7R 16V", 162.56, y + 15.24, "PPG:C0805_Hand")
+        wire((162.56, y), (162.56, y + 10.16))
+        wire((162.56, y + 20.32), (162.56, y + 25.4))
+        place("Return", f"#PWR{idx*10+9}", "GND", 162.56, y + 25.4)
+        label(f"GND_{ch}", 162.56, y + 25.4)
+        junction(162.56, y, ch + "output-filter")
         for x, yy, tag in ((86.36, y - 2.54, "sum"), (86.36, y - 22.86, "cap-left"),
                            (137.16, y - 22.86, "cap-right"), (137.16, y, "feedback")):
             junction(x, yy, ch + tag)
@@ -258,13 +264,13 @@ def write_schematic():
         label(f"3V3_{ch}", 111.76, y - 12.7)
         place("Return", f"#PWR{idx*10+6}", "GND", 111.76, y + 12.7)
         label(f"GND_{ch}", 111.76, y + 12.7)
-        place("C", refs["cdec"], "100nF X7R", 149.86, y + 17.78, "PPG:C0805_Hand")
-        wire((149.86, y + 12.7), (160.02, y + 12.7))
-        wire((149.86, y + 22.86), (160.02, y + 22.86))
-        for yy, net, kind, number in ((y + 12.7, f"3V3_{ch}", "Rail", 7),
-                                       (y + 22.86, f"GND_{ch}", "Return", 8)):
-            place(kind, f"#PWR{idx*10+number}", net, 160.02, yy)
-            label(net, 160.02, yy)
+        place("C", refs["cdec"], "100nF X7R", 219.71, y - 17.78, "PPG:C0805_Hand")
+        wire((219.71, y - 22.86), (229.87, y - 22.86))
+        wire((219.71, y - 12.7), (229.87, y - 12.7))
+        for yy, net, kind, number in ((y - 22.86, f"3V3_{ch}", "Rail", 7),
+                                       (y - 12.7, f"GND_{ch}", "Return", 8)):
+            place(kind, f"#PWR{idx*10+number}", net, 229.87, yy)
+            label(net, 229.87, yy)
         for pin_y, net in ((y + 2.54, f"3V3_{ch}"),
                            (y + 7.62, f"GND_{ch}")):
             wire((175.26, pin_y), (170.18, pin_y))
@@ -280,6 +286,7 @@ def write_schematic():
         label(net, 210.82, yy)
     text("J3 -> ADS1115: each signal travels with its own channel ground", 243.84, 135.89, 1.15)
     text("Power the ADS1115 separately. J3 does not provide VCC.", 243.84, 141.0, 1.15)
+    text("R3/R4 + C7/C8: 1k / 1uF output low-pass, fc = 159 Hz.", 270, 155, 1.1)
     text("Default gain: 1 MOhm. Approx. VOUT = 0.30 V + IPD x 1 MOhm.", 132.08, 205.74, 1.15)
     text("C1/C2 = 22 pF C0G stability capacitors; all 100 nF capacitors are non-polar ceramic.", 132.08, 211.0, 1.05)
     text("OPA333 SOT-23-5 may be replaced by pin-compatible MCP6001T-I/OT for lower cost.", 132.08, 216.0, 1.05)
@@ -465,7 +472,7 @@ def write_pcb(share, cli):
         for x, y in nodes:
             route(net_name, [(x, y), (hub[0], y), hub], layer, width)
 
-    for start, end in [((100, 100), (170, 100)), ((170, 100), (170, 132)), ((170, 132), (100, 132)), ((100, 132), (100, 100))]:
+    for start, end in [((100, 100), (170, 100)), ((170, 100), (170, 130)), ((170, 130), (100, 130)), ((100, 130), (100, 100))]:
         line(start, end, p.Edge_Cuts, 0.05)
 
     footprints = {}
@@ -476,35 +483,35 @@ def write_pcb(share, cli):
     # node short and leaves the lower edge clear for all three connectors.
     placements = {
         "RED": {
-            "D": ("D1", "BPW34_THT", "BPW34 RED", 115.75, 116.0, 0, False),
+            "D": ("D1", "BPW34_THT", "BPW34 RED", 115.75, 115.0, 0, False),
             "U": ("U1", "SOT23_5_Hand", "OPA333AIDBVR", 119.0, 110.5, 0, True),
             "RF": ("R1", "R0805_Hand", "1M 1%", 119.0, 105.0, 180, True),
             "CF": ("C1", "C0805_Hand", "22pF C0G", 119.0, 107.5, 180, True),
-            "RO": ("R3", "R0805_Hand", "100R", 124.5, 109.55, 180, True),
+            "RO": ("R3", "R0805_Hand", "1k 1%", 124.5, 109.55, 180, True),
             "RT": ("R5", "R0805_Hand", "100k 1%", 108.5, 106.0, 90, True),
             "RB": ("R7", "R0805_Hand", "10k 1%", 108.5, 111.0, 90, True),
             "CV": ("C3", "C0805_Hand", "100nF X7R", 111.5, 111.0, 270, True),
             "CD": ("C5", "C0805_Hand", "100nF X7R", 110.5, 102.5, 0, True),
-            "J": ("J1", "Header_1x04_P2mm", "A2 / RED", 110.5, 127.0, 90, False),
+            "J": ("J1", "Header_1x04_P2mm", "A2 / RED", 110.5, 125.0, 90, False),
         },
         "IR": {
-            "D": ("D2", "BPW34_THT", "BPW34 IR", 154.25, 116.0, 0, False),
+            "D": ("D2", "BPW34_THT", "BPW34 IR", 154.25, 115.0, 0, False),
             "U": ("U2", "SOT23_5_Hand", "OPA333AIDBVR", 151.0, 110.5, 0, True),
             "RF": ("R2", "R0805_Hand", "1M 1%", 151.0, 105.0, 180, True),
             "CF": ("C2", "C0805_Hand", "22pF C0G", 151.0, 107.5, 180, True),
-            "RO": ("R4", "R0805_Hand", "100R", 155.5, 107.5, 180, True),
+            "RO": ("R4", "R0805_Hand", "1k 1%", 155.5, 107.5, 180, True),
             "RT": ("R6", "R0805_Hand", "100k 1%", 161.5, 106.0, 90, True),
             "RB": ("R8", "R0805_Hand", "10k 1%", 161.5, 111.0, 90, True),
             "CV": ("C4", "C0805_Hand", "100nF X7R", 158.5, 111.0, 270, True),
             "CD": ("C6", "C0805_Hand", "100nF X7R", 159.5, 102.5, 180, True),
-            "J": ("J2", "Header_1x04_P2mm", "A0 / IR", 153.5, 127.0, 90, False),
+            "J": ("J2", "Header_1x04_P2mm", "A0 / IR", 153.5, 125.0, 90, False),
         },
     }
     for ch in ("RED", "IR"):
         for key, args in placements[ch].items():
             footprints[args[0]] = add(*args)
-    footprints["J3"] = add("J3", "Header_1x04_P2.54mm", "ADS1115: RED/GND/IR/GND", 122.0, 127.0, 90, False)
-    for index, (x, y) in enumerate(((104.5, 103.5), (165.5, 103.5), (104.5, 128.5), (165.5, 128.5)), 1):
+    footprints["J3"] = add("J3", "Header_1x04_P2.54mm", "ADS1115: RED/GND/IR/GND", 122.0, 125.0, 90, False)
+    for index, (x, y) in enumerate(((104.5, 103.5), (165.5, 103.5), (104.5, 126.5), (165.5, 126.5)), 1):
         fp = add(f"H{index}", "MountingHole_M3", "M3 / 3.2mm NPTH", x, y)
         fp.Reference().SetVisible(False)
         fp.Value().SetVisible(False)
@@ -546,9 +553,9 @@ def write_pcb(share, cli):
 
             # Supply stays at the outside edge until it reaches the local
             # decoupler and op-amp; this keeps it away from the summing node.
-            via("3V3_RED", 108.0, 125.0)
-            route("3V3_RED", [j_vdd, (j_vdd[0], 130.0), (108.0, 130.0), (108.0, 125.0)], p.F_Cu, 0.4)
-            route("3V3_RED", [(108.0, 125.0), (101.0, 125.0), (101.0, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
+            via("3V3_RED", 108.0, 123.0)
+            route("3V3_RED", [j_vdd, (j_vdd[0], 128.0), (108.0, 128.0), (108.0, 123.0)], p.F_Cu, 0.4)
+            route("3V3_RED", [(108.0, 123.0), (101.0, 123.0), (101.0, 106.0), (107.5, 106.0), (107.5, 105.0), rt_vdd], p.B_Cu, 0.4)
             route("3V3_RED", [rt_vdd, (111.55, rt_vdd[1]), (111.55, cd_vdd[1]), cd_vdd], p.B_Cu, 0.35)
             via("3V3_RED", 112.5, 102.5)
             via("3V3_RED", 116.5, 108.5)
@@ -574,9 +581,9 @@ def write_pcb(share, cli):
             route("VREF_IR", [(159.5, 106.5), (159.5, 104.0), (153.5, 104.0), (153.5, 113.0)], p.F_Cu, 0.22)
             route("VREF_IR", [(153.5, 113.0), (u_ref[0], 113.0), u_ref], p.B_Cu, 0.22)
 
-            via("3V3_IR", 162.0, 125.0)
-            route("3V3_IR", [j_vdd, (j_vdd[0], 130.0), (162.0, 130.0), (162.0, 125.0)], p.F_Cu, 0.4)
-            route("3V3_IR", [(162.0, 125.0), (169.0, 125.0), (169.0, 106.0), (rt_vdd[0], 106.0), rt_vdd], p.B_Cu, 0.4)
+            via("3V3_IR", 162.0, 123.0)
+            route("3V3_IR", [j_vdd, (j_vdd[0], 128.0), (162.0, 128.0), (162.0, 123.0)], p.F_Cu, 0.4)
+            route("3V3_IR", [(162.0, 123.0), (169.0, 123.0), (169.0, 106.0), (162.5, 106.0), (162.5, 105.0), rt_vdd], p.B_Cu, 0.4)
             route("3V3_IR", [rt_vdd, (158.45, rt_vdd[1]), (158.45, cd_vdd[1]), cd_vdd], p.B_Cu, 0.35)
             via("3V3_IR", 157.5, 102.5)
             via("3V3_IR", 148.5, 108.5)
@@ -606,28 +613,34 @@ def write_pcb(share, cli):
         outline = zone.Outline()
         outline.NewOutline()
         left, right = (100.6, 133.0) if ch == "RED" else (137.0, 169.4)
-        for x, y in ((left, 100.6), (right, 100.6), (right, 131.4), (left, 131.4)):
+        for x, y in ((left, 100.6), (right, 100.6), (right, 129.4), (left, 129.4)):
             outline.Append(int(mm(x)), int(mm(y)))
         board.Add(zone)
 
     # Output header: signal and matching return for each isolated channel.
     j1, j2, j3 = footprints["J1"], footprints["J2"], footprints["J3"]
-    route("OUT_RED", [pad_xy(j1, 1), (pad_xy(j1, 1)[0], 124.0), (pad_xy(j3, 1)[0], 124.0), pad_xy(j3, 1)], p.F_Cu, 0.3)
-    route("OUT_IR", [pad_xy(j2, 1), (pad_xy(j2, 1)[0], 122.5), (pad_xy(j3, 3)[0], 122.5), pad_xy(j3, 3)], p.F_Cu, 0.3)
-    route("GND_IR", [pad_xy(j3, 4), (pad_xy(j3, 4)[0], 130.0), (137.2, 130.0)], p.B_Cu, 0.4)
+    route("OUT_RED", [pad_xy(j1, 1), (pad_xy(j1, 1)[0], 122.0), (pad_xy(j3, 1)[0], 122.0), pad_xy(j3, 1)], p.F_Cu, 0.3)
+    route("OUT_IR", [pad_xy(j2, 1), (pad_xy(j2, 1)[0], 120.5), (pad_xy(j3, 3)[0], 120.5), pad_xy(j3, 3)], p.F_Cu, 0.3)
+    route("GND_IR", [pad_xy(j3, 4), (pad_xy(j3, 4)[0], 128.0), (137.2, 128.0)], p.B_Cu, 0.4)
+
+    for idx,ch,cx,jx in ((1,"RED",114,110.5),(2,"IR",157,153.5)):
+        co=add(f"C{idx+6}","C0805_Hand","1uF X7R 16V",cx,122,180,True)
+        co.Reference().SetPosition(vec(cx+3.0,122)); co.Reference().SetTextAngle(p.EDA_ANGLE(0,p.DEGREES_T))
+        route(f"OUT_{ch}",[pad_xy(co,1),(jx,122)],p.B_Cu,.3)
+        if ch=="IR": via("OUT_IR",jx,122)
 
     # Reference labels and mechanical keep-out marks.
     for ch, cx, jx in (("RED", 115.75, 110.5), ("IR", 154.25, 153.5)):
         silk(f"{ch} / " + ("A2" if ch == "RED" else "A0"), cx, 102.0, 1.15)
-        silk("K", cx - 2.55, 113.0, 0.8)
-        silk("A", cx + 2.55, 113.0, 0.8)
-        silk("S NC V G", jx + 3, 130.5, 0.8)
-        line((cx - 1, 116), (cx + 1, 116), p.Dwgs_User, 0.1)
-        line((cx, 115), (cx, 117), p.Dwgs_User, 0.1)
-    silk("R GR I GI", 125.81, 130.5, 0.8)
-    silk("PPG BPW34 RX v1.2", 135, 102.0, 0.9)
+        silk("K", cx - 2.55, 112.0, 0.8)
+        silk("A", cx + 2.55, 112.0, 0.8)
+        silk("S NC V G", jx + 3, 128.5, 0.8)
+        line((cx - 1, 115), (cx + 1, 115), p.Dwgs_User, 0.1)
+        line((cx, 114), (cx, 116), p.Dwgs_User, 0.1)
+    silk("R GR I GI", 125.81, 128.5, 0.8)
+    silk("PPG BPW34 RX v1.3", 135, 102.0, 0.9)
     silk("3.3V ONLY", 135, 104.5, 0.8)
-    silk("70 x 32 mm", 135, 107.0, 0.8)
+    silk("70 x 30 mm", 135, 107.0, 0.8)
     silk("BPW34 MARK = K", 135, 120.0, 0.8)
     silk("DATN: PPG-Simulator", 135, 101.8, 0.82, p.B_SilkS, True)
     silk("Nguyen Nhat Huy - Pham Thanh Vy", 135, 103.8, 0.8, p.B_SilkS, True)
@@ -643,10 +656,10 @@ def write_pcb(share, cli):
     for ref, (title, labels) in rear_connectors.items():
         fp = footprints[ref]
         pad_positions = [pad_xy(fp, pin) for pin in range(1, 5)]
-        silk(title, sum(x for x, _ in pad_positions) / 4, 125.3, 0.8, p.B_SilkS, True)
+        silk(title, sum(x for x, _ in pad_positions) / 4, 123.3, 0.8, p.B_SilkS, True)
         for pin, label in enumerate(labels, 1):
             x, _ = pad_xy(fp, pin)
-            silk(label, x, 130.0, 0.8, p.B_SilkS, True, 90)
+            silk(label, x, 128.0, 0.8, p.B_SilkS, True, 90)
 
     for ref, channel in (("D1", "RED"), ("D2", "IR")):
         fp = footprints[ref]
@@ -678,8 +691,8 @@ def write_pcb(share, cli):
         label.SetTextSize(vec(0.8, 0.8))
         label.SetTextThickness(mm(0.11))
 
-    line((133.5, 100.5), (133.5, 131.5), p.Dwgs_User, 0.1)
-    line((136.5, 100.5), (136.5, 131.5), p.Dwgs_User, 0.1)
+    line((133.5, 100.5), (133.5, 129.5), p.Dwgs_User, 0.1)
+    line((136.5, 100.5), (136.5, 129.5), p.Dwgs_User, 0.1)
     p.ZONE_FILLER(board).Fill(board.Zones())
     p.SaveBoard(str(HERE / f"{NAME}.kicad_pcb"), board)
 
@@ -690,10 +703,11 @@ def write_bom():
         ("U1,U2", "OPA333AIDBVR", "SOT-23-5", "2", "MCP6001T-I/OT is a pin-compatible low-cost alternative"),
         ("R1,R2", "1M 1%", "0805", "2", "TIA feedback; reduce to 330k if output saturates"),
         ("C1,C2", "22pF C0G/NP0 50V", "0805", "2", "TIA stability capacitor"),
-        ("R3,R4", "100R", "0805", "2", "ADC/cable output isolation"),
+        ("R3,R4", "1k 1%", "0805", "2", "Output RC series resistor"),
         ("R5,R6", "100k 1%", "0805", "2", "VREF divider top"),
         ("R7,R8", "10k 1%", "0805", "2", "VREF divider bottom"),
         ("C3,C4", "100nF X7R 25V", "0805", "2", "VREF filter"),
+        ("C7,C8", "1uF X7R 16V", "0805", "2", "Output RC capacitor after 1k resistor"),
         ("C5,C6", "100nF X7R 25V", "0805", "2", "Op-amp supply bypass"),
         ("J1,J2", "1x4 male 2.00mm", "THT vertical", "2", "Grove A2 RED and A0 IR"),
         ("J3", "1x4 male 2.54mm", "THT vertical", "1", "OUT_RED,GND_RED,OUT_IR,GND_IR"),

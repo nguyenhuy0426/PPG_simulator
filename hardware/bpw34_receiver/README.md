@@ -1,6 +1,6 @@
 # Dual BPW34 receiver for DATN: PPG-Simulator
 
-This is a complete KiCad 10 project for a 70 x 32 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The BPW34 optical centres remain 38.5 mm apart and use the same four M3 mounting-hole locations as the existing receiver frame.
+This is a complete KiCad 10 project for a 70 x 30 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The BPW34 optical centres remain 38.5 mm apart and use the same four M3 mounting-hole locations as the existing receiver frame.
 
 ## Electrical design
 
@@ -8,7 +8,7 @@ Each channel is independent and contains one BPW34, one OPA333 transimpedance am
 
 `VOUT approximately 0.30 V + IPD x 1 Mohm`
 
-The 100 ohm output resistor isolates the op-amp from cable and ADC input capacitance. C1/C2 are C0G/NP0 because their value sets TIA stability; C3-C6 are non-polar 100 nF X7R ceramic capacitors. No electrolytic capacitor is required.
+R3/R4 = 1 kohm and C7/C8 = 1 uF X7R 16 V form an output low-pass filter (159 Hz nominal). The capacitor connects after the resistor to its channel ground. Attenuation at 20 Hz is approximately 0.8%; this is not a 50 Hz notch filter. C1/C2 are C0G/NP0 because their value sets TIA stability; C3-C6 are non-polar 100 nF X7R ceramic capacitors. No electrolytic capacitor is required.
 
 The preferred amplifier is `OPA333AIDBVR` in SOT-23-5. The lower-cost `MCP6001T-I/OT` has the same pinout and footprint, but higher offset and drift. The board does not support LM358 because its input/output headroom is a poor match for a 3.3 V photodiode TIA.
 
@@ -32,11 +32,11 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
 
 ## Manufacturing and assembly
 
-- 2 layers, FR-4, 1.6 mm, 70 x 32 mm.
+- 2 layers, FR-4, 1.6 mm, 70 x 30 mm.
 - Solder D1/D2 and the three headers on the front.
 - Solder U1/U2 and all 0805 parts on the rear.
 - The rear components are arranged as two channel blocks: the feedback pair is
-  in the upper row, the OPA333 and 100 ohm output path are in the middle, and
+  in the upper row, the OPA333 and 1 kohm output path are in the middle, and
   the VREF divider is in the outer column. All reference designators read
   horizontally from the rear.
 - The high-impedance `SUM_RED`, `SUM_IR`, `FB_RED`, and `FB_IR` routes remain
@@ -71,3 +71,7 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
 - `mechanical/`: adapter STLs, collision report and nominal optical report.
 
 The CAD checks do not prove analog gain, noise, optical leakage, print shrinkage or physical fit. Measure the real LED current/output and perform a dark-box leakage test before ordering a large batch.
+
+## Compact mechanical revision v1.3
+
+Use `mechanical/frame_70x30_bpw34_print.stl`. Optical centres are (15.75,15) and (54.25,15) mm on the PCB, maintaining the original world optical axes. Header row is Y=25 mm; M3 hole centres are X=4.5/65.5, Y=3.5/26.5 mm. The old 70x32 frame is superseded.

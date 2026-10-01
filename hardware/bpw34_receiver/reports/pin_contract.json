@@ -64,7 +64,7 @@
       "pass": true
     },
     {
-      "check": "25 physical footprints",
+      "check": "27 physical footprints",
       "pass": true
     },
     {
@@ -84,7 +84,23 @@
       "pass": true
     },
     {
-      "check": "32 mm board width",
+      "check": "30 mm board width",
+      "pass": true
+    },
+    {
+      "check": "R3 output series value",
+      "pass": true
+    },
+    {
+      "check": "C7 output filter value",
+      "pass": true
+    },
+    {
+      "check": "R4 output series value",
+      "pass": true
+    },
+    {
+      "check": "C8 output filter value",
       "pass": true
     },
     {
@@ -108,7 +124,7 @@
       "pass": true
     },
     {
-      "check": "both optical centres at board y=116 mm",
+      "check": "both optical centres at board y=115 mm",
       "pass": true
     },
     {
@@ -348,83 +364,35 @@
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/3V3_IR routed segment is horizontal or vertical",
+      "check": "/OUT_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
@@ -500,91 +468,115 @@
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/3V3_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_IR routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "check": "/SUM_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED routed segment is horizontal or vertical",
+      "check": "/SUM_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "check": "/OUT_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED routed segment is horizontal or vertical",
+      "check": "/OUT_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "check": "/OUT_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED routed segment is horizontal or vertical",
+      "check": "/OUT_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/OUT_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
@@ -604,91 +596,87 @@
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/OUT_RED routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_IR routed segment is horizontal or vertical",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_IR routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "/SUM_IR high-impedance segment stays on B.Cu",
+      "check": "/3V3_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
@@ -724,67 +712,115 @@
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/SUM_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/SUM_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/SUM_IR routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/SUM_IR high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/FB_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/FB_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/FB_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/FB_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
-      "check": "/SUM_RED routed segment is horizontal or vertical",
+      "check": "/FB_RED routed segment is horizontal or vertical",
       "pass": true
     },
     {
-      "check": "/SUM_RED high-impedance segment stays on B.Cu",
+      "check": "/FB_RED high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR routed segment is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR high-impedance segment stays on B.Cu",
       "pass": true
     },
     {
@@ -889,54 +925,6 @@
     },
     {
       "check": "/VREF_RED routed segment is horizontal or vertical",
-      "pass": true
-    },
-    {
-      "check": "J3.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.3 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.4 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D1.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D1.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "D2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.3 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.4 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -956,19 +944,99 @@
       "pass": true
     },
     {
-      "check": "C6.1 PCB agrees with netlist",
+      "check": "D1.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "C6.2 PCB agrees with netlist",
+      "check": "D1.2 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "C1.1 PCB agrees with netlist",
+      "check": "J3.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "C1.2 PCB agrees with netlist",
+      "check": "J3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.3 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.4 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "D2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C3.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C3.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R7.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -992,35 +1060,11 @@
       "pass": true
     },
     {
-      "check": "R1.1 PCB agrees with netlist",
+      "check": "C8.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "R1.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R4.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R4.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R7.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R7.2 PCB agrees with netlist",
+      "check": "C8.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1032,30 +1076,6 @@
       "pass": true
     },
     {
-      "check": "R6.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R6.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R5.1 PCB agrees with netlist",
-      "pass": true
-    },
-    {
-      "check": "R5.2 PCB agrees with netlist",
-      "pass": true
-    },
-    {
       "check": "C5.1 PCB agrees with netlist",
       "pass": true
     },
@@ -1064,11 +1084,11 @@
       "pass": true
     },
     {
-      "check": "C3.1 PCB agrees with netlist",
+      "check": "C6.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "C3.2 PCB agrees with netlist",
+      "check": "C6.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1080,11 +1100,35 @@
       "pass": true
     },
     {
-      "check": "R3.1 PCB agrees with netlist",
+      "check": "C1.1 PCB agrees with netlist",
       "pass": true
     },
     {
-      "check": "R3.2 PCB agrees with netlist",
+      "check": "C1.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C7.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "C7.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.2 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R4.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1105,6 +1149,14 @@
     },
     {
       "check": "U2.5 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.1 PCB agrees with netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.2 PCB agrees with netlist",
       "pass": true
     },
     {
@@ -1324,5 +1376,5 @@
       "pass": true
     }
   ],
-  "passed": 329
+  "passed": 342
 }

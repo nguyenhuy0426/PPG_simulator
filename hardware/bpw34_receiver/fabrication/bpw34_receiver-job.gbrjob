@@ -5,7 +5,7 @@
       "Application": "Pcbnew",
       "Version": "10.0.6"
     },
-    "CreationDate": "2026-09-29T20:32:22+07:00"
+    "CreationDate": "2026-10-01T22:33:47+07:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
@@ -15,7 +15,7 @@
     },
     "Size": {
       "X": 70.05,
-      "Y": 32.05
+      "Y": 30.05
     },
     "LayerNumber": 2,
     "BoardThickness": 1.6,
@@ -34,37 +34,47 @@
   ],
   "FilesAttributes": [
     {
-      "Path": "bpw34_receiver-F_Cu.gtl",
+      "Path": "bpw34_receiver-F_Cu.gbr",
       "FileFunction": "Copper,L1,Top",
       "FilePolarity": "Positive"
     },
     {
-      "Path": "bpw34_receiver-B_Cu.gbl",
+      "Path": "bpw34_receiver-B_Cu.gbr",
       "FileFunction": "Copper,L2,Bot",
       "FilePolarity": "Positive"
     },
     {
-      "Path": "bpw34_receiver-F_Silkscreen.gto",
+      "Path": "bpw34_receiver-F_Paste.gbr",
+      "FileFunction": "SolderPaste,Top",
+      "FilePolarity": "Positive"
+    },
+    {
+      "Path": "bpw34_receiver-B_Paste.gbr",
+      "FileFunction": "SolderPaste,Bot",
+      "FilePolarity": "Positive"
+    },
+    {
+      "Path": "bpw34_receiver-F_Silkscreen.gbr",
       "FileFunction": "Legend,Top",
       "FilePolarity": "Positive"
     },
     {
-      "Path": "bpw34_receiver-B_Silkscreen.gbo",
+      "Path": "bpw34_receiver-B_Silkscreen.gbr",
       "FileFunction": "Legend,Bot",
       "FilePolarity": "Positive"
     },
     {
-      "Path": "bpw34_receiver-F_Mask.gts",
+      "Path": "bpw34_receiver-F_Mask.gbr",
       "FileFunction": "SolderMask,Top",
       "FilePolarity": "Negative"
     },
     {
-      "Path": "bpw34_receiver-B_Mask.gbs",
+      "Path": "bpw34_receiver-B_Mask.gbr",
       "FileFunction": "SolderMask,Bot",
       "FilePolarity": "Negative"
     },
     {
-      "Path": "bpw34_receiver-Edge_Cuts.gm1",
+      "Path": "bpw34_receiver-Edge_Cuts.gbr",
       "FileFunction": "Profile",
       "FilePolarity": "Positive"
     }

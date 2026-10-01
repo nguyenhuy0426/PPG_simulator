@@ -64,7 +64,7 @@ def led_tip_x(lane):
 
 def main():
     fixed = {name: trimesh.load(STL / f"{name}.stl", force="mesh") for name in ("body", "lid")}
-    frame = trimesh.load(HERE / "frame_70x32_bpw34_assembly.stl", force="mesh")
+    frame = trimesh.load(HERE / "frame_70x30_bpw34_assembly.stl", force="mesh")
     checks, lanes = [], {}
 
     def record(name, condition, **data):

@@ -1,0 +1,5 @@
+(fp_lib_table (version 7)
+(lib (name "OPT_PPG") (type "KiCad") (uri "${KIPRJMOD}/OPT_PPG.pretty") (options "") (descr "Panel source footprint"))
+(lib (name "BPW_PPG") (type "KiCad") (uri "${KIPRJMOD}/BPW_PPG.pretty") (options "") (descr "Panel source footprint"))
+(lib (name "TX_TX") (type "KiCad") (uri "${KIPRJMOD}/TX_TX.pretty") (options "") (descr "Panel source footprint"))
+)

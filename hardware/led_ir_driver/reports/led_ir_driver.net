@@ -2,7 +2,7 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/led_ir_driver/led_ir_driver.kicad_sch</source>
-    <date>2026-09-29T21:11:43</date>
+    <date>2026-10-01T18:02:36</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
@@ -590,7 +590,7 @@
       <property name="Sheetname" value="led_ir_driver"/>
       <property name="Sheetfile" value="led_ir_driver.kicad_sch"/>
       <sheetpath names="/" tstamps="/"/>
-      <tstamps>5d76f153-92a0-5f49-af80-b3dc5651078c 44f05839-4495-58ac-b41c-fbb0d9cdd293 0f8befd3-432a-5f49-83fc-cdb225b188bc</tstamps>
+      <tstamps>44f05839-4495-58ac-b41c-fbb0d9cdd293 5d76f153-92a0-5f49-af80-b3dc5651078c 0f8befd3-432a-5f49-83fc-cdb225b188bc</tstamps>
       <units>
         <unit name="A">
           <pins>

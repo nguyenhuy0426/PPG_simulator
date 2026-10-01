@@ -1,3 +1,5 @@
+> Ghi chú lịch sử yêu cầu ban đầu. Kích thước gia công mới là 70 × 50 mm; dùng README.md và mechanical/README.md cho revision v1.7.
+
 # LED / IR driver — thiết kế đang triển khai
 
 Pinout đã được người dùng xác nhận bằng ảnh: từ trên xuống

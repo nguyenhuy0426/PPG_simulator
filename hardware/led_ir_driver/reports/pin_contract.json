@@ -259,31 +259,11 @@
       "pass": true
     },
     {
-      "check": "R9.1 PCB/netlist match",
+      "check": "R7.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R9.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.3 PCB/netlist match",
+      "check": "R7.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -295,87 +275,11 @@
       "pass": true
     },
     {
-      "check": "R3.1 PCB/netlist match",
+      "check": "C4.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.5 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.6 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.5 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.6 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R7.2 PCB/netlist match",
+      "check": "C4.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -411,78 +315,6 @@
       "pass": true
     },
     {
-      "check": "R8.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R8.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R1.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C5.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C5.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J6.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J6.2 PCB/netlist match",
-      "pass": true
-    },
-    {
       "check": "R4.1 PCB/netlist match",
       "pass": true
     },
@@ -512,6 +344,174 @@
     },
     {
       "check": "J1.6 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J5.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J5.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.5 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.6 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R8.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R8.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.5 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.6 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C5.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C5.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R9.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R9.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J6.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J6.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -639,7 +639,7 @@
       "pass": true
     },
     {
-      "check": "70x55mm outline",
+      "check": "70x50mm outline",
       "pass": true
     },
     {
@@ -767,10 +767,6 @@
       "pass": true
     },
     {
-      "check": "Rear pin label has no numeric prefix: AMP_I",
-      "pass": true
-    },
-    {
       "check": "Rear pin label has no numeric prefix: SNS_I",
       "pass": true
     },
@@ -784,6 +780,10 @@
     },
     {
       "check": "Rear pin label has no numeric prefix: J1 IR DAC",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: AMP_I",
       "pass": true
     },
     {
@@ -947,11 +947,11 @@
       "pass": true
     },
     {
-      "check": "Rear pin label has no numeric prefix: J4 RED OUT",
+      "check": "Rear pin label has no numeric prefix: 5V",
       "pass": true
     },
     {
-      "check": "Rear pin label has no numeric prefix: 5V",
+      "check": "Rear pin label has no numeric prefix: J4 RED OUT",
       "pass": true
     },
     {

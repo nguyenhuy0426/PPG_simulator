@@ -234,6 +234,31 @@ def board(share,cli):
         else: raise RuntimeError('No refdes position for '+fp.GetReference())
     from route_board import route_board
     route_board(b)
+    # Compact v1.7: preserve all copper routing relationships, translate the
+    # populated region upward, and relocate the two upper mounting holes.
+    for item in list(b.GetFootprints())+list(b.GetTracks())+list(b.GetDrawings())+list(b.Zones()):
+        item.Move(vec(0,-5))
+    for item in list(b.GetDrawings()):
+        if item.GetLayer()==p.Edge_Cuts: b.Remove(item)
+    for a,c in [((0,0),(70,0)),((70,0),(70,50)),((70,50),(0,50)),((0,50),(0,0))]: line(a,c,p.Edge_Cuts)
+    for i,(x,y) in enumerate(((4,25),(66,25),(4,46),(66,46)),1):
+        footprints[f'H{i}'].SetPosition(vec(100+x,100+y))
+        next(iter(footprints[f'H{i}'].Pads())).SetLocalClearance(mm(.8))
+    for z in b.Zones():
+        z.Outline().RemoveAllContours(); poly=z.Outline(); poly.NewOutline()
+        for x,y in ((100.6,100.6),(169.4,100.6),(169.4,149.4),(100.6,149.4)): poly.Append(vec(x,y).x,vec(x,y).y)
+    for t in b.GetDrawings():
+        if not isinstance(t,p.PCB_TEXT): continue
+        txt=t.GetText()
+        if txt=='PPG TX  v1.6': t.SetText('PPG TX v1.7'); t.SetPosition(vec(135,100.9)); t.SetTextSize(vec(.8,.8))
+        if txt=='DAC: 3.3V ONLY': t.SetPosition(vec(117,119.9)); t.SetTextSize(vec(.8,.8))
+        if txt=='SAME Pi BUS': t.SetPosition(vec(135,102.7))
+        if txt.startswith('MCP4725'): t.SetPosition(vec(p.ToMM(t.GetPosition().x),101.0))
+        if txt.startswith('ADDR='): t.SetPosition(vec(p.ToMM(t.GetPosition().x),102.8))
+        if txt=='DATN: PPG-Simulator': t.SetPosition(vec(135,100.9))
+        if txt=='Nguyen Nhat Huy - Pham Thanh Vy': t.SetPosition(vec(135,119.4)); t.SetTextSize(vec(.8,.8))
+        if t.GetLayer()==p.B_SilkS and txt=='AMP_I': t.SetPosition(vec(109,123.9))
+        if t.GetLayer()==p.B_SilkS and txt=='5V' and p.ToMM(t.GetPosition().x)>160: t.SetPosition(vec(161,125.19))
     p.ZONE_FILLER(b).Fill(b.Zones())
     p.SaveBoard(str(HERE/f'{NAME}.kicad_pcb'),b)
 

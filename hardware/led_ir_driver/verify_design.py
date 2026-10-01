@@ -75,8 +75,8 @@ check('Bottom GND plane present',any(z.GetLayer()==p.B_Cu and z.GetNetname()=='/
 for ref,value in [('R4','100R 1% 0.25W'),('R9','100R 1% 0.25W')]: check(ref+' sense value',fps[ref].GetValue()==value)
 edges=[d for d in board.GetDrawings() if d.GetLayer()==p.Edge_Cuts]
 xy=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
-check('70x55mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-55)<1e-6)
-for i,(x,y) in enumerate([(104,104),(166,104),(104,151),(166,151)],1):
+check('70x50mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-50)<1e-6)
+for i,(x,y) in enumerate([(104,125),(166,125),(104,146),(166,146)],1):
     fp=fps[f'H{i}']; pos=fp.GetPosition(); pad=list(fp.Pads())[0]
     check(f'H{i} matches model mounting',abs(p.ToMM(pos.x)-x)<1e-6 and abs(p.ToMM(pos.y)-y)<1e-6 and abs(p.ToMM(pad.GetDrillSize().x)-3.2)<1e-6)
 for s in ['DATN: PPG-Simulator','Nguyen Nhat Huy - Pham Thanh Vy']:

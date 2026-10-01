@@ -21,20 +21,24 @@ def check(name,condition):
 for i,ch in [(1,'RED'),(2,'IR')]:
     for net,expected in {
         f'/3V3_{ch}':{(f'U{i}','1'),(f'C{i}','1'),(f'J{i}','3')},
-        f'/GND_{ch}':{(f'U{i}','3'),(f'U{i}','8'),(f'C{i}','2'),(f'J{i}','4')},
-        f'/OUT_{ch}':{(f'U{i}','4'),(f'U{i}','5'),(f'J{i}','1'),('J3',str(i))},
+        f'/GND_{ch}':{(f'U{i}','3'),(f'U{i}','8'),(f'C{i}','2'),(f'J{i}','4'),(f'C{i+2}','2')},
+        f'/RAW_{ch}':{(f'U{i}','4'),(f'U{i}','5'),(f'R{i}','1')},
+        f'/OUT_{ch}':{(f'R{i}','2'),(f'C{i+2}','1'),(f'J{i}','1'),('J3',str(i))},
     }.items(): check(net+' exact pin set',nets.get(net)==expected)
     for ref,pin in [(f'U{i}','2'),(f'U{i}','6'),(f'U{i}','7'),(f'J{i}','2')]:
         check(f'{ref}.{pin} intentionally isolated',any(s=={(ref,pin)} for n,s in nets.items() if n.startswith('unconnected-')))
 fps={fp.GetReference():fp for fp in b.GetFootprints()}
-check('11 physical footprints',len(fps)==11)
+check('15 physical footprints',len(fps)==15)
 check('2 copper layers',b.GetCopperLayerCount()==2)
 check('1.6mm substrate',abs(p.ToMM(b.GetDesignSettings().GetBoardThickness())-1.6)<1e-6)
 edges=[x for x in b.GetDrawings() if x.GetLayer()==p.Edge_Cuts]
 vertices=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
 check('four closed straight board edges',len(edges)==4 and len({(pt.x,pt.y) for pt in vertices})==4)
 check('70mm length',abs(p.ToMM(max(pt.x for pt in vertices)-min(pt.x for pt in vertices))-70)<.001)
-check('32mm width (<50mm)',abs(p.ToMM(max(pt.y for pt in vertices)-min(pt.y for pt in vertices))-32)<.001)
+check('30mm width (<50mm)',abs(p.ToMM(max(pt.y for pt in vertices)-min(pt.y for pt in vertices))-30)<.001)
+for i in (1,2):
+    check(f'R{i} output series value',fps[f'R{i}'].GetValue()=='1k 1%')
+    check(f'C{i+2} output filter value',fps[f'C{i+2}'].GetValue()=='1uF X7R 16V')
 for ref in ('U1','U2'):
     pads={x.GetNumber():x for x in fps[ref].Pads()}
     a=pads['1'].GetPosition(); z=pads['8'].GetPosition(); c=pads['2'].GetPosition()
@@ -47,11 +51,11 @@ for ref,pitch in [('J1',2),('J2',2),('J3',2.54)]:
     a=pads['1'].GetPosition(); z=pads['2'].GetPosition()
     actual=math.hypot(p.ToMM(z.x-a.x),p.ToMM(z.y-a.y))
     check(ref+' header pitch',abs(actual-pitch)<1e-6)
-    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-127.0)<1e-6)
+    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-125.0)<1e-6)
 
 # Layout-quality contract: all manually routed copper is Manhattan geometry,
 # and every trace stays at least 1 mm beyond the edge of each M3 drill.
-tracks=[track for track in b.GetTracks() if isinstance(track,p.PCB_TRACK)]
+tracks=[track for track in b.GetTracks() if isinstance(track,p.PCB_TRACK) and not isinstance(track,p.PCB_VIA)]
 for index,track in enumerate(tracks,1):
     a,z=track.GetStart(),track.GetEnd()
     check(f'track {index} is horizontal or vertical',a.x==z.x or a.y==z.y)

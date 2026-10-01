@@ -65,7 +65,7 @@ def plot():
 
     fig, axes = plt.subplots(1, 2, figsize=(18, 7.6), layout="constrained")
     for ax, layer in zip(axes, ("F.Cu", "B.Cu")):
-        ax.add_patch(Rectangle((0, 0), 70, 32, facecolor="#f8fafc", edgecolor="#263341", linewidth=1.3))
+        ax.add_patch(Rectangle((0, 0), 70, 30, facecolor="#f8fafc", edgecolor="#263341", linewidth=1.3))
         for track in data["tracks"]:
             if track["layer"] != layer:
                 continue
@@ -87,7 +87,7 @@ def plot():
         ax.axvspan(33.5, 36.5, color="#111827", alpha=0.06)
         ax.set_title("Top copper / through-hole wiring" if layer == "F.Cu" else "Rear analog layout / B.Cu viewed from top", fontsize=13)
         ax.set_xlim(-1.5, 71.5)
-        ax.set_ylim(33.5, -1.5)
+        ax.set_ylim(31.5, -1.5)
         ax.set_aspect("equal")
         ax.set_xlabel("mm")
         ax.set_ylabel("mm")
@@ -99,7 +99,7 @@ def plot():
         ncol=4,
         frameon=False,
     )
-    fig.suptitle("Dual BPW34 receiver v1.2 - actual routed copper and pad numbers", fontsize=16)
+    fig.suptitle("Dual BPW34 receiver v1.3 - actual routed copper and pad numbers", fontsize=16)
     fig.savefig(HERE / "reports/wiring_guide.png", dpi=180)
     fig.savefig(HERE / "reports/wiring_guide.pdf")
     plt.close(fig)

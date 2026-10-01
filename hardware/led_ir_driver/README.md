@@ -1,9 +1,9 @@
-# DATN: PPG-Simulator — LED / IR driver v1.6
+# DATN: PPG-Simulator — LED / IR driver v1.7
 
-Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 55 mm**,
+Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 50 mm**,
 FR4 1,6 mm; socket module và linh kiện xuyên lỗ để dễ hàn/thay thế.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.6 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
+Schematic v1.7 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
 không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
 rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
@@ -100,9 +100,7 @@ board này không có khóa tắt LED độc lập. Không ghi EEPROM trong lu�
 
 ## Cơ khí và hình xem trước
 
-Kích thước và bốn tâm lỗ lấy từ `docs/system_3d/build_system.py`:
-board 70 × 55 mm, lỗ tại (4,4), (66,4), (4,51), (66,51) mm;
-lỗ Ø3,2 mm cho vít M3. Khổ 70 × 32 mm trước đây thuộc board RX.
+Board mới 70 × 50 mm, lỗ tại (4,25), (66,25), (4,46), (66,46) mm, Ø3,2 mm. Dùng gá chuyển `mechanical/driver_70x50_adapter_print.stl` để lắp lên đế 70 × 55 mm cũ; xem `mechanical/README.md` về chiều lắp và vít.
 Các đầu ra LED nằm sát cạnh hướng về hộp quang theo mô hình driver cũ.
 
 Ảnh module xác nhận pinout nhưng không cho kích thước cơ khí chính xác.
@@ -126,7 +124,7 @@ không mạ Ø3,2 mm. Gia công hai lớp đồng, FR4 1,6 mm, đồng 1 oz.
 - `reports/drc.rpt`: DRC và parity schematic/PCB.
 - `reports/pin_contract.json`: kiểm tra độc lập pinout, nguồn, hồi tiếp,
   header 1:1, footprint, DNP và kích thước.
-- `fabrication/`: Gerber và drill. `../led_ir_driver_gerbers.zip`: gói nhà in.
+- `fabrication/`: Gerber và drill. `../PPG_LED_IR_driver.zip`: gói board lẻ. Panel ghép mới nằm trong `../PPG_3boards_VCUT_panel.zip`.
 - `BOM.csv`: danh sách footprint trên board; mua thêm hai module MCP4725,
   một LM358P và hai socket cái 1×6, một socket DIP-8 theo BOM.
 

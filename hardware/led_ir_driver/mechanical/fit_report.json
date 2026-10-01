@@ -1,0 +1,64 @@
+{
+  "adapter_mm": [
+    70.0,
+    55.0,
+    6.0
+  ],
+  "pcb_mm": [
+    70,
+    50,
+    1.6
+  ],
+  "old_base_holes_mm": [
+    [
+      4,
+      4
+    ],
+    [
+      4,
+      51
+    ],
+    [
+      66,
+      4
+    ],
+    [
+      66,
+      51
+    ]
+  ],
+  "new_pcb_holes_mm": [
+    [
+      4,
+      25
+    ],
+    [
+      66,
+      25
+    ],
+    [
+      4,
+      46
+    ],
+    [
+      66,
+      46
+    ]
+  ],
+  "pcb_origin_on_adapter_mm": [
+    0,
+    5,
+    6
+  ],
+  "pcb_height_increase_mm": 6,
+  "checks": {
+    "watertight": true,
+    "single_body": true,
+    "pcb_interference_mm3": 0.0,
+    "solder_interference_mm3": 0.0
+  },
+  "limits": [
+    "Nominal solids only, no physical print/cable test.",
+    "MCP4725 module body dimensions are not measured; check actual modules before manufacture."
+  ]
+}

@@ -1,4 +1,4 @@
-# Tra chân PCB driver v1.6
+# Tra chân PCB driver v1.7
 
 Số chân dưới đây đọc trực tiếp từ PCB đã đi dây. Hai hình trong wiring_guide.png
 đều nhìn từ mặt linh kiện; mặt đồng B.Cu được nhìn xuyên board, không lật ảnh.

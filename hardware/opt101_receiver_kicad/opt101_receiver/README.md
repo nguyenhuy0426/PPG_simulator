@@ -1,4 +1,4 @@
-# PCB thu PPG — OPT101P ×2, 70 × 32 mm
+# PCB thu PPG — OPT101P ×2, 70 × 30 mm
 
 Mở **`opt101_receiver.kicad_pro` bằng KiCad 10**, rồi mở schematic hoặc PCB.
 Thiết kế đã đi dây hai lớp, có thư viện symbol, footprint và mô hình 3D cục bộ.
@@ -15,6 +15,8 @@ ra, `V` là 3,3 V, `GR/GI` là ground theo kênh, `FB` là hồi tiếp và `NC`
 |---|---|---:|
 | U1, U2 | OPT101P dạng PDIP-8, cắm socket DIP-8 rộng 7,62 mm, bước chân 2,54 mm | 2 IC + 2 socket |
 | C1, C2 | Tụ gốm đĩa xuyên lỗ **100 nF, 50 V, X7R**, mã thường in `104`; thân tối đa Ø5 mm, bước chân 2,50 mm | 2 |
+| R1, R2 | 1 kΩ 1%, SMD 0805, lọc ngõ ra | 2 |
+| C3, C4 | 1 µF X7R 16 V, SMD 0805, không phân cực | 2 |
 | J1, J2 | Header đực thẳng 1×4, bước 2,00 mm | 2 |
 | J3 | Header đực thẳng 1×2, bước 2,54 mm | 1 |
 | H1–H4 | Lỗ không mạ Ø3,2 mm; dùng vít M3×4 với khung mới | 4 |
@@ -56,8 +58,8 @@ Cắm cả hai cáp Grove để cấp nguồn đủ hai kênh. Không cấp 5 V 
 
 | Chân | Tín hiệu | Cách nối dự kiến |
 |---|---|---|
-| 1 — pad vuông, RED | OUT_RED, cùng net U1.5 và J1.1 | ADS1115 AIN0 |
-| 2 — IR | OUT_IR, cùng net U2.5 và J2.1 | ADS1115 AIN1 |
+| 1 — pad vuông, RED | OUT_RED, sau R1, cùng net J1.1 | ADS1115 AIN0 |
+| 2 — IR | OUT_IR, sau R2, cùng net J2.1 | ADS1115 AIN1 |
 
 J3 là ngõ lấy tín hiệu song song, không có buffer, không có nguồn hoặc GND.
 ADS1115 cần được cấp nguồn riêng phù hợp và **nối GND về cùng GND HAT/Pi**.
@@ -68,24 +70,24 @@ việc đọc đồng thời với Grove chưa được thử trên phần cứn
 
 ## Kích thước và khớp mô hình 3D
 
-Board **70 × 32 × 1,6 mm**, hai lớp đồng. Tọa độ dưới đây tính từ góc trên
+Board **70 × 30 × 1,6 mm**, hai lớp đồng. Tọa độ dưới đây tính từ góc trên
 trái board khi nhìn mặt linh kiện:
 
 | Vị trí | X (mm) | Y (mm) |
 |---|---:|---:|
-| Tâm package/socket U1 Red | 15,75 | 16,00 |
-| Tâm package/socket U2 IR | 54,25 | 16,00 |
+| Tâm package/socket U1 Red | 15,75 | 15,00 |
+| Tâm package/socket U2 IR | 54,25 | 15,00 |
 | H1/H2 | 4,50 / 65,50 | 3,50 |
-| H3/H4 | 4,50 / 65,50 | 28,50 |
-| J1 pin 1 / 2 / 3 / 4 | 13,00 / 15,00 / 17,00 / 19,00 | 27,00 |
-| J3 pin 1 / 2 | 26,00 / 28,54 | 27,00 |
-| J2 pin 1 / 2 / 3 / 4 | 51,00 / 53,00 / 55,00 / 57,00 | 27,00 |
+| H3/H4 | 4,50 / 65,50 | 26,50 |
+| J1 pin 1 / 2 / 3 / 4 | 13,00 / 15,00 / 17,00 / 19,00 | 25,00 |
+| J3 pin 1 / 2 | 26,00 / 28,54 | 25,00 |
+| J2 pin 1 / 2 / 3 / 4 | 51,00 / 53,00 / 55,00 / 57,00 | 25,00 |
 
-Ba header đã được xoay ngang và dời xuống hàng Y = 27 mm, gần cạnh dưới
-Y = 32 mm. Cách bố trí này chừa hai bên socket cho vách ngăn và vùng quang,
+Ba header đã được xoay ngang và dời xuống hàng Y = 25 mm, gần cạnh dưới
+Y = 30 mm. Cách bố trí này chừa hai bên socket cho vách ngăn và vùng quang,
 đồng thời khung mới đã hạ các cửa phía sau để tránh chân hàn/header.
 
-PCB revision **v1.2** dùng các đoạn đồng ngang/dọc 90° trên cả hai lớp.
+PCB revision **v1.3** dùng các đoạn đồng ngang/dọc 90° trên cả hai lớp.
 Đường nguồn hai kênh được bố trí đối xứng và kết thúc trước vùng hai lỗ bắt
 vít phía dưới. Mỗi lỗ M3 có khoảng cấm đồng cục bộ 1,0 mm tính từ mép lỗ;
 kiểm tra độc lập cũng đo khoảng cách từ mọi track đến từng lỗ để ngăn đường
@@ -120,10 +122,10 @@ Kết luận phụ thuộc vào tâm package danh nghĩa và khoảng X cửa s�
 in cần thử lần lượt với tấm `blank` và Ø5: `blank` phải cho mức tối gần như nhau
 khi LED bật/tắt, còn Ø5 phải tạo đáp ứng rõ chỉ ở đúng kênh.
 
-**Thay khung board 5×7 cũ bằng `mechanical/frame_70x32_print.stl`.**
+**Thay khung board 5×7 cũ bằng `mechanical/frame_70x30_print.stl`.**
 File này đã đặt mặt lưng xuống bàn in, kích thước 73,4 × 56,8 × 4 mm, đơn vị mm,
 scale 100%. Không in file `*_assembly.stl` nếu không tự chọn lại tư thế.
-Không cần sửa hoặc in lại thân hộp/nắp. Khung có hốc board 70,5 × 32,5 mm,
+Không cần sửa hoặc in lại thân hộp/nắp. Khung có hốc board 70,5 × 30,5 mm,
 giữ vị trí ngoài của khung cũ; hai cửa phía sau chừa chỗ chân hàn và dây.
 
 Dùng **4 vít M3×4** qua PCB vào lỗ mồi Ø2,6 mm trên khung, tạo ren nhẹ,
@@ -154,9 +156,9 @@ Không đưa board ra trước để cố giữ X=120 vì board liền sẽ đ�
 ## Kiểm tra và giới hạn
 
 Kiểm tra bằng **KiCad 10.0.6**: ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm,
-0 pad chưa nối, 0 lỗi parity; 156 kiểm tra hợp đồng chân, kích thước,
+0 pad chưa nối, 0 lỗi parity; 178 kiểm tra hợp đồng chân, kích thước,
 hình học đường đồng và khoảng cách tới lỗ khoan đạt.
-Kiểm tra cơ khí: 392/392 đạt với bao linh kiện đã nêu; khung là một khối kín.
+Kiểm tra cơ khí: 402/402 đạt với bao linh kiện đã nêu; khung là một khối kín.
 Kiểm tra đường quang danh nghĩa: 20/20 đạt.
 
 - `reports/erc.rpt`: ERC schematic.
@@ -182,9 +184,9 @@ nhiễu, bão hòa, Grove ADC và ADS1115. ERC/DRC sạch không phải chứng 
 ## File gia công
 
 `fabrication/` chứa Gerber hai lớp đồng, soldermask hai mặt, silkscreen và
-Edge.Cuts, kèm Excellon tách PTH/NPTH. Có **30 lỗ mạ** (28 lỗ Ø0,8 mm,
+Edge.Cuts, kèm Excellon tách PTH/NPTH. Có **32 lỗ mạ** (2 via Ø0,4 mm, 28 lỗ Ø0,8 mm,
 2 lỗ Ø1,0 mm) và **4 lỗ không mạ Ø3,2 mm**. Chọn FR4 dày 1,6 mm,
-đồng 1 oz, 70 × 32 mm; không yêu cầu trở kháng kiểm soát.
+đồng 1 oz, 70 × 30 mm; không yêu cầu trở kháng kiểm soát.
 File này đã xuất nhưng **chưa được gửi đặt sản xuất**. Kiểm tra package IC,
 socket, đầu cáp và bản in khung thật trước khi chốt gia công.
 
@@ -199,8 +201,8 @@ kicad-cli sch erc opt101_receiver.kicad_sch -o reports/erc.rpt
 kicad-cli pcb drc opt101_receiver.kicad_pcb --refill-zones --save-board --schematic-parity -o reports/drc.rpt
 python-with-pcbnew verify_design.py
 # Từ gốc repository:
-.cad_venv/bin/python hardware/opt101_receiver/mechanical/build_adapter.py
-.cad_venv/bin/python hardware/opt101_receiver/mechanical/optical_check.py
+.cad_venv/bin/python hardware/opt101_receiver_kicad/opt101_receiver/mechanical/build_adapter.py
+.cad_venv/bin/python hardware/opt101_receiver_kicad/opt101_receiver/mechanical/optical_check.py
 ```
 
 Nguồn kỹ thuật:
@@ -215,9 +217,8 @@ thành PPG và dùng đường dẫn tương đối để dự án có thể chu
 Thư viện KiCad dùng CC-BY-SA 4.0 với ngoại lệ sử dụng trong thiết kế điện tử:
 [KiCad Library License](https://www.kicad.org/libraries/license/).
 
-## Schematic v1.1 — rà soát lại
+## Schematic v1.3 — lọc ngõ ra
 
 Hai kênh được vẽ bằng dây nối trực tiếp từ Grove qua nguồn/bypass tới OPT101,
-strap 4–5 và nhánh OUT tới cả Grove lẫn J3. Không thay vị trí PCB hoặc hợp đồng
-chân. Xem `reports/schematic.pdf` và `reports/schematic.png`. Giao cắt không
+strap 4–5, rồi qua R1/R2 = 1 kΩ tới Grove/J3; C3/C4 = 1 µF nối từ OUT sau điện trở xuống GND từng kênh. Bộ lọc có fc danh nghĩa 159 Hz, suy hao khoảng 0,8% tại 20 Hz; không phải lọc notch 50 Hz. Với nguồn 3,3 V, OPT101 không rail-to-rail: cần chừa headroom khoảng 1,15–1,3 V phía nguồn dương. Xem `reports/schematic.pdf` và `reports/schematic.png`. Giao cắt không
 có dấu chấm không nối điện. H4 được đặt ngoài khung tên sơ đồ.
