@@ -12,6 +12,7 @@ from ui.frames.advanced_frame import AdvancedFrame
 from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
 from ui.i18n import LANGUAGES, normalise_language, text
+from ui.rx_monitor import RXMonitor
 
 
 class CTkApp(ctk.CTk):
@@ -61,12 +62,24 @@ class CTkApp(ctk.CTk):
             btn.pack(side="left", padx=(8 if self.layout.compact else 12, 0),
                      pady=6 if self.layout.compact else 8)
             self.nav_buttons[key] = btn
+        # Preserve the plots' requested height on a 600px touch display; the
+        # page scrolls while navigation and the physical RX monitor stay fixed.
+        self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if self.layout.compact else ctk.CTkFrame(self, fg_color="transparent")
+        self.page_host.grid(row=2, column=0, sticky="nsew")
+        self.page_host.grid_columnconfigure(0, weight=1)
+        if self.layout.compact:
+            self.page_host._scrollbar.configure(width=28)
+        if not self.layout.compact:
+            self.page_host.grid_rowconfigure(0, weight=1)
+        self.page_host.layout = self.layout
+        self.page_host.language = self.language
         self.frames = {
-            "Pathology": PathologyFrame(self, fg_color="transparent"),
-            "Calibration": CalibrationFrame(self, fg_color="transparent"),
-            "Playback": PlaybackFrame(self, fg_color="transparent"),
-            "Neural": NeuralFrame(self, fg_color="transparent"),
+            "Pathology": PathologyFrame(self.page_host, fg_color="transparent"),
+            "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
+            "Playback": PlaybackFrame(self.page_host, fg_color="transparent"),
+            "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
+        self.page_host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
         bubble_size = 44 if self.layout.compact else 50
@@ -79,7 +92,9 @@ class CTkApp(ctk.CTk):
         self.signal_setup_bubble.pack(side="right", padx=14 if self.layout.compact else 22,
                                       pady=4 if self.layout.compact else 6)
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
-        footer.grid(row=3, column=0, sticky="ew")
+        self.rx_monitor = RXMonitor(self, language=self.language)
+        self.rx_monitor.grid(row=3, column=0, sticky="ew", padx=self.layout.outer_pad)
+        footer.grid(row=4, column=0, sticky="ew")
         self.status_label = T.label(footer, text(self.language, "ready"), 11, text_color=T.MUTED)
         self.status_label.pack(side="left", padx=20, pady=4)
         if not self.layout.compact:
@@ -111,8 +126,10 @@ class CTkApp(ctk.CTk):
                 self.active_frame.on_hide()
             self.active_frame.grid_forget()
         self.active_frame = self.frames[name]
-        self.active_frame.grid(row=2, column=0, sticky="nsew",
+        self.active_frame.grid(row=0, column=0, sticky="nsew",
                                padx=self.layout.outer_pad, pady=self.layout.outer_pady)
+        if self.layout.compact:
+            self.page_host._parent_canvas.yview_moveto(0)
         for key, button in self.nav_buttons.items():
             button.configure(fg_color=T.INK if key == name else T.PANEL,
                              text_color=T.PANEL if key == name else T.MUTED,
@@ -171,6 +188,8 @@ class CTkApp(ctk.CTk):
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
+        self.settings_rx_monitor = RXMonitor(window, language=self.language)
+        self.settings_rx_monitor.grid(row=2, column=0, sticky="ew", padx=self.layout.outer_pad)
         self.signal_setup_bubble.configure(text="×", fg_color=T.ERROR)
         panel.on_show()
         window.after_idle(window.lift)
@@ -192,10 +211,12 @@ class CTkApp(ctk.CTk):
         for key, text_key in self.nav_keys:
             self.nav_buttons[key].configure(text=text(language, text_key))
         self.frames["Neural"].set_language(language)
+        self.rx_monitor.set_language(language)
         if self.research_label is not None:
             self.research_label.configure(text=f"{text(language, 'research')}   •   v{FIRMWARE_VERSION}")
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
+            self.settings_rx_monitor.set_language(language)
             window.title(text(language, "settings"))
             self.language_label.configure(text=text(language, "language"))
             self.language_menu.set(LANGUAGES[language])
@@ -250,6 +271,8 @@ class CTkApp(ctk.CTk):
                 frame.periodic_update()
         if self.signal_setup_panel is not None:
             self.signal_setup_panel.periodic_update()
+            self.settings_rx_monitor.periodic_update()
+        self.rx_monitor.periodic_update()
         stats = self.engine.get_stats()
         if not DRY_RUN:
             dac = self.engine.dac_manager

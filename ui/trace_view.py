@@ -9,6 +9,8 @@ class TraceView(tk.Canvas):
         self.samples = []
         self.channels = ((1, "IR", IR), (2, "RED", RED))
         self.window_s = 8.0
+        self.tick_offset_s = 0.0
+        self.max_gap_s = None
         self.empty_text = "Ready to generate  /  Press Run"
         self.bind("<Configure>", lambda event: self.render())
 
@@ -34,7 +36,7 @@ class TraceView(tk.Canvas):
         for i in range(9):
             x = left + (right - left) * i / 8
             self.create_line(x, top, x, bottom, fill=GRID, dash=(2, 5))
-            tick = start + i * self.window_s / 8
+            tick = start + i * self.window_s / 8 + self.tick_offset_s
             self.create_text(x, h - 12, text=f"{tick:.2f}" if self.window_s < 2 else f"{tick:.0f}",
                              fill="#A5B3BC", font=("DejaVu Sans", axis_font))
         self.create_text(20, h - 12, text="s", fill="#A5B3BC")
@@ -55,10 +57,16 @@ class TraceView(tk.Canvas):
                 self.create_text(left - 8, y, text=f"{hi - fraction * (hi-lo):.1f}",
                                  fill="#A5B3BC", anchor="e", font=("DejaVu Sans", max(7, axis_font - 1)))
             coords = []
+            previous_time = None
             # Min/max values remain visible: <=800 real samples in an 8 s model window.
             for p in points:
+                if self.max_gap_s is not None and previous_time is not None and p[0] - previous_time > self.max_gap_s:
+                    if len(coords) >= 4:
+                        self.create_line(*coords, fill=color, width=max(1, round(2 * scale)))
+                    coords = []
                 coords.extend((left + (p[0] - start) / self.window_s * (right-left),
                                y0 + 12 + (hi - p[ch]*1000) / (hi-lo) * (lane-30)))
+                previous_time = p[0]
             if len(coords) >= 4:
                 self.create_line(*coords, fill=color, width=max(1, round(2 * scale)))
         if not points:
