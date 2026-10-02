@@ -91,8 +91,9 @@ for s in ('IR','RED','GND','SCL','SDA','3V3','IR-','RED-','5V','AMP_I','SNS_I','
 import re
 for item in rear:
     check('Rear pin label has no numeric prefix: '+item.GetText(),not re.match(r'^[1-4](?:\s|R$|I$|N$|V$|G|K$|A$)',item.GetText()))
-check('all routed tracks horizontal or vertical', all(
-    t.GetStart().x == t.GetEnd().x or t.GetStart().y == t.GetEnd().y
+check('all routed tracks horizontal, vertical or 45 degrees', all(
+    t.GetStart().x == t.GetEnd().x or t.GetStart().y == t.GetEnd().y or
+    abs(abs(t.GetStart().x-t.GetEnd().x)-abs(t.GetStart().y-t.GetEnd().y)) <= 2
     for t in board.GetTracks() if not isinstance(t, p.PCB_VIA)))
 report={'kicad_version':p.Version(),'passed':len(checks),'checks':checks,'limits':'Digital connectivity and geometry only; no physical/electrical measurements.'}
 (HERE/'reports/pin_contract.json').write_text(json.dumps(report,indent=2)+'\n')

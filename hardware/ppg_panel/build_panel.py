@@ -110,7 +110,9 @@ def main():
         'net_settings':{'classes':[{'name':'Default','clearance':.2,'track_width':.3,
         'via_diameter':.8,'via_drill':.4,'microvia_diameter':.3,'microvia_drill':.1,
         'diff_pair_width':.2,'diff_pair_gap':.25,'diff_pair_via_gap':.25}]}}
-    (HERE/(NAME+'.kicad_pro')).write_text(json.dumps(project,indent=2)+'\n')
+    project_path=HERE/(NAME+'.kicad_pro')
+    if not project_path.exists():
+        project_path.write_text(json.dumps(project,indent=2)+'\n')
     table='(fp_lib_table (version 7)\n'
     for lib in libraries:
         table+=f'(lib (name "{lib}") (type "KiCad") (uri "${{KIPRJMOD}}/{lib}.pretty") (options "") (descr "Panel source footprint"))\n'

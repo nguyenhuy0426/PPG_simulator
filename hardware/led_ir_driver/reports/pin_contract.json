@@ -911,7 +911,7 @@
       "pass": true
     },
     {
-      "check": "all routed tracks horizontal or vertical",
+      "check": "all routed tracks horizontal, vertical or 45 degrees",
       "pass": true
     }
   ],

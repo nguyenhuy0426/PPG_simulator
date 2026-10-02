@@ -105,8 +105,9 @@ for item in board.GetDrawings():
     if isinstance(item, p.PCB_TEXT) and item.GetLayer() == p.B_SilkS:
         check("rear pin label has no numeric prefix: " + item.GetText(), not __import__("re").match(r"^[1-4](?:\s|[A-Z])", item.GetText()))
 
-check('all routed tracks horizontal or vertical', all(
-    t.GetStart().x == t.GetEnd().x or t.GetStart().y == t.GetEnd().y
+check('all routed tracks horizontal, vertical or 45 degrees', all(
+    t.GetStart().x == t.GetEnd().x or t.GetStart().y == t.GetEnd().y or
+    abs(abs(t.GetStart().x-t.GetEnd().x)-abs(t.GetStart().y-t.GetEnd().y)) <= 2
     for t in board.GetTracks() if not isinstance(t, p.PCB_VIA)))
 report = {"kicad_version": p.Version(), "checks": checks, "passed": len(checks)}
 (HERE / "reports/pin_contract.json").write_text(json.dumps(report, indent=2) + "\n")

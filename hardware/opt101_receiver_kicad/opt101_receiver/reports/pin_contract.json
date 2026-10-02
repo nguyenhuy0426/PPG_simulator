@@ -162,151 +162,235 @@
       "pass": true
     },
     {
-      "check": "track 1 is horizontal or vertical",
+      "check": "track 1 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 2 is horizontal or vertical",
+      "check": "track 2 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 3 is horizontal or vertical",
+      "check": "track 3 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 4 is horizontal or vertical",
+      "check": "track 4 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 5 is horizontal or vertical",
+      "check": "track 5 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 6 is horizontal or vertical",
+      "check": "track 6 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 7 is horizontal or vertical",
+      "check": "track 7 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 8 is horizontal or vertical",
+      "check": "track 8 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 9 is horizontal or vertical",
+      "check": "track 9 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 10 is horizontal or vertical",
+      "check": "track 10 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 11 is horizontal or vertical",
+      "check": "track 11 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 12 is horizontal or vertical",
+      "check": "track 12 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 13 is horizontal or vertical",
+      "check": "track 13 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 14 is horizontal or vertical",
+      "check": "track 14 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 15 is horizontal or vertical",
+      "check": "track 15 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 16 is horizontal or vertical",
+      "check": "track 16 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 17 is horizontal or vertical",
+      "check": "track 17 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 18 is horizontal or vertical",
+      "check": "track 18 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 19 is horizontal or vertical",
+      "check": "track 19 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 20 is horizontal or vertical",
+      "check": "track 20 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 21 is horizontal or vertical",
+      "check": "track 21 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 22 is horizontal or vertical",
+      "check": "track 22 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 23 is horizontal or vertical",
+      "check": "track 23 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 24 is horizontal or vertical",
+      "check": "track 24 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 25 is horizontal or vertical",
+      "check": "track 25 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 26 is horizontal or vertical",
+      "check": "track 26 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 27 is horizontal or vertical",
+      "check": "track 27 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 28 is horizontal or vertical",
+      "check": "track 28 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 29 is horizontal or vertical",
+      "check": "track 29 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 30 is horizontal or vertical",
+      "check": "track 30 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 31 is horizontal or vertical",
+      "check": "track 31 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 32 is horizontal or vertical",
+      "check": "track 32 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 33 is horizontal or vertical",
+      "check": "track 33 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 34 is horizontal or vertical",
+      "check": "track 34 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 35 is horizontal or vertical",
+      "check": "track 35 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 36 is horizontal or vertical",
+      "check": "track 36 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
-      "check": "track 37 is horizontal or vertical",
+      "check": "track 37 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 38 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 39 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 40 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 41 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 42 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 43 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 44 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 45 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 46 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 47 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 48 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 49 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 50 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 51 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 52 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 53 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 54 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 55 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 56 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 57 is horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "track 58 is horizontal, vertical or 45 degrees",
       "pass": true
     },
     {
@@ -610,5 +694,5 @@
       "pass": true
     }
   ],
-  "passed": 152
+  "passed": 173
 }

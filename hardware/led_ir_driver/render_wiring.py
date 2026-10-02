@@ -47,7 +47,7 @@ def plot():
         return net.split('_')[0]
     fig,axes=plt.subplots(1,2,figsize=(19,8.5),layout='constrained')
     for ax,layer in zip(axes,['F.Cu','B.Cu']):
-        ax.add_patch(Rectangle((0,0),70,48,facecolor='#f8fafb',edgecolor='#283340',lw=1.2))
+        ax.add_patch(Rectangle((0,0),70,40,facecolor='#f8fafb',edgecolor='#283340',lw=1.2))
         for t in data['tracks']:
             if t['layer']!=layer: continue
             a,c=t['a'],t['b']

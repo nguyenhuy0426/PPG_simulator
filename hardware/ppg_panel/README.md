@@ -56,3 +56,7 @@ Trục quang danh nghĩa và khoảng cách hai kênh 38,5 mm được giữ ngu
 ## Khoảng hở khi tách panel
 
 Đồng cách tâm V-cut ≥1,5 mm mỗi phía. Bao footprint các R/C cách V-cut ≥2 mm (bản hiện tại ≥2,095 mm), có kiểm tra tự động trong verify_panel.py. Không thay điều này cho giới hạn cơ khí của nhà in. Tách panel trần trước khi hàn, dùng dụng cụ tách V-score để hạn chế uốn PCB gần tụ gốm; không bẻ mạnh panel đã lắp linh kiện.
+
+## Layout 45°
+
+Ba board và panel đã vát góc rẽ dây 45°. Xem [đánh giá bố trí hai mặt và V-score](LAYOUT_REVIEW.md).

@@ -61,7 +61,7 @@ for ref,pitch in [('J1',2),('J2',2),('J3',2.54)]:
 tracks=[track for track in b.GetTracks() if isinstance(track,p.PCB_TRACK) and not isinstance(track,p.PCB_VIA)]
 for index,track in enumerate(tracks,1):
     a,z=track.GetStart(),track.GetEnd()
-    check(f'track {index} is horizontal or vertical',a.x==z.x or a.y==z.y)
+    check(f'track {index} is horizontal, vertical or 45 degrees',a.x==z.x or a.y==z.y or abs(abs(a.x-z.x)-abs(a.y-z.y))<=2)
 
 def point_segment_distance(px,py,ax,ay,bx,by):
     dx,dy=bx-ax,by-ay

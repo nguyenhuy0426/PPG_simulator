@@ -134,6 +134,10 @@ def compact(input_path=FILE):
     # Dedicated anode return prevents isolation by the adjacent signal routes.
     trace('/GND_RED',[(118.3,111.7),(124,111.7),(124,116.666666),(124.54,116.666666)],p.F_Cu,.25)
     p.ZONE_FILLER(b).Fill(b.Zones());p.SaveBoard(str(FILE),b)
+    import sys
+    sys.path.insert(0,str(next(parent for parent in HERE.parents if (parent/'routing_45.py').is_file())))
+    from routing_45 import chamfer
+    chamfer(FILE)
 if __name__=='__main__':
     import sys
     compact(Path(sys.argv[1]) if len(sys.argv)>1 else FILE)

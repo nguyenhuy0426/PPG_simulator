@@ -31,8 +31,11 @@ def write_zip(path, entries):
 
 def main():
     for folder, name in SOURCES:
-        write_zip(HERE/name, {str(p.relative_to(folder.parent)): p.read_bytes() for p in files(folder)})
+        entries={str(p.relative_to(folder.parent)): p.read_bytes() for p in files(folder)}
+        entries['routing_45.py']=(HERE/'routing_45.py').read_bytes()
+        write_zip(HERE/name, entries)
     entries = {}
+    entries['hardware/routing_45.py']=(HERE/'routing_45.py').read_bytes()
     for folder in [HERE/"ppg_panel"] + [d for d, _ in SOURCES]:
         for p in files(folder):
             # Only the panel Gerbers are manufacturing inputs in the combined ZIP.

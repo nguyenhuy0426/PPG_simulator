@@ -2101,11 +2101,7 @@
       "pass": true
     },
     {
-      "check": "OPT/GND_IR zone filled",
-      "pass": true
-    },
-    {
-      "check": "TX/GND zone filled",
+      "check": "OPT/GND_RED zone filled",
       "pass": true
     },
     {
@@ -2113,11 +2109,51 @@
       "pass": true
     },
     {
-      "check": "OPT/GND_RED zone filled",
+      "check": "TX/GND zone filled",
+      "pass": true
+    },
+    {
+      "check": "OPT/GND_IR zone filled",
       "pass": true
     },
     {
       "check": "BPW/GND_RED zone filled",
+      "pass": true
+    },
+    {
+      "check": "TX_C4 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_C5 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R9 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R8 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R1 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_C2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R4 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R7 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2133,47 +2169,7 @@
       "pass": true
     },
     {
-      "check": "TX_R1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R8 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R9 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R7 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
       "check": "OPT_C1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2181,7 +2177,31 @@
       "pass": true
     },
     {
-      "check": "BPW_C6 footprint envelope >=2mm from score",
+      "check": "BPW_C2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "OPT_R2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C8 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C5 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C4 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C7 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2193,6 +2213,18 @@
       "pass": true
     },
     {
+      "check": "TX_C7 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C3 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R1 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
       "check": "OPT_R1 footprint envelope >=2mm from score",
       "pass": true
     },
@@ -2201,31 +2233,7 @@
       "pass": true
     },
     {
-      "check": "BPW_R1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C8 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C7 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_C4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C2 footprint envelope >=2mm from score",
+      "check": "BPW_R5 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2233,7 +2241,7 @@
       "pass": true
     },
     {
-      "check": "BPW_C7 footprint envelope >=2mm from score",
+      "check": "OPT_C4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2245,15 +2253,7 @@
       "pass": true
     },
     {
-      "check": "BPW_C3 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C5 footprint envelope >=2mm from score",
+      "check": "BPW_C6 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2269,6 +2269,13 @@
   "source_geometry": {
     "OPT": {
       "widths_mm": {
+        "/3V3_RED": [
+          0.35,
+          0.5
+        ],
+        "/GND_RED": [
+          0.35
+        ],
         "/OUT_RED": [
           0.35
         ],
@@ -2287,25 +2294,12 @@
         ],
         "/RAW_IR": [
           0.35
-        ],
-        "/3V3_RED": [
-          0.35,
-          0.5
-        ],
-        "/GND_RED": [
-          0.35
         ]
       },
       "track_to_mounting_drill_edge_mm": {}
     },
     "BPW": {
       "widths_mm": {
-        "/SUM_RED": [
-          0.22
-        ],
-        "/GND_RED": [
-          0.25
-        ],
         "/OUT_IR": [
           0.3
         ],
@@ -2318,6 +2312,9 @@
           0.35,
           0.4
         ],
+        "/SUM_IR": [
+          0.22
+        ],
         "/OUT_RED": [
           0.3
         ],
@@ -2325,16 +2322,19 @@
           0.35,
           0.4
         ],
-        "/SUM_IR": [
+        "/GND_RED": [
+          0.25
+        ],
+        "/SUM_RED": [
           0.22
         ],
         "/FB_IR": [
           0.2
         ],
-        "/FB_RED": [
+        "/VREF_IR": [
           0.22
         ],
-        "/VREF_IR": [
+        "/FB_RED": [
           0.22
         ],
         "/VREF_RED": [
@@ -2345,11 +2345,39 @@
     },
     "TX": {
       "widths_mm": {
+        "/CMD_RED": [
+          0.35
+        ],
+        "/SENSE_RED": [
+          0.25,
+          0.28,
+          0.35,
+          0.6
+        ],
+        "/BASE_RED": [
+          0.35
+        ],
+        "/LED_K_RED": [
+          0.6
+        ],
         "/5V": [
           0.6,
           0.8
         ],
-        "/DAC_IR": [
+        "/LED_K_IR": [
+          0.6
+        ],
+        "/AMP_IR": [
+          0.35
+        ],
+        "/SENSE_IR": [
+          0.35,
+          0.6
+        ],
+        "/BASE_IR": [
+          0.35
+        ],
+        "/DAC_RED": [
           0.3,
           0.35
         ],
@@ -2362,47 +2390,19 @@
         "/3V3": [
           0.6
         ],
-        "/CMD_IR": [
-          0.35
-        ],
-        "/LED_K_IR": [
-          0.6
-        ],
-        "/AMP_IR": [
-          0.35
-        ],
-        "/SENSE_IR": [
-          0.35,
-          0.6
-        ],
-        "/CMD_RED": [
-          0.35
-        ],
-        "/SENSE_RED": [
-          0.25,
-          0.28,
-          0.35,
-          0.6
-        ],
         "/AMP_RED": [
           0.35
         ],
-        "/DAC_RED": [
+        "/DAC_IR": [
           0.3,
           0.35
         ],
-        "/BASE_RED": [
-          0.35
-        ],
-        "/LED_K_RED": [
-          0.6
-        ],
-        "/BASE_IR": [
+        "/CMD_IR": [
           0.35
         ]
       },
       "track_to_mounting_drill_edge_mm": {
-        "H1": 2.6161,
+        "H1": 2.7247,
         "H2": 9.0059,
         "H3": 3.55,
         "H4": 4.7196
@@ -2411,40 +2411,40 @@
   },
   "component_to_vcut_min_mm": 2.095,
   "component_margins_mm": {
+    "TX_C4": 28.595,
+    "TX_C5": 20.495,
+    "TX_R9": 31.345,
+    "TX_R8": 26.025,
+    "TX_R1": 18.025,
+    "TX_C2": 28.595,
+    "TX_R4": 35.845,
+    "TX_R2": 21.025,
+    "TX_R7": 21.025,
     "TX_R3": 23.435,
     "OPT_C2": 15.495,
     "TX_R6": 18.025,
-    "TX_R1": 18.025,
-    "TX_R8": 26.025,
-    "TX_C5": 20.495,
-    "TX_R9": 31.345,
-    "TX_R7": 21.025,
-    "TX_R4": 35.845,
-    "TX_R2": 21.025,
-    "TX_C4": 28.595,
     "OPT_C1": 15.495,
-    "TX_C2": 28.595,
-    "BPW_C4": 7.995,
     "OPT_C3": 5.295,
-    "BPW_C6": 2.095,
+    "BPW_C2": 4.645,
+    "OPT_R2": 5.325,
+    "BPW_C8": 4.328334,
+    "BPW_C5": 2.095,
+    "BPW_R2": 2.375,
+    "BPW_C4": 7.995,
+    "BPW_C7": 4.328334,
     "BPW_R6": 3.825,
     "BPW_R8": 8.025,
+    "TX_C7": 12.375,
+    "BPW_C3": 7.995,
+    "BPW_R1": 2.375,
     "OPT_R1": 5.325,
     "BPW_R4": 5.725,
-    "BPW_R1": 2.375,
-    "BPW_C8": 4.328334,
-    "BPW_R2": 2.375,
-    "TX_C7": 12.375,
-    "OPT_R2": 5.325,
-    "OPT_C4": 5.295,
-    "BPW_C2": 4.645,
+    "BPW_R5": 3.825,
     "BPW_C1": 4.645,
-    "BPW_C7": 4.328334,
+    "OPT_C4": 5.295,
     "BPW_R3": 7.091666,
     "BPW_R7": 8.025,
-    "BPW_C3": 7.995,
-    "BPW_R5": 3.825,
-    "BPW_C5": 2.095
+    "BPW_C6": 2.095
   },
   "copper_to_vcut_min_mm": 1.5,
   "panel_mm": [

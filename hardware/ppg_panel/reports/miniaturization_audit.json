@@ -1,20 +1,26 @@
 {
   "opt": {
-    "unchanged_values_and_pin_nets": true,
-    "all_tracks_horizontal_or_vertical": true,
-    "track_count": 37,
+    "unchanged_values_pin_nets_positions_and_layers": true,
+    "all_tracks_horizontal_vertical_or_45": true,
+    "free_90_degree_bends": 0,
+    "track_count": 58,
+    "diagonal_tracks": 21,
     "resistors_capacitors_all_smd": true
   },
   "bpw": {
-    "unchanged_values_and_pin_nets": true,
-    "all_tracks_horizontal_or_vertical": true,
-    "track_count": 137,
+    "unchanged_values_pin_nets_positions_and_layers": true,
+    "all_tracks_horizontal_vertical_or_45": true,
+    "free_90_degree_bends": 0,
+    "track_count": 203,
+    "diagonal_tracks": 66,
     "resistors_capacitors_all_smd": true
   },
   "tx": {
-    "unchanged_values_and_pin_nets": true,
-    "all_tracks_horizontal_or_vertical": true,
-    "track_count": 135,
+    "unchanged_values_pin_nets_positions_and_layers": true,
+    "all_tracks_horizontal_vertical_or_45": true,
+    "free_90_degree_bends": 0,
+    "track_count": 204,
+    "diagonal_tracks": 69,
     "resistors_capacitors_all_smd": true
   }
 }

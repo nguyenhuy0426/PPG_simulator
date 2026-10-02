@@ -44,7 +44,7 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
 - The high-impedance `SUM_RED`, `SUM_IR`, `FB_RED`, and `FB_IR` routes remain
   on B.Cu and are kept local to their channel. The long supply/output runs use
   the opposite layer where needed, so they do not cut through the TIA loops.
-- Every routed copper segment on F.Cu and B.Cu is horizontal or vertical; the
+- Every routed copper segment on F.Cu and B.Cu is horizontal, vertical or 45 degrees; the
   layout intentionally contains no diagonal track segments.
 - Receiver mounting holes are removed; no copper crosses a drilled mounting opening.
 - Both sides carry pin markings. On the rear, every J1/J2/J3 pad is labelled

@@ -203,6 +203,10 @@ def compact(input_path=FILE):
     p.SaveBoard(str(FILE), board)
 
 
+    import sys
+    sys.path.insert(0,str(next(parent for parent in HERE.parents if (parent/'routing_45.py').is_file())))
+    from routing_45 import chamfer
+    chamfer(FILE)
 if __name__ == '__main__':
     import sys
     compact(Path(sys.argv[1]) if len(sys.argv) > 1 else FILE)

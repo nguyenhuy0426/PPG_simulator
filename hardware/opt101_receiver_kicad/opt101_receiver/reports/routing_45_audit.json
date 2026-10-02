@@ -1,0 +1,7 @@
+{
+  "tracks": 58,
+  "diagonal_tracks": 21,
+  "non_octilinear_segments": 0,
+  "free_90_degree_bends": 0,
+  "note": "Pad entries, via transitions and electrical branch junctions are not free routing bends."
+}

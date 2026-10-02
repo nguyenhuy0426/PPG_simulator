@@ -65,7 +65,7 @@ def plot():
 
     fig, axes = plt.subplots(1, 2, figsize=(18, 7.6), layout="constrained")
     for ax, layer in zip(axes, ("F.Cu", "B.Cu")):
-        ax.add_patch(Rectangle((0, 0), 70, 30, facecolor="#f8fafc", edgecolor="#263341", linewidth=1.3))
+        ax.add_patch(Rectangle((0, 0), 70, 20, facecolor="#f8fafc", edgecolor="#263341", linewidth=1.3))
         for track in data["tracks"]:
             if track["layer"] != layer:
                 continue

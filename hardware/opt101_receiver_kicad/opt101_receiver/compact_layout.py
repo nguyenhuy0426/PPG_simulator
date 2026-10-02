@@ -99,6 +99,10 @@ def compact(input_path=FILE):
     for x in (133.5,136.5):line((x,100.5),(x,119.5),p.Dwgs_User,.1)
     p.ZONE_FILLER(b).Fill(b.Zones())
     p.SaveBoard(str(FILE),b)
+    import sys
+    sys.path.insert(0,str(next(parent for parent in HERE.parents if (parent/'routing_45.py').is_file())))
+    from routing_45 import chamfer
+    chamfer(FILE)
 if __name__=='__main__':
     import sys
     compact(Path(sys.argv[1]) if len(sys.argv)>1 else FILE)
