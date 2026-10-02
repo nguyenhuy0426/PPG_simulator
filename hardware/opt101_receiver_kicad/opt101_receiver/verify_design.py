@@ -28,6 +28,9 @@ for i,ch in [(1,'RED'),(2,'IR')]:
     for ref,pin in [(f'U{i}','2'),(f'U{i}','6'),(f'U{i}','7'),(f'J{i}','2')]:
         check(f'{ref}.{pin} intentionally isolated',any(s=={(ref,pin)} for n,s in nets.items() if n.startswith('unconnected-')))
 fps={fp.GetReference():fp for fp in b.GetFootprints()}
+check('All resistor/capacitor pads are SMD',all(
+    pad.GetAttribute()==p.PAD_ATTRIB_SMD
+    for ref,fp in fps.items() if ref.startswith(('R','C')) for pad in fp.Pads()))
 check('15 physical footprints',len(fps)==15)
 check('2 copper layers',b.GetCopperLayerCount()==2)
 check('1.6mm substrate',abs(p.ToMM(b.GetDesignSettings().GetBoardThickness())-1.6)<1e-6)

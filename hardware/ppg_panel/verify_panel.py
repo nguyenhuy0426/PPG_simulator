@@ -87,8 +87,8 @@ def main():
         len({f.GetReference().split('_')[0] for f in b.GetFootprints() for pad in f.Pads() if pad.GetNetCode()==net.GetNetCode()})<=1
         for net in b.GetNetsByNetcode().values() if net.GetNetCode()))
     report={'checks':checks,'passed':len(checks),'source_geometry':reports,
-        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,110],
-        'original_area_mm2':8330,'new_area_mm2':7700,'area_reduction_percent':100*(8330-7700)/8330,
+        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,108],
+        'original_area_mm2':8330,'new_area_mm2':7560,'area_reduction_percent':100*(8330-7560)/8330,
         'limitations':'CAD and nominal component checks only; not physical electrical or manufacturing qualification.'}
     (HERE/'reports/panel_audit.json').write_text(json.dumps(report,indent=2)+'\n')
     print(f'{len(checks)} checks passed; minimum copper-to-V-cut {min(margins):.3f} mm.')

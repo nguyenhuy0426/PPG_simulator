@@ -2,13 +2,13 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/led_ir_driver/led_ir_driver.kicad_sch</source>
-    <date>2026-10-01T18:02:36</date>
+    <date>2026-10-02T09:44:50</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>DATN: PPG-Simulator - LED / IR driver</title>
         <company/>
-        <rev>1.6</rev>
+        <rev>1.8</rev>
         <date/>
         <source>led_ir_driver.kicad_sch</source>
         <comment number="1" value="Nguyen Nhat Huy - Pham Thanh Vy"/>
@@ -470,9 +470,9 @@
     </comp>
     <comp ref="R4">
       <value>100R 1% 0.25W</value>
-      <footprint>TX:R</footprint>
+      <footprint>TX:RSense</footprint>
       <fields>
-        <field name="Footprint">TX:R</field>
+        <field name="Footprint">TX:RSense</field>
         <field name="Datasheet"/>
         <field name="Description"/>
       </fields>
@@ -558,9 +558,9 @@
     </comp>
     <comp ref="R9">
       <value>100R 1% 0.25W</value>
-      <footprint>TX:R</footprint>
+      <footprint>TX:RSense</footprint>
       <fields>
-        <field name="Footprint">TX:R</field>
+        <field name="Footprint">TX:RSense</field>
         <field name="Datasheet"/>
         <field name="Description"/>
       </fields>

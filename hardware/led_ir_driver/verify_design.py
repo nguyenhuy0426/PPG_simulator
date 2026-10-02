@@ -44,6 +44,9 @@ for i,a in enumerate(critical):
 check('J4 is RED output and ground only',nets['DAC_RED'] >= {('J4','1')} and nets['GND'] >= {('J4','2')})
 check('Four-wire cable maps to J2 pads 3..6',all(('J2',str(pin)) in nets[net] for pin,net in [(3,'SCL'),(4,'SDA'),(5,'3V3'),(6,'GND')]))
 fps={fp.GetReference():fp for fp in board.GetFootprints()}
+check('All resistor/capacitor pads are SMD',all(
+    pad.GetAttribute()==p.PAD_ATTRIB_SMD
+    for ref,fp in fps.items() if ref.startswith(('R','C')) for pad in fp.Pads()))
 # Audit fitted values independently of the generator, not just net names.
 for ref,value in [('R1','10k 1%'),('R2','10k 1%'),('R6','10k 1%'),('R7','10k 1%'),
                   ('R3','1k'),('R8','1k'),('C5','100nF X7R 50V'),('C7','10uF 16V'),
@@ -68,15 +71,15 @@ for ref in ('C2','C4'): check(ref+' marked DNP',bool(fps[ref].GetAttributes() & 
 check('Only eight fitted resistors',len([r for r in fps if r.startswith('R')])==8)
 check('Removed optional filter/bleeder and duplicate bypass',all(ref not in fps for ref in ('C1','C3','C6','R5','R10')))
 tracks=list(board.GetTracks())
-check('Tracks at least 0.35mm',all(p.ToMM(t.GetWidth())>=.3499 for t in tracks))
-check('5V and LED cathodes at least 0.6mm',all(p.ToMM(t.GetWidth())>=.5999 for t in tracks if t.GetNetname() in ('/5V','/LED_K_IR','/LED_K_RED')))
+check('Tracks at least 0.35mm',all(p.ToMM(t.GetWidth(t.GetLayer()) if isinstance(t,p.PCB_VIA) else t.GetWidth())>=.3499 for t in tracks))
+check('5V and LED cathodes at least 0.6mm',all(p.ToMM(t.GetWidth(t.GetLayer()) if isinstance(t,p.PCB_VIA) else t.GetWidth())>=.5999 for t in tracks if t.GetNetname() in ('/5V','/LED_K_IR','/LED_K_RED')))
 check('I2C buses stay in upper module region',all(max(p.ToMM(t.GetStart().y),p.ToMM(t.GetEnd().y))<125 for t in tracks if t.GetNetname() in ('/SDA','/SCL')))
 check('Bottom GND plane present',any(z.GetLayer()==p.B_Cu and z.GetNetname()=='/GND' for z in board.Zones()))
 for ref,value in [('R4','100R 1% 0.25W'),('R9','100R 1% 0.25W')]: check(ref+' sense value',fps[ref].GetValue()==value)
 edges=[d for d in board.GetDrawings() if d.GetLayer()==p.Edge_Cuts]
 xy=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
-check('70x50mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-50)<1e-6)
-for i,(x,y) in enumerate([(104,125),(166,125),(104,146),(166,146)],1):
+check('70x48mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-48)<1e-6)
+for i,(x,y) in enumerate([(104,125),(166,125),(104,144),(166,144)],1):
     fp=fps[f'H{i}']; pos=fp.GetPosition(); pad=list(fp.Pads())[0]
     check(f'H{i} matches model mounting',abs(p.ToMM(pos.x)-x)<1e-6 and abs(p.ToMM(pos.y)-y)<1e-6 and abs(p.ToMM(pad.GetDrillSize().x)-3.2)<1e-6)
 for s in ['DATN: PPG-Simulator','Nguyen Nhat Huy - Pham Thanh Vy']:

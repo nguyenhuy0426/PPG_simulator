@@ -1,9 +1,9 @@
-# DATN: PPG-Simulator — LED / IR driver v1.7
+# DATN: PPG-Simulator — LED / IR driver v1.8
 
-Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 50 mm**,
-FR4 1,6 mm; socket module và linh kiện xuyên lỗ để dễ hàn/thay thế.
+Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 48 mm**,
+FR4 1,6 mm; socket module, socket IC và header xuyên lỗ; toàn bộ điện trở và tụ điện là linh kiện dán.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.7 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
+Schematic v1.8 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
 không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
 rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
@@ -73,16 +73,16 @@ vỏ và datasheet linh kiện mua thực. **C1815 không thay trực tiếp** v
 
 Hai điện trở 10 kΩ 1% chia đôi điện áp DAC. LM358 điều khiển base qua 1 kΩ
 để giữ điện áp emitter bằng điện áp command. R4 = 100 Ω cho IR, R9 = 100 Ω
-cho Red, metal-film 1%, 1/4 W, bước chân 7,62 mm.
+cho Red, điện trở dán **1206, 1%, công suất danh định tối thiểu 0,25 W**.
 
 `I_emitter ≈ V_DAC / (2 × R_sense)`.
 Tại nguồn DAC 3,28 V và gần full-scale: khoảng 16,40 mA IR / 16,40 mA Red.
 Nguồn 3,30 V cho khoảng 16,50 mA / 16,50 mA. Dòng LED collector nhỏ hơn bởi
 dòng base; đây là tính toán danh nghĩa, chưa gồm sai số và chưa đo thực.
 
-C5 là tụ gốm đĩa **100 nF X7R 50 V**, không phân cực, pitch 2,50 mm,
-thân ≤Ø5 mm. C7 là tụ điện phân 10 µF ≥16 V, Ø5 mm, pitch 2,00 mm,
-chú ý cực + nối 5 V. C5 đặt sát nguồn U1; C7 gần đầu nguồn. Tụ hóa C7 là
+C5 là tụ gốm dán **0805, 100 nF X7R 50 V**, không phân cực.
+C7 là tụ hóa dán **SMD 5×5,4 mm, 10 µF ≥16 V**; kiểm tra đúng kích thước
+thân/chân của linh kiện mua, cực + nối 5 V và cực − nối GND. C5 đặt sát nguồn U1; C7 gần đầu nguồn. Tụ hóa C7 là
 tụ phân cực; không phải hai loại linh kiện riêng cần lắp thêm.
 
 Các vị trí **DNP — chưa lắp**:
@@ -100,7 +100,7 @@ board này không có khóa tắt LED độc lập. Không ghi EEPROM trong lu�
 
 ## Cơ khí và hình xem trước
 
-Board mới 70 × 50 mm, lỗ tại (4,25), (66,25), (4,46), (66,46) mm, Ø3,2 mm. Dùng gá chuyển `mechanical/driver_70x50_adapter_print.stl` để lắp lên đế 70 × 55 mm cũ; xem `mechanical/README.md` về chiều lắp và vít.
+Board mới 70 × 48 mm, lỗ tại (4,25), (66,25), (4,44), (66,44) mm, Ø3,2 mm. Dùng gá chuyển `mechanical/driver_70x48_adapter_print.stl` để lắp lên đế 70 × 55 mm cũ; xem `mechanical/README.md` về chiều lắp và vít.
 Các đầu ra LED nằm sát cạnh hướng về hộp quang theo mô hình driver cũ.
 
 Ảnh module xác nhận pinout nhưng không cho kích thước cơ khí chính xác.
@@ -117,7 +117,7 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 
 KiCad 10.0.6: **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm; 0 kết nối còn thiếu;
 0 sai khác schematic/PCB; 244 kiểm tra hợp đồng chân, giá trị, hình học và đi dây đạt**.
-File khoan có 64 lỗ mạ (42 lỗ Ø0,8 mm, 22 lỗ Ø1,0 mm) và bốn lỗ
+File khoan có 57 lỗ mạ (17 via Ø0,4 mm, 18 lỗ Ø0,8 mm, 22 lỗ Ø1,0 mm) và bốn lỗ
 không mạ Ø3,2 mm. Gia công hai lớp đồng, FR4 1,6 mm, đồng 1 oz.
 
 - `reports/erc.rpt`: kiểm tra schematic.

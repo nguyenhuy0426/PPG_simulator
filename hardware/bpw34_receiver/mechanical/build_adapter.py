@@ -37,16 +37,10 @@ def body_count(mesh):
 
 
 def main():
-    # Same exterior and slide stops as the OPT101 replacement frame.  The rear
-    # channel recess is 4 mm taller to clear the low-profile SMD analog stage.
-    frame = g.box(137.5, 141.5, 3, 59.8, -36.7, 36.7)
-    cuts = [g.box(137.4, 139.1, 16.75, 47.25, -35.25, 35.25)]
-    for low, high in ((-29, -4), (4, 29)):
-        cuts.append(g.box(139.0, 141.6, 18, 46, low, high))
-    for y in (20.5, 43.5):
-        for z in (-30.5, 30.5):
-            cuts.append(g.cyl_x(137.4, 141.6, y, z, 1.3, 48))
-    frame = g.dif(frame, cuts)
+    shared_spec = importlib.util.spec_from_file_location('receiver_u_support', REPO/'docs/system_3d/receiver_u_support.py')
+    shared = importlib.util.module_from_spec(shared_spec)
+    shared_spec.loader.exec_module(shared)
+    frame = shared.build(g)
     frame.export(HERE / "frame_70x30_bpw34_assembly.stl")
 
     printed = frame.copy()
@@ -56,6 +50,9 @@ def main():
     printed.apply_translation(-printed.bounds[0])
     printed.export(HERE / "frame_70x30_bpw34_print.stl")
 
+    print_folder = REPO/'docs/system_3d/out/print_bambu_180'
+    print_folder.mkdir(parents=True, exist_ok=True)
+    printed.export(print_folder/'14_ga_chu_U_RX_70x30.stl')
     pcb = g.box(137.5, 139.1, 17, 47, -35, 35)
     pcb_holes = [g.cyl_x(137.4, 139.2, y, z, 1.6, 48) for y in (20.5, 43.5) for z in (-30.5, 30.5)]
     pcb = g.dif(pcb, pcb_holes)
@@ -73,10 +70,6 @@ def main():
         parts[f"grove_solder_{channel}"] = g.box(139.1, 141.1, 20.7, 23.3, *header_z)
     parts["ads_header"] = g.box(125.5, 137.5, 20.0, 24.0, -14.5, -3.88)
     parts["ads_solder"] = g.box(139.1, 141.1, 20.7, 23.3, -13.5, -4.88)
-    for y in (20.5, 43.5):
-        for z in (-30.5, 30.5):
-            parts[f"screw_head_{y}_{z}"] = g.cyl_x(134.5, 137.5, y, z, 3.2, 48)
-
     exported = REPO / "docs/system_3d/out/stl"
     fixed = {name: trimesh.load(exported / f"{name}.stl", force="mesh") for name in ("body", "lid", "aperture_red_d16")}
     aperture_ir = fixed["aperture_red_d16"].copy()
@@ -112,7 +105,7 @@ def main():
         "bpw34_sensitive_surface_x_mm": 134.3,
         "rear_component_clearance_mm": 2.0,
         "solder_trim_max_mm": 2.0,
-        "fasteners": "4 x M3x4 into 2.6 mm plastic pilot holes",
+        "fasteners": "None; screwless U support, secure PCB edges with opaque tape",
         "watertight": bool(frame.is_watertight),
         "connected_bodies": body_count(frame),
         "checks": checks,
@@ -121,7 +114,7 @@ def main():
         "limitations": [
             "Conservative component envelopes, not exact purchased-part solids.",
             "BPW34 sensitive-area centre is assumed to match the package drawing nominal centre.",
-            "No physical print-shrinkage, cable-bend or light-leakage test has been performed.",
+            "Open U requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test.",
         ],
     }
     (HERE / "fit_report.json").write_text(json.dumps(report, indent=2) + "\n")

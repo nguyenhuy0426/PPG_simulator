@@ -37,9 +37,10 @@ FPS={
  'Header2':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
  'DIP8':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
  'NPN':'Package_TO_SOT_THT.pretty/TO-92_Inline_Wide.kicad_mod',
- 'R':'Resistor_THT.pretty/R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal.kicad_mod',
- 'C':'Capacitor_THT.pretty/C_Disc_D5.0mm_W2.5mm_P2.50mm.kicad_mod',
- 'CP':'Capacitor_THT.pretty/CP_Radial_D5.0mm_P2.00mm.kicad_mod',
+ 'R':'Resistor_SMD.pretty/R_0805_2012Metric_Pad1.20x1.40mm_HandSolder.kicad_mod',
+ 'RSense':'Resistor_SMD.pretty/R_1206_3216Metric_Pad1.30x1.75mm_HandSolder.kicad_mod',
+ 'C':'Capacitor_SMD.pretty/C_0805_2012Metric_Pad1.18x1.45mm_HandSolder.kicad_mod',
+ 'CP':'Capacitor_SMD.pretty/CP_Elec_5x5.4.kicad_mod',
  'Hole':'MountingHole.pretty/MountingHole_3.2mm_M3.kicad_mod',
 }
 PARTS=[]
@@ -65,7 +66,7 @@ for i,ch in enumerate(['IR','RED']):
       (f'R{2+i*5}','10k 1%',[f'CMD_{ch}','GND'],(16.62 if left else 53.62,31),(sx,147.32),180,False),
       (f'R{3+i*5}','1k',[f'AMP_{ch}',f'BASE_{ch}'],(23 if left else 46,29.5 if left else 35),(sx+33.02,114.3),270 if left else 0,False),
       (f'R{4+i*5}','100R 1% 0.25W',[f'SENSE_{ch}','GND'],(12 if left else 48,46),(sx+66.04,187.96),0,False),
-    ]: part(ref,'R',val,ns,'R',xy,sc,ang,dnp)
+    ]: part(ref,'R',val,ns,'RSense' if ref in ('R4','R9') else 'R',xy,sc,ang,dnp)
     part(f'C{2+i*2}','C','DNP loop comp',[f'AMP_{ch}',f'SENSE_{ch}'],'C',(27 if left else 43,38),(sx+99.06,187.96),270,True)
     part(f'J{5+i}','Conn2',f'{ch} LED A / K',['5V',f'LED_K_{ch}'],'Header2',(23 if left else 46,50),(sx+99.06,114.3),90)
 part('J7','Conn2','5V INPUT / GND',['5V','GND'],'Header2',(34,50),(193.04,218.44),90)
@@ -144,6 +145,13 @@ def board(share,cli):
     for d in PARTS:
         fp=p.FootprintLoad(str(lib),d['fp']); fp.SetReference(d['ref']); fp.SetValue(d['value']); fp.SetFPID(p.LIB_ID('TX',d['fp']))
         x,y=d['xy']; fp.SetPosition(vec(100+x,100+y)); fp.SetOrientationDegrees(d['angle'])
+        # SMD packages are centred between the original routing anchors.
+        # Preserve those anchors for short straight fanouts in route_board.
+        if d['kind'] in ('R','C','CP'):
+            import math
+            half={'R':3.81,'C':1.25,'CP':1.0}[d['kind']]
+            a=math.radians(d['angle'])
+            fp.SetPosition(vec(100+x+half*math.cos(a),100+y-half*math.sin(a)))
         path=p.KIID_PATH(); path.push_back(p.KIID(ROOT)); path.push_back(p.KIID(uid(d['ref']))); fp.SetPath(path)
         fp.SetAttributes(fp.GetAttributes() & ~p.FP_EXCLUDE_FROM_BOM)
         if d['dnp']: fp.SetAttributes(fp.GetAttributes() | p.FP_DNP)
@@ -233,25 +241,25 @@ def board(share,cli):
                 occupied.append(r); break
         else: raise RuntimeError('No refdes position for '+fp.GetReference())
     from route_board import route_board
-    route_board(b)
-    # Compact v1.7: preserve all copper routing relationships, translate the
+    route_board(b, PARTS)
+    # Compact v1.8: preserve all copper routing relationships, translate the
     # populated region upward, and relocate the two upper mounting holes.
     for item in list(b.GetFootprints())+list(b.GetTracks())+list(b.GetDrawings())+list(b.Zones()):
         item.Move(vec(0,-5))
     for item in list(b.GetDrawings()):
         if item.GetLayer()==p.Edge_Cuts: b.Remove(item)
-    for a,c in [((0,0),(70,0)),((70,0),(70,50)),((70,50),(0,50)),((0,50),(0,0))]: line(a,c,p.Edge_Cuts)
-    for i,(x,y) in enumerate(((4,25),(66,25),(4,46),(66,46)),1):
+    for a,c in [((0,0),(70,0)),((70,0),(70,48)),((70,48),(0,48)),((0,48),(0,0))]: line(a,c,p.Edge_Cuts)
+    for i,(x,y) in enumerate(((4,25),(66,25),(4,44),(66,44)),1):
         footprints[f'H{i}'].SetPosition(vec(100+x,100+y))
         next(iter(footprints[f'H{i}'].Pads())).SetLocalClearance(mm(.8))
     for z in b.Zones():
         z.Outline().RemoveAllContours(); poly=z.Outline(); poly.NewOutline()
-        for x,y in ((100.6,100.6),(169.4,100.6),(169.4,149.4),(100.6,149.4)): poly.Append(vec(x,y).x,vec(x,y).y)
+        for x,y in ((100.6,100.6),(169.4,100.6),(169.4,147.4),(100.6,147.4)): poly.Append(vec(x,y).x,vec(x,y).y)
     for t in b.GetDrawings():
         if not isinstance(t,p.PCB_TEXT): continue
         txt=t.GetText()
-        if txt=='PPG TX  v1.6': t.SetText('PPG TX v1.7'); t.SetPosition(vec(135,100.9)); t.SetTextSize(vec(.8,.8))
-        if txt=='DAC: 3.3V ONLY': t.SetPosition(vec(117,119.9)); t.SetTextSize(vec(.8,.8))
+        if txt=='PPG TX  v1.6': t.SetText('PPG TX v1.8'); t.SetPosition(vec(135,100.9)); t.SetTextSize(vec(.8,.8))
+        if txt=='DAC: 3.3V ONLY': b.Remove(t); continue; t.SetTextSize(vec(.8,.8))
         if txt=='SAME Pi BUS': t.SetPosition(vec(135,102.7))
         if txt.startswith('MCP4725'): t.SetPosition(vec(p.ToMM(t.GetPosition().x),101.0))
         if txt.startswith('ADDR='): t.SetPosition(vec(p.ToMM(t.GetPosition().x),102.8))
@@ -259,6 +267,13 @@ def board(share,cli):
         if txt=='Nguyen Nhat Huy - Pham Thanh Vy': t.SetPosition(vec(135,119.4)); t.SetTextSize(vec(.8,.8))
         if t.GetLayer()==p.B_SilkS and txt=='AMP_I': t.SetPosition(vec(109,123.9))
         if t.GetLayer()==p.B_SilkS and txt=='5V' and p.ToMM(t.GetPosition().x)>160: t.SetPosition(vec(161,125.19))
+    for t in b.GetDrawings():
+        if not isinstance(t,p.PCB_TEXT): continue
+        if t.GetText()=='J2 PI: SCL SDA 3V3 GND': b.Remove(t); continue
+        if t.GetText() in ('IR A+ K-','RED A+ K-','5V GND'):
+            b.Remove(t); continue
+        elif p.ToMM(t.GetPosition().y)>147.0:
+            t.SetPosition(vec(p.ToMM(t.GetPosition().x),146.5))
     p.ZONE_FILLER(b).Fill(b.Zones())
     p.SaveBoard(str(HERE/f'{NAME}.kicad_pcb'),b)
 
@@ -271,7 +286,7 @@ def main():
     write_schematic(HERE,NAME,ROOT,PARTS,uid,q,fx,symbol)
     board(a.share,a.cli)
     with (HERE/'BOM.csv').open('w') as f:
-        w=csv.writer(f); w.writerow(['Reference','Value','Footprint','Fit'])
+        w=csv.writer(f,lineterminator="\n"); w.writerow(['Reference','Value','Footprint','Fit'])
         for d in PARTS: w.writerow([d['ref'],d['value'],'TX:'+d['fp'],'DNP' if d['dnp'] else 'YES'])
 
 if __name__=='__main__': main()

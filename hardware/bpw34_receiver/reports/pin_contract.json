@@ -64,6 +64,10 @@
       "pass": true
     },
     {
+      "check": "All resistor/capacitor pads are SMD",
+      "pass": true
+    },
+    {
       "check": "27 physical footprints",
       "pass": true
     },
@@ -1376,5 +1380,5 @@
       "pass": true
     }
   ],
-  "passed": 342
+  "passed": 343
 }

@@ -19,7 +19,7 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         op.extend([pin(plus,'+','input',-5,2,0),pin(minus,'-','input',-5,-2,0),pin(outpin,'OUT','output',5,0,180),')'])
     op+=['(symbol "LM358P_3_1" (rectangle (start -5.08 7.62) (end 5.08 -7.62) (stroke (width .254) (type default)) (fill (type background)))',pin(8,'V+','power_in',0,5,270),pin(4,'V-','power_in',0,-5,90),'))']
     shapes['LM358P']='\n'.join(op)
-    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.7") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy"))','(lib_symbols',*shapes.values(),')']
+    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.8") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy"))','(lib_symbols',*shapes.values(),')']
     byref={d['ref']:d for d in parts}; segments=[]; placed=set(); anchors=set()
     def wire(*points): segments.extend(zip(points,points[1:]))
     def label(net,x,y):

@@ -16,7 +16,7 @@ HARDWARE = HERE.parent
 SOURCES = [
     ('OPT', HARDWARE/'opt101_receiver_kicad/opt101_receiver', 'opt101_receiver', 30),
     ('BPW', HARDWARE/'bpw34_receiver', 'bpw34_receiver', 30),
-    ('TX', HARDWARE/'led_ir_driver', 'led_ir_driver', 50),
+    ('TX', HARDWARE/'led_ir_driver', 'led_ir_driver', 48),
 ]
 NAME = 'ppg_panel'
 def v(x,y): return p.VECTOR2I(p.FromMM(x), p.FromMM(y))
@@ -27,7 +27,13 @@ def line(board, a, b, layer):
 def main():
     board=p.BOARD(); board.GetDesignSettings().SetCopperLayerCount(2)
     board.GetDesignSettings().SetBoardThickness(p.FromMM(1.6))
-    manifest={'panel_mm':[70,110,1.6], 'vcut_y_from_top_mm':[30,60], 'copper_to_vcut_min_mm':.6, 'sources':[]}
+    manifest={'panel_mm':[70,108,1.6], 'vcut_y_from_top_mm':[30,60], 'copper_to_vcut_min_mm':.6, 'sources':[]}
+    # Rebuild vendored libraries/models from source boards to avoid stale
+    # through-hole assets after footprint migrations.
+    for prefix in ('OPT','BPW','TX'):
+        modeldir=HERE/'3dmodels'/prefix
+        if modeldir.exists(): shutil.rmtree(modeldir)
+        for libdir in HERE.glob(prefix+'_*.pretty'): shutil.rmtree(libdir)
     libraries=[]; offset=0
     for prefix,folder,name,height in SOURCES:
         source=folder/(name+'.kicad_pcb'); src=p.LoadBoard(str(source))
@@ -85,7 +91,7 @@ def main():
             'size_mm':[70,height], 'footprints':len(list(src.GetFootprints())),
             'tracks_and_vias':len(list(src.GetTracks()))})
         offset+=height
-    for a,b in [((50,50),(120,50)),((120,50),(120,160)),((120,160),(50,160)),((50,160),(50,50))]:
+    for a,b in [((50,50),(120,50)),((120,50),(120,158)),((120,158),(50,158)),((50,158),(50,50))]:
         line(board,a,b,p.Edge_Cuts)
     for y in (80,110):
         # Cmts.User contains score centre-lines ONLY. Do not mill these as slots.
@@ -114,6 +120,6 @@ def main():
     (HERE/'fp-lib-table').write_text(table+')\n')
     (HERE/'reports').mkdir(exist_ok=True)
     (HERE/'reports/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    print('Panel generated: 70 x 110 mm, score lines at 30 and 60 mm; isolated nets.')
+    print('Panel generated: 70 x 108 mm, score lines at 30 and 60 mm; isolated nets.')
 
 if __name__=='__main__': main()

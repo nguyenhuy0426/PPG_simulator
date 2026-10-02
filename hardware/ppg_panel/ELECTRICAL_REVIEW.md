@@ -80,12 +80,12 @@ và đi dây OUT sát dây GND. Hai ADC đọc song song tạo tải chung, chư
    cắm riêng hai dây OUT vào một ADC không có GND chung là sai. J3 BPW34
    có RED/GND_RED/IR/GND_IR. Không nối song song hai tín hiệu RED và IR.
 
-Ba PCB đã thu gọn còn 70×30, 70×30, 70×50 mm. Tiết kiệm 6,3 cm² (7,56%).
+Ba PCB đã thu gọn còn 70×30, 70×30, 70×48 mm. Tiết kiệm 7,7 cm² (9,24%) so với ba board trước khi thu gọn.
 Giữ chiều dài 70 mm, khoảng cách trục 38,5 mm, socket DIP/module, các header
-và linh kiện THT của driver. Đây là mức thu gọn thận trọng, không tuyên bố
+và đầu nối/socket THT của driver. Đây là mức thu gọn thận trọng, không tuyên bố
 là diện tích nhỏ nhất tuyệt đối. Giảm mạnh hơn cần đổi bố trí/module hoặc
 linh kiện SMD và kiểm chứng lại cơ khí; kích thước thật module MCP4725 chưa
-được cung cấp. Đã tạo khung receiver và adapter driver mới; chưa thử in/lắp.
+được cung cấp. Receiver hiện dùng chung thanh chữ U không bắt vít; dùng băng keo đục quang giữ board và bịt khe trên/vách giữa phía sau. Adapter driver giữ nguyên; chưa thử in/lắp.
 
 ## Nguồn kỹ thuật
 

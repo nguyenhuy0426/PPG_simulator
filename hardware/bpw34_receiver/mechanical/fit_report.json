@@ -18,14 +18,14 @@
   "bpw34_sensitive_surface_x_mm": 134.3,
   "rear_component_clearance_mm": 2.0,
   "solder_trim_max_mm": 2.0,
-  "fasteners": "4 x M3x4 into 2.6 mm plastic pilot holes",
+  "fasteners": "None; screwless U support, secure PCB edges with opaque tape",
   "watertight": true,
   "connected_bodies": 1,
   "checks": [
     {
       "a": "frame",
       "b": "body",
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -407,105 +407,9 @@
       "pass": true
     },
     {
-      "a": "screw_head_20.5_-30.5",
-      "b": "body",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_-30.5",
-      "b": "lid",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_-30.5",
-      "b": "aperture_red_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_-30.5",
-      "b": "aperture_ir_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_30.5",
-      "b": "body",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_30.5",
-      "b": "lid",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_30.5",
-      "b": "aperture_red_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_20.5_30.5",
-      "b": "aperture_ir_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_-30.5",
-      "b": "body",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_-30.5",
-      "b": "lid",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_-30.5",
-      "b": "aperture_red_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_-30.5",
-      "b": "aperture_ir_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_30.5",
-      "b": "body",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_30.5",
-      "b": "lid",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_30.5",
-      "b": "aperture_red_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "screw_head_43.5_30.5",
-      "b": "aperture_ir_d16",
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
       "a": "frame",
       "b": "pcb",
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 3.0316490059097606e-13,
       "pass": true
     },
     {
@@ -596,7 +500,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 0.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -645,7 +549,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 2.0,
-      "intersection_mm3": 7.579122514774402e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -694,7 +598,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 4.0,
-      "intersection_mm3": 7.579122514774402e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -743,7 +647,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 6.0,
-      "intersection_mm3": 1.2126596023639042e-12,
+      "intersection_mm3": 6.063298011819521e-13,
       "pass": true
     },
     {
@@ -792,7 +696,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 8.0,
-      "intersection_mm3": 1.2126596023639042e-12,
+      "intersection_mm3": 6.063298011819521e-13,
       "pass": true
     },
     {
@@ -890,7 +794,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 12.0,
-      "intersection_mm3": 3.410605131648481e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -939,7 +843,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 14.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -988,7 +892,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 16.0,
-      "intersection_mm3": 1.8947806286936006e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1037,7 +941,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 6.063298011819521e-13,
       "pass": true
     },
     {
@@ -1135,7 +1039,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 22.0,
-      "intersection_mm3": 7.579122514774402e-14,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1282,7 +1186,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 28.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1576,7 +1480,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 40.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 3.0316490059097606e-13,
       "pass": true
     },
     {
@@ -1674,7 +1578,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 44.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1723,7 +1627,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 46.0,
-      "intersection_mm3": 7.579122514774402e-14,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1772,7 +1676,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 48.0,
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 6.063298011819521e-13,
       "pass": true
     },
     {
@@ -1821,7 +1725,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 50.0,
-      "intersection_mm3": 1.1368683772161603e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1870,7 +1774,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 52.0,
-      "intersection_mm3": 1.1368683772161603e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -2210,11 +2114,11 @@
       "pass": true
     }
   ],
-  "passed": 326,
-  "total": 326,
+  "passed": 310,
+  "total": 310,
   "limitations": [
     "Conservative component envelopes, not exact purchased-part solids.",
     "BPW34 sensitive-area centre is assumed to match the package drawing nominal centre.",
-    "No physical print-shrinkage, cable-bend or light-leakage test has been performed."
+    "Open U requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test."
   ]
 }

@@ -38,12 +38,12 @@ def main():
             # Only the panel Gerbers are manufacturing inputs in the combined ZIP.
             if folder.name != "ppg_panel" and "fabrication" in p.relative_to(folder).parts: continue
             entries[str(Path("hardware")/p.relative_to(HERE))] = p.read_bytes()
-    entries["SEND_TO_FAB.md"] = """# PPG: manufacture ONE 70 x 110 mm V-score panel
+    entries["SEND_TO_FAB.md"] = """# PPG: manufacture ONE 70 x 108 mm V-score panel
 
 Manufacturing input: **hardware/ppg_panel/fabrication/** only.
 Read **hardware/ppg_panel/reports/vcut_drawing.pdf** and **hardware/ppg_panel/README.md**.
 2 copper layers, FR-4 1.6 mm, 1 oz, mask and white silkscreen on both sides.
-Three DIFFERENT designs, one copy each: OPT101 70x30, BPW34 70x30, LED/IR 70x50 mm.
+Three DIFFERENT designs, one copy each: OPT101 70x30, BPW34 70x30, LED/IR 70x48 mm.
 Two full-width V-score lines at Y=30/60 mm from the top edge; score both sides.
 The User_Comments Gerber is a V-score guide, NOT copper and NOT a milling slot.
 Edge_Cuts is only the outer rectangle. Copper clearance to score centre >=0.60 mm each side.

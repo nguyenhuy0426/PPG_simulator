@@ -66,6 +66,10 @@
       "pass": true
     },
     {
+      "check": "All resistor/capacitor pads are SMD",
+      "pass": true
+    },
+    {
       "check": "15 physical footprints",
       "pass": true
     },
@@ -310,6 +314,22 @@
       "pass": true
     },
     {
+      "check": "track 39 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 40 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 41 is horizontal or vertical",
+      "pass": true
+    },
+    {
+      "check": "track 42 is horizontal or vertical",
+      "pass": true
+    },
+    {
       "check": "H1 local copper clearance is 1.0mm",
       "pass": true
     },
@@ -342,6 +362,14 @@
       "pass": true
     },
     {
+      "check": "C2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
       "check": "C4.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -350,43 +378,11 @@
       "pass": true
     },
     {
-      "check": "C1.1 PCB agrees with audited netlist",
+      "check": "R2.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "C1.2 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C3.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C3.2 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.2 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.3 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J2.4 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "R1.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "R1.2 PCB agrees with audited netlist",
+      "check": "R2.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
@@ -422,6 +418,14 @@
       "pass": true
     },
     {
+      "check": "J3.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
       "check": "J1.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -438,27 +442,19 @@
       "pass": true
     },
     {
-      "check": "R2.1 PCB agrees with audited netlist",
+      "check": "C3.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "R2.2 PCB agrees with audited netlist",
+      "check": "C3.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "C2.1 PCB agrees with audited netlist",
+      "check": "C1.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "C2.2 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "J3.2 PCB agrees with audited netlist",
+      "check": "C1.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
@@ -491,6 +487,30 @@
     },
     {
       "check": "U2.8 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.3 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J2.4 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
@@ -714,5 +734,5 @@
       "pass": true
     }
   ],
-  "passed": 178
+  "passed": 183
 }

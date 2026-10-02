@@ -23,7 +23,7 @@ mục Power Supply Recommendations và Layout.
 Không bắt buộc dùng hóa học điện phân cho C7. Có thể dùng tụ gốm 10 µF
 phù hợp, nhưng phải kiểm tra điện dung thực ở bias 5 V, kích thước và
 footprint. Tụ hóa radial được chọn vì dễ hàn tay, dễ mua và gọn với footprint
-Ø5 mm, pitch 2 mm. Cực + của C7 nối +5 V; cực − nối GND.
+footprint tụ hóa dán 5×5,4 mm. Cực + của C7 nối +5 V; cực − nối GND.
 Nếu nguồn sát board và ổn định, có thể thử bỏ C7 sau khi đo; không khẳng định
 bỏ tụ vẫn tốt khi chưa biết dây cấp nguồn/đáp ứng tải thực.
 

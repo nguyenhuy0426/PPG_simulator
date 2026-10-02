@@ -1,14 +1,14 @@
-# Gá chuyển driver 70×50 mm lên đế 70×55 cũ
+# Gá chuyển driver 70×48 mm lên đế 70×55 cũ
 
-In `driver_70x50_adapter_print.stl`, đơn vị mm, scale 100%, mặt phẳng lớn
+In `driver_70x48_adapter_print.stl`, đơn vị mm, scale 100%, mặt phẳng lớn
 đặt xuống bàn in. Adapter 70×55 mm, dày nền 2 mm, tổng cao 6 mm. Không in
 `*_pcb_assembly.stl` để thay cho adapter.
 
 Đặt adapter lên bốn trụ driver cũ trên đế hệ thống. Hai lỗ adapter phía
 trên tại (4,4), (66,4) bắt vào trụ cũ bằng vít M3 phù hợp, danh nghĩa M3×6.
-PCB mới nằm tại gốc (0,5), mặt dưới cao 6 mm so với mặt dưới adapter.
+PCB mới nằm tại gốc (0,7), mặt dưới cao 6 mm so với mặt dưới adapter.
 Hai vít PCB trên tại (4,25)/(66,25) vào lỗ mồi Ø2,6 trên adapter, dùng
-M3×6. Hai vít PCB dưới tại (4,46)/(66,46) đi qua adapter vào trụ cũ,
+M3×6. Hai vít PCB dưới tại (4,44)/(66,44) đi qua adapter vào trụ cũ,
 danh nghĩa M3×16 theo đế nguồn có trụ 5 mm + nền 4 mm. Kiểm tra chiều dài
 vít thật và không để vít chạm nền bên dưới. Không siết quá mức vào nhựa.
 

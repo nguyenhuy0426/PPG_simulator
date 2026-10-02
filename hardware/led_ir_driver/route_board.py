@@ -7,7 +7,7 @@ current through the receiver board.
 """
 import pcbnew as p
 
-def route_board(b):
+def route_board(b, parts):
     nets={n.GetNetname().lstrip('/'):n for n in b.GetNetsByNetcode().values()}
     def vec(x,y): return p.VECTOR2I(p.FromMM(100+x),p.FromMM(100+y))
     def trace(net,pts,layer=p.F_Cu,width=.35):
@@ -23,7 +23,12 @@ def route_board(b):
     trace('DAC_RED',[(40,10),(38,12),(38,24.3),(44,24.3),(46,26.3),(46,27)],p.B_Cu)
 
     # Left/IR command, base drive, emitter current and Kelvin feedback branch.
-    trace('CMD_IR',[(16.62,27),(16.62,31),(16.62,33),(27,33),(29,35),(29,35.27),(31.19,35.27)])
+    trace('CMD_IR',[(16.62,27),(16.62,31),(16.62,33)])
+    trace('CMD_IR',[(16.62,33),(25,33)],p.B_Cu)
+    trace('CMD_IR',[(25,33),(27,33),(29,35),(29,35.27),(31.19,35.27)])
+    for x in (16.62,25):
+        via=p.PCB_VIA(b); via.SetPosition(vec(x,33)); via.SetWidth(p.FromMM(.8)); via.SetDrill(p.FromMM(.4))
+        via.SetLayerPair(p.F_Cu,p.B_Cu); via.SetNet(nets['CMD_IR']); b.Add(via)
     trace('AMP_IR',[(31.19,30.19),(29,30.19),(27.81,29),(23,29),(23,29.5)])
     trace('AMP_IR',[(31.19,30.19),(27,30.19),(27,38)],p.B_Cu)
     trace('BASE_IR',[(23,37.12),(23,38.5),(20.54,38.5),(20.54,41)])
@@ -55,3 +60,25 @@ def route_board(b):
     poly=zone.Outline(); poly.NewOutline()
     for x,y in [(.6,.6),(69.4,.6),(69.4,54.4),(.6,54.4)]: poly.Append(vec(x,y).x,vec(x,y).y)
     b.Add(zone)
+
+    # SMD pads connect on F.Cu. Add plated vias only at former THT anchors
+    # that need B.Cu routing or the ground plane; no passive component holes.
+    import math
+    fps={f.GetReference():f for f in b.GetFootprints()}
+    original_tracks=list(b.GetTracks())
+    for d in parts:
+        if d['kind'] not in ('R','C','CP'): continue
+        pitch={'R':7.62,'C':2.5,'CP':2.0}[d['kind']]
+        angle=math.radians(d['angle'])
+        for pad in fps[d['ref']].Pads():
+            n=int(pad.GetNumber())-1
+            x=d['xy'][0]+n*pitch*math.cos(angle)
+            y=d['xy'][1]-n*pitch*math.sin(angle)
+            old=vec(x,y); new=pad.GetPosition(); net=pad.GetNetname().lstrip('/')
+            needs_via=net=='GND' or any(t.GetLayer()==p.B_Cu and
+                (t.GetStart()==old or t.GetEnd()==old) for t in original_tracks)
+            if needs_via:
+                via=p.PCB_VIA(b); via.SetPosition(old); via.SetWidth(p.FromMM(.8)); via.SetDrill(p.FromMM(.4))
+                via.SetLayerPair(p.F_Cu,p.B_Cu); via.SetNet(nets[net]); b.Add(via)
+            trace(net,[(x,y),(p.ToMM(new.x)-100,p.ToMM(new.y)-100)],
+                  width=.6 if net in ('5V','GND') or net.startswith('SENSE') else .35)

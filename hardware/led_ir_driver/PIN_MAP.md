@@ -1,8 +1,8 @@
-# Tra chân PCB driver v1.7
+# Tra chân PCB driver v1.8
 
 Số chân dưới đây đọc trực tiếp từ PCB đã đi dây. Hai hình trong wiring_guide.png
 đều nhìn từ mặt linh kiện; mặt đồng B.Cu được nhìn xuyên board, không lật ảnh.
-Tên net giống nhau nghĩa là nối điện với nhau. Khác lớp chỉ nối tại pad xuyên lỗ.
+Tên net giống nhau nghĩa là nối điện với nhau. Khác lớp nối qua lỗ mạ của đầu nối/socket hoặc via.
 GND là vùng đồng mặt dưới, được ẩn trong hình để dễ nhìn đường tín hiệu.
 
 Nét đứt xám nối hai pad R/C chỉ biểu diễn thân linh kiện, không phải đường đồng.

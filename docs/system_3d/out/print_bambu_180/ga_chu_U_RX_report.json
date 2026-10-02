@@ -1,0 +1,20 @@
+{
+  "bounds_mm": [
+    73.4000015258789,
+    56.79999923706055,
+    4.0
+  ],
+  "solid_volume_mm3": 3660.794137573567,
+  "old_vs_new": {
+    "OPT101": {
+      "old_volume_mm3": 10305.251106913838,
+      "reduction_percent": 64.4764198407788
+    },
+    "BPW34": {
+      "old_volume_mm3": 9825.252364237966,
+      "reduction_percent": 62.74096581072914
+    }
+  },
+  "same_geometry_for_both_boards": true,
+  "note": "Geometric volume comparison, not slicer filament/time or price."
+}

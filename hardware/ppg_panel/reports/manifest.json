@@ -1,7 +1,7 @@
 {
   "panel_mm": [
     70,
-    110,
+    108,
     1.6
   ],
   "vcut_y_from_top_mm": [
@@ -13,7 +13,7 @@
     {
       "prefix": "OPT",
       "source": "opt101_receiver_kicad/opt101_receiver/opt101_receiver.kicad_pcb",
-      "sha256": "f41793bf4ab0eff7db922b94e4a88517ec7e4100c6d5990a12011f1fba794f71",
+      "sha256": "96dd04b1012f77e4a23cdaf06431cc0013453498a9523e5657c693c412325921",
       "offset_mm": [
         0,
         0
@@ -23,7 +23,7 @@
         30
       ],
       "footprints": 15,
-      "tracks_and_vias": 40
+      "tracks_and_vias": 46
     },
     {
       "prefix": "BPW",
@@ -43,17 +43,17 @@
     {
       "prefix": "TX",
       "source": "led_ir_driver/led_ir_driver.kicad_pcb",
-      "sha256": "1dce1419f79bff81674fb9781b52d157fa550d282fa296ecbacccefff2c41acc",
+      "sha256": "ce6f77672f9c60facfe10a964cbeb83cc9836065e31b5b9d8b837de66348e97b",
       "offset_mm": [
         0,
         60
       ],
       "size_mm": [
         70,
-        50
+        48
       ],
       "footprints": 26,
-      "tracks_and_vias": 92
+      "tracks_and_vias": 134
     }
   ]
 }

@@ -1,6 +1,8 @@
+> Gá mới: thanh chữ U không bắt vít, dùng chung hai receiver. Xem `mechanical/README.md`.
+
 # Dual BPW34 receiver for DATN: PPG-Simulator
 
-This is a complete KiCad 10 project for a 70 x 30 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The BPW34 optical centres remain 38.5 mm apart and use the same four M3 mounting-hole locations as the existing receiver frame.
+This is a complete KiCad 10 project for a 70 x 30 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The optical centres remain 38.5 mm apart. The new screwless U support shares the enclosure slot; PCB mounting holes remain unused.
 
 ## Electrical design
 
@@ -74,4 +76,4 @@ The CAD checks do not prove analog gain, noise, optical leakage, print shrinkage
 
 ## Compact mechanical revision v1.3
 
-Use `mechanical/frame_70x30_bpw34_print.stl`. Optical centres are (15.75,15) and (54.25,15) mm on the PCB, maintaining the original world optical axes. Header row is Y=25 mm; M3 hole centres are X=4.5/65.5, Y=3.5/26.5 mm. The old 70x32 frame is superseded.
+Use `mechanical/frame_70x30_bpw34_print.stl`. Optical centres are (15.75,15) and (54.25,15) mm on the PCB, maintaining the original world optical axes. Header row is Y=25 mm; M3 hole centres are X=4.5/65.5, Y=3.5/26.5 mm. The old 70x32 frame and screw mounting are superseded by the common U support. See `mechanical/README.md` for seating, tape retention and the required opaque gap/divider seals.

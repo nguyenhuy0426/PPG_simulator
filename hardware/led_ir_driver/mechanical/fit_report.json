@@ -6,7 +6,7 @@
   ],
   "pcb_mm": [
     70,
-    50,
+    48,
     1.6
   ],
   "old_base_holes_mm": [
@@ -38,16 +38,16 @@
     ],
     [
       4,
-      46
+      44
     ],
     [
       66,
-      46
+      44
     ]
   ],
   "pcb_origin_on_adapter_mm": [
     0,
-    5,
+    7,
     6
   ],
   "pcb_height_increase_mm": 6,

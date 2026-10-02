@@ -67,7 +67,7 @@ def lib_symbol(name):
 
 def schematic():
     out = [f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {ROOT}) (paper "A4")',
-           '(title_block (title "PPG - Dual OPT101P receiver") (date "2026-09-24") (rev "1.3") (comment 1 "70 x 30 mm / DIP-8 sockets / Grove A0 IR, A2 RED"))',
+           '(title_block (title "PPG - Dual OPT101P receiver") (date "2026-09-24") (rev "1.4") (comment 1 "70 x 30 mm / DIP-8 sockets / Grove A0 IR, A2 RED"))',
            '(lib_symbols', *(lib_symbol(n) for n in PINS), ')']
     def text(s,x,y,size=1.27): out.append(f'(text {q(s)} (at {x} {y} 0) {effects(size)} (uuid {uid(s)}))')
     def wire(x1,y1,x2,y2):
@@ -90,7 +90,7 @@ def schematic():
         y = 66.04 + (idx-1)*66.04
         place('OPT101P',f'U{idx}','OPT101P',101.6,y,'PPG:DIP8_Socket')
         place('Grove_Analog',f'J{idx}','A2 / RED' if ch=='RED' else 'A0 / IR',177.8,y,'PPG:Header_1x04_P2mm')
-        place('C',f'C{idx}','100nF 50V X7R ceramic',48.26,y,'PPG:Bypass_100n_P2.5mm')
+        place('C',f'C{idx}','100nF 50V X7R ceramic',48.26,y,'PPG:C0805_Hand')
         top=y-22.86; bottom=y+22.86
         wire(167.64,y+2.54,160.02,y+2.54); wire(160.02,y+2.54,160.02,top)
         wire(160.02,top,73.66,top); wire(73.66,top,48.26,top)
@@ -152,7 +152,6 @@ def pcb(share, cli):
         'DIP8_Socket':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
         'Header_1x04_P2mm':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
         'Header_1x02_P2.54mm':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
-        'Bypass_100n_P2.5mm':'Capacitor_THT.pretty/C_Disc_D5.0mm_W2.5mm_P2.50mm.kicad_mod',
         'MountingHole_M3':'MountingHole.pretty/MountingHole_3.2mm_M3.kicad_mod',
         'R0805_Hand':'Resistor_SMD.pretty/R_0805_2012Metric_Pad1.20x1.40mm_HandSolder.kicad_mod',
         'C0805_Hand':'Capacitor_SMD.pretty/C_0805_2012Metric_Pad1.18x1.45mm_HandSolder.kicad_mod',
@@ -195,7 +194,8 @@ def pcb(share, cli):
         cy=115
         u=add(f'U{idx}','DIP8_Socket','OPT101P',cx-3.81,cy-3.81)
         u.Reference().SetPosition(vec(cx+5.5,cy-6))
-        c=add(f'C{idx}','Bypass_100n_P2.5mm','100nF 50V X7R ceramic',cx-3.81,cy-8)
+        c=add(f'C{idx}','C0805_Hand','100nF 50V X7R ceramic',cx-2.56,cy-8)
+        c.Value().SetVisible(False)
         jx=113 if ch=='RED' else 151
         j=add(f'J{idx}','Header_1x04_P2mm','A2 / RED' if ch=='RED' else 'A0 / IR',jx,125)
         j.SetOrientationDegrees(90)
@@ -227,6 +227,11 @@ def pcb(share, cli):
         else:
             pwr=[(cx-3.81,cy-8),(cx-3.81,105.0),(161.5,105.0),(161.5,121.0),(155.0,121.0),(155.0,125.0)]
         route(f'3V3_{ch}',pwr,p.B_Cu,.5)
+        # Replace the bypass THT supply anchor with a via to B.Cu.
+        v=p.PCB_VIA(b); v.SetPosition(vec(cx-3.81,cy-8)); v.SetWidth(mm(.8)); v.SetDrill(mm(.4)); v.SetLayerPair(p.F_Cu,p.B_Cu); v.SetNet(nets[f'3V3_{ch}']); b.Add(v)
+        for pin,x in ((1,cx-3.81),(2,cx-1.31)):
+            pad=next(a for a in c.Pads() if a.GetNumber()==str(pin))
+            route(f'3V3_{ch}' if pin==1 else f'GND_{ch}',[(x,cy-8),(p.ToMM(pad.GetPosition().x),cy-8)],p.F_Cu,.5)
         # Explicit ground traces, plus a separate bottom plane for each channel.
         route(f'GND_{ch}',[(cx-1.31,cy-8),(cx+3.81,cy-8),(cx+3.81,cy-3.81)],p.F_Cu,.5)
         # Pin 3 connects directly to the ground plane (no long input-side trace).
@@ -254,7 +259,7 @@ def pcb(share, cli):
         # KiCad measures this local clearance from the NPTH edge.
         next(iter(fp.Pads())).SetLocalClearance(mm(1.0))
         fp.Reference().SetVisible(False); fp.Value().SetVisible(False)
-    silk('PPG RX  v1.3',135,103,1)
+    silk('PPG RX  v1.4',135,103,1)
     silk('3.3V ONLY',135,106,.85)
     silk('70 x 30',135,127.5,.85)
     silk('OPT101P\nPIN 1 UP',135,120.5,.8)

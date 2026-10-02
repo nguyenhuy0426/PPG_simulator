@@ -32,17 +32,10 @@ def body_count(mesh):
     return count
 
 def main():
-    # Preserve the old frame exterior so it uses the same enclosure slide stops.
-    frame = g.box(137.5,141.5,3,59.8,-36.7,36.7)
-    cuts = [g.box(137.4,139.1,16.75,47.25,-35.25,35.25)]
-    for lo,hi in [(-29,-4),(4,29)]:
-        cuts += [g.box(139.0,141.6,18,42,lo,hi)]
-    # M3 pilot holes in plastic. M3x4 screws through 1.6 mm PCB engage 2.4 mm;
-    # no rear nut/protrusion, which would foul the enclosure's lower cable bosses.
-    for y in (20.5,43.5):
-        for z in (-30.5,30.5):
-            cuts.append(g.cyl_x(137.4,141.6,y,z,1.3,48))
-    frame = g.dif(frame,cuts)
+    shared_spec = importlib.util.spec_from_file_location('receiver_u_support', REPO/'docs/system_3d/receiver_u_support.py')
+    shared = importlib.util.module_from_spec(shared_spec)
+    shared_spec.loader.exec_module(shared)
+    frame = shared.build(g)
     frame.export(HERE/'frame_70x30_assembly.stl')
     # Flat back face on the print bed. No support needed inside the open recess.
     printed=frame.copy()
@@ -50,6 +43,9 @@ def main():
     m=np.eye(4); m[:3,:3]=[[0,0,1],[0,1,0],[-1,0,0]]
     printed.apply_transform(m); printed.apply_translation(-printed.bounds[0])
     printed.export(HERE/'frame_70x30_print.stl')
+    print_folder = REPO/'docs/system_3d/out/print_bambu_180'
+    print_folder.mkdir(parents=True, exist_ok=True)
+    printed.export(print_folder/'14_ga_chu_U_RX_70x30.stl')
     pcb=g.box(137.5,139.1,17,47,-35,35)
     holes=[g.cyl_x(137.4,139.2,y,z,1.6,48) for y in (20.5,43.5) for z in (-30.5,30.5)]
     pcb=g.dif(pcb,holes); pcb.export(HERE/'pcb_70x30_assembly.stl')
@@ -66,9 +62,6 @@ def main():
         parts['solder_envelope_'+ch]=g.box(139.1,141.1,26.7,37.3,zc-4.7,zc+4.7)
         parts['solder_header_'+ch]=g.box(139.1,141.1,20.7,23.3,*hz)
         parts['solder_cap_'+ch]=g.box(139.1,141.1,39.2,40.8,zc-4.61,zc-.51)
-    for y in (20.5,43.5):
-        for z in (-30.5,30.5):
-            parts[f'screw_head_{y}_{z}']=g.cyl_x(134.5,137.5,y,z,3.2,48)
     parts['header_ads_envelope']=g.box(125.5,137.5,20.0,24.0,-10.5,-4.96)
     parts['solder_ads']=g.box(139.1,141.1,20.7,23.3,-9.5,-5.96)
     exported=REPO/'docs/system_3d/out/stl'
@@ -96,12 +89,12 @@ def main():
             'optical_window_x_mm':'137.5 - measured socket-plus-IC optical height',
             'socket_envelope_height_mm':11,'header_envelope_height_mm':12,
             'solder_trim_max_mm':2,
-            'fasteners':'4 x M3x4, 2.6 mm pilot holes in plastic, no rear nuts',
+            'fasteners':'None; screwless U support, secure PCB edges with opaque tape',
             'watertight':bool(frame.is_watertight), 'connected_bodies':body_count(frame),
             'checks':checks,'passed':sum(x['pass'] for x in checks),'total':len(checks),
             'limitations':['Envelope check, not actual purchased socket or cable geometry.',
                           'Die offset not dimensioned in TI drawing; nominal package centre used.',
-                          'No physical fit, print shrinkage or optical leakage test.']}
+                          'Open U: opaque sealing required above PCB and across rear centre-divider gap; no physical fit/light-leak test.']}
     (HERE/'fit_report.json').write_text(json.dumps(report,indent=2)+'\n')
     print(f"Mechanical: {report['passed']}/{len(checks)}, watertight={frame.is_watertight}")
     if not all(x['pass'] for x in checks):

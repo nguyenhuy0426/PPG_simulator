@@ -47,6 +47,9 @@ for ref in ("J1", "J2"):
     check(ref + ".2 intentionally isolated", any(pins == {(ref, "2")} for name, pins in nets.items() if name.startswith("unconnected-")))
 
 fps = {fp.GetReference(): fp for fp in board.GetFootprints()}
+check('All resistor/capacitor pads are SMD',all(
+    pad.GetAttribute()==p.PAD_ATTRIB_SMD
+    for ref,fp in fps.items() if ref.startswith(('R','C')) for pad in fp.Pads()))
 check("27 physical footprints", len(fps) == 27)
 check("two copper layers", board.GetCopperLayerCount() == 2)
 check("1.6 mm substrate", abs(p.ToMM(board.GetDesignSettings().GetBoardThickness()) - 1.6) < 1e-6)

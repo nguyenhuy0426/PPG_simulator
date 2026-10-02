@@ -543,5 +543,37 @@
       "d16": 2
     },
     "note": "Plate 3 small hole measured Ø5; replaced according to image positions. Plates 1 and 2 unchanged; the two Ø2 plates remain on plate 2."
+  },
+  "receiver_upgrade": {
+    "file": "14_ga_chu_U_RX_70x30.stl",
+    "quantity_per_receiver": 1,
+    "compatible_boards": [
+      "OPT101 70x30",
+      "BPW34 70x30"
+    ],
+    "size_mm": [
+      73.4,
+      56.8,
+      4
+    ],
+    "sha256": "aec5d55cbf9a19f5c3eb64b9b59f0796d86196c52b56664d613e6554ce4e803b",
+    "replaces": "13_khung_board_5x7.stl for compact receiver boards",
+    "included_in_original_plates": false,
+    "assembly_notes": "README_PCB_MOUNTS.md"
+  },
+  "driver_upgrade": {
+    "print_stl": "driver_70x48_adapter_print.stl",
+    "sha256": "31785a5f2f24d9395b286b6efc24302b86a90436349a6d9cbe305bbc7a76a1b9",
+    "pcb_mm": [
+      70,
+      48,
+      1.6
+    ],
+    "adapter_mm": [
+      70,
+      55,
+      6
+    ],
+    "note": "Separately print this adapter for the compact driver PCB; original plate is unchanged."
   }
 }
