@@ -20,7 +20,7 @@ def compact(input_path=FILE):
       'C1':(126,103.5),'C2':(144,103.5),
       'R1':(115.75,113.7),'R2':(154.25,113.7),
       'C3':(124,113.7),'C4':(146,113.7),
-      'J1':(113,117.4),'J2':(151,117.4),'J3':(126,117.4),
+      'J1':(113,116.5),'J2':(151,116.5),'J3':(126,116.5),
     }
     byref={}
     for old in source.GetFootprints():
@@ -60,7 +60,7 @@ def compact(input_path=FILE):
             route(out,[pad(r,2),pad(co,1)],p.B_Cu)
             route(out,[pad(r,2),(pad(r,2)[0],115.3),(jx,115.3),pad(j,1)],p.B_Cu)
             route(out,[pad(co,1),(pad(co,1)[0],115.3),(126,115.3),pad('J3',1)],p.B_Cu)
-            route(power,[pad(j,3),(pad(j,3)[0],119),(108.5,119),(108.5,104),pad(u,1)],p.F_Cu,.5)
+            route(power,[pad(j,3),(pad(j,3)[0],117.9),(108.5,117.9),(108.5,104),pad(u,1)],p.F_Cu,.5)
             route(power,[pad(u,1),(pad(u,1)[0],101.7),(pad(c,1)[0],101.7),pad(c,1)],p.F_Cu,.35)
             route(gnd,[pad(c,2),(129,103.5)],p.F_Cu,.35);via(gnd,(129,103.5))
         else:
@@ -68,7 +68,7 @@ def compact(input_path=FILE):
             route(out,[pad(r,2),pad(co,1)],p.B_Cu)
             route(out,[pad(r,2),(pad(r,2)[0],115.3),(jx,115.3),pad(j,1)],p.B_Cu)
             route(out,[pad(co,1),(pad(co,1)[0],115.3),(pad('J3',2)[0],115.3),pad('J3',2)],p.B_Cu)
-            route(power,[pad(j,3),(pad(j,3)[0],119),(161.5,119),(161.5,102.2),(pad(u,1)[0],102.2),pad(u,1)],p.F_Cu,.5)
+            route(power,[pad(j,3),(pad(j,3)[0],117.9),(161.5,117.9),(161.5,102.2),(pad(u,1)[0],102.2),pad(u,1)],p.F_Cu,.5)
             route(power,[pad(u,1),(pad(u,1)[0],101.7),(pad(c,1)[0],101.7),pad(c,1)],p.F_Cu,.35)
             route(gnd,[pad(c,2),(147,103.5)],p.F_Cu,.35);via(gnd,(147,103.5))
         # The 2-mm Grove header supply and OPT101 ground pins use an isolated rear plane.
@@ -76,7 +76,7 @@ def compact(input_path=FILE):
         z.SetPadConnection(p.ZONE_CONNECTION_THERMAL);z.SetThermalReliefGap(mm(.3));z.SetThermalReliefSpokeWidth(mm(.4));z.SetMinThickness(mm(.25))
         poly=z.Outline();poly.NewOutline()
         xa,xb=(100.6,133.0) if left else (137.0,169.4)
-        for x,y in ((xa,100.6),(xb,100.6),(xb,119.4),(xa,119.4)):poly.Append(v(x,y).x,v(x,y).y)
+        for x,y in ((xa,101.5),(xb,101.5),(xb,118.5),(xa,118.5)):poly.Append(v(x,y).x,v(x,y).y)
         b.Add(z)
         silk(ch+' / '+('A2' if left else 'A0'),cx,101.6,.85)
         for pin,label in ((1,'V'),(2,'NC'),(3,'G'),(4,'FB')):
@@ -84,10 +84,10 @@ def compact(input_path=FILE):
         for pin,label in ((8,'G'),(7,'NC'),(6,'NC'),(5,'OUT')):
             px,py=pad(u,pin);silk(label,px+2.6,py,.8,True)
         for k,label in enumerate(('S','NC','V','G'),1):
-            x,_=pad(j,k);silk(label,x,119.0,.8,True)
+            x,_=pad(j,k);silk(label,x,118.2,.8,True)
 
     for k,label in ((1,'R'),(2,'I')):
-        x,_=pad('J3',k);silk(label,x,119.0,.8,True)
+        x,_=pad('J3',k);silk(label,x,118.2,.8,True)
     silk('PPG OPT101 RX 70x20',135,108.0,.8)
     silk('3V3 ONLY',135,109.7,.8)
     silk('DATN: PPG-Simulator',135,101.5,.8,True)

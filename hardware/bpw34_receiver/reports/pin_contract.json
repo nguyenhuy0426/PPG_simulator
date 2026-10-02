@@ -122,7 +122,7 @@
       "pass": true
     },
     {
-      "check": "both optical centres at board y=110 mm",
+      "check": "both optical centres at board y=111.7 mm",
       "pass": true
     },
     {
@@ -346,6 +346,46 @@
       "pass": true
     },
     {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
+      "check": "/FB_IR stays on rear copper",
+      "pass": true
+    },
+    {
       "check": "/FB_RED stays on rear copper",
       "pass": true
     },
@@ -382,51 +422,27 @@
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
+      "check": "J2.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
+      "check": "J2.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
+      "check": "J2.3 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
+      "check": "J2.4 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
+      "check": "D2.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "D1.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "D1.2 matches schematic netlist",
+      "check": "D2.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -462,43 +478,43 @@
       "pass": true
     },
     {
-      "check": "J2.1 matches schematic netlist",
+      "check": "D1.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "J2.2 matches schematic netlist",
+      "check": "D1.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "J2.3 matches schematic netlist",
+      "check": "C2.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "J2.4 matches schematic netlist",
+      "check": "C2.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "D2.1 matches schematic netlist",
+      "check": "C8.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "D2.2 matches schematic netlist",
+      "check": "C8.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "R7.1 matches schematic netlist",
+      "check": "R2.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "R7.2 matches schematic netlist",
+      "check": "R2.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "R3.1 matches schematic netlist",
+      "check": "C7.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "R3.2 matches schematic netlist",
+      "check": "C7.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -507,6 +523,14 @@
     },
     {
       "check": "R6.2 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.1 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "R3.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -530,35 +554,11 @@
       "pass": true
     },
     {
-      "check": "C2.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.2 matches schematic netlist",
-      "pass": true
-    },
-    {
       "check": "R4.1 matches schematic netlist",
       "pass": true
     },
     {
       "check": "R4.2 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R2.2 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R5.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R5.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -570,19 +570,19 @@
       "pass": true
     },
     {
-      "check": "C6.1 matches schematic netlist",
+      "check": "C4.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "C6.2 matches schematic netlist",
+      "check": "C4.2 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "C5.1 matches schematic netlist",
+      "check": "R7.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "C5.2 matches schematic netlist",
+      "check": "R7.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -594,27 +594,11 @@
       "pass": true
     },
     {
-      "check": "C4.1 matches schematic netlist",
+      "check": "C5.1 matches schematic netlist",
       "pass": true
     },
     {
-      "check": "C4.2 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R8.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "R8.2 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "C7.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "C7.2 matches schematic netlist",
+      "check": "C5.2 matches schematic netlist",
       "pass": true
     },
     {
@@ -638,19 +622,35 @@
       "pass": true
     },
     {
+      "check": "R5.1 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "R5.2 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "R8.1 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "R8.2 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "C6.1 matches schematic netlist",
+      "pass": true
+    },
+    {
+      "check": "C6.2 matches schematic netlist",
+      "pass": true
+    },
+    {
       "check": "C1.1 matches schematic netlist",
       "pass": true
     },
     {
       "check": "C1.2 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "C8.1 matches schematic netlist",
-      "pass": true
-    },
-    {
-      "check": "C8.2 matches schematic netlist",
       "pass": true
     },
     {

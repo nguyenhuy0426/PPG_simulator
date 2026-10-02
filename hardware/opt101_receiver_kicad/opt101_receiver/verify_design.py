@@ -54,7 +54,7 @@ for ref,pitch in [('J1',2),('J2',2),('J3',2.54)]:
     a=pads['1'].GetPosition(); z=pads['2'].GetPosition()
     actual=math.hypot(p.ToMM(z.x-a.x),p.ToMM(z.y-a.y))
     check(ref+' header pitch',abs(actual-pitch)<1e-6)
-    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-117.4)<1e-6)
+    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-116.5)<1e-6)
 
 # Layout-quality contract: all manually routed copper is Manhattan geometry,
 # with short local output filters and no mounting drills.

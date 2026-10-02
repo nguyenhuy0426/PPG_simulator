@@ -76,4 +76,4 @@ Use `mechanical/frame_70x20_bpw34_print.stl`; see mechanical/README.md.
 
 ## Bố trí bản thu gọn hiện tại
 
-PCB 70 × 20 mm, không có lỗ bắt vít. Tâm BPW34 tại (15,75;10)/(54,25;10) mm; hàng header Y=16,667 mm. Tất cả R/C ở mặt sau. Đường đồng ngang/dọc, vòng SUM và hồi tiếp giữ ngắn. Dùng riêng gá BPW34 có bậc Y thế giới=22 mm để giữ trục quang Y=32 mm; không dùng gá OPT101. Các bảng vị trí cũ được thay bởi tọa độ PCB và fit_report.json hiện tại.
+PCB 70 × 20 mm, không có lỗ bắt vít. Tâm BPW34 tại (15,75;11,7)/(54,25;11,7) mm; hàng header Y=16,667 mm. Tất cả R/C ở mặt sau. Đường đồng ngang/dọc, vòng SUM và hồi tiếp giữ ngắn. Dùng riêng gá BPW34 có bậc Y thế giới=23,7 mm để giữ trục quang Y=32 mm; không dùng gá OPT101. Các bảng vị trí cũ được thay bởi tọa độ PCB và fit_report.json hiện tại.

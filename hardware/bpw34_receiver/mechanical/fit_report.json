@@ -6,7 +6,7 @@
   ],
   "print_bounds_mm": [
     73.4000015258789,
-    40.0,
+    41.70000076293945,
     4.0
   ],
   "lane_centres_z_mm": [
@@ -549,7 +549,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 2.0,
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 3.0316490059097606e-13,
       "pass": true
     },
     {
@@ -598,7 +598,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 4.0,
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 3.0316490059097606e-13,
       "pass": true
     },
     {
@@ -794,7 +794,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 12.0,
-      "intersection_mm3": 1.8947806286936004e-14,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -843,7 +843,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 14.0,
-      "intersection_mm3": 1.8947806286936004e-14,
+      "intersection_mm3": 6.063298011819521e-13,
       "pass": true
     },
     {
@@ -892,7 +892,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 16.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -941,7 +941,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 18.0,
-      "intersection_mm3": 7.579122514774402e-14,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1725,7 +1725,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 50.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {

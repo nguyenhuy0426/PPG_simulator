@@ -27,7 +27,7 @@ def line(board, a, b, layer):
 def main():
     board=p.BOARD(); board.GetDesignSettings().SetCopperLayerCount(2)
     board.GetDesignSettings().SetBoardThickness(p.FromMM(1.6))
-    manifest={'panel_mm':[70,80,1.6], 'vcut_y_from_top_mm':[20,40], 'copper_to_vcut_min_mm':.6, 'sources':[]}
+    manifest={'panel_mm':[70,80,1.6], 'vcut_y_from_top_mm':[20,40], 'copper_to_vcut_min_mm':1.5, 'sources':[]}
     # Rebuild vendored libraries/models from source boards to avoid stale
     # through-hole assets after footprint migrations.
     for prefix in ('OPT','BPW','TX'):
@@ -100,7 +100,7 @@ def main():
         z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(True); z.SetDoNotAllowZoneFills(True)
         z.SetDoNotAllowFootprints(False)
         poly=z.Outline(); poly.NewOutline()
-        for x,yy in ((49,y-.6),(121,y-.6),(121,y+.6),(49,y+.6)): poly.Append(v(x,yy).x,v(x,yy).y)
+        for x,yy in ((49,y-1.5),(121,y-1.5),(121,y+1.5),(49,y+1.5)): poly.Append(v(x,yy).x,v(x,yy).y)
         board.Add(z)
     p.ZONE_FILLER(board).Fill(board.Zones())
     p.SaveBoard(str(HERE/(NAME+'.kicad_pcb')),board)

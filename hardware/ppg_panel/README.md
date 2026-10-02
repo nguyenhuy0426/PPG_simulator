@@ -13,7 +13,7 @@ Hai đường V-cut ở **Y = 20 và 40 mm**, chạy thẳng hết chiều ngang
 Tọa độ trong file KiCad: góc trên trái (50,50); các đường cắt Y=70 và 90.
 Không có khe phay giữa board: V-cut dùng chung đường biên, khoảng hở cơ khí
 trước khi bẻ bằng 0. Sau khi tách là ba PCB độc lập. Toàn bộ đồng, pad, via
-và vùng đồng cách tâm đường cắt ít nhất **0,6 mm mỗi phía**; không có đường
+và vùng đồng cách tâm đường cắt ít nhất **1,5 mm mỗi phía**; không có đường
 điện xuyên qua đường cắt. Các net và reference trong panel được đặt tiền tố
 OPT/BPW/TX để không nối nhầm GND hoặc nguồn giữa các board.
 
@@ -52,3 +52,7 @@ Hai receiver dùng hai biến thể thanh U trong `docs/system_3d/out/print_bamb
 `14_ga_chu_U_OPT101_70x20.stl`, `15_ga_chu_U_BPW34_70x20.stl`.
 Driver dùng `16_ga_driver_70x40.stl`. Xem mechanical/README.md của từng project.
 Trục quang danh nghĩa và khoảng cách hai kênh 38,5 mm được giữ nguyên.
+
+## Khoảng hở khi tách panel
+
+Đồng cách tâm V-cut ≥1,5 mm mỗi phía. Bao footprint các R/C cách V-cut ≥2 mm (bản hiện tại ≥2,095 mm), có kiểm tra tự động trong verify_panel.py. Không thay điều này cho giới hạn cơ khí của nhà in. Tách panel trần trước khi hàn, dùng dụng cụ tách V-score để hạn chế uốn PCB gần tụ gốm; không bẻ mạnh panel đã lắp linh kiện.

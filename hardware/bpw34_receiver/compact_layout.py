@@ -105,6 +105,34 @@ def compact(input_path=FILE):
         for a,c in zip(edit['points'],edit['points'][1:]):
             t=p.PCB_TRACK(b);t.SetNet(net);t.SetLayer(layer);t.SetWidth(width)
             t.SetStart(v(*a));t.SetEnd(v(*c));b.Add(t)
+    # Move the upper analog block inward without shrinking its pad pitch or loops.
+    # Preserve both optical axes in world coordinates by updating the U support.
+    def inset_y(y):
+        if y <= 111: return y + 1.7
+        if y < 113.333333: return 112.7 + (y-111)*(0.633333/2.333333)
+        if y >= 118: return y - .766666
+        return y
+    def inset_point(q): return v(p.ToMM(q.x), inset_y(p.ToMM(q.y)))
+    for f in b.GetFootprints(): f.SetPosition(inset_point(f.GetPosition()))
+    for t in b.GetTracks():
+        if isinstance(t,p.PCB_VIA): t.SetPosition(inset_point(t.GetPosition()))
+        else:
+            t.SetStart(inset_point(t.GetStart()));t.SetEnd(inset_point(t.GetEnd()))
+    for d in b.GetDrawings():
+        if isinstance(d,p.PCB_TEXT) and d.GetLayer()==p.B_SilkS:
+            if d.GetText() in ('K','A'): d.Move(v(0,1.7))
+            elif p.ToMM(d.GetPosition().y)>118: d.Move(v(0,-.5))
+    for z in b.Zones():
+        poly=z.Outline()
+        for k in range(poly.OutlineCount()):
+            chain=poly.Outline(k)
+            for j in range(chain.PointCount()):
+                q=chain.CPoint(j)
+                if p.ToMM(q.y)<110: q.y=mm(101.5)
+                else: q.y=mm(118.5)
+                chain.SetPoint(j,q)
+    # Dedicated anode return prevents isolation by the adjacent signal routes.
+    trace('/GND_RED',[(118.3,111.7),(124,111.7),(124,116.666666),(124.54,116.666666)],p.F_Cu,.25)
     p.ZONE_FILLER(b).Fill(b.Zones());p.SaveBoard(str(FILE),b)
 if __name__=='__main__':
     import sys

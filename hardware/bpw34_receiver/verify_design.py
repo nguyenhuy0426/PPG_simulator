@@ -69,7 +69,7 @@ for ref in ("D1", "D2"):
     check(ref + " BPW34 lead pitch 5.1 mm", abs(pitch - 5.1) < 1e-6)
     check(ref + " cathode uses square pad 1", pads["1"].GetShape() == p.PAD_SHAPE_RECT)
 check("optical lane separation 38.5 mm", abs(p.ToMM(fps["D2"].GetPosition().x - fps["D1"].GetPosition().x) - 38.5) < 1e-6)
-check("both optical centres at board y=110 mm", all(abs(p.ToMM(fps[ref].GetPosition().y) - 110) < 1e-6 for ref in ("D1", "D2")))
+check("both optical centres at board y=111.7 mm", all(abs(p.ToMM(fps[ref].GetPosition().y) - 111.7) < 1e-6 for ref in ("D1", "D2")))
 
 for ref, pitch in (("J1", 2.0), ("J2", 2.0), ("J3", 2.54)):
     pads = {pad.GetNumber(): pad for pad in fps[ref].Pads()}

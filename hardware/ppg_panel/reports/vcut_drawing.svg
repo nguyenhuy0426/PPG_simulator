@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-02T11:05:18.772078</dc:date>
+    <dc:date>2026-10-02T11:37:15.927689</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 420.01377 150.382623
 L 420.01377 244.454754
 L 90.761311 244.454754
 z
-" clip-path="url(#pb34705834f)" style="fill: #e0f2fe; stroke: #334155; stroke-linejoin: miter"/>
+" clip-path="url(#pa1313004cc)" style="fill: #e0f2fe; stroke: #334155; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 90.761311 244.454754
@@ -43,7 +43,7 @@ L 420.01377 244.454754
 L 420.01377 338.526885
 L 90.761311 338.526885
 z
-" clip-path="url(#pb34705834f)" style="fill: #dcfce7; stroke: #334155; stroke-linejoin: miter"/>
+" clip-path="url(#pa1313004cc)" style="fill: #dcfce7; stroke: #334155; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 90.761311 338.526885
@@ -51,17 +51,17 @@ L 420.01377 338.526885
 L 420.01377 526.671148
 L 90.761311 526.671148
 z
-" clip-path="url(#pb34705834f)" style="fill: #fef3c7; stroke: #334155; stroke-linejoin: miter"/>
+" clip-path="url(#pa1313004cc)" style="fill: #fef3c7; stroke: #334155; stroke-linejoin: miter"/>
    </g>
    <g id="line2d_1">
     <path d="M 76.650492 244.454754
 L 434.12459 244.454754
-" clip-path="url(#pb34705834f)" style="fill: none; stroke-dasharray: 5.55,2.4; stroke-dashoffset: 0; stroke: #dc2626; stroke-width: 1.5"/>
+" clip-path="url(#pa1313004cc)" style="fill: none; stroke-dasharray: 5.55,2.4; stroke-dashoffset: 0; stroke: #dc2626; stroke-width: 1.5"/>
    </g>
    <g id="line2d_2">
     <path d="M 76.650492 338.526885
 L 434.12459 338.526885
-" clip-path="url(#pb34705834f)" style="fill: none; stroke-dasharray: 5.55,2.4; stroke-dashoffset: 0; stroke: #dc2626; stroke-width: 1.5"/>
+" clip-path="url(#pa1313004cc)" style="fill: none; stroke-dasharray: 5.55,2.4; stroke-dashoffset: 0; stroke: #dc2626; stroke-width: 1.5"/>
    </g>
    <g id="text_1">
     <!-- OPT101 RX v1.5 -->
@@ -2379,7 +2379,7 @@ z
     </g>
    </g>
    <g id="text_15">
-    <!-- Copper-to-score centre clearance &gt;= 0.60 mm on EACH side. -->
+    <!-- Copper-to-score centre clearance &gt;= 1.50 mm on EACH side. -->
     <g transform="translate(90.761311 688.120883) scale(0.082 -0.082)">
      <defs>
       <path id="DejaVuSans-21" d="M 678 3150
@@ -2429,9 +2429,9 @@ z
      <use xlink:href="#DejaVuSans-21" transform="translate(1700.078125 0)"/>
      <use xlink:href="#DejaVuSans-20" transform="translate(1783.875 0)"/>
      <use xlink:href="#DejaVuSans-3" transform="translate(1867.671875 0)"/>
-     <use xlink:href="#DejaVuSans-13" transform="translate(1899.453125 0)"/>
+     <use xlink:href="#DejaVuSans-14" transform="translate(1899.453125 0)"/>
      <use xlink:href="#DejaVuSans-11" transform="translate(1963.078125 0)"/>
-     <use xlink:href="#DejaVuSans-19" transform="translate(1994.859375 0)"/>
+     <use xlink:href="#DejaVuSans-18" transform="translate(1994.859375 0)"/>
      <use xlink:href="#DejaVuSans-13" transform="translate(2058.484375 0)"/>
      <use xlink:href="#DejaVuSans-3" transform="translate(2122.109375 0)"/>
      <use xlink:href="#DejaVuSans-50" transform="translate(2153.890625 0)"/>
@@ -2837,7 +2837,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pb34705834f">
+  <clipPath id="pa1313004cc">
    <rect x="10.8" y="37.496066" width="573.84" height="766.687869"/>
   </clipPath>
  </defs>

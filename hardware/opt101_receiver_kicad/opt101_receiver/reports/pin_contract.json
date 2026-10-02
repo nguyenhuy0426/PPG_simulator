@@ -310,6 +310,22 @@
       "pass": true
     },
     {
+      "check": "C1.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "C1.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
       "check": "J2.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -326,51 +342,19 @@
       "pass": true
     },
     {
-      "check": "U2.1 PCB agrees with audited netlist",
+      "check": "J1.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "U2.2 PCB agrees with audited netlist",
+      "check": "J1.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "U2.3 PCB agrees with audited netlist",
+      "check": "J1.3 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "U2.4 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "U2.5 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "U2.6 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "U2.7 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "U2.8 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C2.2 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C1.1 PCB agrees with audited netlist",
-      "pass": true
-    },
-    {
-      "check": "C1.2 PCB agrees with audited netlist",
+      "check": "J1.4 PCB agrees with audited netlist",
       "pass": true
     },
     {
@@ -406,35 +390,43 @@
       "pass": true
     },
     {
-      "check": "J3.1 PCB agrees with audited netlist",
+      "check": "C2.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "J3.2 PCB agrees with audited netlist",
+      "check": "C2.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "J1.1 PCB agrees with audited netlist",
+      "check": "U2.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "J1.2 PCB agrees with audited netlist",
+      "check": "U2.2 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "J1.3 PCB agrees with audited netlist",
+      "check": "U2.3 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "J1.4 PCB agrees with audited netlist",
+      "check": "U2.4 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "C3.1 PCB agrees with audited netlist",
+      "check": "U2.5 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "C3.2 PCB agrees with audited netlist",
+      "check": "U2.6 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.7 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "U2.8 PCB agrees with audited netlist",
       "pass": true
     },
     {
@@ -446,6 +438,14 @@
       "pass": true
     },
     {
+      "check": "R2.1 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
+      "check": "R2.2 PCB agrees with audited netlist",
+      "pass": true
+    },
+    {
       "check": "R1.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -454,11 +454,11 @@
       "pass": true
     },
     {
-      "check": "R2.1 PCB agrees with audited netlist",
+      "check": "C3.1 PCB agrees with audited netlist",
       "pass": true
     },
     {
-      "check": "R2.2 PCB agrees with audited netlist",
+      "check": "C3.2 PCB agrees with audited netlist",
       "pass": true
     },
     {

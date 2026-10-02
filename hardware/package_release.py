@@ -46,7 +46,7 @@ Read **hardware/ppg_panel/reports/vcut_drawing.pdf** and **hardware/ppg_panel/RE
 Three DIFFERENT designs, one copy each: OPT101 70x20, BPW34 70x20, LED/IR 70x40 mm.
 Two full-width V-score lines at Y=20/40 mm from the top edge; score both sides.
 The User_Comments Gerber is a V-score guide, NOT copper and NOT a milling slot.
-Edge_Cuts is only the outer rectangle. Copper clearance to score centre >=0.60 mm each side.
+Edge_Cuts is only the outer rectangle. Copper clearance to score centre >=1.50 mm each side.
 Factory to confirm score depth/tolerances and price for a three-design panel.
 Depanel before assembly. Source projects and mechanical STLs are reference material, not extra PCB quantities.
 

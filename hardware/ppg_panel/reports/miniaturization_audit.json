@@ -8,7 +8,7 @@
   "bpw": {
     "unchanged_values_and_pin_nets": true,
     "all_tracks_horizontal_or_vertical": true,
-    "track_count": 134,
+    "track_count": 137,
     "resistors_capacitors_all_smd": true
   },
   "tx": {

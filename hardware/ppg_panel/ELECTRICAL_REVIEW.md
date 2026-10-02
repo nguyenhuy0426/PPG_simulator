@@ -93,3 +93,8 @@ Chưa đo kích thước module MCP4725 và chưa thử in/lắp thực.
 - [TI LM358](https://www.ti.com/lit/ds/symlink/lm358.pdf), [onsemi 2N4401](https://www.onsemi.com/pdf/datasheet/2n4401-d.pdf).
 - [Microchip MCP4725](https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP4725-Data-Sheet-20002039E.pdf).
 - [JLCPCB panelization](https://jlcpcb.com/help/article/pcb-panelization): V-cut thẳng hết panel, zero-gap, phí nhiều thiết kế.
+
+## Vùng đồng và khoảng hở V-cut cập nhật
+
+Driver có hai vùng đồng /GND trên F.Cu và B.Cu. F.Cu thường hiển thị đỏ: màu chỉ lớp đồng, không biểu thị nguồn dương. Các pad/track 5V, 3V3, OUT/SCL/SDA vẫn tách khỏi GND theo clearance; DRC kiểm tra chập và kết nối.
+Đồng panel cách đường V-cut ít nhất 1,5 mm, bao footprint R/C ít nhất 2 mm. Không bảo đảm tụ gốm chịu được lực bẻ sau khi hàn: tách PCB trần trước khi lắp, dùng dụng cụ hạn chế lực uốn.

@@ -8,12 +8,12 @@
     20,
     40
   ],
-  "copper_to_vcut_min_mm": 0.6,
+  "copper_to_vcut_min_mm": 1.5,
   "sources": [
     {
       "prefix": "OPT",
       "source": "opt101_receiver_kicad/opt101_receiver/opt101_receiver.kicad_pcb",
-      "sha256": "32039a17d0b9821759f4af1c76fdfda66de2b270f4c210ad02e983c2da4afa3a",
+      "sha256": "b760133334854299fbd7c30ec6ad45be5c7b4df73f25505cf9aac930f8fbf5c8",
       "offset_mm": [
         0,
         0
@@ -28,7 +28,7 @@
     {
       "prefix": "BPW",
       "source": "bpw34_receiver/bpw34_receiver.kicad_pcb",
-      "sha256": "99bb38ac04f2ea3c42ca9cfb2afd9ddadaf2ea93c10d30a6a3fabb791dd6c663",
+      "sha256": "ed703c2b475bbb543a15cdc64e862a1e7a531327bfd303fffdf1d7840e0190b2",
       "offset_mm": [
         0,
         20
@@ -38,7 +38,7 @@
         20
       ],
       "footprints": 23,
-      "tracks_and_vias": 150
+      "tracks_and_vias": 153
     },
     {
       "prefix": "TX",

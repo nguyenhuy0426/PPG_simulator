@@ -72,8 +72,8 @@ việc đọc đồng thời với Grove chưa được thử trên phần cứn
 
 PCB v1.5: **70 × 20 × 1,6 mm**, không có lỗ bắt vít. Tính từ góc trên trái:
 - Tâm OPT101: (15,75; 7,81) và (54,25; 7,81) mm.
-- J1/J2: chân đầu tại X=13/51 mm, Y=17,4 mm; bước 2 mm.
-- J3: X=26/28,54 mm, Y=17,4 mm.
+- J1/J2: chân đầu tại X=13/51 mm, Y=16,5 mm; bước 2 mm.
+- J3: X=26/28,54 mm, Y=16,5 mm.
 
 Đường đồng ngang/dọc; R1/R2 và C3/C4 ở mặt sau, C1/C2 sát socket ở mặt trước.
 Gá riêng `mechanical/frame_70x20_print.stl` giữ mặt PCB tại X thế giới 137,5 mm,

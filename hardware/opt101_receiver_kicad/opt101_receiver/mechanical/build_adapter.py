@@ -55,15 +55,15 @@ def main():
         parts['socket_envelope_'+ch]=g.box(126.5,137.5,26.5,37.5,zc-5.5,zc+5.5)
         # PCB top view x->world Z and y->-world Y. Header is on the optical side.
         hz=(-23.3,-14.7) if ch=='red' else (14.7,23.3)
-        parts['header_envelope_'+ch]=g.box(125.5,137.5,20.41,24.41,*hz)
+        parts['header_envelope_'+ch]=g.box(125.5,137.5,21.31,25.31,*hz)
         parts['capacitor_envelope_'+ch]=g.box(130.5,137.5,34.8,37.8,zc-5.1,zc)
-        parts['output_rc_'+ch]=g.box(135.7,137.5,24.1,25.9,zc-1.8,zc+7.8)
+        parts['output_rc_'+ch]=g.box(139.1,141.1,25.1,27.1,*((-22.5,-8.0) if ch=='red' else (8.0,22.5)))
         # Back-side solder protrusions; must be trimmed to <= 2 mm.
         parts['solder_envelope_'+ch]=g.box(139.1,141.1,26.7,37.3,zc-4.7,zc+4.7)
-        parts['solder_header_'+ch]=g.box(139.1,141.1,21.11,23.71,*hz)
+        parts['solder_header_'+ch]=g.box(139.1,141.1,22.01,24.61,*hz)
         parts['solder_cap_'+ch]=g.box(139.1,141.1,35.5,37.1,zc-4.61,zc-.51)
-    parts['header_ads_envelope']=g.box(125.5,137.5,20.41,24.41,-10.5,-4.96)
-    parts['solder_ads']=g.box(139.1,141.1,21.11,23.71,-9.5,-5.96)
+    parts['header_ads_envelope']=g.box(125.5,137.5,21.31,25.31,-10.5,-4.96)
+    parts['solder_ads']=g.box(139.1,141.1,22.01,24.61,-9.5,-5.96)
     exported=REPO/'docs/system_3d/out/stl'
     fixed={name:trimesh.load(exported/f'{name}.stl',force='mesh') for name in ('body','lid','aperture_red_d16')}
     aperture_ir=fixed['aperture_red_d16'].copy(); aperture_ir.apply_translation([0,0,38.5]); fixed['aperture_ir_d16']=aperture_ir

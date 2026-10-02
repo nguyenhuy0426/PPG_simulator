@@ -82,11 +82,20 @@ def main():
         for i in range(poly.OutlineCount()):
             chain=poly.COutline(i); ys=[mm(chain.CPoint(j).y) for j in range(chain.PointCount())]
             for cut in (70,90): margins.append(interval_distance(min(ys),max(ys),cut))
-    check('All copper >=0.6mm from score centre-lines',min(margins)>=.6-1e-5)
+    component_margins={}
+    for f in b.GetFootprints():
+        ref=f.GetReference()
+        if ref.split('_')[-1].startswith(('R','C')):
+            bb=f.GetBoundingBox(False,False)
+            margin=min(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut) for cut in (70,90))
+            component_margins[ref]=round(margin,6)
+            check(ref+' footprint envelope >=2mm from score',margin>=2-1e-5)
+    check('All copper >=1.5mm from score centre-lines',min(margins)>=1.5-1e-5)
     check('No panel net touches more than one source board',all(
         len({f.GetReference().split('_')[0] for f in b.GetFootprints() for pad in f.Pads() if pad.GetNetCode()==net.GetNetCode()})<=1
         for net in b.GetNetsByNetcode().values() if net.GetNetCode()))
     report={'checks':checks,'passed':len(checks),'source_geometry':reports,
+        'component_to_vcut_min_mm':min(component_margins.values()),'component_margins_mm':component_margins,
         'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,80],
         'original_area_mm2':7560,'new_area_mm2':5600,'area_reduction_percent':100*(7560-5600)/7560,
         'limitations':'CAD and nominal component checks only; not physical electrical or manufacturing qualification.'}

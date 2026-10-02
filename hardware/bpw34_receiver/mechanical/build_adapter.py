@@ -40,7 +40,7 @@ def main():
     shared_spec = importlib.util.spec_from_file_location('receiver_u_support', REPO/'docs/system_3d/receiver_u_support.py')
     shared = importlib.util.module_from_spec(shared_spec)
     shared_spec.loader.exec_module(shared)
-    lower,upper=22,42
+    lower,upper=23.7,43.7
     frame = shared.build(g,lower,upper)
     frame.export(HERE / "frame_70x20_bpw34_assembly.stl")
 
@@ -61,14 +61,14 @@ def main():
     for channel, zc in g.LANE_Z.items():
         parts[f"bpw34_{channel}"] = g.box(131.8, 137.5, 29.3, 34.7, zc - 2.2, zc + 2.2)
         header_z = (-25.8, -17.2) if channel == "red" else (17.2, 25.8)
-        parts[f"grove_header_{channel}"] = g.box(125.5, 137.5, 23.33, 27.33, *header_z)
+        parts[f"grove_header_{channel}"] = g.box(125.5, 137.5, 25.03, 29.03, *header_z)
         channel_z = (-28.5, -4.0) if channel == "red" else (4.0, 28.5)
         parts[f"rear_smd_{channel}"] = g.box(139.1, 141.1, 27.0, 41.5, *channel_z)
-        parts[f"rear_output_rc_{channel}"] = g.box(139.1, 141.1, 26.3, 28.3, -22.7 if channel=="red" else 20.3, -19.3 if channel=="red" else 23.7)
+        parts[f"rear_output_rc_{channel}"] = g.box(139.1, 141.1, 28.0, 30.0, -22.7 if channel=="red" else 20.3, -19.3 if channel=="red" else 23.7)
         parts[f"bpw34_solder_{channel}"] = g.box(139.1, 141.1, 30.5, 33.5, zc - 3.0, zc + 3.0)
-        parts[f"grove_solder_{channel}"] = g.box(139.1, 141.1, 24.03, 26.63, *header_z)
-    parts["ads_header"] = g.box(125.5, 137.5, 23.33, 27.33, -14.5, -3.88)
-    parts["ads_solder"] = g.box(139.1, 141.1, 24.03, 26.63, -13.5, -4.88)
+        parts[f"grove_solder_{channel}"] = g.box(139.1, 141.1, 25.73, 28.33, *header_z)
+    parts["ads_header"] = g.box(125.5, 137.5, 25.03, 29.03, -14.5, -3.88)
+    parts["ads_solder"] = g.box(139.1, 141.1, 25.73, 28.33, -13.5, -4.88)
     exported = REPO / "docs/system_3d/out/stl"
     fixed = {name: trimesh.load(exported / f"{name}.stl", force="mesh") for name in ("body", "lid", "aperture_red_d16")}
     aperture_ir = fixed["aperture_red_d16"].copy()
