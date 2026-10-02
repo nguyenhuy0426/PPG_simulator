@@ -1,5 +1,5 @@
 Drill report for led_ir_driver.kicad_pcb
-Created on 2026-10-02T09:46:17
+Created on 2026-10-02T11:05:12
 
 Copper Layer Stackup:
     =============================================================
@@ -10,11 +10,11 @@ Copper Layer Stackup:
 Drill file 'led_ir_driver-PTH.drl' contains
     plated through holes:
     =============================================================
-    T1  0.400mm  0.0157"  (17 holes))
+    T1  0.400mm  0.0157"  (12 holes))
     T2  0.800mm  0.0315"  (18 holes))
     T3  1.000mm  0.0394"  (22 holes))
 
-    Total plated holes count 57
+    Total plated holes count 52
 
 
 Drill file 'led_ir_driver-NPTH.drl' contains

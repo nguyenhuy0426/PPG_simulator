@@ -14,9 +14,9 @@ import pcbnew as p
 HERE = Path(__file__).resolve().parent
 HARDWARE = HERE.parent
 SOURCES = [
-    ('OPT', HARDWARE/'opt101_receiver_kicad/opt101_receiver', 'opt101_receiver', 30),
-    ('BPW', HARDWARE/'bpw34_receiver', 'bpw34_receiver', 30),
-    ('TX', HARDWARE/'led_ir_driver', 'led_ir_driver', 48),
+    ('OPT', HARDWARE/'opt101_receiver_kicad/opt101_receiver', 'opt101_receiver', 20),
+    ('BPW', HARDWARE/'bpw34_receiver', 'bpw34_receiver', 20),
+    ('TX', HARDWARE/'led_ir_driver', 'led_ir_driver', 40),
 ]
 NAME = 'ppg_panel'
 def v(x,y): return p.VECTOR2I(p.FromMM(x), p.FromMM(y))
@@ -27,7 +27,7 @@ def line(board, a, b, layer):
 def main():
     board=p.BOARD(); board.GetDesignSettings().SetCopperLayerCount(2)
     board.GetDesignSettings().SetBoardThickness(p.FromMM(1.6))
-    manifest={'panel_mm':[70,108,1.6], 'vcut_y_from_top_mm':[30,60], 'copper_to_vcut_min_mm':.6, 'sources':[]}
+    manifest={'panel_mm':[70,80,1.6], 'vcut_y_from_top_mm':[20,40], 'copper_to_vcut_min_mm':.6, 'sources':[]}
     # Rebuild vendored libraries/models from source boards to avoid stale
     # through-hole assets after footprint migrations.
     for prefix in ('OPT','BPW','TX'):
@@ -91,9 +91,9 @@ def main():
             'size_mm':[70,height], 'footprints':len(list(src.GetFootprints())),
             'tracks_and_vias':len(list(src.GetTracks()))})
         offset+=height
-    for a,b in [((50,50),(120,50)),((120,50),(120,158)),((120,158),(50,158)),((50,158),(50,50))]:
+    for a,b in [((50,50),(120,50)),((120,50),(120,130)),((120,130),(50,130)),((50,130),(50,50))]:
         line(board,a,b,p.Edge_Cuts)
-    for y in (80,110):
+    for y in (70,90):
         # Cmts.User contains score centre-lines ONLY. Do not mill these as slots.
         line(board,(50,y),(120,y),p.Cmts_User)
         z=p.ZONE(board); z.SetIsRuleArea(True); z.SetLayerSet(p.LSET.AllCuMask())
@@ -107,7 +107,7 @@ def main():
     project={'meta':{'filename':NAME+'.kicad_pro','version':1},
         'board':{'design_settings':{'rules':{'min_clearance':.2,'min_track_width':.2,
         'min_through_hole_diameter':.3,'min_hole_clearance':.25,'min_copper_edge_clearance':.6}}},
-        'net_settings':{'classes':[{'name':'Default','clearance':.25,'track_width':.3,
+        'net_settings':{'classes':[{'name':'Default','clearance':.2,'track_width':.3,
         'via_diameter':.8,'via_drill':.4,'microvia_diameter':.3,'microvia_drill':.1,
         'diff_pair_width':.2,'diff_pair_gap':.25,'diff_pair_via_gap':.25}]}}
     (HERE/(NAME+'.kicad_pro')).write_text(json.dumps(project,indent=2)+'\n')
@@ -120,6 +120,6 @@ def main():
     (HERE/'fp-lib-table').write_text(table+')\n')
     (HERE/'reports').mkdir(exist_ok=True)
     (HERE/'reports/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    print('Panel generated: 70 x 108 mm, score lines at 30 and 60 mm; isolated nets.')
+    print('Panel generated: 70 x 80 mm, score lines at 20 and 40 mm; isolated nets.')
 
 if __name__=='__main__': main()

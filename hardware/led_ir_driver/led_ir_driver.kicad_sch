@@ -1,5 +1,5 @@
 (kicad_sch (version 20250114) (generator "eeschema") (uuid 6a15abe7-9d7a-52ab-a372-f3c70c0f892e) (paper "A3")
-(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.8") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy"))
+(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.9") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 40 mm"))
 (lib_symbols
 (symbol "TX:R" (pin_names (offset 0.5)) (in_bom yes) (on_board yes)
 (property "Reference" "R" (at 0 18 0) (effects (font (size 1.0 1.0))))

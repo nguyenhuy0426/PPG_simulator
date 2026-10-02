@@ -1,18 +1,8 @@
-# Gá chuyển driver 70×48 mm lên đế 70×55 cũ
+# Adapter driver 70 × 40 mm
 
-In `driver_70x48_adapter_print.stl`, đơn vị mm, scale 100%, mặt phẳng lớn
-đặt xuống bàn in. Adapter 70×55 mm, dày nền 2 mm, tổng cao 6 mm. Không in
-`*_pcb_assembly.stl` để thay cho adapter.
-
-Đặt adapter lên bốn trụ driver cũ trên đế hệ thống. Hai lỗ adapter phía
-trên tại (4,4), (66,4) bắt vào trụ cũ bằng vít M3 phù hợp, danh nghĩa M3×6.
-PCB mới nằm tại gốc (0,7), mặt dưới cao 6 mm so với mặt dưới adapter.
-Hai vít PCB trên tại (4,25)/(66,25) vào lỗ mồi Ø2,6 trên adapter, dùng
-M3×6. Hai vít PCB dưới tại (4,44)/(66,44) đi qua adapter vào trụ cũ,
-danh nghĩa M3×16 theo đế nguồn có trụ 5 mm + nền 4 mm. Kiểm tra chiều dài
-vít thật và không để vít chạm nền bên dưới. Không siết quá mức vào nhựa.
-
-PCB cao hơn vị trí cũ 6 mm; cắt chân hàn nhô sau PCB ≤2 mm. Gá không thay
-vị trí Pi hoặc thân hộp quang. Đã kiểm tra mesh kín, một khối, không giao
-với PCB và bao chân hàn danh nghĩa. Chưa kiểm tra độ co, đầu cáp, module
-MCP4725 mua thực hoặc thử lắp. `fit_report.json` lưu phép kiểm tra và tọa độ.
+In `driver_70x40_adapter_print.stl`: bao 70 × 55 × 6 mm, gắn vào đế cũ tại X=4/66, Y=4/51 mm.
+PCB đặt tại (0;7;6) mm trên adapter. Bốn lỗ PCB local X=4/66,Y=24/36 mm
+khớp bốn lỗ mồi Ø2,6 mm ở Y=31/43 trên adapter; dùng vít ngắn phù hợp nhựa.
+C7 mặt sau nằm trên cửa rỗng giữa adapter. Kiểm tra chiều cao tụ/module thật,
+chiều dài vít và cáp trước lắp. Báo cáo chỉ xác nhận hình học danh nghĩa;
+chưa thử in/lắp thực.

@@ -67,7 +67,7 @@ def lib_symbol(name):
 
 def schematic():
     out = [f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {ROOT}) (paper "A4")',
-           '(title_block (title "PPG - Dual OPT101P receiver") (date "2026-09-24") (rev "1.4") (comment 1 "70 x 30 mm / DIP-8 sockets / Grove A0 IR, A2 RED"))',
+           '(title_block (title "PPG - Dual OPT101P receiver") (date "2026-10-02") (rev "1.5") (comment 1 "70 x 20 mm / DIP-8 sockets / Grove A0 IR, A2 RED"))',
            '(lib_symbols', *(lib_symbol(n) for n in PINS), ')']
     def text(s,x,y,size=1.27): out.append(f'(text {q(s)} (at {x} {y} 0) {effects(size)} (uuid {uid(s)}))')
     def wire(x1,y1,x2,y2):
@@ -122,8 +122,6 @@ def schematic():
             out.append(f'(junction (at {xx} {yy}) (diameter 0) (color 0 0 0 0) (uuid {uid(ch+str((xx,yy)))}))')
         text(f'{ch}: U{idx}.4 -- U{idx}.5 = internal 1 Mohm feedback',119.38,y+30.48,1.1)
     place('ADS_Output','J3','ADS1115 outputs',228.6,101.6,'PPG:Header_1x02_P2.54mm')
-    for i,x in enumerate((30.48,71.12,111.76,152.4),1):
-        place('MountingHole',f'H{i}','M3 / 3.2mm NPTH',x,180.34,'PPG:MountingHole_M3')
     text('DUAL OPT101 RECEIVER: RED -> A2 / IR -> A0',139.7,15.24,1.7)
     text('3.3 V only. C1/C2: non-polar ceramic 100 nF, X7R, 50 V.',139.7,22.86,1.2)
     text('Separate supply/return cables meet at the HAT. J3 has signals only: ADS must share HAT GND.',139.7,29.21,1.1)
@@ -253,12 +251,6 @@ def pcb(share, cli):
     silk('ADS: RED IR',127.27,122.6,.8)
     route('OUT_RED',[(113,125),(113,123.5),(126,123.5),(126,125)],p.F_Cu,.35)
     route('OUT_IR',[(151,125),(151,123.5),(128.54,123.5),(128.54,125)],p.F_Cu,.35)
-    for i,(x,y) in enumerate([(104.5,103.5),(165.5,103.5),(104.5,126.5),(165.5,126.5)],1):
-        fp=add(f'H{i}','MountingHole_M3','M3 / 3.2mm NPTH',x,y)
-        # Keep routed copper and pours visibly clear of the mechanical drill.
-        # KiCad measures this local clearance from the NPTH edge.
-        next(iter(fp.Pads())).SetLocalClearance(mm(1.0))
-        fp.Reference().SetVisible(False); fp.Value().SetVisible(False)
     silk('PPG RX  v1.4',135,103,1)
     silk('3.3V ONLY',135,106,.85)
     silk('70 x 30',135,127.5,.85)
@@ -301,5 +293,7 @@ def main():
     project={'meta':{'filename':NAME+'.kicad_pro','version':1},'board':{'design_settings':{'rules':{'min_clearance':0.2,'min_track_width':0.25,'min_through_hole_diameter':0.3,'min_hole_clearance':0.25,'min_copper_edge_clearance':0.3}}},'net_settings':{'classes':[{'name':'Default','clearance':0.25,'track_width':0.35,'via_diameter':0.8,'via_drill':0.4,'microvia_diameter':0.3,'microvia_drill':0.1,'diff_pair_width':0.2,'diff_pair_gap':0.25,'diff_pair_via_gap':0.25}]}}
     (HERE/f'{NAME}.kicad_pro').write_text(json.dumps(project,indent=2)+'\n')
     schematic(); pcb(a.kicad_share,a.cli)
+    from compact_layout import compact
+    compact()
 
 if __name__=='__main__': main()

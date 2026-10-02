@@ -1,12 +1,12 @@
 {
   "board_mm": [
     70,
-    30,
+    20,
     1.6
   ],
   "print_bounds_mm": [
     73.4000015258789,
-    56.79999923706055,
+    40.0,
     4.0
   ],
   "lane_centres_z_mm": [
@@ -49,7 +49,7 @@
     {
       "a": "pcb",
       "b": "body",
-      "intersection_mm3": 2.2737367544323206e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -409,7 +409,7 @@
     {
       "a": "frame",
       "b": "pcb",
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -507,7 +507,7 @@
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 0.0,
-      "intersection_mm3": 2.2737367544323206e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -556,7 +556,7 @@
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 2.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -605,7 +605,7 @@
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 4.0,
-      "intersection_mm3": 1.2126596023639042e-12,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -647,14 +647,14 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 6.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 6.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -696,14 +696,14 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 8.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 8.0,
-      "intersection_mm3": 7.579122514774402e-14,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -752,7 +752,7 @@
       "a": "pcb",
       "b": "body insertion",
       "dy_mm": 10.0,
-      "intersection_mm3": 5.305385760342082e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -794,651 +794,651 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 3.789561257387201e-14,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 12.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 6.063298011819521e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 14.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 7.579122514774402e-14,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 16.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 6.063298011819521e-13,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 4.547473508864641e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 18.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 3.0316490059097606e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 20.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 22.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 6.063298011819521e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 24.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 6.063298011819521e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 26.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 1.5158245029548803e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 28.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 1.5158245029548803e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 30.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 32.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 1.5158245029548803e-13,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 34.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 7.579122514774402e-14,
-      "pass": true
-    },
-    {
-      "a": "bpw34_red",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "bpw34_ir",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_red",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "grove_header_ir",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "ads_header",
-      "b": "body insertion",
-      "dy_mm": 36.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "frame",
-      "b": "body insertion",
-      "dy_mm": 38.0,
-      "intersection_mm3": 0.0,
-      "pass": true
-    },
-    {
-      "a": "pcb",
-      "b": "body insertion",
-      "dy_mm": 38.0,
       "intersection_mm3": 1.8947806286936004e-14,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 12.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 1.8947806286936004e-14,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 14.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 6.063298011819521e-13,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 16.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 7.579122514774402e-14,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 18.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 20.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 22.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 24.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 26.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 28.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 30.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 32.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 34.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_red",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "bpw34_ir",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_red",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "grove_header_ir",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "ads_header",
+      "b": "body insertion",
+      "dy_mm": 36.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "frame",
+      "b": "body insertion",
+      "dy_mm": 38.0,
+      "intersection_mm3": 0.0,
+      "pass": true
+    },
+    {
+      "a": "pcb",
+      "b": "body insertion",
+      "dy_mm": 38.0,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1480,7 +1480,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 40.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1676,7 +1676,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 48.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1725,7 +1725,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 50.0,
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 1.5158245029548803e-13,
       "pass": true
     },
     {

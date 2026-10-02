@@ -1,8 +1,8 @@
-> Gá mới: thanh chữ U không bắt vít, dùng chung hai receiver. Xem `mechanical/README.md`.
+> Gá mới: thanh chữ U không bắt vít, hai biến thể riêng theo receiver. Xem `mechanical/README.md`.
 
 # Dual BPW34 receiver for DATN: PPG-Simulator
 
-This is a complete KiCad 10 project for a 70 x 30 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The optical centres remain 38.5 mm apart. The new screwless U support shares the enclosure slot; PCB mounting holes remain unused.
+This is a complete KiCad 10 project for a 70 x 20 mm, two-channel photodiode receiver that can replace the dual-OPT101 board mechanically. The optical centres remain 38.5 mm apart. The new screwless U support shares the enclosure slot; PCB mounting holes are removed.
 
 ## Electrical design
 
@@ -34,7 +34,7 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
 
 ## Manufacturing and assembly
 
-- 2 layers, FR-4, 1.6 mm, 70 x 30 mm.
+- 2 layers, FR-4, 1.6 mm, 70 x 20 mm.
 - Solder D1/D2 and the three headers on the front.
 - Solder U1/U2 and all 0805 parts on the rear.
 - The rear components are arranged as two channel blocks: the feedback pair is
@@ -46,11 +46,7 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
   the opposite layer where needed, so they do not cut through the TIA loops.
 - Every routed copper segment on F.Cu and B.Cu is horizontal or vertical; the
   layout intentionally contains no diagonal track segments.
-- The 3.3 V supply traces now approach the lower connectors on the inside of
-  each mounting hole and run around the outer edge on the rear. The closest
-  routed copper stays 0.7 mm from any M3 drill opening, and at least 1.7 mm
-  from either lower opening H3/H4. These are copper-edge to drill-edge values;
-  the drilled opening does not sever a trace.
+- Receiver mounting holes are removed; no copper crosses a drilled mounting opening.
 - Both sides carry pin markings. On the rear, every J1/J2/J3 pad is labelled
   individually with an abbreviation; the nearby legend
   defines `R=OUT_RED`, `I=OUT_IR`, `V=3V3`, `N=NC`, and `GR/GI=channel GND`.
@@ -74,6 +70,10 @@ Pad 1 is the cathode (`K`) and is square. Pad 2 is the anode (`A`) and is round.
 
 The CAD checks do not prove analog gain, noise, optical leakage, print shrinkage or physical fit. Measure the real LED current/output and perform a dark-box leakage test before ordering a large batch.
 
-## Compact mechanical revision v1.3
+## Compact mechanical revision v1.4
 
-Use `mechanical/frame_70x30_bpw34_print.stl`. Optical centres are (15.75,15) and (54.25,15) mm on the PCB, maintaining the original world optical axes. Header row is Y=25 mm; M3 hole centres are X=4.5/65.5, Y=3.5/26.5 mm. The old 70x32 frame and screw mounting are superseded by the common U support. See `mechanical/README.md` for seating, tape retention and the required opaque gap/divider seals.
+Use `mechanical/frame_70x20_bpw34_print.stl`; see mechanical/README.md.
+
+## Bố trí bản thu gọn hiện tại
+
+PCB 70 × 20 mm, không có lỗ bắt vít. Tâm BPW34 tại (15,75;10)/(54,25;10) mm; hàng header Y=16,667 mm. Tất cả R/C ở mặt sau. Đường đồng ngang/dọc, vòng SUM và hồi tiếp giữ ngắn. Dùng riêng gá BPW34 có bậc Y thế giới=22 mm để giữ trục quang Y=32 mm; không dùng gá OPT101. Các bảng vị trí cũ được thay bởi tọa độ PCB và fit_report.json hiện tại.

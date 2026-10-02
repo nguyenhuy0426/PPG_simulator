@@ -29,7 +29,7 @@ def main():
     check('Only outer rectangle is routed; no milling on score lines',len(edges)==4)
     cuts=[d for d in b.GetDrawings() if d.GetLayer()==p.Cmts_User]
     check('Exactly two full-width score centre-lines',len(cuts)==2 and
-        {tuple(xy(d.GetStart())+xy(d.GetEnd())) for d in cuts}=={(50,80,120,80),(50,110,120,110)})
+        {tuple(xy(d.GetStart())+xy(d.GetEnd())) for d in cuts}=={(50,70,120,70),(50,90,120,90)})
     for item in sources:
         source=HERE.parent/item['source']; src=p.LoadBoard(str(source)); prefix=item['prefix']
         check(prefix+' current source hash',hashlib.sha256(source.read_bytes()).hexdigest()==item['sha256'])
@@ -69,26 +69,26 @@ def main():
     margins=[]
     for t in b.GetTracks():
         lo,hi=sorted((mm(t.GetStart().y),mm(t.GetEnd().y))); r=width(t)/2
-        for cut in (80,110): margins.append(interval_distance(lo-r,hi+r,cut))
+        for cut in (70,90): margins.append(interval_distance(lo-r,hi+r,cut))
     for f in b.GetFootprints():
         for pad in f.Pads():
             if pad.GetAttribute()==p.PAD_ATTRIB_NPTH: continue
             bb=pad.GetBoundingBox()
-            for cut in (80,110): margins.append(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut))
+            for cut in (70,90): margins.append(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut))
     for z in b.Zones():
         if z.GetIsRuleArea(): continue
         poly=z.GetFilledPolysList(z.GetLayer())
         check(z.GetNetname()+' zone filled',poly.OutlineCount()>0)
         for i in range(poly.OutlineCount()):
             chain=poly.COutline(i); ys=[mm(chain.CPoint(j).y) for j in range(chain.PointCount())]
-            for cut in (80,110): margins.append(interval_distance(min(ys),max(ys),cut))
+            for cut in (70,90): margins.append(interval_distance(min(ys),max(ys),cut))
     check('All copper >=0.6mm from score centre-lines',min(margins)>=.6-1e-5)
     check('No panel net touches more than one source board',all(
         len({f.GetReference().split('_')[0] for f in b.GetFootprints() for pad in f.Pads() if pad.GetNetCode()==net.GetNetCode()})<=1
         for net in b.GetNetsByNetcode().values() if net.GetNetCode()))
     report={'checks':checks,'passed':len(checks),'source_geometry':reports,
-        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,108],
-        'original_area_mm2':8330,'new_area_mm2':7560,'area_reduction_percent':100*(8330-7560)/8330,
+        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,80],
+        'original_area_mm2':7560,'new_area_mm2':5600,'area_reduction_percent':100*(7560-5600)/7560,
         'limitations':'CAD and nominal component checks only; not physical electrical or manufacturing qualification.'}
     (HERE/'reports/panel_audit.json').write_text(json.dumps(report,indent=2)+'\n')
     print(f'{len(checks)} checks passed; minimum copper-to-V-cut {min(margins):.3f} mm.')

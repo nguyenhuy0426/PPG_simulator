@@ -285,6 +285,8 @@ def main():
     from schematic_connected import write_schematic
     write_schematic(HERE,NAME,ROOT,PARTS,uid,q,fx,symbol)
     board(a.share,a.cli)
+    from compact_layout import compact
+    compact()
     with (HERE/'BOM.csv').open('w') as f:
         w=csv.writer(f,lineterminator="\n"); w.writerow(['Reference','Value','Footprint','Fit'])
         for d in PARTS: w.writerow([d['ref'],d['value'],'TX:'+d['fp'],'DNP' if d['dnp'] else 'YES'])

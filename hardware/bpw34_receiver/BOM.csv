@@ -11,4 +11,3 @@ References,Value,Package,Qty,Notes
 "C5,C6",100nF X7R 25V,0805,2,Op-amp supply bypass
 "J1,J2",1x4 male 2.00mm,THT vertical,2,Grove A2 RED and A0 IR
 J3,1x4 male 2.54mm,THT vertical,1,"OUT_RED,GND_RED,OUT_IR,GND_IR"
-H1-H4,M3 NPTH,3.2mm drill,4,Unused with screwless U support

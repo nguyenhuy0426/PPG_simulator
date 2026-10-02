@@ -31,14 +31,14 @@ fps={fp.GetReference():fp for fp in b.GetFootprints()}
 check('All resistor/capacitor pads are SMD',all(
     pad.GetAttribute()==p.PAD_ATTRIB_SMD
     for ref,fp in fps.items() if ref.startswith(('R','C')) for pad in fp.Pads()))
-check('15 physical footprints',len(fps)==15)
+check('11 footprints; screwless receiver has no mounting holes',len(fps)==11 and not any(r.startswith('H') for r in fps))
 check('2 copper layers',b.GetCopperLayerCount()==2)
 check('1.6mm substrate',abs(p.ToMM(b.GetDesignSettings().GetBoardThickness())-1.6)<1e-6)
 edges=[x for x in b.GetDrawings() if x.GetLayer()==p.Edge_Cuts]
 vertices=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
 check('four closed straight board edges',len(edges)==4 and len({(pt.x,pt.y) for pt in vertices})==4)
 check('70mm length',abs(p.ToMM(max(pt.x for pt in vertices)-min(pt.x for pt in vertices))-70)<.001)
-check('30mm width (<50mm)',abs(p.ToMM(max(pt.y for pt in vertices)-min(pt.y for pt in vertices))-30)<.001)
+check('20mm width',abs(p.ToMM(max(pt.y for pt in vertices)-min(pt.y for pt in vertices))-20)<.001)
 for i in (1,2):
     check(f'R{i} output series value',fps[f'R{i}'].GetValue()=='1k 1%')
     check(f'C{i+2} output filter value',fps[f'C{i+2}'].GetValue()=='1uF X7R 16V')
@@ -54,10 +54,10 @@ for ref,pitch in [('J1',2),('J2',2),('J3',2.54)]:
     a=pads['1'].GetPosition(); z=pads['2'].GetPosition()
     actual=math.hypot(p.ToMM(z.x-a.x),p.ToMM(z.y-a.y))
     check(ref+' header pitch',abs(actual-pitch)<1e-6)
-    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-125.0)<1e-6)
+    check(ref+' moved to lower edge',abs(p.ToMM(a.y)-117.4)<1e-6)
 
 # Layout-quality contract: all manually routed copper is Manhattan geometry,
-# and every trace stays at least 1 mm beyond the edge of each M3 drill.
+# with short local output filters and no mounting drills.
 tracks=[track for track in b.GetTracks() if isinstance(track,p.PCB_TRACK) and not isinstance(track,p.PCB_VIA)]
 for index,track in enumerate(tracks,1):
     a,z=track.GetStart(),track.GetEnd()
@@ -70,30 +70,14 @@ def point_segment_distance(px,py,ax,ay,bx,by):
     t=max(0.0,min(1.0,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy)))
     return math.hypot(px-(ax+t*dx),py-(ay+t*dy))
 
-for ref in ('H1','H2','H3','H4'):
-    hole=next(iter(fps[ref].Pads()))
-    hp=hole.GetPosition(); hx,hy=p.ToMM(hp.x),p.ToMM(hp.y)
-    radius=p.ToMM(hole.GetDrillSize().x)/2
-    clearances=[]
-    for track in tracks:
-        a,z=track.GetStart(),track.GetEnd()
-        centerline=point_segment_distance(
-            hx,hy,p.ToMM(a.x),p.ToMM(a.y),p.ToMM(z.x),p.ToMM(z.y)
-        )
-        clearances.append(centerline-radius-p.ToMM(track.GetWidth())/2)
-    check(ref+' local copper clearance is 1.0mm',p.ToMM(hole.GetLocalClearance())>=1.0-1e-6)
-    check(ref+' routed copper stays >=1.0mm from drill edge',min(clearances)>=1.0-1e-6)
 for ref,fp in fps.items():
     for pad in fp.Pads():
         if not pad.GetNumber(): continue
         n=pad.GetNetname()
         check(f'{ref}.{pad.GetNumber()} PCB agrees with audited netlist',(ref,pad.GetNumber()) in nets.get(n,set()))
-for ref in ('H1','H2','H3','H4'):
-    pads=list(fps[ref].Pads())
-    check(ref+' 3.2mm non-plated hole',len(pads)==1 and pads[0].GetAttribute()==p.PAD_ATTRIB_NPTH and abs(p.ToMM(pads[0].GetDrillSize().x)-3.2)<1e-6)
 texts=[x for x in b.GetDrawings() if isinstance(x,p.PCB_TEXT) and x.GetLayer()==p.B_SilkS]
 rear={x.GetText() for x in texts}
-for label in ('DATN: PPG-Simulator','Nguyen Nhat Huy - Pham Thanh Vy','J1 A2 RED','J2 A0 IR','J3 ADS','R','I','NC','V','GR','GI','G','FB','OUT','U1 RED OPT101','U2 IR OPT101'):
+for label in ('DATN: PPG-Simulator','Nguyen Nhat Huy - Pham Thanh Vy','R','I','NC','V','G','FB','OUT'):
     check('rear marking '+label,label in rear)
 import re
 for item in texts:

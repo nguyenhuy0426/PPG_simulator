@@ -2,17 +2,17 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/bpw34_receiver/bpw34_receiver.kicad_sch</source>
-    <date>2026-10-01T18:02:32</date>
+    <date>2026-10-02T10:57:00</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>DATN: PPG-Simulator - Dual BPW34 receiver</title>
         <company/>
-        <rev>1.3</rev>
-        <date>2026-09-29</date>
+        <rev>1.4</rev>
+        <date>2026-10-02</date>
         <source>bpw34_receiver.kicad_sch</source>
         <comment number="1" value="Nguyen Nhat Huy - Pham Thanh Vy"/>
-        <comment number="2" value="70 x 30 mm / Grove A2 RED + A0 IR / ADS1115 output"/>
+        <comment number="2" value="70 x 20 mm / Grove A2 RED + A0 IR / ADS1115 output"/>
         <comment number="3" value=""/>
         <comment number="4" value=""/>
         <comment number="5" value=""/>
@@ -241,82 +241,6 @@
             <pin num="2"/>
             <pin num="1"/>
           </pins>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H1">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="bpw34_receiver"/>
-      <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>d5e5bc4a-b7b4-5620-ac9d-22c3563c8ea1</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H2">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="bpw34_receiver"/>
-      <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>e6a68bf4-c47b-589c-ab93-7aa5daec38c0</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H3">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="bpw34_receiver"/>
-      <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>be26f65b-5f7c-55d2-9187-90048b3f5db1</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H4">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="bpw34_receiver"/>
-      <property name="Sheetfile" value="bpw34_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>e007c24b-58c8-5e97-88dc-a1833ca97ef2</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
         </unit>
       </units>
     </comp>
@@ -688,15 +612,6 @@
         <pin num="3" name="3V3" type="power_out"/>
         <pin num="4" name="GND" type="power_out"/>
       </pins>
-    </libpart>
-    <libpart lib="PPG" part="MountingHole">
-      <fields>
-        <field name="Reference">H</field>
-        <field name="Value">MountingHole</field>
-        <field name="Footprint"/>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
     </libpart>
     <libpart lib="PPG" part="OPA333">
       <fields>

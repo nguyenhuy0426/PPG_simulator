@@ -1,16 +1,16 @@
-# Panel V-cut PPG — 70 × 108 mm
+# Panel V-cut PPG — 70 × 80 mm
 
 Mở `ppg_panel.kicad_pro` / `ppg_panel.kicad_pcb` bằng KiCad 10.
 Đây là **panel gia công gồm ba thiết kế khác nhau**, mỗi thiết kế một bản:
 
 | Vị trí từ cạnh trên | Board sau tách | Kích thước |
 |---|---|---|
-| Y = 0–30 mm | OPT101 receiver v1.4 | 70 × 30 mm |
-| Y = 30–60 mm | BPW34 receiver v1.3 | 70 × 30 mm |
-| Y = 60–108 mm | LED/IR driver v1.8 | 70 × 48 mm |
+| Y = 0–20 mm | OPT101 receiver v1.5 | 70 × 20 mm |
+| Y = 20–40 mm | BPW34 receiver v1.4 | 70 × 20 mm |
+| Y = 40–80 mm | LED/IR driver v1.9 | 70 × 40 mm |
 
-Hai đường V-cut ở **Y = 30 và 60 mm**, chạy thẳng hết chiều ngang 70 mm.
-Tọa độ trong file KiCad: góc trên trái (50,50); các đường cắt Y=80 và 110.
+Hai đường V-cut ở **Y = 20 và 40 mm**, chạy thẳng hết chiều ngang 70 mm.
+Tọa độ trong file KiCad: góc trên trái (50,50); các đường cắt Y=70 và 90.
 Không có khe phay giữa board: V-cut dùng chung đường biên, khoảng hở cơ khí
 trước khi bẻ bằng 0. Sau khi tách là ba PCB độc lập. Toàn bộ đồng, pad, via
 và vùng đồng cách tâm đường cắt ít nhất **0,6 mm mỗi phía**; không có đường
@@ -26,7 +26,7 @@ sâu V-score theo quy trình FR-4 1,6 mm và xác nhận dung sai/khoảng hở 
 Tách panel trước khi hàn/cắm IC, module và photodiode; làm sạch phần ba via
 ở mép bẻ nếu cần. Không cấp điện cho cả panel như một board hệ thống.
 
-Diện tích PCB giảm **83,3 → 75,6 cm² (9,24%)**. Đây là giảm diện tích thực,
+Diện tích PCB giảm **75,6 → 56 cm² (25,93%)**. Đây là giảm diện tích thực,
 không phải bảo đảm giảm giá tương ứng: cần báo đúng **3 designs / panel**,
 vì nhà in có thể tính phí ghép thiết kế hoặc V-cut. Không cần thanh biên cho
 bộ PCB trần này; nếu nhà in yêu cầu thanh biên thì diện tích báo giá tăng.
@@ -48,13 +48,7 @@ Scripts dùng Python có `pcbnew` của KiCad 10.
 
 ## Gá in 3D mới
 
-Hai receiver dùng chung gá chữ U không bắt vít (xem mechanical/README.md để bịt khe và giữ board bằng băng keo). Các file `frame_70x30*_print.stl` trong `mechanical/`
-của project tương ứng. Không dùng khung 70×32 cũ cho bản mới. Trục quang
-thế giới và khoảng cách hai kênh 38,5 mm được giữ nguyên.
-
-Driver dùng `driver_70x48_adapter_print.stl`: gá chuyển lên bốn vị trí vít
-của đế 70×55 cũ. Board đặt lệch 5 mm theo cạnh ngắn và cao hơn vị trí cũ
-6 mm. Hai vít dưới dùng chung trục với chân đế cũ; hai vít trên PCB vào lỗ
-mồi mới trên adapter. Xem `../led_ir_driver/mechanical/README.md`.
-
-Tham chiếu quy trình: [JLCPCB — V-cut/panelization](https://jlcpcb.com/help/article/pcb-panelization).
+Hai receiver dùng hai biến thể thanh U trong `docs/system_3d/out/print_bambu_180/`:
+`14_ga_chu_U_OPT101_70x20.stl`, `15_ga_chu_U_BPW34_70x20.stl`.
+Driver dùng `16_ga_driver_70x40.stl`. Xem mechanical/README.md của từng project.
+Trục quang danh nghĩa và khoảng cách hai kênh 38,5 mm được giữ nguyên.

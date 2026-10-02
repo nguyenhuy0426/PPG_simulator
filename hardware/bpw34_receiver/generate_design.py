@@ -136,7 +136,7 @@ def lib_symbol(name):
 def write_schematic():
     out = [
         f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {ROOT}) (paper "A3")',
-        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-09-29") (rev "1.3") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 30 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
+        '(title_block (title "DATN: PPG-Simulator - Dual BPW34 receiver") (date "2026-10-02") (rev "1.4") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 20 mm / Grove A2 RED + A0 IR / ADS1115 output"))',
         "(lib_symbols",
         *(lib_symbol(name) for name in PINS),
         ")",
@@ -290,8 +290,6 @@ def write_schematic():
     text("Default gain: 1 MOhm. Approx. VOUT = 0.30 V + IPD x 1 MOhm.", 132.08, 205.74, 1.15)
     text("C1/C2 = 22 pF C0G stability capacitors; all 100 nF capacitors are non-polar ceramic.", 132.08, 211.0, 1.05)
     text("OPA333 SOT-23-5 may be replaced by pin-compatible MCP6001T-I/OT for lower cost.", 132.08, 216.0, 1.05)
-    for i, x in enumerate((45.72, 86.36, 127, 167.64), 1):
-        place("MountingHole", f"H{i}", "M3 / 3.2mm NPTH", x, 231.14, "PPG:MountingHole_M3")
     out += ['(sheet_instances (path "/" (page "1")))', ")"]
     (HERE / f"{NAME}.kicad_sch").write_text("\n".join(out))
     local = "\n".join(lib_symbol(name).replace(f'"PPG:{name}"', f'"{name}"', 1) for name in PINS)
@@ -511,11 +509,6 @@ def write_pcb(share, cli):
         for key, args in placements[ch].items():
             footprints[args[0]] = add(*args)
     footprints["J3"] = add("J3", "Header_1x04_P2.54mm", "ADS1115: RED/GND/IR/GND", 122.0, 125.0, 90, False)
-    for index, (x, y) in enumerate(((104.5, 103.5), (165.5, 103.5), (104.5, 126.5), (165.5, 126.5)), 1):
-        fp = add(f"H{index}", "MountingHole_M3", "M3 / 3.2mm NPTH", x, y)
-        fp.Reference().SetVisible(False)
-        fp.Value().SetVisible(False)
-        footprints[f"H{index}"] = fp
 
     # Route short, high-impedance TIA loops entirely on B.Cu.  The two blocks
     # use the same routing grammar, reflected about x=135 mm: a straight local
@@ -711,7 +704,6 @@ def write_bom():
         ("C5,C6", "100nF X7R 25V", "0805", "2", "Op-amp supply bypass"),
         ("J1,J2", "1x4 male 2.00mm", "THT vertical", "2", "Grove A2 RED and A0 IR"),
         ("J3", "1x4 male 2.54mm", "THT vertical", "1", "OUT_RED,GND_RED,OUT_IR,GND_IR"),
-        ("H1-H4", "M3 NPTH", "3.2mm drill", "4", "Unused with screwless U support"),
     ]
     with (HERE / "BOM.csv").open("w", newline="") as stream:
         writer = csv.writer(stream)
@@ -733,6 +725,8 @@ def main():
     (HERE / f"{NAME}.kicad_pro").write_text(json.dumps(project, indent=2) + "\n")
     write_schematic()
     write_pcb(args.kicad_share, args.cli)
+    from compact_layout import compact
+    compact()
     write_bom()
 
 

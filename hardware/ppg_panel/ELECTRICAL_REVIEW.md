@@ -1,4 +1,4 @@
-# Rà soát ba board — 2026-10-01
+# Rà soát ba board — 2026-10-02
 
 Không phát hiện lỗi chập nguồn, đảo net hoặc đứt mạch trong CAD đã kiểm tra.
 Cả bản đầu vào và bản sửa đều được chạy ERC/DRC; bản cuối được kiểm tra
@@ -21,11 +21,10 @@ Các nhánh hồi tiếp 0,22/0,35 mm mang dòng tín hiệu rất nhỏ; không
 rộng chúng như nhánh công suất. GND có vùng đồng và các thermal spokes.
 Không tăng dòng LED hàng trăm mA chỉ dựa trên kết quả bề rộng này.
 
-Khoảng hở nhỏ nhất từ **mép track/via đến mép lỗ M3**:
-OPT101 2,422 mm; BPW34 0,700 mm; driver 3,882 mm. Không có track bị khoan
-cắt đứt. DRC cũng kiểm tra pad và vùng đồng với lỗ NPTH. Các đường trên
-`Dwgs.User` ở giữa receiver là chỉ dẫn vách quang, không phải khe khoét
-`Edge.Cuts`. Mỗi board có bốn lỗ NPTH; panel có 12 lỗ M3.
+Hai receiver không còn lỗ bắt vít; driver giữ bốn lỗ M3. Kiểm tra panel đo
+khoảng cách đồng tới lỗ và đường V-cut, xem `reports/panel_audit.json`.
+Không có track xuyên lỗ khoan hoặc đường cắt. Dwgs.User là chỉ dẫn vách quang,
+không phải khe phay. Toàn bộ track trên cả ba nguồn đi ngang/dọc.
 
 ## Tín hiệu thu và mạng lọc mới
 
@@ -80,12 +79,11 @@ và đi dây OUT sát dây GND. Hai ADC đọc song song tạo tải chung, chư
    cắm riêng hai dây OUT vào một ADC không có GND chung là sai. J3 BPW34
    có RED/GND_RED/IR/GND_IR. Không nối song song hai tín hiệu RED và IR.
 
-Ba PCB đã thu gọn còn 70×30, 70×30, 70×48 mm. Tiết kiệm 7,7 cm² (9,24%) so với ba board trước khi thu gọn.
-Giữ chiều dài 70 mm, khoảng cách trục 38,5 mm, socket DIP/module, các header
-và đầu nối/socket THT của driver. Đây là mức thu gọn thận trọng, không tuyên bố
-là diện tích nhỏ nhất tuyệt đối. Giảm mạnh hơn cần đổi bố trí/module hoặc
-linh kiện SMD và kiểm chứng lại cơ khí; kích thước thật module MCP4725 chưa
-được cung cấp. Receiver hiện dùng chung thanh chữ U không bắt vít; dùng băng keo đục quang giữ board và bịt khe trên/vách giữa phía sau. Adapter driver giữ nguyên; chưa thử in/lắp.
+Ba PCB hiện tại: 70×20, 70×20 và 70×40 mm; tổng 56 cm², giảm 25,93%
+so với 75,6 cm² của bản trước. Giữ nguyên net, giá trị linh kiện và trục quang;
+chỉ bỏ lỗ/gá vít của receiver, dời linh kiện và đổi đường đi đồng.
+Hai receiver dùng hai thanh U khác bậc đỡ; driver dùng adapter mới.
+Chưa đo kích thước module MCP4725 và chưa thử in/lắp thực.
 
 ## Nguồn kỹ thuật
 

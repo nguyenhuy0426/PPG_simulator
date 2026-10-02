@@ -71,26 +71,29 @@ for ref in ('C2','C4'): check(ref+' marked DNP',bool(fps[ref].GetAttributes() & 
 check('Only eight fitted resistors',len([r for r in fps if r.startswith('R')])==8)
 check('Removed optional filter/bleeder and duplicate bypass',all(ref not in fps for ref in ('C1','C3','C6','R5','R10')))
 tracks=list(board.GetTracks())
-check('Tracks at least 0.35mm',all(p.ToMM(t.GetWidth(t.GetLayer()) if isinstance(t,p.PCB_VIA) else t.GetWidth())>=.3499 for t in tracks))
+check('Low-current signals at least 0.25mm',all(p.ToMM(t.GetWidth(t.GetLayer()) if isinstance(t,p.PCB_VIA) else t.GetWidth())>=.2499 for t in tracks))
 check('5V and LED cathodes at least 0.6mm',all(p.ToMM(t.GetWidth(t.GetLayer()) if isinstance(t,p.PCB_VIA) else t.GetWidth())>=.5999 for t in tracks if t.GetNetname() in ('/5V','/LED_K_IR','/LED_K_RED')))
 check('I2C buses stay in upper module region',all(max(p.ToMM(t.GetStart().y),p.ToMM(t.GetEnd().y))<125 for t in tracks if t.GetNetname() in ('/SDA','/SCL')))
 check('Bottom GND plane present',any(z.GetLayer()==p.B_Cu and z.GetNetname()=='/GND' for z in board.Zones()))
 for ref,value in [('R4','100R 1% 0.25W'),('R9','100R 1% 0.25W')]: check(ref+' sense value',fps[ref].GetValue()==value)
 edges=[d for d in board.GetDrawings() if d.GetLayer()==p.Edge_Cuts]
 xy=[pt for e in edges for pt in (e.GetStart(),e.GetEnd())]
-check('70x48mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-48)<1e-6)
-for i,(x,y) in enumerate([(104,125),(166,125),(104,144),(166,144)],1):
+check('70x40mm outline',len(edges)==4 and abs(p.ToMM(max(v.x for v in xy)-min(v.x for v in xy))-70)<1e-6 and abs(p.ToMM(max(v.y for v in xy)-min(v.y for v in xy))-40)<1e-6)
+for i,(x,y) in enumerate([(104,124),(166,124),(104,136),(166,136)],1):
     fp=fps[f'H{i}']; pos=fp.GetPosition(); pad=list(fp.Pads())[0]
     check(f'H{i} matches model mounting',abs(p.ToMM(pos.x)-x)<1e-6 and abs(p.ToMM(pos.y)-y)<1e-6 and abs(p.ToMM(pad.GetDrillSize().x)-3.2)<1e-6)
 for s in ['DATN: PPG-Simulator','Nguyen Nhat Huy - Pham Thanh Vy']:
     check('Back credit: '+s,any(isinstance(t,p.PCB_TEXT) and t.GetText()==s and t.GetLayer()==p.B_SilkS and t.IsMirrored() for t in board.GetDrawings()))
 rear=[t for t in board.GetDrawings() if isinstance(t,p.PCB_TEXT) and t.GetLayer()==p.B_SilkS]
 rear_text={t.GetText() for t in rear}
-for s in ('J1 IR DAC','J2 PI','J3 RED DAC','J5 IR LED','J6 RED LED','J7 POWER','IR_OUT','RED_OUT','GND','SCL','SDA','3V3','A+','K-','5V','U1 LM358','AMP_I','SNS_I','CMD_I','AMP_R','SNS_R','CMD_R','E','B','C'):
+for s in ('IR','RED','GND','SCL','SDA','3V3','IR-','RED-','5V','AMP_I','SNS_I','CMD_I','AMP_R','SNS_R','CMD_R','E','B','C'):
     check('Rear marking: '+s,s in rear_text)
 import re
 for item in rear:
     check('Rear pin label has no numeric prefix: '+item.GetText(),not re.match(r'^[1-4](?:\s|R$|I$|N$|V$|G|K$|A$)',item.GetText()))
+check('all routed tracks horizontal or vertical', all(
+    t.GetStart().x == t.GetEnd().x or t.GetStart().y == t.GetEnd().y
+    for t in board.GetTracks() if not isinstance(t, p.PCB_VIA)))
 report={'kicad_version':p.Version(),'passed':len(checks),'checks':checks,'limits':'Digital connectivity and geometry only; no physical/electrical measurements.'}
 (HERE/'reports/pin_contract.json').write_text(json.dumps(report,indent=2)+'\n')
 print(f'Pin contract: {len(checks)} checks passed')

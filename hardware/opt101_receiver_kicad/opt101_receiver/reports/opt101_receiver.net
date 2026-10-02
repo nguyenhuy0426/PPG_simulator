@@ -2,16 +2,16 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/hardware/opt101_receiver_kicad/opt101_receiver/opt101_receiver.kicad_sch</source>
-    <date>2026-10-02T09:39:51</date>
+    <date>2026-10-02T10:49:38</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>PPG - Dual OPT101P receiver</title>
         <company/>
-        <rev>1.4</rev>
-        <date>2026-09-24</date>
+        <rev>1.5</rev>
+        <date>2026-10-02</date>
         <source>opt101_receiver.kicad_sch</source>
-        <comment number="1" value="70 x 30 mm / DIP-8 sockets / Grove A0 IR, A2 RED"/>
+        <comment number="1" value="70 x 20 mm / DIP-8 sockets / Grove A0 IR, A2 RED"/>
         <comment number="2" value=""/>
         <comment number="3" value=""/>
         <comment number="4" value=""/>
@@ -109,82 +109,6 @@
             <pin num="1"/>
             <pin num="2"/>
           </pins>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H1">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="opt101_receiver"/>
-      <property name="Sheetfile" value="opt101_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>9182d870-540f-50ed-a9ea-6187c8387b14</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H2">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="opt101_receiver"/>
-      <property name="Sheetfile" value="opt101_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>54dcb852-3467-58cb-9d3c-aeddd8435f68</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H3">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="opt101_receiver"/>
-      <property name="Sheetfile" value="opt101_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>e626df81-f5e1-57ca-8505-9b9aa4f865eb</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
-        </unit>
-      </units>
-    </comp>
-    <comp ref="H4">
-      <value>M3 / 3.2mm NPTH</value>
-      <footprint>PPG:MountingHole_M3</footprint>
-      <fields>
-        <field name="Footprint">PPG:MountingHole_M3</field>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
-      <libsource lib="PPG" part="MountingHole" description=""/>
-      <property name="Sheetname" value="opt101_receiver"/>
-      <property name="Sheetfile" value="opt101_receiver.kicad_sch"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>59fec791-6f7d-5cc9-bb03-395776c11bb7</tstamps>
-      <units>
-        <unit name="A">
-          <pins/>
         </unit>
       </units>
     </comp>
@@ -400,15 +324,6 @@
         <pin num="3" name="3V3" type="passive"/>
         <pin num="4" name="GND" type="passive"/>
       </pins>
-    </libpart>
-    <libpart lib="PPG" part="MountingHole">
-      <fields>
-        <field name="Reference">H</field>
-        <field name="Value">MountingHole</field>
-        <field name="Footprint"/>
-        <field name="Datasheet"/>
-        <field name="Description"/>
-      </fields>
     </libpart>
     <libpart lib="PPG" part="OPT101P">
       <fields>

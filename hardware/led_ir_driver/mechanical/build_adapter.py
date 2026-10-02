@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""70x48 driver adapter for the existing 70x55 base mounting pattern.
+"""70x40 driver adapter for the existing 70x55 base mounting pattern.
 
 Print coordinates X,Y are the old board coordinates; Z points upward.
 The adapter rests on the existing 5 mm base standoffs. New PCB local (x,y)
@@ -33,24 +33,24 @@ def bodies(mesh):
 
 def main():
     frame=diff(box(0,70,0,55,0,2),[box(8,62,8,47,-1,3)])
-    mounts=[(4,32),(66,32),(4,51),(66,51)]
+    mounts=[(4,31),(66,31),(4,43),(66,43)]
     frame=trimesh.boolean.union([frame,*[cylinder(x,y,1.5,6,3.6) for x,y in mounts]],engine='manifold')
-    # Old upper mounts are through holes. The two lower mounts are coaxial
-    # through-holes, taking longer screws into the old base. New upper PCB
-    # mounts use M3 self-tapped pilot holes and short screws.
+    # Four old-base through holes and four new PCB pilot holes.
     cuts=[cylinder(x,y,-.1,6.1,1.6) for x in (4,66) for y in (4,51)]
-    cuts += [cylinder(x,32,-.1,6.1,1.3) for x in (4,66)]
+    cuts += [cylinder(x,y,-.1,6.1,1.3) for x,y in mounts]
     frame=diff(frame,cuts)
-    frame.export(HERE/'driver_70x48_adapter_print.stl')
-    pcb=diff(box(0,70,7,55,6,7.6),[cylinder(x,y,5.9,7.7,1.6) for x,y in mounts])
-    pcb.export(HERE/'driver_70x48_pcb_assembly.stl')
+    frame.export(HERE/'driver_70x40_adapter_print.stl')
+    import shutil
+    shutil.copy2(HERE/'driver_70x40_adapter_print.stl', HERE.parents[2]/'docs/system_3d/out/print_bambu_180/16_ga_driver_70x40.stl')
+    pcb=diff(box(0,70,7,47,6,7.6),[cylinder(x,y,5.9,7.7,1.6) for x,y in mounts])
+    pcb.export(HERE/'driver_70x40_pcb_assembly.stl')
     # Long pin tails are limited to 2 mm, above the 2 mm adapter plate.
-    solder=box(8,62,10,53,4,6)
+    solder=box(8,62,10,45,4,6)
     checks={'watertight':bool(frame.is_watertight),'single_body':bodies(frame)==1,
         'pcb_interference_mm3':intersection(frame,pcb),'solder_interference_mm3':intersection(frame,solder)}
     assert checks['watertight'] and checks['single_body']
     assert checks['pcb_interference_mm3']<1e-4 and checks['solder_interference_mm3']<1e-4
-    report={'adapter_mm':frame.extents.tolist(),'pcb_mm':[70,48,1.6],
+    report={'adapter_mm':frame.extents.tolist(),'pcb_mm':[70,40,1.6],
         'old_base_holes_mm':[(x,y) for x in (4,66) for y in (4,51)],
         'new_pcb_holes_mm':[(x,y-7) for x,y in mounts],
         'pcb_origin_on_adapter_mm':[0,7,6],'pcb_height_increase_mm':6,

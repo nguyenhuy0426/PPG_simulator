@@ -1,9 +1,9 @@
-# DATN: PPG-Simulator — LED / IR driver v1.8
+# DATN: PPG-Simulator — LED / IR driver v1.9
 
-Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 48 mm**,
+Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 40 mm**,
 FR4 1,6 mm; socket module, socket IC và header xuyên lỗ; toàn bộ điện trở và tụ điện là linh kiện dán.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.8 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
+Schematic v1.9 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
 không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
 rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
@@ -100,7 +100,7 @@ board này không có khóa tắt LED độc lập. Không ghi EEPROM trong lu�
 
 ## Cơ khí và hình xem trước
 
-Board mới 70 × 48 mm, lỗ tại (4,25), (66,25), (4,44), (66,44) mm, Ø3,2 mm. Dùng gá chuyển `mechanical/driver_70x48_adapter_print.stl` để lắp lên đế 70 × 55 mm cũ; xem `mechanical/README.md` về chiều lắp và vít.
+Board mới 70 × 40 mm, lỗ tại (4,24), (66,24), (4,36), (66,36) mm, Ø3,2 mm. Dùng gá chuyển `mechanical/driver_70x40_adapter_print.stl` để lắp lên đế 70 × 55 mm cũ; xem `mechanical/README.md` về chiều lắp và vít.
 Các đầu ra LED nằm sát cạnh hướng về hộp quang theo mô hình driver cũ.
 
 Ảnh module xác nhận pinout nhưng không cho kích thước cơ khí chính xác.
@@ -117,8 +117,7 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 
 KiCad 10.0.6: **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm; 0 kết nối còn thiếu;
 0 sai khác schematic/PCB; 244 kiểm tra hợp đồng chân, giá trị, hình học và đi dây đạt**.
-File khoan có 57 lỗ mạ (17 via Ø0,4 mm, 18 lỗ Ø0,8 mm, 22 lỗ Ø1,0 mm) và bốn lỗ
-không mạ Ø3,2 mm. Gia công hai lớp đồng, FR4 1,6 mm, đồng 1 oz.
+Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm.
 
 - `reports/erc.rpt`: kiểm tra schematic.
 - `reports/drc.rpt`: DRC và parity schematic/PCB.
@@ -150,3 +149,7 @@ Footprint/model từ KiCad 10: CC-BY-SA 4.0 với ngoại lệ sử dụng trong
 ## J2 revision v1.4
 
 J2 gồm hai đoạn header đực rời: OUT/GND (pad 1–2) bước 2,54 mm; SCL/SDA/3V3/GND (pad 3–6) bước 2,00 mm. Khoảng cách tâm pad 2 đến pad 3 là 3,96 mm để tách hai thân nhựa. Mua một header 1×2 2,54 mm và một header 1×4 2,00 mm, không dùng một thanh 1×6. Socket cái J1/J3 vẫn bước 2,54 mm.
+
+## Bố trí bản thu gọn hiện tại
+
+PCB 70 × 40 mm. Lỗ PCB tại (4;24), (66;24), (4;36), (66;36) mm. C7 đặt mặt sau giữa các header, các tụ/trở còn lại dùng footprint SMD. Đường đồng ngang/dọc; nguồn 5 V rộng 0,60–0,80 mm. Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.

@@ -1,6 +1,6 @@
-> Gá mới: thanh chữ U không bắt vít, dùng chung hai receiver. Xem `mechanical/README.md`.
+> Gá mới: thanh chữ U không bắt vít, hai biến thể riêng theo receiver. Xem `mechanical/README.md`.
 
-# PCB thu PPG — OPT101P ×2, 70 × 30 mm
+# PCB thu PPG — OPT101P ×2, 70 × 20 mm
 
 Mở **`opt101_receiver.kicad_pro` bằng KiCad 10**, rồi mở schematic hoặc PCB.
 Thiết kế đã đi dây hai lớp, có thư viện symbol, footprint và mô hình 3D cục bộ.
@@ -21,7 +21,6 @@ ra, `V` là 3,3 V, `GR/GI` là ground theo kênh, `FB` là hồi tiếp và `NC`
 | C3, C4 | 1 µF X7R 16 V, SMD 0805, không phân cực | 2 |
 | J1, J2 | Header đực thẳng 1×4, bước 2,00 mm | 2 |
 | J3 | Header đực thẳng 1×2, bước 2,54 mm | 1 |
-| H1–H4 | Lỗ không mạ Ø3,2 mm; để trống khi dùng gá U mới | 4 |
 
 Socket chỉ nhận **PDIP có chân xuyên lỗ**. OPT101 dạng SOP chân cong J không
 cắm trực tiếp được. Đối chiếu package thực trước khi tháo IC khỏi module tím.
@@ -71,33 +70,16 @@ việc đọc đồng thời với Grove chưa được thử trên phần cứn
 
 ## Kích thước và khớp mô hình 3D
 
-Board **70 × 30 × 1,6 mm**, hai lớp đồng. Tọa độ dưới đây tính từ góc trên
-trái board khi nhìn mặt linh kiện:
+PCB v1.5: **70 × 20 × 1,6 mm**, không có lỗ bắt vít. Tính từ góc trên trái:
+- Tâm OPT101: (15,75; 7,81) và (54,25; 7,81) mm.
+- J1/J2: chân đầu tại X=13/51 mm, Y=17,4 mm; bước 2 mm.
+- J3: X=26/28,54 mm, Y=17,4 mm.
 
-| Vị trí | X (mm) | Y (mm) |
-|---|---:|---:|
-| Tâm package/socket U1 Red | 15,75 | 15,00 |
-| Tâm package/socket U2 IR | 54,25 | 15,00 |
-| H1/H2 | 4,50 / 65,50 | 3,50 |
-| H3/H4 | 4,50 / 65,50 | 26,50 |
-| J1 pin 1 / 2 / 3 / 4 | 13,00 / 15,00 / 17,00 / 19,00 | 25,00 |
-| J3 pin 1 / 2 | 26,00 / 28,54 | 25,00 |
-| J2 pin 1 / 2 / 3 / 4 | 51,00 / 53,00 / 55,00 / 57,00 | 25,00 |
-
-Ba header đã được xoay ngang và dời xuống hàng Y = 25 mm, gần cạnh dưới
-Y = 30 mm. Cách bố trí này chừa hai bên socket cho vách ngăn và vùng quang,
-đồng thời khung mới đã hạ các cửa phía sau để tránh chân hàn/header.
-
-PCB revision **v1.4** dùng các đoạn đồng ngang/dọc 90° trên cả hai lớp.
-Đường nguồn hai kênh được bố trí đối xứng và kết thúc trước vùng hai lỗ bắt
-vít phía dưới. Mỗi lỗ M3 có khoảng cấm đồng cục bộ 1,0 mm tính từ mép lỗ;
-kiểm tra độc lập cũng đo khoảng cách từ mọi track đến từng lỗ để ngăn đường
-đồng đi vào vùng khoan khi tái sinh thiết kế.
-
-Giữ đúng khoảng cách hai làn **38,50 mm**, Y thế giới = 32 mm, Z = ±19,25 mm
-từ `docs/system_3d/build_system.py`. Giữ mặt trước PCB tại X thế giới = 137,5 mm.
-Tâm package được dùng làm tâm quang danh nghĩa; datasheet không cho dung sai
-tọa độ photodiode so với hàng chân, nên vẫn phải kiểm tra căn quang trên IC thật.
+Đường đồng ngang/dọc; R1/R2 và C3/C4 ở mặt sau, C1/C2 sát socket ở mặt trước.
+Gá riêng `mechanical/frame_70x20_print.stl` giữ mặt PCB tại X thế giới 137,5 mm,
+bậc đỡ Y=19,81 mm; tâm quang vẫn Y=32 mm, Z=±19,25 mm. Hai kênh cách 38,5 mm.
+Gá không bắt vít; giữ board và bịt khe/vách giữa bằng băng keo cách điện đục quang.
+Không dùng gá BPW34 thay gá OPT101 vì vị trí cảm biến theo cạnh ngắn khác nhau.
 
 ### Kiểm tra đường ánh sáng và khẩu độ
 
@@ -123,15 +105,6 @@ Kết luận phụ thuộc vào tâm package danh nghĩa và khoảng X cửa s�
 in cần thử lần lượt với tấm `blank` và Ø5: `blank` phải cho mức tối gần như nhau
 khi LED bật/tắt, còn Ø5 phải tạo đáp ứng rõ chỉ ở đúng kênh.
 
-**Dùng gá chữ U không bắt vít:** `mechanical/frame_70x30_print.stl`.
-Gá chung cho OPT101/BPW34, bao ngoài 73,4 × 56,8 × 4 mm, phần lớn rỗng.
-PCB tựa lên bậc đáy và hai mép; dùng băng keo đen đục quang giữ mép board.
-Không dùng vít/đai ốc. Cắt chân hàn không quá 2 mm.
-
-Gá U bỏ phần trên và dải giữa khung cũ: phải bịt khe trên/quanh PCB, lỗ vít
-bỏ trống và nối kín vách chia làn phía sau bằng vật liệu cách điện đục quang.
-Xem `mechanical/README.md` để lắp đúng. Không coi gá U tự nó kín sáng.
-
 ### Thay đổi mốc khoảng cách quang
 
 Mô hình cũ đặt cửa sổ module tại X = 120 mm nhờ module tím và trụ đỡ.
@@ -152,8 +125,8 @@ Không đưa board ra trước để cố giữ X=120 vì board liền sẽ đ�
 ## Kiểm tra và giới hạn
 
 Kiểm tra bằng **KiCad 10.0.6**: ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm,
-0 pad chưa nối, 0 lỗi parity; 183 kiểm tra hợp đồng chân, kích thước,
-hình học đường đồng và khoảng cách tới lỗ khoan đạt.
+0 pad chưa nối, 0 lỗi parity; 152 kiểm tra hợp đồng chân, kích thước,
+hình học đường đồng đạt.
 Kiểm tra cơ khí: 386/386 đạt với bao linh kiện đã nêu; khung là một khối kín.
 Kiểm tra đường quang danh nghĩa: 20/20 đạt.
 
@@ -180,9 +153,8 @@ nhiễu, bão hòa, Grove ADC và ADS1115. ERC/DRC sạch không phải chứng 
 ## File gia công
 
 `fabrication/` chứa Gerber hai lớp đồng, soldermask hai mặt, silkscreen và
-Edge.Cuts, kèm Excellon tách PTH/NPTH. Có **30 lỗ mạ** (4 via Ø0,4 mm, 24 lỗ Ø0,8 mm,
-2 lỗ Ø1,0 mm) và **4 lỗ không mạ Ø3,2 mm**. Chọn FR4 dày 1,6 mm,
-đồng 1 oz, 70 × 30 mm; không yêu cầu trở kháng kiểm soát.
+Edge.Cuts, kèm Excellon tách PTH/NPTH. Số lượng/cỡ lỗ khoan theo `reports/drill.rpt`; receiver không còn lỗ bắt vít. Chọn FR4 dày 1,6 mm,
+đồng 1 oz, 70 × 20 mm; không yêu cầu trở kháng kiểm soát.
 File này đã xuất nhưng **chưa được gửi đặt sản xuất**. Kiểm tra package IC,
 socket, đầu cáp và bản in khung thật trước khi chốt gia công.
 
@@ -213,8 +185,8 @@ thành PPG và dùng đường dẫn tương đối để dự án có thể chu
 Thư viện KiCad dùng CC-BY-SA 4.0 với ngoại lệ sử dụng trong thiết kế điện tử:
 [KiCad Library License](https://www.kicad.org/libraries/license/).
 
-## Schematic v1.4 — lọc ngõ ra
+## Schematic v1.5 — lọc ngõ ra
 
 Hai kênh được vẽ bằng dây nối trực tiếp từ Grove qua nguồn/bypass tới OPT101,
 strap 4–5, rồi qua R1/R2 = 1 kΩ tới Grove/J3; C3/C4 = 1 µF nối từ OUT sau điện trở xuống GND từng kênh. Bộ lọc có fc danh nghĩa 159 Hz, suy hao khoảng 0,8% tại 20 Hz; không phải lọc notch 50 Hz. Với nguồn 3,3 V, OPT101 không rail-to-rail: cần chừa headroom khoảng 1,15–1,3 V phía nguồn dương. Xem `reports/schematic.pdf` và `reports/schematic.png`. Giao cắt không
-có dấu chấm không nối điện. H4 được đặt ngoài khung tên sơ đồ.
+có dấu chấm không nối điện.

@@ -1,5 +1,5 @@
 Drill report for opt101_receiver.kicad_pcb
-Created on 2026-10-02T09:46:15
+Created on 2026-10-02T11:05:12
 
 Copper Layer Stackup:
     =============================================================
@@ -10,16 +10,15 @@ Copper Layer Stackup:
 Drill file 'opt101_receiver-PTH.drl' contains
     plated through holes:
     =============================================================
-    T1  0.400mm  0.0157"  (4 holes))
+    T1  0.400mm  0.0157"  (2 holes))
     T2  0.800mm  0.0315"  (24 holes))
     T3  1.000mm  0.0394"  (2 holes))
 
-    Total plated holes count 30
+    Total plated holes count 28
 
 
 Drill file 'opt101_receiver-NPTH.drl' contains
     unplated through holes:
     =============================================================
-    T1  3.200mm  0.1260"  (4 holes))
 
-    Total unplated holes count 4
+    Total unplated holes count 0

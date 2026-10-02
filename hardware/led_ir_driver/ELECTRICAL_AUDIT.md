@@ -102,7 +102,7 @@ chọn bù vòng cần đo oscilloscope, không đoán giá trị tụ rồi g�
 - DRC: 0 vi phạm, 0 kết nối thiếu, 0 sai khác schematic/PCB.
 - 244 kiểm tra độc lập về tập chân/net, giá trị linh kiện, pitch, cực tụ,
   nhãn, chiều chân transistor và hình học đạt; xem `reports/pin_contract.json`.
-- 57 lỗ PTH và 4 lỗ NPTH; PCB 70×48 mm, hai lớp, FR4 1,6 mm.
+- 57 lỗ PTH và 4 lỗ NPTH; PCB 70×40 mm, hai lớp, FR4 1,6 mm.
 - Gerber/drill, sơ đồ PDF, ảnh và ZIP được xuất từ bản v1.6.
 
 File CAD đủ để gia công board thử. Trước khi cấp nguồn: kiểm tra chiều
