@@ -76,6 +76,7 @@ def main():
     fixed["aperture_ir_d16"] = aperture_ir
 
     checks = []
+    checks.extend(shared.fit_checks(g, frame, lower))
     for part_name, part in parts.items():
         for fixed_name, solid in fixed.items():
             volume = intersection(part, solid)
@@ -98,13 +99,17 @@ def main():
     report = {
         "board_mm": [70, 20, 1.6],
         "print_bounds_mm": printed.extents.tolist(),
+        "slide_slot_mm": 4.3,
+        "support_thickness_mm": 3.8,
+        "nominal_depth_clearance_mm": 0.5,
+        "nominal_side_clearance_mm": 0.5,
         "lane_centres_z_mm": [-19.25, 19.25],
         "axis_y_mm": 32,
         "pcb_front_x_mm": 137.5,
         "bpw34_sensitive_surface_x_mm": 134.3,
         "rear_component_clearance_mm": 2.0,
         "solder_trim_max_mm": 2.0,
-        "fasteners": "None; screwless U support, secure PCB edges with opaque tape",
+        "fasteners": "None; screwless H support, secure PCB edges with opaque tape",
         "watertight": bool(frame.is_watertight),
         "connected_bodies": body_count(frame),
         "checks": checks,
@@ -113,7 +118,8 @@ def main():
         "limitations": [
             "Conservative component envelopes, not exact purchased-part solids.",
             "BPW34 sensitive-area centre is assumed to match the package drawing nominal centre.",
-            "Open U requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test.",
+            "Open H requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test.",
+            "Nominal 0.5 mm slot clearance must be confirmed by a short test print on the actual printer.",
         ],
     }
     (HERE / "fit_report.json").write_text(json.dumps(report, indent=2) + "\n")

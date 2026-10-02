@@ -1,10 +1,12 @@
-# Gá chữ U cho opt101_receiver 70 × 20 mm
+# Gá chữ H cho opt101_receiver 70 × 20 mm
 
 In riêng `frame_70x20_print.stl`, không in file `*_assembly.stl`. Không cần ốc.
-Đặt PCB tựa trên bậc, mặt cảm biến hướng vào LED; bậc Y thế giới=19,81 mm,
+Đặt PCB tựa trên thanh ngang; vùng phía dưới rỗng để luồn dây header. Rãnh hộp
+4,3 mm, gá dày 3,8 mm, còn 0,5 mm danh nghĩa; nên in thử và lắp trượt vào hộp
+thật trước khi in cả bộ. Mặt cảm biến hướng vào LED; bậc Y thế giới=19,81 mm,
 mặt trước PCB X=137,5 mm, hai tâm quang Y=32 mm và Z=±19,25 mm.
 Gá OPT101 và BPW34 khác độ cao bậc để giữ đúng trục quang.
 Dùng băng keo cách điện đục quang cố định mép và bịt khe trên/vách giữa;
-thanh U tự nó không kín sáng. Cắt đuôi chân hàn không quá 2 mm.
+gá H tự nó không kín sáng. Cắt đuôi chân hàn không quá 2 mm.
 `fit_report.json` và `optical_report.json` kiểm tra hình học danh nghĩa,
 chưa thay cho thử lắp, đo chiều cao cảm biến và kiểm tra lọt sáng thực.

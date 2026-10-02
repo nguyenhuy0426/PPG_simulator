@@ -5,10 +5,14 @@
     1.6
   ],
   "print_bounds_mm": [
-    73.4000015258789,
+    73.0,
     37.810001373291016,
-    4.0
+    3.8000030517578125
   ],
+  "slide_slot_mm": 4.3,
+  "support_thickness_mm": 3.8,
+  "nominal_depth_clearance_mm": 0.5,
+  "nominal_side_clearance_mm": 0.5,
   "lane_centres_z_mm": [
     -19.25,
     19.25
@@ -19,10 +23,22 @@
   "socket_envelope_height_mm": 11,
   "header_envelope_height_mm": 12,
   "solder_trim_max_mm": 2,
-  "fasteners": "None; screwless U support, secure PCB edges with opaque tape",
+  "fasteners": "None; screwless H support, secure PCB edges with opaque tape",
   "watertight": true,
   "connected_bodies": 1,
   "checks": [
+    {
+      "label": "support thickness fits 4.3 mm slide slot with 0.5 mm clearance",
+      "pass": true
+    },
+    {
+      "label": "side clearance at least 0.5 mm per side",
+      "pass": true
+    },
+    {
+      "label": "lower cable bay empty between side posts",
+      "pass": true
+    },
     {
       "a": "frame",
       "b": "body",
@@ -458,7 +474,7 @@
     {
       "a": "frame",
       "b": "pcb",
-      "intersection_mm3": 0.0,
+      "intersection_mm3": 4.168517383125921e-13,
       "pass": true
     },
     {
@@ -687,7 +703,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 4.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -750,7 +766,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 6.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -813,7 +829,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 8.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -876,7 +892,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 10.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -939,7 +955,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 12.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -1191,7 +1207,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 20.0,
-      "intersection_mm3": 1.5158245029548803e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -2637,11 +2653,12 @@
       "pass": true
     }
   ],
-  "passed": 386,
-  "total": 386,
+  "passed": 389,
+  "total": 389,
   "limitations": [
     "Envelope check, not actual purchased socket or cable geometry.",
     "Die offset not dimensioned in TI drawing; nominal package centre used.",
-    "Open U: opaque sealing required above PCB and across rear centre-divider gap; no physical fit/light-leak test."
+    "Open H: opaque sealing required above PCB and across rear centre-divider gap; no physical fit/light-leak test.",
+    "Nominal 0.5 mm slot clearance must be confirmed by a short test print on the actual printer."
   ]
 }

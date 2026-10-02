@@ -5,10 +5,14 @@
     1.6
   ],
   "print_bounds_mm": [
-    73.4000015258789,
+    73.0,
     41.70000076293945,
-    4.0
+    3.8000030517578125
   ],
+  "slide_slot_mm": 4.3,
+  "support_thickness_mm": 3.8,
+  "nominal_depth_clearance_mm": 0.5,
+  "nominal_side_clearance_mm": 0.5,
   "lane_centres_z_mm": [
     -19.25,
     19.25
@@ -18,10 +22,22 @@
   "bpw34_sensitive_surface_x_mm": 134.3,
   "rear_component_clearance_mm": 2.0,
   "solder_trim_max_mm": 2.0,
-  "fasteners": "None; screwless U support, secure PCB edges with opaque tape",
+  "fasteners": "None; screwless H support, secure PCB edges with opaque tape",
   "watertight": true,
   "connected_bodies": 1,
   "checks": [
+    {
+      "label": "support thickness fits 4.3 mm slide slot with 0.5 mm clearance",
+      "pass": true
+    },
+    {
+      "label": "side clearance at least 0.5 mm per side",
+      "pass": true
+    },
+    {
+      "label": "lower cable bay empty between side posts",
+      "pass": true
+    },
     {
       "a": "frame",
       "b": "body",
@@ -549,7 +565,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 2.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -598,7 +614,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 4.0,
-      "intersection_mm3": 3.0316490059097606e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -843,7 +859,7 @@
       "a": "frame",
       "b": "body insertion",
       "dy_mm": 14.0,
-      "intersection_mm3": 6.063298011819521e-13,
+      "intersection_mm3": 0.0,
       "pass": true
     },
     {
@@ -2114,11 +2130,12 @@
       "pass": true
     }
   ],
-  "passed": 310,
-  "total": 310,
+  "passed": 313,
+  "total": 313,
   "limitations": [
     "Conservative component envelopes, not exact purchased-part solids.",
     "BPW34 sensitive-area centre is assumed to match the package drawing nominal centre.",
-    "Open U requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test."
+    "Open H requires opaque sealing above PCB and behind centre divider; no physical fit/light-leak test.",
+    "Nominal 0.5 mm slot clearance must be confirmed by a short test print on the actual printer."
   ]
 }

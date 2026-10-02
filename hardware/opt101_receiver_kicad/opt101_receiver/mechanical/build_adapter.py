@@ -68,6 +68,7 @@ def main():
     fixed={name:trimesh.load(exported/f'{name}.stl',force='mesh') for name in ('body','lid','aperture_red_d16')}
     aperture_ir=fixed['aperture_red_d16'].copy(); aperture_ir.apply_translation([0,0,38.5]); fixed['aperture_ir_d16']=aperture_ir
     checks=[]
+    checks.extend(shared.fit_checks(g, frame, lower))
     for an,a in parts.items():
         for bn,b in fixed.items():
             vol=intersection(a,b)
@@ -84,17 +85,20 @@ def main():
             vol=intersection(moved,fixed['body'])
             checks.append({'a':name,'b':'body insertion','dy_mm':float(dy),'intersection_mm3':vol,'pass':vol<1e-4})
     report={'board_mm':[70,20,1.6], 'print_bounds_mm':printed.extents.tolist(),
+            'slide_slot_mm':4.3, 'support_thickness_mm':3.8,
+            'nominal_depth_clearance_mm':0.5, 'nominal_side_clearance_mm':0.5,
             'lane_centres_z_mm':[-19.25,19.25], 'axis_y_mm':32,
             'pcb_front_x_mm':137.5,
             'optical_window_x_mm':'137.5 - measured socket-plus-IC optical height',
             'socket_envelope_height_mm':11,'header_envelope_height_mm':12,
             'solder_trim_max_mm':2,
-            'fasteners':'None; screwless U support, secure PCB edges with opaque tape',
+            'fasteners':'None; screwless H support, secure PCB edges with opaque tape',
             'watertight':bool(frame.is_watertight), 'connected_bodies':body_count(frame),
             'checks':checks,'passed':sum(x['pass'] for x in checks),'total':len(checks),
             'limitations':['Envelope check, not actual purchased socket or cable geometry.',
                           'Die offset not dimensioned in TI drawing; nominal package centre used.',
-                          'Open U: opaque sealing required above PCB and across rear centre-divider gap; no physical fit/light-leak test.']}
+                          'Open H: opaque sealing required above PCB and across rear centre-divider gap; no physical fit/light-leak test.',
+                          'Nominal 0.5 mm slot clearance must be confirmed by a short test print on the actual printer.']}
     (HERE/'fit_report.json').write_text(json.dumps(report,indent=2)+'\n')
     print(f"Mechanical: {report['passed']}/{len(checks)}, watertight={frame.is_watertight}")
     if not all(x['pass'] for x in checks):
