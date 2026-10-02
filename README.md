@@ -1,6 +1,6 @@
 # 🫀 PPG Signal Simulator — Raspberry Pi 4
 
-**Dual-channel PPG research simulator for Raspberry Pi and Linux desktop development**
+**Dual-channel PPG research simulator with Raspberry Pi software, three KiCad 10 boards and a printable optical enclosure.**
 
 ![Version](https://img.shields.io/badge/version-5.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%204-green)
@@ -9,7 +9,7 @@
 
 **Group #2:** HuyNN, VyPT
 **Institution:** Industrial University of Ho Chi Minh City (IUH) — Faculty of Electronic Technology
-**Version:** 5.0.0 — Clinical-style monitor, complete waveform controls and timestamped recording
+**Software version:** 5.0.0 — waveform controls and timestamped recording
 
 ---
 
@@ -38,7 +38,9 @@ and touch/output details](docs/ppg_touch_sequence_output_2026-09-30.md).
 The [earlier morphology comparison](docs/ppg_morphology_selection_2026-09-28.md)
 remains a historical exploratory result; test has already been viewed.
 
-![PPG monitor, running in dry-run mode](docs/ui/monitor-1280.png)
+| Live monitor | Waveform setup | 30-second sequence |
+|---|---|---|
+| ![PPG monitor in dry-run mode](docs/ui/monitor-1280.png) | ![Signal setup controls](docs/ui/setup-1280.png) | ![LSM-GAN sequence screen](docs/ui/touch-output/lsm-vi-1280.png) |
 
 ### What's complete in v5
 
@@ -51,6 +53,7 @@ remains a historical exploratory result; test has already been viewed.
 - Timestamped 100 Hz model-command CSV recording continues across pages; playback follows the recorded timestamps.
 - Explicit Start/Stop for calibration; only the engine's DAC thread produces its sine output.
 - Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
+- English/Vietnamese UI; touch-sized controls and live OPT101 A0 receiver display. A2 acquisition awaits an installed sensor.
 
 See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
 for scope, evidence, commercial-reference comparison and physical validation still needed.
@@ -83,14 +86,56 @@ Display:
   HDMI → Any screen (auto-detect resolution)
 ```
 
-### Mechanical enclosure (3D)
+### Three KiCad 10 boards
 
-The dark-chamber enclosure, its parametric build script and the printable STLs
-live in [`docs/system_3d/`](docs/system_3d/README.md). Mechanical v4 adds the
-printable Ø5 × 130 mm push rods, flat apertures, recessed lid slots, and two
-complete Bambu plates (23 parts). See the [fit review](docs/system_3d/MECHANICAL_V4_REVIEW.md).
+The current CAD release has two alternative receiver boards and one LED
+driver. Assemble **either** receiver for the optical channel pair; the V-cut
+panel contains all three designs for fabrication, then separates into three
+electrically independent boards.
 
-![3D web viewer with the light control panel](docs/ui/web-viewer-1280.png)
+| Board | Size | Main parts | Project |
+|---|---:|---|---|
+| OPT101 receiver | 70 × 20 mm | Two OPT101P in DIP-8 sockets; 2 mm Grove A2/RED and A0/IR headers; ADS1115 signal header; supply bypass and output RC | [Schematic, PCB and assembly notes](hardware/opt101_receiver_kicad/opt101_receiver/README.md) |
+| BPW34 receiver | 70 × 20 mm | Two BPW34, two OPA333 TIAs, 1 MΩ/22 pF feedback, 2 mm Grove headers, ADS1115 signal/GND header | [Schematic, PCB and assembly notes](hardware/bpw34_receiver/README.md) |
+| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
+
+| OPT101 receiver | BPW34 receiver | LED/IR driver |
+|---|---|---|
+| ![OPT101 receiver PCB](hardware/opt101_receiver_kicad/opt101_receiver/reports/pcb_top.png) | ![BPW34 receiver PCB](hardware/bpw34_receiver/reports/pcb_top.png) | ![LED and IR driver PCB](hardware/led_ir_driver/reports/pcb_top.png) |
+
+The [70 × 80 mm V-cut panel](hardware/ppg_panel/README.md) marks two score lines
+at 20 and 40 mm. Copper stays at least 1.5 mm from each line. Send the
+[panel fabrication ZIP](hardware/PPG_3boards_VCUT_panel.zip) to a board house
+that accepts three designs on one panel. Standalone packages are available for
+[OPT101](hardware/PPG_OPT101_receiver.zip), [BPW34](hardware/PPG_BPW34_receiver.zip)
+and the [driver](hardware/PPG_LED_IR_driver.zip). Confirm V-score capability and pricing with the board house;
+separate the bare boards before soldering.
+
+![Three-board V-cut fabrication panel](hardware/ppg_panel/reports/pcb_top.png)
+![V-cut positions and dimensions](hardware/ppg_panel/reports/vcut_drawing.png)
+
+### Printable optical enclosure
+
+The dark chamber has separate RED/IR lanes, a sliding LED carrier, replaceable
+apertures, a labyrinth lid and cable passages. The parametric model and assembly
+instructions are in [docs/system_3d](docs/system_3d/README.md). For a 180 mm
+Bambu bed, use the [three-plate print package](docs/system_3d/out/print_bambu_180.zip)
+for the original enclosure parts. The compact receiver PCBs use **separate H-shaped
+supports**, with open space under the PCB for header cables: [OPT101 STL](docs/system_3d/out/print_bambu_180/14_ga_chu_U_OPT101_70x20.stl)
+and [BPW34 STL](docs/system_3d/out/print_bambu_180/15_ga_chu_U_BPW34_70x20.stl).
+The driver has its [70 × 40 mm adapter STL](docs/system_3d/out/print_bambu_180/16_ga_driver_70x40.stl).
+Read the [mounting notes](docs/system_3d/out/print_bambu_180/README_PCB_MOUNTS.md)
+before printing: the receiver support is 3.8 mm thick in a 4.3 mm nominal slot;
+test-print one support and check fit in the actual enclosure.
+
+![Assembled optical enclosure](docs/system_3d/out/preview_assembled.png)
+![Electronics inside the model](docs/system_3d/out/preview_electronics.png)
+
+KiCad ERC/DRC, schematic-to-PCB checks and nominal mechanical collision checks
+are recorded in each hardware project's `reports/` and `mechanical/` folders.
+They do not establish physical fit, analog noise, optical isolation or LED current.
+Check module pin order, MCP4725 I²C addresses, supply voltage and fit on the
+actual parts before powering the assembly.
 
 > **The IR lane has no STLs of its own — this is deliberate, not a missing
 > export.** The two optical lanes are mirror-symmetric about z = 0, so the
@@ -231,6 +276,10 @@ freshness/status; dry-run and disconnected inputs display no fabricated samples.
 contain `Time_s` and `Source`; the first seven columns retain the legacy schema.
 Legacy files without timestamps explicitly assume 50 Hz for screen playback.
 CSV output is a model command record, not proof that a DAC wrote every sample.
+
+| Calibration and RX status | Recording review |
+|---|---|
+| ![Calibration screen](docs/ui/calibration-1280.png) | ![Saved waveform playback screen](docs/ui/recordings-1280.png) |
 
 ## Signal relationships and limits
 
