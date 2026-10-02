@@ -390,10 +390,6 @@
       "pass": true
     },
     {
-      "check": "track 58 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
       "check": "C1.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -694,5 +690,5 @@
       "pass": true
     }
   ],
-  "passed": 173
+  "passed": 172
 }

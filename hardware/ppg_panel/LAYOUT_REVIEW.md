@@ -3,6 +3,9 @@
 ## Đi dây và bố trí hai mặt
 
 Ba board dùng đoạn ngang/dọc và đoạn chéo 45°, vát các góc rẽ tự do 90°.
+Độ lùi vát góc danh nghĩa tăng từ 0,4 lên 1,2 mm để đoạn chéo rõ nét,
+không dùng cung tròn. Góc trong vùng chật được giới hạn bởi chiều dài đoạn
+và vị trí nhánh nối; không kéo đoạn chéo qua điểm đáp của nhánh.
 Điểm vào pad, via và điểm phân nhánh điện được giữ để không cắt mất kết nối.
 Không đổi net, giá trị linh kiện, bề rộng đường nguồn, vị trí header, tâm cảm biến
 hay kích thước board. `hardware/routing_45.py --audit` kiểm tra góc đoạn dây

@@ -52,13 +52,24 @@ def bends(board):
         if a[0]*b[0]+a[1]*b[1]==0:
             yield q,ends,vectors
 
-def chamfer(path, setback=.4):
+def chamfer(path, setback=1.2):
     board=p.LoadBoard(str(path)); changed=0
+    nodes,_=topology(board)
     for q,ends,vectors in list(bends(board)):
         # Endpoints may have been shortened by the neighbouring chamfer.
         vectors=[(point(t.GetStart() if end else t.GetEnd())[0]-q[0],
                   point(t.GetStart() if end else t.GetEnd())[1]-q[1]) for t,end in ends]
-        d=min(p.FromMM(setback),*(max(abs(x),abs(y))//3 for x,y in vectors))
+        d=min(p.FromMM(setback),*(max(abs(x),abs(y))*2//5 for x,y in vectors))
+        # Stop at branch landings inside a segment; a longer bevel must not
+        # remove the copper on which another same-net track terminates.
+        for (t,end),(x,y) in zip(ends,vectors):
+            length=math.hypot(x,y)
+            for (net,layer,landing) in nodes:
+                if net!=t.GetNetCode() or layer!=t.GetLayer() or landing==q: continue
+                rx,ry=landing[0]-q[0],landing[1]-q[1]
+                along=(rx*x+ry*y)/length
+                if 0<along<length and abs(rx*y-ry*x)/length<t.GetWidth()/2:
+                    d=min(d,int(along))
         if d<1: continue
         pts=[]
         for (t,end),(x,y) in zip(ends,vectors):
@@ -82,6 +93,7 @@ def audit(path):
     assert not corners, (path, 'un-chamfered free bends', [q for q,_,_ in corners])
     result={'tracks':len(tracks),'diagonal_tracks':sum(t.GetStart().x!=t.GetEnd().x and t.GetStart().y!=t.GetEnd().y for t in tracks),
             'non_octilinear_segments':0,'free_90_degree_bends':0,
+            'nominal_corner_setback_mm':1.2,
             'note':'Pad entries, via transitions and electrical branch junctions are not free routing bends.'}
     (path.parent/'reports/routing_45_audit.json').write_text(json.dumps(result,indent=2)+'\n')
     print(path.name,result)

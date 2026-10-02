@@ -1,7 +1,8 @@
 {
-  "tracks": 204,
-  "diagonal_tracks": 69,
+  "tracks": 200,
+  "diagonal_tracks": 65,
   "non_octilinear_segments": 0,
   "free_90_degree_bends": 0,
+  "nominal_corner_setback_mm": 1.2,
   "note": "Pad entries, via transitions and electrical branch junctions are not free routing bends."
 }

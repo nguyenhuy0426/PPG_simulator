@@ -13,7 +13,7 @@
     {
       "prefix": "OPT",
       "source": "opt101_receiver_kicad/opt101_receiver/opt101_receiver.kicad_pcb",
-      "sha256": "0ed6764032440393d28920fcf392b08fc033a9bb436123c049d7ad8f43210ace",
+      "sha256": "1e29df6351e45691c22b83ee6880b4011bea54c607c9a4da7732a67ed2d458b2",
       "offset_mm": [
         0,
         0
@@ -23,12 +23,12 @@
         20
       ],
       "footprints": 11,
-      "tracks_and_vias": 60
+      "tracks_and_vias": 59
     },
     {
       "prefix": "BPW",
       "source": "bpw34_receiver/bpw34_receiver.kicad_pcb",
-      "sha256": "5cc91cfc61b58b60a291e68f5316ab0677d8427751d1f548cf6b3355db90ac7b",
+      "sha256": "0ed2db5a30c7115c0de762571b9e75078cc4eef2cfbd97df6ea118ba9d49f20a",
       "offset_mm": [
         0,
         20
@@ -43,7 +43,7 @@
     {
       "prefix": "TX",
       "source": "led_ir_driver/led_ir_driver.kicad_pcb",
-      "sha256": "bcec0e93c4de170b30fe7e71458b097059b9c321b455ec29248e21fe8f1dc308",
+      "sha256": "5f54f4adee3a74949f44ada9c97aa9250c8db9f5c26de6f707d3e97518319e15",
       "offset_mm": [
         0,
         40
@@ -53,7 +53,7 @@
         40
       ],
       "footprints": 26,
-      "tracks_and_vias": 216
+      "tracks_and_vias": 212
     }
   ]
 }
