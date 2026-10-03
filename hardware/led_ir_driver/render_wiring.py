@@ -49,6 +49,9 @@ def plot():
     for ax,layer in zip(axes,['F.Cu','B.Cu']):
         ax.add_patch(Rectangle((0,0),70,40,facecolor='#f8fafb',edgecolor='#283340',lw=1.2))
         for t in data['tracks']:
+            if t['a']==t['b']:
+                ax.add_patch(Circle(t['a'],t['width']/2,facecolor='white',edgecolor=palette[group(t['net'])],lw=1.4,zorder=3))
+                continue
             if t['layer']!=layer: continue
             a,c=t['a'],t['b']
             ax.plot([a[0],c[0]],[a[1],c[1]],color=palette[group(t['net'])],lw=1.4+1.5*t['width'],solid_capstyle='round',zorder=2)
@@ -70,7 +73,7 @@ def plot():
         ax.set_xlim(-2,72); ax.set_ylim(42,-2); ax.set_aspect('equal'); ax.set_xlabel('mm'); ax.set_ylabel('mm'); ax.grid(alpha=.13)
     names={'GND':'GND (vùng đồng ẩn)','5V':'5 V / LED anode','3V3':'3,3 V DAC','SCL':'SCL — J2.3','SDA':'SDA — J2.4','DAC_IR':'OUT IR — J1/J2.1','DAC_RED':'OUT RED — J3.1','CMD':'Command / ngõ +','DRIVE':'OUT LM358 / base','SENSE':'Sense / hồi tiếp ngõ −','LED':'LED cathode'}
     fig.legend([Line2D([0],[0],color=c,lw=3) for c in palette.values()],[names[n] for n in palette],loc='outside lower center',ncol=5,frameon=False,fontsize=10)
-    fig.suptitle('PPG driver v1.9 — bản đồ đường đồng và số chân thực trên PCB',fontsize=17)
+    fig.suptitle('PPG driver v1.9 — bản đồ đường đồng và số chân thực trên PCB\nVòng tròn nhỏ không đánh số: via nối hai lớp đồng',fontsize=15)
     fig.savefig(HERE/'reports/wiring_guide.png',dpi=180)
     fig.savefig(HERE/'reports/wiring_guide.pdf')
     plt.close(fig)

@@ -25,6 +25,8 @@ def line(board, a, b, layer):
     s.SetStart(v(*a)); s.SetEnd(v(*b)); s.SetWidth(p.FromMM(.05)); s.SetLayer(layer); board.Add(s)
 
 def main():
+    project_path=HERE/(NAME+'.kicad_pro')
+    saved_project=project_path.read_bytes() if project_path.exists() else None
     board=p.BOARD(); board.GetDesignSettings().SetCopperLayerCount(2)
     board.GetDesignSettings().SetBoardThickness(p.FromMM(1.6))
     manifest={'panel_mm':[70,80,1.6], 'vcut_y_from_top_mm':[20,40], 'copper_to_vcut_min_mm':1.5, 'sources':[]}
@@ -110,8 +112,10 @@ def main():
         'net_settings':{'classes':[{'name':'Default','clearance':.2,'track_width':.3,
         'via_diameter':.8,'via_drill':.4,'microvia_diameter':.3,'microvia_drill':.1,
         'diff_pair_width':.2,'diff_pair_gap':.25,'diff_pair_via_gap':.25}]}}
-    project_path=HERE/(NAME+'.kicad_pro')
-    if not project_path.exists():
+    if saved_project is not None:
+        # SaveBoard can rewrite project settings even without write_text below.
+        project_path.write_bytes(saved_project)
+    else:
         project_path.write_text(json.dumps(project,indent=2)+'\n')
     table='(fp_lib_table (version 7)\n'
     for lib in libraries:

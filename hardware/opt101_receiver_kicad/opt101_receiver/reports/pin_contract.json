@@ -310,86 +310,6 @@
       "pass": true
     },
     {
-      "check": "track 38 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 39 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 40 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 41 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 42 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 43 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 44 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 45 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 46 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 47 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 48 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 49 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 50 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 51 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 52 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 53 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 54 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 55 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 56 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
-      "check": "track 57 is horizontal, vertical or 45 degrees",
-      "pass": true
-    },
-    {
       "check": "C1.1 PCB agrees with audited netlist",
       "pass": true
     },
@@ -690,5 +610,5 @@
       "pass": true
     }
   ],
-  "passed": 172
+  "passed": 152
 }

@@ -16,9 +16,12 @@ def export():
     def xy(position):
         return [p.ToMM(position.x) - origin[0], p.ToMM(position.y) - origin[1]]
 
-    data = {"tracks": [], "footprints": []}
+    data = {"tracks": [], "footprints": [], "vias": []}
     for track in board.GetTracks():
-        if isinstance(track, p.PCB_VIA) or not isinstance(track, p.PCB_TRACK):
+        if isinstance(track, p.PCB_VIA):
+            data['vias'].append({'xy':xy(track.GetPosition()),'net':track.GetNetname().lstrip('/'),'width':p.ToMM(track.GetWidth(p.F_Cu))})
+            continue
+        if not isinstance(track, p.PCB_TRACK):
             continue
         data["tracks"].append({
             "net": track.GetNetname().lstrip("/"),
@@ -84,6 +87,8 @@ def plot():
                 ax.text(x, y, pad["number"], ha="center", va="center", fontsize=5.2, color="#111827", zorder=5)
             x, y = fp["ref_xy"]
             ax.text(x, y, fp["ref"], ha="center", va="center", fontsize=6.7, fontweight="bold", color="#263341", bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.15}, zorder=6)
+        for via in data['vias']:
+            ax.add_patch(Circle(via['xy'],via['width']/2,facecolor='white',edgecolor=palette[group(via['net'])],linewidth=1.3,zorder=3))
         ax.axvspan(33.5, 36.5, color="#111827", alpha=0.06)
         ax.set_title("Top copper / through-hole wiring" if layer == "F.Cu" else "Rear analog layout / B.Cu viewed from top", fontsize=13)
         ax.set_xlim(-1.5, 71.5)
@@ -99,7 +104,7 @@ def plot():
         ncol=4,
         frameon=False,
     )
-    fig.suptitle("Dual BPW34 receiver v1.4 - actual routed copper and pad numbers", fontsize=16)
+    fig.suptitle("Dual BPW34 receiver v1.4 - actual routed copper and pad numbers\nSmall unnumbered circles: vias connecting both copper layers", fontsize=15)
     fig.savefig(HERE / "reports/wiring_guide.png", dpi=180)
     fig.savefig(HERE / "reports/wiring_guide.pdf")
     plt.close(fig)

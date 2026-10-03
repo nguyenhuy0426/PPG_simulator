@@ -306,50 +306,6 @@
       "pass": true
     },
     {
-      "check": "/SUM_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/SUM_RED stays on rear copper",
-      "pass": true
-    },
-    {
       "check": "/SUM_RED stays on rear copper",
       "pass": true
     },
@@ -395,74 +351,6 @@
     },
     {
       "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_IR stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
-      "pass": true
-    },
-    {
-      "check": "/FB_RED stays on rear copper",
       "pass": true
     },
     {
@@ -834,5 +722,5 @@
       "pass": true
     }
   ],
-  "passed": 208
+  "passed": 180
 }

@@ -9,7 +9,7 @@
 
 **Group #2:** HuyNN, VyPT
 **Institution:** Industrial University of Ho Chi Minh City (IUH) — Faculty of Electronic Technology
-**Software version:** 5.0.0 — waveform controls and timestamped recording
+**Version:** 5.0.0 — waveform controls and timestamped recording
 
 ---
 
@@ -38,6 +38,10 @@ and touch/output details](docs/ppg_touch_sequence_output_2026-09-30.md).
 The [earlier morphology comparison](docs/ppg_morphology_selection_2026-09-28.md)
 remains a historical exploratory result; test has already been viewed.
 
+**Persistent RX Dock & Bench Diagnostics (October 2026):**
+- **Live A0/A2 Monitor Dock:** A persistent, read-only acquisition dock is present across all pages (Pathology, Calibration, Recordings, Neural Sequence, and Settings). It displays the rolling 8-second window of raw ADC mV at up to 10 Hz refresh, with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
+- **Physical Sensor Diagnostic Protocol:** A bench test and signal conditioning plan is established for OPT101 / CJMCU-101 modules, covering internal 1 MΩ feedback verification, 3.3 V Grove Hat input limits, dark readings, stepped sine wave tests (1–10 Hz), and RC low-pass filtering at $f_c \approx 33.9\text{ Hz}$ ([docs/opt101-a0-diagnostic-2026-10-01.md](docs/opt101-a0-diagnostic-2026-10-01.md)).
+
 | Live monitor | Waveform setup | 30-second sequence |
 |---|---|---|
 | ![PPG monitor in dry-run mode](docs/ui/monitor-1280.png) | ![Signal setup controls](docs/ui/setup-1280.png) | ![LSM-GAN sequence screen](docs/ui/touch-output/lsm-vi-1280.png) |
@@ -53,7 +57,7 @@ remains a historical exploratory result; test has already been viewed.
 - Timestamped 100 Hz model-command CSV recording continues across pages; playback follows the recorded timestamps.
 - Explicit Start/Stop for calibration; only the engine's DAC thread produces its sine output.
 - Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
-- English/Vietnamese UI; touch-sized controls and live OPT101 A0 receiver display. A2 acquisition awaits an installed sensor.
+- English/Vietnamese UI; touch-sized controls and persistent live OPT101 A0/A2 receiver dock. A2 acquisition awaits an installed sensor.
 
 See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
 for scope, evidence, commercial-reference comparison and physical validation still needed.
@@ -69,6 +73,7 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 | DAC Rate               | Pi: 500 Hz target; configurable; Linux/I²C timing requires measurement |
 | Data Recording         | 100 Hz model commands, timestamped CSV in `dataset/` |
 | DAC Voltage Range      | Configured 0–3.28 V (0 → 0, 3.28 V → 4095) |
+| Live RX ADC Channels   | A0 (IR) & A2 (Red) on Grove Base Hat (I2C 0x08) |
 
 ---
 
@@ -114,6 +119,14 @@ separate the bare boards before soldering.
 ![Three-board V-cut fabrication panel](hardware/ppg_panel/reports/pcb_top.png)
 ![V-cut positions and dimensions](hardware/ppg_panel/reports/vcut_drawing.png)
 
+#### PCB Routing Quality & Chamfering
+
+All three PCB layouts and the fabrication panel have undergone automated geometric auditing and cleanup:
+- **100% 45° Chamfered Corners:** Automated chamfering (`hardware/routing_45.py`) converts all right-angle bends into smooth $1.2\text{ mm}$ 45° diagonal transitions, preventing acid traps and impedance discontinuities while preserving clearance.
+- **Copper Segment Cleanup:** `clean_segments()` resolves multi-node track junctions, deduplicates coincident traces, merges collinear segments, and eliminates non-functional copper stubs.
+- **Detailed Wiring Guides:** Enhanced wiring guides ([BPW34 guide](hardware/bpw34_receiver/reports/wiring_guide.png), [Driver guide](hardware/led_ir_driver/reports/wiring_guide.png)) render net-colored tracks and explicitly mark interlayer vias with white circular glyphs to assist manual assembly, testing, and probe placement.
+- **DRC Verification:** KiCad design rule checks confirm 0 DRC violations, 0 unrouted nets, and full compliance with 2-layer FR-4 $1.6\text{ mm}$ manufacturing constraints.
+
 ### Printable optical enclosure
 
 The dark chamber has separate RED/IR lanes, a sliding LED carrier, replaceable
@@ -153,30 +166,47 @@ actual parts before powering the assembly.
 ```
 PPG_simulator_raspi/
 ├── main.py                      # Application entry point
-├── config.py                    # Constants & Styles
-├── config_store.py              # JSON config persistence
+├── config.py                    # Constants, theme & styles (single source of truth for version)
+├── config_store.py              # JSON configuration persistence & validation
 ├── core/
-│   ├── signal_engine.py         # Signal generation thread + DAC output
+│   ├── signal_engine.py         # Signal generation thread & DAC output
 │   ├── csv_logger.py            # Dataset recording logic
-│   ├── tx_rx_logger.py          # TX/RX paired acquisition logging
-│   ├── rate_scheduler.py        # Drift-free fixed-rate ticker
-│   └── state_machine.py         # System state machine
+│   ├── tx_rx_logger.py          # Paired TX command & RX acquisition logger
+│   ├── rate_scheduler.py        # Drift-free fixed-rate execution ticker
+│   └── state_machine.py         # System operational state machine
+├── hw/
+│   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A2 channels)
+│   ├── dac_manager.py           # Dual MCP4725 I2C DAC controllers
+│   ├── adc_reader.py            # Low-level ADC reading interface
+│   └── button_handler.py        # Physical push-button interrupt handler
 ├── models/
-│   ├── ppg_model.py             # PPG physiological model logic
-│   ├── noise.py                 # Artefact sources (absolute-mV, band-limited)
-│   ├── respiration.py           # Respiratory modulation and apnea
-│   ├── waveform.py              # Pulse morphology and test waveforms
-│   └── limits.py                # Shared parameter ranges
-├── led_driver/                  # Op-amp + BJT current-sink design calculations
+│   ├── ppg_model.py             # PPG physiological synthesis model
+│   ├── noise.py                 # Artefact generators (absolute-mV, band-limited)
+│   ├── respiration.py           # Respiratory baseline/amplitude/RSA modulation
+│   ├── waveform.py              # Pulse morphology (Gaussian, sine, square, triangle)
+│   └── limits.py                # Parameter limits and boundary validation
+├── led_driver/                  # Op-amp + BJT current-sink calculations & error budget
 ├── ui/
-│   ├── ctk_app.py               # Main CustomTkinter Application
-│   ├── advanced_controls.py     # Parse/validate/dispatch for Signal Setup
+│   ├── ctk_app.py               # Main CustomTkinter UI shell & window manager
+│   ├── rx_monitor.py            # Persistent dual-channel live ADC dock
+│   ├── trace_view.py            # High-performance trace plot widget
+│   ├── touch_slider.py          # Touch-optimized slider with +/- step buttons
+│   ├── advanced_controls.py     # Parameter validation & event dispatcher
+│   ├── i18n.py                  # English and Vietnamese UI translations
+│   ├── responsive.py            # Multi-resolution UI scaling (1024x600 to 4K)
 │   └── frames/
-│       ├── pathology_frame.py   # Main simulation & sliders
-│       ├── calibration_frame.py # Sine wave generator
-│       ├── advanced_frame.py    # Signal Setup tab (AC/DC, SpO2 cal, artefact)
-│       └── playback_frame.py    # Data file browser & viewer
-└── dataset/                     # Folder where recordings are stored
+│       ├── pathology_frame.py   # Classic PPG simulator & pathology controls
+│       ├── calibration_frame.py # Sine wave DAC test & calibration
+│       ├── advanced_frame.py    # Signal setup (AC/DC ownership, SpO2, artefacts)
+│       ├── neural_frame.py      # LSM-GAN 30s sequence & morphology evaluation
+│       └── playback_frame.py    # CSV recording browser & playback viewer
+├── hardware/                    # KiCad 10 projects, V-cut panel & release ZIPs
+├── docs/                        # Design documents, reports, and 3D STL models
+│   ├── opt101-a0-diagnostic-2026-10-01.md # Bench test plan for physical sensor
+│   ├── rx-monitor-2026-10-01.md           # Live RX dock architecture & validation
+│   ├── ppg_touch_sequence_output_2026-09-30.md # Touch controls & GAN details
+│   └── system_3d/               # 3D printable dark enclosure STLs & guide
+└── dataset/                     # Recorded CSV dataset files
 ```
 
 ---
@@ -267,15 +297,32 @@ For a repeatable nominal waveform, disable respiratory modulation and all three
 physiological dynamics switches on the Respiration tab. Otherwise modulation,
 HR coupling and beat variability deliberately change the instantaneous AC/HR.
 
-**Calibration / RX:** enter sine frequency (1–10 Hz) and peak output (100–3280 mV),
+**Calibration & Sine Generator:** enter sine frequency (1–10 Hz) and peak output (100–3280 mV),
 then Start calibration. Opening the page alone does not start output. Leaving the
-page stops an active calibration. OPT101 values are raw ADC-derived mV with
-freshness/status; dry-run and disconnected inputs display no fabricated samples.
+page stops an active calibration. Sine calibration drives both MCP4725 DAC channels simultaneously.
+
+**Live RX Monitor Dock:** a persistent acquisition dock is anchored at the bottom
+of all pages. It samples the Grove Base Hat ADC at 100 Hz and refreshes the UI at up to 10 Hz,
+plotting an 8-second rolling window for A0 (IR) and A2 (Red). Sensor readings display raw
+millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
+Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
+
+**Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
+between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN
+continuous pulse sequence. Clips automatically stop at 30 seconds or upon navigating away.
+Opening the screen does not activate DAC output without an explicit Play action.
 
 **Recordings:** review saved TX command CSVs without driving hardware. New files
 contain `Time_s` and `Source`; the first seven columns retain the legacy schema.
 Legacy files without timestamps explicitly assume 50 Hz for screen playback.
 CSV output is a model command record, not proof that a DAC wrote every sample.
+
+**Bench Diagnostics & Optical Validation:** for physical sensor testing with the OPT101 / CJMCU-101 module,
+follow the testing protocol in [docs/opt101-a0-diagnostic-2026-10-01.md](docs/opt101-a0-diagnostic-2026-10-01.md):
+1. Verify module pinout (ensure 1 MΩ internal feedback loop between pins 4 & 5; do not leave floating).
+2. Measure baseline dark voltage under complete optical enclosure sealing.
+3. Perform stepped sine excitation (1, 2, 5, 10 Hz) via DAC to measure sensor linearity, phase shift, and harmonic distortion.
+4. If high-frequency ripple or ADC noise is present, insert an anti-aliasing RC filter ($R = 4.7\text{ k}\Omega$, $C = 1\ \mu\text{F}$, $f_c \approx 33.9\text{ Hz}$) between the OPT101 OUT pin and Grove A0 input. Keep Grove signals strictly $\le 3.3\text{ V}$.
 
 | Calibration and RX status | Recording review |
 |---|---|
