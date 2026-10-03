@@ -1,4 +1,29 @@
-# Rà soát layout và V-score — 2026-10-02
+# Rà soát layout và V-score — 2026-10-03
+
+## Rà soát toàn bộ ba board và panel
+
+Đã đi lại các đường vòng bằng các tuyến ngang/dọc/chéo 45° ít đoạn hơn,
+thay vì chỉ vát từng góc của đường cũ. Đã bỏ đồng trùng, phần nhô dư ở
+SENSE_RED và các via không còn dùng sau khi đổi tuyến. Các điểm nối thật
+ở pad, via và nhánh điện được giữ; ảnh wiring hiện đánh dấu cả via hai lớp.
+
+| Board | Số đoạn đồng trước → sau | Tổng chiều dài trước → sau |
+|---|---:|---:|
+| OPT101 | 57 → 37 | 163,76 → 129,69 mm |
+| BPW34 | 203 → 133 | 381,89 → 312,16 mm |
+| LED/IR driver | 200 → 98 | 488,13 → 415,25 mm |
+
+OPT101: rút gọn nguồn, đường raw và đường output tới header.
+BPW34: bỏ vòng nguồn sát biên, rút gọn SUM/feedback và bỏ hai via nguồn dư.
+Driver: đi lại I²C, DAC, base transistor, cathode LED và các đường hồi tiếp;
+bỏ vòng dây và phần đồng dư quanh LM358. Các đường vòng còn lại tránh pad
+khác net hoặc giữ kết nối ở hai lớp; không đánh đổi khoảng hở để giảm số đoạn.
+
+Ba nguồn: DRC không có vi phạm hoặc thiếu kết nối; PCB khớp schematic.
+Panel: DRC sạch, 566 kiểm tra nguồn/panel và V-cut đạt. Kiểm tra hình học
+không còn đoạn đồng trùng hoặc góc rẽ tự do 90°. Giá trị linh kiện, chân/net,
+footprint, vị trí, hướng và kích thước board không đổi.
+Chi tiết trước/sau nằm trong `reports/miniaturization_audit.json`.
 
 ## Đi dây và bố trí hai mặt
 
@@ -7,7 +32,7 @@ Ba board dùng đoạn ngang/dọc và đoạn chéo 45°, vát các góc rẽ t
 không dùng cung tròn. Góc trong vùng chật được giới hạn bởi chiều dài đoạn
 và vị trí nhánh nối; không kéo đoạn chéo qua điểm đáp của nhánh.
 Điểm vào pad, via và điểm phân nhánh điện được giữ để không cắt mất kết nối.
-Không đổi net, giá trị linh kiện, bề rộng đường nguồn, vị trí header, tâm cảm biến
+Không đổi net, giá trị linh kiện, vị trí header, tâm cảm biến
 hay kích thước board. `hardware/routing_45.py --audit` kiểm tra góc đoạn dây
 và góc rẽ; DRC/parity kiểm tra kết nối và khoảng hở thực tế.
 
