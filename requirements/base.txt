@@ -20,6 +20,11 @@
 # package `python3-tk`, NOT from pip. See scripts/setup_laptop_venv.sh.
 customtkinter>=6.0,<7
 
+# Button icons. ui/icons.py draws them with Pillow and hands them to CTkImage,
+# which needs PIL.Image/PIL.ImageTk. Without Pillow the buttons fall back to
+# text only. aarch64 wheels exist, so the Pi needs no extra OS package.
+pillow>=12.0,<13
+
 
 # -----------------------------------------------------------------------------
 # DELIBERATELY NOT LISTED, with the reason for each

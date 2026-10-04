@@ -98,12 +98,15 @@ def main():
             advanced.tabs.set("Amplitude & shape")
             advanced.on_apply_signal()
             assert "Applied" in advanced.status.cget("text")
+            # Touch sliders have no text input; a non-numeric value is refused
+            # by the control itself and never reaches the generator.
             before = config_from_ppg_params(engine.ppg_params)
-            advanced.entries["ac_ir_mv"].delete(0, "end")
-            advanced.entries["ac_ir_mv"].insert(0, "invalid")
-            advanced.on_apply_signal()
+            try:
+                advanced.entries["ac_ir_mv"].insert(0, "invalid")
+                raise AssertionError("TouchSlider accepted non-numeric input")
+            except ValueError:
+                pass
             assert config_from_ppg_params(engine.ppg_params) == before
-            assert "number" in advanced.status.cget("text")
             app.close_signal_setup()
             app.select_calibration()
             calibration = app.frames["Calibration"]
@@ -131,7 +134,7 @@ def main():
             app.select_advanced()
             screenshot("setup-1024.png")
             app.close_signal_setup()
-        print("PASS: navigation, parameter entry, invalid input, recording across pages, playback, calibration, 1024x600 metrics")
+        print("PASS: navigation, parameter entry, non-numeric input refused, recording across pages, playback, calibration, 1024x600 metrics")
     finally:
         app.on_closing()
         engine.shutdown()

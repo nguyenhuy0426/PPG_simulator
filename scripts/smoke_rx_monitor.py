@@ -33,11 +33,19 @@ def main():
         for page in app.frames:
             app._show_frame(page)
             pump()
-            panel = app.rx_monitor
-            assert panel.winfo_ismapped()
-            assert panel.winfo_y() + panel.winfo_height() <= app.winfo_height()
-            assert all(not trace.samples for trace in panel.traces.values())
-            assert "Chưa bật" in panel.labels[2].cget("text")
+            if page == "Pathology":
+                # Classic shows RX next to TX instead of the persistent dock.
+                assert not app.rx_monitor.winfo_ismapped()
+                panel = app.frames[page].rx_panel
+                assert panel.winfo_ismapped()
+                assert all(not lane.points for lane in panel.lanes)
+                assert panel.lanes[1].message == "Chưa gắn cảm biến"
+            else:
+                panel = app.rx_monitor
+                assert panel.winfo_ismapped()
+                assert panel.winfo_y() + panel.winfo_height() <= app.winfo_height()
+                assert all(not trace.samples for trace in panel.traces.values())
+                assert "Chưa bật" in panel.labels[2].cget("text")
             ImageGrab.grab(xdisplay=os.environ["DISPLAY"], bbox=(0, 0, 958, 531)).save(output / f"{page.lower()}.png")
         app.open_signal_setup()
         pump()
@@ -56,6 +64,7 @@ def main():
             state.status = "ok"
             state.buffer.extend(RXSample(now + dt, raw, False) for dt in (-.4, -.39, -.1, -.09))
         app.rx_monitor.receiver = rx
+        app._show_frame("Calibration")
         pump()
         for channel, raw in ((0, 100), (2, 2000)):
             trace = app.rx_monitor.traces[channel]
@@ -70,6 +79,22 @@ def main():
         pump()
         assert all(not t.samples for t in app.rx_monitor.traces.values())
         assert "Stale" in app.rx_monitor.labels[0].cget("text")
+        # The Classic RX card applies the same rules to the same receiver.
+        classic = app.frames["Pathology"].rx_panel
+        classic.receiver = rx
+        app._show_frame("Pathology")
+        pump()
+        assert all(not lane.points for lane in classic.lanes)
+        assert classic.lanes[0].message == "No fresh samples"
+        now = time.monotonic()
+        for channel, raw in ((0, 100), (2, 2000)):
+            rx._channels[channel].buffer.extend(RXSample(now + dt, raw, False) for dt in (-.4, -.39, -.1, -.09))
+        classic._last_update = 0.0
+        pump()
+        for lane, raw in zip(classic.lanes, (100, 2000)):
+            assert len(lane.points) == 4
+            assert abs(lane.points[-1][1] - raw_to_millivolts(raw)) < 1e-9
+        assert "Live" in classic.lanes[0].detail
         assert not rx.is_running
         assert not app.engine._running
         print("PASS: four pages, settings, languages, channel mapping, missing data, stale data, read-only UI")

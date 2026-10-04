@@ -10,6 +10,10 @@ from dataclasses import dataclass
 
 REFERENCE_WIDTH = 1280
 REFERENCE_HEIGHT = 800
+# The Classic page, header and footer are drawn in pixels for the 1024x600
+# touch panel and grow gently (at most 1.4x) on larger displays.
+TOUCH_WIDTH = 1024
+TOUCH_HEIGHT = 600
 
 
 def _clamp(value, minimum, maximum):
@@ -28,6 +32,15 @@ class LayoutProfile:
     nav_width: int
     trace_height: int
     vital_min_width: int
+
+    def ui(self, pixels):
+        """Logical CTk size that renders as `pixels` on a 1024x600 panel.
+
+        CTk multiplies every size by widget_scale, which is 0.75 on the touch
+        panel; dividing it back out keeps text and touch targets readable.
+        """
+        density = _clamp(min(self.screen_width / TOUCH_WIDTH, self.screen_height / TOUCH_HEIGHT), 1.0, 1.4)
+        return max(1, round(pixels * density / self.widget_scale))
 
     @property
     def setup_popup_size(self):

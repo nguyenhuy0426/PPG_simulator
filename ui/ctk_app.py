@@ -2,8 +2,9 @@ import time
 import tkinter as tk
 import customtkinter as ctk
 from comm.logger import log
-from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ
+from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ, MODEL_SAMPLE_RATE_PPG
 from core.signal_engine import SignalEngine
+from ui import icons
 from ui import theme as T
 from ui.frames.pathology_frame import PathologyFrame
 from ui.frames.calibration_frame import CalibrationFrame
@@ -13,6 +14,46 @@ from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
 from ui.i18n import LANGUAGES, normalise_language, text
 from ui.rx_monitor import RXMonitor
+
+
+class NavTab(ctk.CTkFrame):
+    """Underlined page tab: muted index, label, accent bar when active."""
+
+    def __init__(self, master, index, label, command, ui=round):
+        super().__init__(master, fg_color="transparent", corner_radius=0)
+        self.command, self.active = command, False
+        self.bar = ctk.CTkFrame(self, height=ui(3), corner_radius=0, fg_color=T.PANEL)
+        self.bar.pack(side="bottom", fill="x")
+        row = ctk.CTkFrame(self, fg_color="transparent")
+        row.pack(expand=True, padx=ui(8))
+        self.index = T.label(row, index, ui(11), text_color=T.FAINT)
+        self.index.pack(side="left", padx=(0, ui(6)))
+        self.text = T.label(row, label, ui(14), text_color=T.MUTED)
+        self.text.pack(side="left")
+        for widget in (self, row, self.index, self.text):
+            widget.bind("<Button-1>", lambda _event: self.command())
+            widget.bind("<Enter>", lambda _event: self._hover(True))
+            widget.bind("<Leave>", lambda _event: self._hover(False))
+        for label_widget in (self.index, self.text):
+            label_widget.configure(cursor="hand2")
+
+    def _hover(self, inside):
+        if not self.active:
+            self.text.configure(text_color=T.INK if inside else T.MUTED)
+
+    def set_active(self, active):
+        self.active = active
+        self.text.configure(text_color=T.INK, font=T.font(self.text.cget("font").cget("size"), active))
+        if not active:
+            self.text.configure(text_color=T.MUTED)
+        self.bar.configure(fg_color=T.ACCENT if active else T.PANEL)
+        self.index.configure(text_color=T.ACCENT if active else T.FAINT)
+
+    def set_text(self, label):
+        self.text.configure(text=label)
+
+    def invoke(self):
+        self.command()
 
 
 class CTkApp(ctk.CTk):
@@ -37,72 +78,87 @@ class CTkApp(ctk.CTk):
         self.engine = SignalEngine.get_instance()
         self._closing = False
         self._shutdown_requested = False
-        header = ctk.CTkFrame(self, fg_color=T.DARK, corner_radius=0,
-                              height=58 if self.layout.compact else 66)
+        compact = self.layout.compact
+        u = self.layout.ui
+        # ── Header: brand, page tabs, settings ──
+        header = ctk.CTkFrame(self, fg_color=T.PANEL, corner_radius=0, height=u(50))
         header.grid(row=0, column=0, sticky="ew")
-        header_pad = 14 if self.layout.compact else 24
-        T.label(header, "PPG", 24 if self.layout.compact else 27, True,
-                text_color="white").pack(side="left", padx=(header_pad, 12), pady=10)
-        self.workstation_label = None
-        if not self.layout.compact:
-            self.workstation_label = T.label(header, text(self.language, "workstation"), 13, True,
-                                              text_color="#C8D2D9")
-            self.workstation_label.pack(side="left")
-        self.mode_label = T.label(header, text(self.language, "simulation") if DRY_RUN else text(self.language, "hardware"),
-                                  12, True, text_color=T.IR)
-        self.mode_label.pack(side="right", padx=header_pad)
-        nav = ctk.CTkFrame(self, fg_color=T.PANEL, corner_radius=0)
-        nav.grid(row=1, column=0, sticky="ew")
+        header.grid_propagate(False)
+        header.grid_columnconfigure(2, weight=1)
+        header.grid_rowconfigure(0, weight=1)
+        ctk.CTkFrame(self, fg_color=T.LINE, corner_radius=0, height=T.hairline()).grid(row=0, column=0, sticky="sew")
+        header_pad = u(14)
+        T.label(header, "PPG", u(21), True).grid(row=0, column=0, padx=(header_pad, u(16)))
+        tabs = ctk.CTkFrame(header, fg_color="transparent")
+        tabs.grid(row=0, column=1, sticky="nsw")
         self.nav_buttons = {}
         self.nav_keys = (("Pathology", "classic"), ("Calibration", "calibration"),
                          ("Playback", "recordings"), ("Neural", "neural"))
-        for key, text_key in self.nav_keys:
-            btn = ctk.CTkButton(nav, text=text(self.language, text_key), width=self.layout.nav_width, height=40, corner_radius=0,
-                                command=lambda k=key: self._show_frame(k))
-            btn.pack(side="left", padx=(8 if self.layout.compact else 12, 0),
-                     pady=6 if self.layout.compact else 8)
-            self.nav_buttons[key] = btn
-        # Preserve the plots' requested height on a 600px touch display; the
-        # page scrolls while navigation and the physical RX monitor stay fixed.
-        self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if self.layout.compact else ctk.CTkFrame(self, fg_color="transparent")
+        for index, (key, text_key) in enumerate(self.nav_keys, start=1):
+            tab = NavTab(tabs, f"{index:02d}", text(self.language, text_key),
+                         command=lambda k=key: self._show_frame(k), ui=u)
+            tab.pack(side="left", fill="y", padx=(0, u(6)))
+            self.nav_buttons[key] = tab
+        self.signal_setup_bubble = T.outline_button(
+            header, text(self.language, "settings_short"), height=u(36), width=u(116),
+            image=icons.icon("sliders", T.INK, u(16)), compound="left", font=T.font(u(13), True),
+            command=self.toggle_signal_setup)
+        self.signal_setup_bubble.grid(row=0, column=3, padx=header_pad)
+
+        # ── Page area ──
+        # Compact panels scroll long pages while the header, RX dock and footer
+        # stay fixed. The Classic page is laid out to fit 1024x600 without
+        # scrolling, so it lives in a plain host that stretches its plots.
+        self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if compact else ctk.CTkFrame(self, fg_color="transparent")
         self.page_host.grid(row=2, column=0, sticky="nsew")
         self.page_host.grid_columnconfigure(0, weight=1)
-        if self.layout.compact:
+        if compact:
             self.page_host._scrollbar.configure(width=28)
-        if not self.layout.compact:
+            self.fixed_host = ctk.CTkFrame(self, fg_color="transparent")
+            self.fixed_host.grid_columnconfigure(0, weight=1)
+            self.fixed_host.grid_rowconfigure(0, weight=1)
+        else:
             self.page_host.grid_rowconfigure(0, weight=1)
-        self.page_host.layout = self.layout
-        self.page_host.language = self.language
+            self.fixed_host = self.page_host
+        for host in {self.page_host, self.fixed_host}:
+            host.layout = self.layout
+            host.language = self.language
         self.frames = {
-            "Pathology": PathologyFrame(self.page_host, fg_color="transparent"),
+            "Pathology": PathologyFrame(self.fixed_host, fg_color="transparent"),
             "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
             "Playback": PlaybackFrame(self.page_host, fg_color="transparent"),
             "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
-        self.page_host.frames = self.frames
+        for host in {self.page_host, self.fixed_host}:
+            host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
-        bubble_size = 44 if self.layout.compact else 50
-        self.signal_setup_bubble = ctk.CTkButton(
-            nav, text="⚙", width=bubble_size, height=bubble_size,
-            corner_radius=bubble_size // 2, fg_color=T.ACCENT,
-            hover_color=T.HOVER, border_width=2, border_color=T.BG,
-            font=ctk.CTkFont(family="DejaVu Sans", size=19, weight="bold"),
-            command=self.toggle_signal_setup)
-        self.signal_setup_bubble.pack(side="right", padx=14 if self.layout.compact else 22,
-                                      pady=4 if self.layout.compact else 6)
-        footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
+        # The persistent RX dock serves every page except Classic, which has
+        # its own RX card next to the TX plot.
         self.rx_monitor = RXMonitor(self, language=self.language)
         self.rx_monitor.grid(row=3, column=0, sticky="ew", padx=self.layout.outer_pad)
+
+        # ── Footer: output health and build ──
+        footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=4, column=0, sticky="ew")
-        self.status_label = T.label(footer, text(self.language, "ready"), 11, text_color=T.MUTED)
-        self.status_label.pack(side="left", padx=20, pady=4)
-        if not self.layout.compact:
-            self.research_label = T.label(footer, f"{text(self.language, 'research')}   •   v{FIRMWARE_VERSION}", 11,
-                                          text_color=T.MUTED)
-            self.research_label.pack(side="right", padx=20)
-        else:
-            self.research_label = None
+        ctk.CTkFrame(self, fg_color=T.LINE, corner_radius=0, height=T.hairline()).grid(row=4, column=0, sticky="new")
+        self.mode_label = T.label(footer, "", u(11), True, corner_radius=u(4), height=u(18))
+        self.mode_label.pack(side="left", padx=(header_pad - u(4), u(12)), pady=u(4))
+        self.footer_values = {}
+        for key in ("tx_model", "dac_target", "buffer", "lost", "clipped"):
+            name = T.label(footer, text(self.language, key), u(12), text_color=T.MUTED)
+            name.pack(side="left", padx=(0, u(4)))
+            value = T.label(footer, "", u(12), True)
+            value.pack(side="left", padx=(0, u(14)))
+            self.footer_values[key] = (name, value)
+        self.footer_values["tx_model"][1].configure(text=f"{MODEL_SAMPLE_RATE_PPG} Hz")
+        self.footer_values["dac_target"][1].configure(text=f"{FS_TIMER_HZ} Hz")
+        self.clock_label = T.label(footer, "", u(12), True)
+        self.clock_label.pack(side="right", padx=(0, header_pad))
+        T.label(footer, f"v{FIRMWARE_VERSION}", u(12), text_color=T.MUTED).pack(side="right", padx=(0, u(14)))
+        self.research_label = T.label(footer, text(self.language, "research"), u(12), text_color=T.MUTED)
+        self.research_label.pack(side="right", padx=(0, u(14)))
+        self._mode_shown = None
         self.active_frame = None
         self._show_frame("Pathology")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -128,12 +184,22 @@ class CTkApp(ctk.CTk):
         self.active_frame = self.frames[name]
         self.active_frame.grid(row=0, column=0, sticky="nsew",
                                padx=self.layout.outer_pad, pady=self.layout.outer_pady)
-        if self.layout.compact:
+        host = self.active_frame.master
+        if host is not self.page_host:
+            self.page_host.grid_remove()
+            host.grid(row=2, column=0, sticky="nsew")
+        else:
+            if self.fixed_host is not self.page_host:
+                self.fixed_host.grid_remove()
+            self.page_host.grid()
+        if self.layout.compact and host is self.page_host:
             self.page_host._parent_canvas.yview_moveto(0)
-        for key, button in self.nav_buttons.items():
-            button.configure(fg_color=T.INK if key == name else T.PANEL,
-                             text_color=T.PANEL if key == name else T.MUTED,
-                             hover_color=T.ACCENT if key == name else T.BG)
+        if name == "Pathology":
+            self.rx_monitor.grid_remove()
+        else:
+            self.rx_monitor.grid()
+        for key, tab in self.nav_buttons.items():
+            tab.set_active(key == name)
         if hasattr(self.active_frame, "on_show"):
             self.active_frame.on_show()
 
@@ -190,7 +256,7 @@ class CTkApp(ctk.CTk):
         self.signal_setup_panel = panel
         self.settings_rx_monitor = RXMonitor(window, language=self.language)
         self.settings_rx_monitor.grid(row=2, column=0, sticky="ew", padx=self.layout.outer_pad)
-        self.signal_setup_bubble.configure(text="×", fg_color=T.ERROR)
+        self.signal_setup_bubble.configure(fg_color=T.SUBTLE, border_color=T.ACCENT)
         panel.on_show()
         window.after_idle(window.lift)
 
@@ -205,15 +271,18 @@ class CTkApp(ctk.CTk):
             return
         self.language = language
         self.title(text(language, "title"))
-        if self.workstation_label is not None:
-            self.workstation_label.configure(text=text(language, "workstation"))
-        self.mode_label.configure(text=text(language, "simulation") if DRY_RUN else text(language, "hardware"))
+        for host in {self.page_host, self.fixed_host}:
+            host.language = language
         for key, text_key in self.nav_keys:
-            self.nav_buttons[key].configure(text=text(language, text_key))
+            self.nav_buttons[key].set_text(text(language, text_key))
+        self.signal_setup_bubble.configure(text=text(language, "settings_short"))
+        for key, (name, _value) in self.footer_values.items():
+            name.configure(text=text(language, key))
+        self.research_label.configure(text=text(language, "research"))
+        self._mode_shown = None
         self.frames["Neural"].set_language(language)
+        self.frames["Pathology"].set_language(language)
         self.rx_monitor.set_language(language)
-        if self.research_label is not None:
-            self.research_label.configure(text=f"{text(language, 'research')}   •   v{FIRMWARE_VERSION}")
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
             self.settings_rx_monitor.set_language(language)
@@ -239,7 +308,7 @@ class CTkApp(ctk.CTk):
             window.destroy()
         self.signal_setup_window = None
         self.signal_setup_panel = None
-        self.signal_setup_bubble.configure(text="⚙", fg_color=T.ACCENT)
+        self.signal_setup_bubble.configure(fg_color=T.PANEL, border_color=T.LINE)
 
     def toggle_signal_setup(self):
         window = self.signal_setup_window
@@ -274,22 +343,30 @@ class CTkApp(ctk.CTk):
             self.settings_rx_monitor.periodic_update()
         self.rx_monitor.periodic_update()
         stats = self.engine.get_stats()
-        if not DRY_RUN:
-            dac = self.engine.dac_manager
-            self.mode_label.configure(text=text(self.language, "tx_ready") if dac.is_ready else text(self.language, "tx_unavailable"),
-                                      text_color=T.IR if dac.is_ready else T.RED)
-
-        running = text(self.language, "running") if self.engine._running else text(self.language, "standby")
-        if self.layout.compact:
-            status = (f"{running}  •  DAC {FS_TIMER_HZ} Hz  •  Buffer {stats['buffer_fill']}  •  "
-                      f"Lost {stats['dropped_samples']}  •  "
-                      f"Clip {stats['clipped_samples']}  •  {time.strftime('%H:%M:%S')}")
-        else:
-            status = (f"{running}  /  TX model 100 Hz → DAC target {FS_TIMER_HZ} Hz   |   "
-                      f"Buffer {stats['buffer_fill']}   Lost {stats['dropped_samples']}   "
-                      f"Clipped {stats['clipped_samples']}   |   {time.strftime('%H:%M:%S')}")
-        self.status_label.configure(text=status)
+        self._paint_mode()
+        values = (("buffer", stats["buffer_fill"]), ("lost", stats["dropped_samples"]),
+                  ("clipped", stats["clipped_samples"]))
+        for key, value in values:
+            label = self.footer_values[key][1]
+            if label.cget("text") != str(value):
+                label.configure(text=str(value), text_color=T.ERROR if key != "buffer" and value else T.INK)
+        clock = time.strftime("%H:%M:%S")
+        if self.clock_label.cget("text") != clock:
+            self.clock_label.configure(text=clock)
         self._after_id = self.after(40, self.update_gui)
+
+    def _paint_mode(self):
+        """Footer chip: what the TX side is physically connected to."""
+        if DRY_RUN:
+            mode = ("mode_dry_run", T.WARN_INK, T.WARN_BG)
+        elif self.engine.dac_manager.is_ready:
+            mode = ("mode_hardware", T.OK, T.OK_BG)
+        else:
+            mode = ("mode_no_dac", T.ERROR, T.ERROR_BG)
+        if mode != self._mode_shown:
+            self._mode_shown = mode
+            key, ink, fill = mode
+            self.mode_label.configure(text=f"  {text(self.language, key)}  ", text_color=ink, fg_color=fill)
 
     def on_closing(self):
         if self._closing:
