@@ -1,24 +1,27 @@
-# Optional research preview bundle
+# Neural PPG assets
 
-Four UI modes: original Gaussian (stdlib, no checkpoint), cWGAN pilot,
-LSM corrected v2, TCN-FiLM/projection critic (seed 42, step 2800).
-The five TorchScript files are ignored by Git. `manifest.json` verifies their
-SHA-256 hashes at load time. Install `requirements/neural.txt` only for neural
-inference, then copy/extract the round2 model bundle at the repository root.
-Do not copy an x86 virtual environment onto a Raspberry Pi.
+The current page 04 keeps the three-Gaussian option and provides the LSM-GAN
+v2 generator for experimental 30-second sequence generation. LSM inference
+uses `lsm_generator.ts`; its 1,200-sample output is native 40 Hz. The app maps
+that normalized shape onto nominal IR/RED levels. It does not learn separate
+optical channels or calibrated SpO₂.
 
-The Classic three-Gaussian engine is retained. Neural generation and export
-never drive DAC/LED. IR and RED share a shape with nominal AC/DC conversion;
-they are not independently learned optical channels.
+The cWGAN-GP and TCN-FiLM artifacts are retained for offline research and
+historical comparisons; they are not selectable on the current page. cWGAN
+generates one condition-controlled, 256-point phase pulse. Its pilot export
+does not contain the trained critic. The original Gaussian engine remains
+available without PyTorch.
 
-See [the round 2 report](../../docs/ppg_round2_report_2026-09-28.md) for results,
-instructions and the outstanding human review / external validation.
+Install `requirements/neural.txt` only when running neural inference. Do not
+copy an x86 virtual environment onto a Raspberry Pi; recreate it for the Pi's
+Python and ARM64 platform. `manifest.json` records model hashes and preprocessing
+metadata for the packaged LSM asset. Other model files may be ignored by Git;
+check the manifest, `.gitignore` and [round 2 report](../../docs/ppg_round2_report_2026-09-28.md)
+before expecting research artifacts to be present in a checkout.
 
-
-30 September 2026: page 4 uses only `lsm_generator.ts` for sequence inference.
-This 511 kB frozen v2 artifact is tracked for reproducible Pi deployment; other
-large research exports can be prepared with the existing script. Its checksum
-is in manifest.json. Hardware output is now explicitly user-authorized, while
-model quality remains exploratory. `real_train_strip.json` is one preprocessed
-BIDMC training window at 40 Hz with provenance, not paired raw IR/RED data.
-BIDMC 1.0.0: https://physionet.org/content/bidmc/1.0.0/ (Pimentel et al., ODC-By 1.0).
+Training data is BIDMC 1.0.0, not paired raw IR/RED or a broad healthy cohort.
+Validation is exploratory because the test set was previously viewed; cWGAN
+single pulses and LSM long sequences are not directly equivalent. The current
+page's DAC playback is an explicit user action; opening the page or generating
+a preview alone does not emit output. See the [LSM report](../../docs/ppg_lsm_gan_report_2026-09-26.md)
+and [sequence and hardware validation](../../docs/ppg_touch_sequence_output_2026-09-30.md).

@@ -64,6 +64,37 @@ remains a historical exploratory result; test has already been viewed.
 See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
 for scope, evidence, commercial-reference comparison and physical validation still needed.
 
+### Neural waveform models
+
+The current **04 PPG morphology** page keeps the original three-Gaussian
+generator and offers the LSM-GAN sequence as an experimental model. The
+cWGAN-GP checkpoint below is retained for research comparison; it is not the
+current sequence source. Both neural models were trained from BIDMC 1.0.0 PPG
+records using subject-separated train/validation/test groups. They do not learn
+separate IR and RED optical channels.
+
+| Model | What goes in → what comes out | Network idea | Current role |
+|---|---|---|---|
+| cWGAN-GP pilot | 32-value random latent vector + 7 measured morphology conditions → one 256-point, phase-normalized pulse | Dense layers followed by three linear-upsample/Conv1D stages; strided-convolution critic; Wasserstein loss with gradient penalty | Research artifact only; the pilot export contains G but not its trained critic. The app's older preview repeated this one pulse to form a longer trace. |
+| LSM-GAN v2 | A random 1,200-point noise strip → 1,200 PPG samples, 30 s at 40 Hz | Generator has parallel Conv1D branches (kernels 5/21/61) and a spectral-matching objective; its discriminator is a CNN with two real/fake scores | Experimental long-sequence option in page 04; no HR/notch control. |
+
+For LSM-GAN, training used 624 non-overlapping 30-second windows from 32
+patients; validation and test each used 112 windows from 7 separate patients.
+BIDMC's 125 Hz signals were resampled to 40 Hz, filtered at 0.9–5 Hz and
+normalized per window. This is not raw, full-band PPG or a healthy-population
+dataset. The model produces a normalized shape; the app maps that shape to
+nominal IR/RED voltage levels, so it does not predict two independently learned
+optical signals or calibrated SpO₂.
+
+These experiments are **exploratory** because the test set had already been
+viewed. cWGAN makes a single pulse while LSM-GAN makes a long sequence, so
+their scores are not a fully like-for-like ranking. Selection considers the
+pre-agreed spectrum similarity, autocorrelation and high-frequency energy;
+loss and discriminator scores alone are not evidence of realistic PPG.
+See the [detailed LSM/GAN report](docs/ppg_lsm_gan_report_2026-09-26.md),
+[cWGAN and LSM integration audit](docs/ppg_neural_preview_report_2026-09-28.md)
+and [current sequence and hardware validation](docs/ppg_touch_sequence_output_2026-09-30.md).
+
 ### Key Specifications
 
 | Parameter               | Value                                           |

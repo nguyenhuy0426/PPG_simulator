@@ -17,20 +17,22 @@ by validation and is the current research candidate; see the
 It has not replaced the live generator or Gaussian fallback.
 
 The training pipeline remains **offline research**, not a replacement for the
-live PPG engine or an independently learned IR/Red model. The app now has an
-optional **04 Neural** screen for original Gaussian / cWGAN-GP / LSM-GAN / TCN-FiLM CPU inference,
-side-by-side preview, model switching and native-rate CSV export. It never
-drives the DAC. PyTorch is loaded only when the user requests generation.
-Install `requirements/neural.txt` in the app environment, then run
-`scripts/prepare_neural_preview.py` with the downloaded runs present (or copy
-the prepared `assets/neural` bundle). See the
-[verified results and Pi preview guide](../docs/ppg_neural_preview_report_2026-09-28.md).
+live PPG engine or an independently learned IR/Red model. The current **04 PPG
+morphology** page retains the original Gaussian generator and supports the
+experimental LSM-GAN long sequence. cWGAN-GP and TCN-FiLM are research artifacts
+for historical comparisons, not selectable modes in the current page. Explicit
+Play/Stop controls can send the selected waveform through the shared DAC path;
+opening the page or generating a preview alone does not emit output. PyTorch is
+loaded only when neural generation is requested. See the
+[model overview in the main README](../README.md#neural-waveform-models),
+[verified cWGAN/LSM audit](../docs/ppg_neural_preview_report_2026-09-28.md) and
+[current sequence and hardware validation](../docs/ppg_touch_sequence_output_2026-09-30.md).
 
-The [round 2 report](../docs/ppg_round2_report_2026-09-28.md) supersedes the
-two-model UI instructions: four modes, two simultaneous plots, independent
-validation metrics, a 240-pulse human-review page, and a gated three-arm
-fine-tuning pipeline. Only the two-step pipeline smoke has run; human-reviewed
-fine-tuning and an unseen external cohort remain pending.
+The [round 2 report](../docs/ppg_round2_report_2026-09-28.md) records the
+historical multi-model UI, independent validation metrics, a 240-pulse
+human-review page, and a gated three-arm fine-tuning pipeline. It is not a
+description of the current simplified page. Only the two-step pipeline smoke
+has run; human-reviewed fine-tuning and an unseen external cohort remain pending.
 
 The [Gaussian fit](../docs/ppg_gaussian_fit_2026-09-28.md) tunes the existing
 three-Gaussian formula on train data and evaluates all validation pulses.
