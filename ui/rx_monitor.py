@@ -1,6 +1,5 @@
 """Shared read-only view of the existing receiver; never starts ADC or DAC IO."""
 import time
-import customtkinter as ctk
 
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from ui import theme as T
@@ -9,7 +8,7 @@ from ui.trace_view import Lane, LaneView
 RX_CHANNELS = ((0, "IR", T.IR), (2, "RED", T.RED))
 REFRESH_S = 0.1
 
-# Short lane-header state plus the centred explanation for the Classic RX panel.
+# Short lane-header state plus the centred explanation shown in an empty lane.
 _PANEL = {
     "vi": {
         "disabled": ("Tắt", "Chưa gắn cảm biến", "Kênh tắt cho tới khi gắn cảm biến {name}"),
@@ -48,54 +47,8 @@ def channel_view(receiver, channel, now, window_s):
     return status, [s for s in samples if now - window_s <= s.timestamp <= now]
 
 
-class RXMonitor(ctk.CTkFrame):
-    """Persistent RX card for pages without their own RX view: A0 and A2 side by side."""
-
-    TITLE = {"vi": "Tín hiệu thu RX · OPT101", "en": "RX received signal · OPT101"}
-
-    def __init__(self, master, language="en", receiver=None, **kwargs):
-        super().__init__(master, fg_color="transparent", **kwargs)
-        from ui import page_kit as K
-        self.receiver = receiver or OPT101Receiver.get_instance()
-        card, self.title, _ = K.section(self)
-        card.pack(fill="both", expand=True, pady=(T.ui(4), T.ui(6)))
-        holder = K.plot_holder(card)
-        holder.grid_columnconfigure((0, 1), weight=1, uniform="rx")
-        holder.grid_rowconfigure(0, weight=1)
-        self.panels = {}
-        for column, channel in enumerate(RX_CHANNELS):
-            panel = RXPanel(holder, language=language, receiver=self.receiver, channels=(channel,), height=88)
-            panel.grid(row=0, column=column, sticky="nsew", padx=T.ui(3), pady=T.ui(3))
-            self.panels[channel[0]] = panel
-        self.set_language(language)
-
-    @property
-    def receiver(self):
-        return self._receiver
-
-    @receiver.setter
-    def receiver(self, receiver):
-        # Tests and smoke scripts swap in a fixture receiver after construction.
-        self._receiver = receiver
-        for panel in getattr(self, "panels", {}).values():
-            panel.receiver = receiver
-            panel._last_update = 0.0
-
-    def set_language(self, language):
-        self.language = language
-        self.title.configure(text=self.TITLE["vi" if language == "vi" else "en"])
-        for panel in self.panels.values():
-            panel.set_language(language)
-
-    def periodic_update(self):
-        if not self.winfo_ismapped():
-            return
-        for panel in self.panels.values():
-            panel.periodic_update()
-
-
 class RXPanel(LaneView):
-    """A0/A2 lanes for the Classic page; same data and rules as RXMonitor."""
+    """A0/A2 lanes shown next to TX on every page; reads, never starts, the receiver."""
 
     def __init__(self, master, language="en", receiver=None, channels=RX_CHANNELS, **kwargs):
         super().__init__(master, **kwargs)

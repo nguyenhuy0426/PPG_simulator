@@ -5,6 +5,7 @@ import customtkinter as ctk
 from comm.logger import log
 from core.signal_engine import SignalEngine
 from ui.recordings import load_recording
+from ui.rx_monitor import RXPanel
 from ui.trace_view import TraceView
 from models.ppg_model import CONDITION_NAMES
 from ui import icons
@@ -19,14 +20,16 @@ COPY = {
                play="Phát lại", pause="Tạm dừng", replay="Phát lại từ đầu", none="Chưa chọn bản ghi",
                hr="Nhịp tim", spo2="SpO₂ mục tiêu", rr="Nhịp thở", pi="PI", condition="Tình trạng",
                samples="{n:,} mẫu · {d:.2f} s · {timing}",
-               scope="Chỉ có lệnh mô hình; tín hiệu quang thực tế không được ghi ở đây.",
+               scope="Bản ghi chỉ chứa lệnh mô hình TX. RX bên phải là ADC đọc lúc này, không thuộc bản ghi.",
+               rx="RX trực tiếp · OPT101",
                missing="Không tìm thấy bản ghi: {name}"),
     "en": dict(title="Recordings", subtitle="TX model commands recorded at 100 Hz. Playback is on screen only; it does not drive the LEDs.",
                sessions="Recorded sessions", select="Select a recording", empty="No saved recordings.\nStart output, then Record CSV.",
                play="Play", pause="Pause", replay="Replay", none="No recording selected",
                hr="Heart rate", spo2="SpO₂ target", rr="Respiration", pi="PI", condition="Condition",
                samples="{n:,} samples · {d:.2f} s · {timing}",
-               scope="Model commands only; optical reproduction is not recorded here.",
+               scope="Recordings hold TX model commands only. RX on the right is the live ADC, not part of the recording.",
+               rx="Live RX · OPT101",
                missing="Recording not found: {name}"),
 }
 METRICS = (("hr", "bpm"), ("spo2", "%"), ("rr", "brpm"), ("pi", "%"), ("condition", ""))
@@ -46,28 +49,44 @@ class PlaybackFrame(ctk.CTkFrame):
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.grid(row=1, column=0, sticky="nsew")
-        body.grid_columnconfigure(1, weight=1)
+        body.grid_columnconfigure((1, 2), weight=1, uniform="signals")
         body.grid_rowconfigure(0, weight=1)
-        sessions, self.sessions_title, _ = K.section(body)
-        sessions.grid(row=0, column=0, sticky="nsew", padx=(0, u(8)))
-        sessions.grid_rowconfigure(1, weight=1)
-        self.files = ctk.CTkScrollableFrame(sessions, width=u(220), fg_color="transparent")
-        self.files.grid(row=1, column=0, sticky="nsew", padx=u(4), pady=(0, u(6)))
+        # Session drawer: a narrow list that folds to one icon, like the rail,
+        # so the TX and RX plots get the width once a recording is chosen.
+        self.drawer = T.card(body)
+        self.drawer.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, u(8)))
+        self.drawer.grid_rowconfigure(1, weight=1)
+        head = ctk.CTkFrame(self.drawer, fg_color="transparent")
+        head.grid(row=0, column=0, sticky="ew", padx=u(6), pady=(u(6), u(4)))
+        self.drawer_btn = ctk.CTkButton(head, text="", width=u(36), height=u(36), corner_radius=u(6),
+                                        fg_color="transparent", hover_color=T.SUBTLE,
+                                        command=self.toggle_sessions)
+        self.drawer_btn.pack(side="left")
+        self.sessions_title = T.label(head, "", u(14), True, anchor="w")
+        self.files = ctk.CTkScrollableFrame(self.drawer, width=u(176), fg_color="transparent")
         self._file_buttons = {}
+        self.sessions_open = None
+        self.set_sessions_open(True)
 
         view, self.title_label, tools = K.section(body)
-        view.grid(row=0, column=1, sticky="nsew")
+        view.grid(row=0, column=1, sticky="nsew", padx=(0, u(4)))
         self.info = T.label(tools, "", u(12), text_color=T.MUTED)
         self.info.pack(side="right")
-        self.trace = TraceView(K.plot_holder(view), height=220)
+        self.trace = TraceView(K.plot_holder(view), height=200)
         self.trace.pack(fill="both", expand=True, padx=u(3), pady=u(3))
-        tiles = ctk.CTkFrame(view, fg_color="transparent")
-        tiles.grid(row=2, column=0, sticky="ew", padx=u(6), pady=(0, u(8)))
+        # Live RX sits beside the recorded TX. It is the receiver right now,
+        # never data from the file: recordings hold model commands only.
+        rx, self.rx_title, _ = K.section(body)
+        rx.grid(row=0, column=2, sticky="nsew", padx=(u(4), 0))
+        self.rx_panel = RXPanel(K.plot_holder(rx), language=self.language, height=200)
+        self.rx_panel.pack(fill="both", expand=True, padx=u(3), pady=u(3))
+        tiles = ctk.CTkFrame(body, fg_color="transparent")
+        tiles.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(u(8), 0))
         tiles.grid_columnconfigure(tuple(range(len(METRICS))), weight=1, uniform="tiles")
         self.metric_names, self.metric_values = {}, {}
         for column, (key, unit) in enumerate(METRICS):
             tile = ctk.CTkFrame(tiles, fg_color=T.SUBTLE, corner_radius=u(6))
-            tile.grid(row=0, column=column, sticky="ew", padx=u(3))
+            tile.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else u(6), 0))
             name = T.label(tile, "", u(11), text_color=T.MUTED, anchor="w")
             name.pack(anchor="w", padx=u(8), pady=(u(5), 0))
             value = T.label(tile, "—", u(17), True, anchor="w")
@@ -92,6 +111,10 @@ class PlaybackFrame(ctk.CTkFrame):
         self.page_title.configure(text=t["title"])
         self.subtitle.configure(text=t["subtitle"])
         self.sessions_title.configure(text=t["sessions"])
+        self.rx_title.configure(text=t["rx"])
+        if self.status.cget("text_color") != T.ERROR:
+            self.status.configure(text=t["scope"], text_color=T.MUTED)
+        self.rx_panel.set_language(self.language)
         if not self.current_name:
             self.title_label.configure(text=t["select"])
         for key, name in self.metric_names.items():
@@ -107,20 +130,45 @@ class PlaybackFrame(ctk.CTkFrame):
         text = t["pause"] if self.is_playing else (t["replay"] if at_end else t["play"])
         self.play_btn.configure(text=text, image=icons.icon("pause" if self.is_playing else "play", T.WHITE, T.ui(14)))
 
+    def set_sessions_open(self, opened):
+        opened = bool(opened)
+        if opened == self.sessions_open:
+            return
+        self.sessions_open = opened
+        u = T.ui
+        if opened:
+            self.sessions_title.pack(side="left", padx=(u(6), u(4)))
+            self.files.grid(row=1, column=0, sticky="nsew", padx=u(4), pady=(0, u(6)))
+        else:
+            self.sessions_title.pack_forget()
+            self.files.grid_remove()
+        self.drawer_btn.configure(image=icons.icon("collapse" if opened else "recordings",
+                                                   T.MUTED if opened else T.INK, u(20)))
+
+    def toggle_sessions(self):
+        self.set_sessions_open(not self.sessions_open)
+
+    def _pick(self, path):
+        self.load_data(path)
+        if self.samples and self.current_name == Path(path).name:
+            self.set_sessions_open(False)
+
     def on_show(self):
         u = T.ui
+        if not self.current_name:
+            self.set_sessions_open(True)
         for child in self.files.winfo_children(): child.destroy()
         self._file_buttons = {}
         files = sorted(self.dataset_dir.glob("*.csv"), reverse=True)   # newest first
         files = [p for p in files if p.name != "temp_recording.csv"]
         if not files:
             T.label(self.files, COPY[self.language]["empty"], u(12), text_color=T.MUTED,
-                    wraplength=u(200), justify="left").pack(anchor="w", padx=u(6), pady=u(12))
+                    wraplength=u(170), justify="left").pack(anchor="w", padx=u(6), pady=u(12))
         for path in files:
             button = ctk.CTkButton(self.files, text=path.name, anchor="w", height=u(36), corner_radius=u(6),
                                    font=T.font(u(12)), fg_color="transparent", text_color=T.INK,
                                    hover_color=T.SUBTLE, image=icons.icon("recordings", T.MUTED, u(16)),
-                                   compound="left", command=lambda p=path: self.load_data(p))
+                                   compound="left", command=lambda p=path: self._pick(p))
             button.pack(fill="x", pady=u(1))
             self._file_buttons[path.name] = button
         self._highlight()
@@ -249,6 +297,7 @@ class PlaybackFrame(ctk.CTkFrame):
                 label.configure(text=text)
 
     def periodic_update(self):
+        self.rx_panel.periodic_update()
         if not self.is_playing: return
         self.position = min(self.times[-1], time.monotonic() - self._origin)
         idx = max(0, bisect.bisect_right(self.times, self.position)-1)

@@ -41,7 +41,7 @@ def main():
         panel.hr_slider._slide(120);pump(.25)
         assert panel.previews['Gaussian (fitted)'].hr_target==120
         panel.dc_slider._slide(1200);panel.ac_slider._slide(100);pump(.25)
-        for widget in (panel.play_btn,panel.export_btn,panel.status,panel.trace,panel.compare_menu):
+        for widget in (panel.play_btn,panel.export_btn,panel.status,panel.trace,panel.rx_panel):
             assert widget.winfo_rootx()+widget.winfo_width()<=app.winfo_rootx()+app.winfo_width()
             assert widget.winfo_rooty()+widget.winfo_height()<=app.winfo_rooty()+app.winfo_height()
         capture('gaussian-vi-1024.png')
@@ -72,7 +72,6 @@ def main():
         assert not panel._busy and 'LSM-GAN' in panel.previews,panel.status.cget('text')
         assert len(panel.previews['LSM-GAN'].samples)==1200
         assert panel.previews['LSM-GAN'].hr_target is None
-        panel.change_comparison('Real reference');pump()
         capture('lsm-en-1024.png')
         panel.play_btn.invoke();pump(.3)
         assert engine.is_waveform_playing

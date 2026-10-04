@@ -13,13 +13,9 @@ from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
 from ui.i18n import LANGUAGES, normalise_language, text
 from ui.nav_rail import NavRail
-from ui.rx_monitor import RXMonitor
 
 
 class CTkApp(ctk.CTk):
-    # Pages that show RX next to TX themselves; the shared RX dock hides there.
-    OWN_RX_PAGES = ("Pathology", "Calibration")
-
     def __init__(self, language="en", theme=T.LIGHT):
         self.theme = T.normalise_theme(theme)
         T.install(self.theme)
@@ -65,7 +61,7 @@ class CTkApp(ctk.CTk):
         self.bind("<Button-1>", self.rail.click_outside, add="+")
 
         # ── Page area ──
-        # Compact panels scroll long pages while the header, RX dock and footer
+        # Compact panels scroll long pages while the rail and footer
         # stay fixed. The Classic page is laid out to fit 1024x600 without
         # scrolling, so it lives in a plain host that stretches its plots.
         self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if compact else ctk.CTkFrame(self, fg_color="transparent")
@@ -92,11 +88,6 @@ class CTkApp(ctk.CTk):
             host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
-        # The persistent RX dock serves every page except Classic, which has
-        # its own RX card next to the TX plot.
-        self.rx_monitor = RXMonitor(self, language=self.language)
-        self.rx_monitor.grid(row=1, column=1, sticky="ew", padx=self.layout.outer_pad)
-
         # ── Footer: output health and build ──
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=2, column=1, sticky="ew")
@@ -154,10 +145,6 @@ class CTkApp(ctk.CTk):
             self.page_host.grid()
         if self.layout.compact and host is self.page_host:
             self.page_host._parent_canvas.yview_moveto(0)
-        if name in self.OWN_RX_PAGES:
-            self.rx_monitor.grid_remove()
-        else:
-            self.rx_monitor.grid()
         self.rail.select(name)
         self.rail.lift()
         if hasattr(self.active_frame, "on_show"):
@@ -214,8 +201,6 @@ class CTkApp(ctk.CTk):
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
-        self.settings_rx_monitor = RXMonitor(window, language=self.language)
-        self.settings_rx_monitor.grid(row=2, column=0, sticky="ew", padx=self.layout.outer_pad)
         self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
@@ -244,10 +229,8 @@ class CTkApp(ctk.CTk):
         for frame in self.frames.values():
             if hasattr(frame, "set_language"):
                 frame.set_language(language)
-        self.rx_monitor.set_language(language)
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
-            self.settings_rx_monitor.set_language(language)
             window.title(text(language, "settings"))
             self.language_label.configure(text=text(language, "language"))
             self.language_menu.set(LANGUAGES[language])
@@ -329,8 +312,6 @@ class CTkApp(ctk.CTk):
                 frame.periodic_update()
         if self.signal_setup_panel is not None:
             self.signal_setup_panel.periodic_update()
-            self.settings_rx_monitor.periodic_update()
-        self.rx_monitor.periodic_update()
         stats = self.engine.get_stats()
         self._paint_mode()
         values = (("buffer", stats["buffer_fill"]), ("lost", stats["dropped_samples"]),

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PIL import ImageGrab
 from hw.opt101_rx import OPT101Receiver, RXSample, raw_to_millivolts
 from ui.ctk_app import CTkApp
+from ui.rx_monitor import RXPanel
 
 
 def main():
@@ -31,28 +32,27 @@ def main():
         pump(.6)
         app.geometry("958x531+0+0")
         for page in app.frames:
+            # Neural is dense; small physical screens get the compact layout,
+            # which scrolls it, so check it at a size that layout serves here.
+            app.geometry("1280x800+0+0" if page == "Neural" else "958x531+0+0")
             app._show_frame(page)
             pump()
-            if page in app.OWN_RX_PAGES:
-                # Classic and Calibration show RX next to TX instead of the dock.
-                assert not app.rx_monitor.winfo_ismapped()
-                panel = app.frames[page].rx_panel
-                assert panel.winfo_ismapped()
-                assert all(not lane.points for lane in panel.lanes)
-                assert panel.lanes[1].message == "Chưa gắn cảm biến"
-            else:
-                panel = app.rx_monitor
-                assert panel.winfo_ismapped()
-                assert panel.winfo_y() + panel.winfo_height() <= app.winfo_height()
-                assert all(not p.lanes[0].points for p in panel.panels.values())
-                assert panel.panels[2].lanes[0].message == "Chưa gắn cảm biến"
+            # Every page shows its own RX card next to TX; there is no shared dock.
+            panel = app.frames[page].rx_panel
+            assert panel.winfo_ismapped(), page
+            assert panel.winfo_rooty() + panel.winfo_height() <= app.winfo_rooty() + app.winfo_height()
+            assert all(not lane.points for lane in panel.lanes)
+            assert panel.lanes[1].message == "Chưa gắn cảm biến"
             ImageGrab.grab(xdisplay=os.environ["DISPLAY"], bbox=(0, 0, 958, 531)).save(output / f"{page.lower()}.png")
+        app.geometry("958x531+0+0")
         app.open_signal_setup()
         pump()
-        assert app.settings_rx_monitor.winfo_ismapped()
+
+        def has_rx(widget):
+            return isinstance(widget, RXPanel) or any(has_rx(child) for child in widget.winfo_children())
+        assert not has_rx(app.signal_setup_window), "Signal setup must not carry an RX view"
         app.set_language("en")
         pump()
-        assert app.settings_rx_monitor.panels[2].lanes[0].message == "No sensor installed"
         app.close_signal_setup()
 
         # Deterministic channel fixtures test mapping, independent timestamps,
@@ -63,12 +63,12 @@ def main():
             state = rx._channels[channel]
             state.status = "ok"
             state.buffer.extend(RXSample(now + dt, raw, False) for dt in (-.4, -.39, -.1, -.09))
-        app.rx_monitor.receiver = rx
+        view = app.frames["Playback"].rx_panel
+        view.receiver = rx
+        view._last_update = 0.0
         app._show_frame("Playback")
         pump()
-        for channel, raw in ((0, 100), (2, 2000)):
-            view = app.rx_monitor.panels[channel]
-            lane = view.lanes[0]
+        for lane, raw in zip(view.lanes, (100, 2000)):
             assert len(lane.points) == 4
             assert abs(lane.points[-1][1] - raw_to_millivolts(raw)) < 1e-9
             # The 0.29 s hole between the two pairs breaks the line in two.
@@ -78,9 +78,10 @@ def main():
         for state in rx._channels.values():
             state.buffer.clear()
             state.buffer.append(RXSample(time.monotonic() - 20, 999, False))
+        view._last_update = 0.0
         pump()
-        assert all(not p.lanes[0].points for p in app.rx_monitor.panels.values())
-        assert app.rx_monitor.panels[0].lanes[0].message == "No fresh samples"
+        assert all(not lane.points for lane in view.lanes)
+        assert view.lanes[0].message == "No fresh samples"
         # The Classic RX card applies the same rules to the same receiver.
         classic = app.frames["Pathology"].rx_panel
         classic.receiver = rx
@@ -99,7 +100,7 @@ def main():
         assert "Live" in classic.lanes[0].detail
         assert not rx.is_running
         assert not app.engine._running
-        print("PASS: four pages, settings, languages, channel mapping, missing data, stale data, read-only UI")
+        print("PASS: RX beside TX on four pages, none in settings, languages, channel mapping, missing data, stale data, read-only UI")
     finally:
         app.on_closing()
 

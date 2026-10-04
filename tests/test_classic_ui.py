@@ -86,16 +86,17 @@ class TestClassicPage(unittest.TestCase):
 
     def test_dry_run_status_is_labelled_as_simulation(self):
         from ui import theme as T
+        from ui.frames import pathology_frame
         engine = self.page.engine
-        saved = engine._running
+        saved = engine._running, pathology_frame.DRY_RUN
         try:
-            engine._running = True
+            engine._running, pathology_frame.DRY_RUN = True, True
             colour, headline, detail = self.page._status()
             self.assertEqual(colour, T.WARN)
             self.assertIn("mô phỏng", headline)
             self.assertIn("Dry-run", detail)
         finally:
-            engine._running = saved
+            engine._running, pathology_frame.DRY_RUN = saved
 
     def test_setpoint_buttons_snap_to_the_step_grid(self):
         card = self.page.cards["pi"]

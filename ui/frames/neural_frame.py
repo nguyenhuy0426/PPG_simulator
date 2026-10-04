@@ -14,9 +14,10 @@ import customtkinter as ctk
 from core.neural_preview import export_preview, gaussian_preview, reference_preview, sequence_reference_preview, Preview
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
-from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
+from hw.opt101_rx import OPT101Receiver
 from ui import page_kit as K
 from ui import theme as T
+from ui.rx_monitor import RXPanel
 from ui.select_button import SelectButton
 from ui.touch_slider import TouchSlider
 from ui.trace_view import TraceView
@@ -27,28 +28,26 @@ COPY = {
                fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất sóng CSV',
-               real='Tham chiếu real', rx='OPT101 · A0',
+               real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
                info='GAN sinh cả đoạn 30 s, không điều khiển HR/notch. A2 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
                busy='Đang sinh chuỗi trên CPU…',
                detail='Seed {seed} · 40 Hz · v2 thăm dò · Real = đoạn train 30 s; không gán nhãn bệnh lý.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
-               waiting='A0: {status} · chưa có mẫu thật mới. A2 tắt.',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
                hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
                fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export waveform CSV',
-               real='Real reference', rx='OPT101 · A0',
+               real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
                info='GAN generates a whole 30 s strip; no HR/notch control. A2 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
                busy='Generating sequence on CPU…',
                detail='Seed {seed} · 40 Hz · exploratory v2 · Real = 30 s train strip; no diagnosis labels.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
-               waiting='A0: {status} · no fresh physical samples. A2 disabled.',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.'),
 }
 
@@ -58,7 +57,7 @@ class NeuralFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
         self.language = getattr(master, 'language', 'en')
         self.engine, self.rx = SignalEngine.get_instance(), OPT101Receiver.get_instance()
-        self.mode, self.profile, self.comparison = 'Gaussian (fitted)', 'With notch', 'real'
+        self.mode, self.profile = 'Gaussian (fitted)', 'With notch'
         self.previews = {}
         self._process = None
         self._stdout = self._stderr = None
@@ -67,11 +66,7 @@ class NeuralFrame(ctk.CTkFrame):
         u = T.ui
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
-        self.title_label, self.info, actions = K.page_header(self)
-        self.compare_menu = SelectButton(actions, [''], command=self.change_comparison, width=u(170),
-                                         height=u(36), font=T.font(u(13)), dropdown_font=T.font(u(14)),
-                                         icon_size=u(14), pad=u(10))
-        self.compare_menu.pack(side='right')
+        self.title_label, self.info, _actions = K.page_header(self)
 
         source, self.source_title, tools = K.section(self, span=3)
         source.grid(row=1, column=0, sticky='ew', pady=(0, u(8)))
@@ -97,15 +92,19 @@ class NeuralFrame(ctk.CTkFrame):
         plots.grid(row=3,column=0,sticky='nsew')
         plots.grid_columnconfigure((0,1),weight=1,uniform='plots')
         plots.grid_rowconfigure(0,weight=1)
-        left, self.left_label, _ = K.section(plots)
-        left.grid(row=0,column=0,sticky='nsew',padx=(0,u(4)))
-        right, self.right_label, _ = K.section(plots)
-        right.grid(row=0,column=1,sticky='nsew',padx=(u(4),0))
-        self.trace=TraceView(K.plot_holder(left),height=170)
-        self.trace.channels=((1,"IR TX",T.IR),)
-        self.trace.pack(fill='both',expand=True,padx=u(3),pady=u(3))
-        self.reference_trace=TraceView(K.plot_holder(right),height=170)
-        self.reference_trace.pack(fill='both',expand=True,padx=u(3),pady=u(3))
+        # TX on the left (generated lane over its reference lane), RX on the
+        # right: the same split as the Classic and Calibration pages.
+        tx, self.left_label, _ = K.section(plots)
+        tx.grid(row=0,column=0,sticky='nsew',padx=(0,u(4)))
+        holder=K.plot_holder(tx)
+        self.trace=TraceView(holder,height=96)
+        self.trace.pack(fill='both',expand=True,padx=u(3),pady=(u(3),0))
+        self.reference_trace=TraceView(holder,height=96)
+        self.reference_trace.pack(fill='both',expand=True,padx=u(3),pady=(0,u(3)))
+        rx, self.rx_title, _ = K.section(plots)
+        rx.grid(row=0,column=1,sticky='nsew',padx=(u(4),0))
+        self.rx_panel=RXPanel(K.plot_holder(rx),language=self.language,height=196)
+        self.rx_panel.pack(fill='both',expand=True,padx=u(3),pady=u(3))
 
         bottom=ctk.CTkFrame(self,fg_color='transparent')
         bottom.grid(row=4,column=0,sticky='ew',pady=(u(8),0))
@@ -141,8 +140,9 @@ class NeuralFrame(ctk.CTkFrame):
         self.mode_menu.set(t['lsm' if self.mode=='LSM-GAN' else 'fitted'])
         self.profile_menu.configure(values=[t['with_notch'],t['no_notch']])
         self.profile_menu.set(t['with_notch' if self.profile=='With notch' else 'no_notch'])
-        self.compare_menu.configure(values=[t['real'],t['rx']])
-        self.compare_menu.set(t[self.comparison])
+        self.left_label.configure(text=t['tx'])
+        self.rx_title.configure(text=t['rx'])
+        self.rx_panel.set_language(self.language)
         self.status.configure(text=t['ready'])
         self.render()
 
@@ -165,11 +165,6 @@ class NeuralFrame(ctk.CTkFrame):
         self._stop_owned_output()
         self.profile='With notch' if label==COPY[self.language]['with_notch'] else 'No notch'
         self.generate()
-
-    def change_comparison(self,label):
-        self.comparison='rx' if label==COPY[self.language]['rx'] else 'real'
-        self.compare_menu.set(COPY[self.language][self.comparison])
-        self.render()
 
     def adjust(self,key):
         self._stop_owned_output()
@@ -240,8 +235,8 @@ class NeuralFrame(ctk.CTkFrame):
 
     def render(self):
         t=COPY[self.language]
-        self.left_label.configure(text=t['lsm' if self.mode=='LSM-GAN' else 'fitted'])
-        self.right_label.configure(text=t[self.comparison])
+        self.trace.channels=((1,t['lsm' if self.mode=='LSM-GAN' else 'fitted'],T.IR),)
+        self.reference_trace.channels=((1,t['real'],T.PLOT_TEXT),)
         preview=self.previews.get(self.mode)
         K.set_running(self.play_btn,self.engine.is_waveform_playing,t['play'],t['stop'])
         self.play_btn.configure(state='normal' if preview is not None and not self._busy else 'disabled')
@@ -249,27 +244,12 @@ class NeuralFrame(ctk.CTkFrame):
         if not self.engine.is_waveform_playing:
             start=self.seek.get()
             self.trace.update_samples([s for s in self.clip().samples if start<=s[0]<=start+8] if preview else [])
-        self.reference_trace.channels=((1,'OPT101 A0',T.IR),) if self.comparison=='rx' else ((1,'IR reference',T.IR),)
-        if self.comparison=='real':
-            ref=self.previews.get('Real sequence' if self.mode=='LSM-GAN' else 'Real reference')
-            start=self.seek.get()
-            rows=WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
-            self.reference_trace.update_samples([s for s in rows if start<=s[0]<=start+8])
-        else:
-            self._render_rx()
+        ref=self.previews.get('Real sequence' if self.mode=='LSM-GAN' else 'Real reference')
+        start=self.seek.get()
+        rows=WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
+        self.reference_trace.update_samples([s for s in rows if start<=s[0]<=start+8])
         if preview and not self.engine.is_waveform_playing and not self._busy:
             self.status.configure(text=t['detail'].format(seed=preview.seed) if self.mode=='LSM-GAN' else t['reference'],text_color=T.MUTED)
-
-    def _render_rx(self):
-        samples=self.rx.get_samples(0,800)
-        status=self.rx.channel_status(0)
-        fresh=bool(samples) and not self.rx.is_stale(0)
-        if fresh:
-            origin=samples[0].timestamp
-            self.reference_trace.update_samples([(s.timestamp-origin,raw_to_millivolts(s.raw)/1000,0) for s in samples])
-        else:
-            self.reference_trace.update_samples([],COPY[self.language]['waiting'].format(status=status))
-        return status if fresh else status+' / stale'
 
     def _stop_owned_output(self):
         if self.engine.is_waveform_playing:
@@ -285,8 +265,6 @@ class NeuralFrame(ctk.CTkFrame):
                     self.after_cancel(self._pending)
                     self._apply_adjustment()
                 self.engine.start_waveform(self.clip())
-                self.comparison='rx'
-                self.compare_menu.set(COPY[self.language]['rx'])
                 self._was_playing=True
             self.render()
         except (ValueError,RuntimeError) as exc:
@@ -303,6 +281,7 @@ class NeuralFrame(ctk.CTkFrame):
                 self._process.kill()
                 self._process.wait(timeout=2)
                 self._finish_inference('GAN inference timed out after 120 s')
+        self.rx_panel.periodic_update()
         playing=self.engine.is_waveform_playing
         if playing:
             # Redraw at 10 fps; acquisition and DAC timing remain independent.
@@ -311,14 +290,14 @@ class NeuralFrame(ctk.CTkFrame):
                 return
             self._last_live_render=now
             self.trace.update_samples(self.engine.get_display_history())
-            rx_status=self._render_rx() if self.comparison=='rx' else self.rx.channel_status(0)
+            rx_status=self.rx.channel_status(0)
+            if self.rx.is_simulated: rx_status='dry-run'
+            elif rx_status in ('ok','saturated') and self.rx.is_stale(0): rx_status+=' / stale'
             self.status.configure(text=COPY[self.language]['running'].format(
                 name=self.engine._waveform_clip.name,elapsed=self.engine._clip_tick/100,rx=rx_status),text_color=T.ACCENT)
         elif self._was_playing:
             self.render()
             self.status.configure(text=COPY[self.language]['stopped'],text_color=T.MUTED)
-        elif self.comparison=='rx' and self.winfo_ismapped():
-            self._render_rx()
         self._was_playing=playing
 
     def on_hide(self):
