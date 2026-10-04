@@ -121,6 +121,11 @@ def _play(draw, s, rgba):
     draw.polygon(((8 * s, 6 * s), (18.5 * s, 12 * s), (8 * s, 18 * s)), fill=rgba)
 
 
+def _pause(draw, s, rgba):
+    for x in (7.5, 13.5):
+        draw.rounded_rectangle((x * s, 6 * s, (x + 3) * s, 18 * s), radius=1 * s, fill=rgba)
+
+
 def _save(draw, s, rgba):
     # Arrow into a tray: "write to disk" without a floppy cliché.
     _stroke(draw, s, rgba, ((12, 4), (12, 14)))
@@ -131,7 +136,7 @@ def _save(draw, s, rgba):
 _SHAPES = {
     "menu": _menu, "monitor": _monitor, "calibration": _calibration, "recordings": _recordings,
     "morphology": _morphology, "sliders": _sliders, "sun": _sun, "moon": _moon, "chevron": _chevron,
-    "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "save": _save,
+    "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "pause": _pause, "save": _save,
 }
 NAMES = tuple(_SHAPES)
 

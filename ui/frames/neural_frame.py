@@ -15,7 +15,9 @@ from core.neural_preview import export_preview, gaussian_preview, reference_prev
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
+from ui import page_kit as K
 from ui import theme as T
+from ui.select_button import SelectButton
 from ui.touch_slider import TouchSlider
 from ui.trace_view import TraceView
 
@@ -24,7 +26,7 @@ COPY = {
                hr='Nhịp tim Gaussian / bpm', dc='DC / mV', ac='AC IR / mV',
                fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
-               play='Phát LED · 30 s', stop='Dừng đầu ra', export='Xuất sóng CSV',
+               play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất sóng CSV',
                real='Tham chiếu real', rx='OPT101 · A0',
                info='GAN sinh cả đoạn 30 s, không điều khiển HR/notch. A2 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
@@ -38,7 +40,7 @@ COPY = {
                hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
                fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory',
                with_notch='Visible notch', no_notch='No visible notch',
-               play='Play LED · 30 s', stop='Stop output', export='Export waveform CSV',
+               play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export waveform CSV',
                real='Real reference', rx='OPT101 · A0',
                info='GAN generates a whole 30 s strip; no HR/notch control. A2 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
@@ -62,62 +64,65 @@ class NeuralFrame(ctk.CTkFrame):
         self._stdout = self._stderr = None
         self._busy, self._was_playing, self._pending = False, False, None
         self._last_live_render = 0.0
+        u = T.ui
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(4, weight=1)
-        self.title_label = T.label(self,'',20,True,anchor='w')
-        self.title_label.grid(row=0,column=0,sticky='ew')
-        toolbar = ctk.CTkFrame(self,fg_color='transparent')
-        toolbar.grid(row=1,column=0,sticky='ew',pady=4)
-        self.mode_menu = ctk.CTkOptionMenu(toolbar,values=[''],width=195,height=36,command=self.change_mode)
-        self.mode_menu.pack(side='left',padx=(0,8))
-        self.profile_menu = ctk.CTkOptionMenu(toolbar,values=[''],width=150,height=36,command=self.change_profile)
-        self.profile_menu.pack(side='left',padx=(0,8))
-        self.generate_btn = ctk.CTkButton(toolbar,text='',width=135,height=36,command=self.generate)
-        self.generate_btn.pack(side='left',padx=(0,8))
-        self.compare_menu = ctk.CTkOptionMenu(toolbar,values=[''],width=175,height=36,command=self.change_comparison)
+        self.grid_rowconfigure(3, weight=1)
+        self.title_label, self.info, actions = K.page_header(self)
+        self.compare_menu = SelectButton(actions, [''], command=self.change_comparison, width=u(170),
+                                         height=u(36), font=T.font(u(13)), dropdown_font=T.font(u(14)),
+                                         icon_size=u(14), pad=u(10))
         self.compare_menu.pack(side='right')
-        controls = ctk.CTkFrame(self,fg_color='transparent')
-        controls.grid(row=2,column=0,sticky='ew')
-        controls.grid_columnconfigure((0,1,2),weight=1,uniform='touch')
+
+        source, self.source_title, tools = K.section(self, span=3)
+        source.grid(row=1, column=0, sticky='ew', pady=(0, u(8)))
+        source.grid_columnconfigure((0, 1, 2), weight=1, uniform='touch')
+        menu = dict(height=u(34), font=T.font(u(13)), dropdown_font=T.font(u(14)), icon_size=u(14), pad=u(10))
+        self.mode_menu = SelectButton(tools, [''], command=self.change_mode, width=u(190), **menu)
+        self.mode_menu.pack(side='left', padx=(0, u(6)))
+        self.profile_menu = SelectButton(tools, [''], command=self.change_profile, width=u(150), **menu)
+        self.profile_menu.pack(side='left', padx=(0, u(6)))
+        self.generate_btn = K.secondary_button(tools, command=self.generate, width=126)
+        self.generate_btn.pack(side='left')
         self.control_labels = {}
         for col,(key,lo,hi,step,value) in enumerate((('hr',40,180,1,75),('dc',0,1500,1,1500),('ac',0,1500,1,45))):
-            box=ctk.CTkFrame(controls,fg_color='transparent')
-            box.grid(row=0,column=col,sticky='ew',padx=6)
-            box.grid_columnconfigure(0,weight=1)
-            label=T.label(box,'',11,anchor='w')
-            label.grid(row=0,column=0,sticky='ew')
+            label=T.label(source,'',u(12),text_color=T.MUTED,anchor='w')
+            label.grid(row=1,column=col,sticky='ew',padx=u(12))
             self.control_labels[key]=label
-            control=TouchSlider(box,lo,hi,step,value=value,
+            control=TouchSlider(source,lo,hi,step,value=value,
                                 command=lambda _value,k=key:self.adjust(k))
-            control.grid(row=1,column=0,sticky='ew')
+            control.grid(row=2,column=col,sticky='ew',padx=u(12),pady=(0,u(10)))
             setattr(self,key+'_slider',control)
-        self.info=T.label(self,'',10,text_color=T.MUTED,anchor='w')
-        self.info.grid(row=3,column=0,sticky='ew',pady=3)
+
         plots=ctk.CTkFrame(self,fg_color='transparent')
-        plots.grid(row=4,column=0,sticky='nsew')
+        plots.grid(row=3,column=0,sticky='nsew')
         plots.grid_columnconfigure((0,1),weight=1,uniform='plots')
-        plots.grid_rowconfigure(1,weight=1)
-        self.left_label=T.label(plots,'',13,True,anchor='w')
-        self.right_label=T.label(plots,'',13,True,anchor='w')
-        self.left_label.grid(row=0,column=0,sticky='ew',padx=4)
-        self.right_label.grid(row=0,column=1,sticky='ew',padx=4)
-        self.trace=TraceView(plots,height=150)
+        plots.grid_rowconfigure(0,weight=1)
+        left, self.left_label, _ = K.section(plots)
+        left.grid(row=0,column=0,sticky='nsew',padx=(0,u(4)))
+        right, self.right_label, _ = K.section(plots)
+        right.grid(row=0,column=1,sticky='nsew',padx=(u(4),0))
+        self.trace=TraceView(K.plot_holder(left),height=170)
         self.trace.channels=((1,"IR TX",T.IR),)
-        self.reference_trace=TraceView(plots,height=130)
-        self.trace.grid(row=1,column=0,sticky='nsew',padx=3)
-        self.reference_trace.grid(row=1,column=1,sticky='nsew',padx=3)
+        self.trace.pack(fill='both',expand=True,padx=u(3),pady=u(3))
+        self.reference_trace=TraceView(K.plot_holder(right),height=170)
+        self.reference_trace.pack(fill='both',expand=True,padx=u(3),pady=u(3))
+
         bottom=ctk.CTkFrame(self,fg_color='transparent')
-        bottom.grid(row=5,column=0,sticky='ew',pady=5)
-        bottom.grid_columnconfigure(0,weight=1)
-        self.seek=ctk.CTkSlider(bottom,from_=0,to=22,height=32,button_length=24,command=lambda _:self.render())
+        bottom.grid(row=4,column=0,sticky='ew',pady=(u(8),0))
+        bottom.grid_columnconfigure(1,weight=1)
+        self.seek_label=T.label(bottom,'',u(12),text_color=T.MUTED)
+        self.seek_label.grid(row=0,column=0,padx=(u(2),u(8)))
+        self.seek=ctk.CTkSlider(bottom,from_=0,to=22,height=u(28),border_width=u(11),button_length=u(2),
+                                corner_radius=u(3),button_corner_radius=u(4),progress_color=T.ACCENT,
+                                button_color=T.INK,button_hover_color=T.ACCENT,command=lambda _:self.render())
         self.seek.set(0)
-        self.seek.grid(row=0,column=0,sticky='ew',padx=(0,10))
-        self.play_btn=ctk.CTkButton(bottom,text='',height=38,width=145,command=self.toggle_output)
-        self.play_btn.grid(row=0,column=1,padx=4)
-        self.export_btn=ctk.CTkButton(bottom,text='',height=38,width=155,command=self.export)
-        self.export_btn.grid(row=0,column=2,padx=4)
-        self.status=T.label(self,'',11,anchor='w',justify='left',wraplength=920)
-        self.status.grid(row=6,column=0,sticky='ew')
+        self.seek.grid(row=0,column=1,sticky='ew',padx=(0,u(10)))
+        self.export_btn=K.secondary_button(bottom,command=self.export,width=150,icon='save')
+        self.export_btn.grid(row=0,column=2,padx=(0,u(8)))
+        self.play_btn=K.primary_button(bottom,command=self.toggle_output,width=150)
+        self.play_btn.grid(row=0,column=3)
+        self.status=T.label(self,'',u(12),text_color=T.MUTED,anchor='w',justify='left',wraplength=u(900))
+        self.status.grid(row=5,column=0,sticky='ew',pady=(u(6),0))
         self.set_language(self.language)
         self.generate()
 
@@ -125,6 +130,8 @@ class NeuralFrame(ctk.CTkFrame):
         self.language=language if language in COPY else 'en'
         t=COPY[self.language]
         self.title_label.configure(text=t['title'])
+        self.source_title.configure(text=t['source'])
+        self.seek_label.configure(text=t['seek'])
         for key,label in self.control_labels.items():
             label.configure(text=t[key])
         self.generate_btn.configure(text=t['generate'])
@@ -236,9 +243,8 @@ class NeuralFrame(ctk.CTkFrame):
         self.left_label.configure(text=t['lsm' if self.mode=='LSM-GAN' else 'fitted'])
         self.right_label.configure(text=t[self.comparison])
         preview=self.previews.get(self.mode)
-        self.play_btn.configure(text=t['stop' if self.engine.is_waveform_playing else 'play'],
-                                fg_color=T.ERROR if self.engine.is_waveform_playing else T.ACCENT,
-                                state='normal' if preview is not None and not self._busy else 'disabled')
+        K.set_running(self.play_btn,self.engine.is_waveform_playing,t['play'],t['stop'])
+        self.play_btn.configure(state='normal' if preview is not None and not self._busy else 'disabled')
         self.export_btn.configure(state='normal' if preview is not None else 'disabled')
         if not self.engine.is_waveform_playing:
             start=self.seek.get()

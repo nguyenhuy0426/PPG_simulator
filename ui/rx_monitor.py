@@ -4,25 +4,10 @@ import customtkinter as ctk
 
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from ui import theme as T
-from ui.trace_view import Lane, LaneView, TraceView
+from ui.trace_view import Lane, LaneView
 
 RX_CHANNELS = ((0, "IR", T.IR), (2, "RED", T.RED))
 REFRESH_S = 0.1
-
-_MESSAGES = {
-    "vi": {
-        "disabled": "Chưa bật / chưa gắn cảm biến", "dry-run": "Mô phỏng: không có dữ liệu ADC thật",
-        "init": "Đang chờ ADC", "stale": "Dữ liệu cũ / ngừng cập nhật", "ok": "Trực tiếp",
-        "saturated": "Chạm trần ADC", "error": "Lỗi đọc ADC", "invalid": "Mẫu ADC không hợp lệ",
-        "disconnected": "Mất kết nối ADC",
-    },
-    "en": {
-        "disabled": "Disabled / sensor not installed", "dry-run": "Dry run: no physical ADC data",
-        "init": "Waiting for ADC", "stale": "Stale / no fresh samples", "ok": "Live",
-        "saturated": "ADC full scale", "error": "ADC read error", "invalid": "Invalid ADC sample",
-        "disconnected": "ADC disconnected",
-    },
-}
 
 # Short lane-header state plus the centred explanation for the Classic RX panel.
 _PANEL = {
@@ -64,54 +49,59 @@ def channel_view(receiver, channel, now, window_s):
 
 
 class RXMonitor(ctk.CTkFrame):
+    """Persistent RX card for pages without their own RX view: A0 and A2 side by side."""
+
+    TITLE = {"vi": "Tín hiệu thu RX · OPT101", "en": "RX received signal · OPT101"}
+
     def __init__(self, master, language="en", receiver=None, **kwargs):
-        super().__init__(master, fg_color=T.DARK, **kwargs)
+        super().__init__(master, fg_color="transparent", **kwargs)
+        from ui import page_kit as K
         self.receiver = receiver or OPT101Receiver.get_instance()
-        self.language = language
-        self._last_update = 0.0
-        self.grid_columnconfigure((0, 1), weight=1, uniform="rx")
-        self.labels, self.traces = {}, {}
-        for column, (channel, name, color) in enumerate(RX_CHANNELS):
-            name = f"A{channel} · {name}"
-            label = T.label(self, name, 11, True, text_color=color, anchor="w")
-            label.grid(row=0, column=column, sticky="ew", padx=8, pady=(3, 0))
-            trace = TraceView(self, width=1, height=100)
-            trace.channels = ((1, name, color),)
-            trace.empty_text = "Đang chờ ADC" if language == "vi" else "Waiting for ADC"
-            trace.max_gap_s = 0.05
-            trace.grid(row=1, column=column, sticky="ew", padx=4, pady=(0, 3))
-            self.labels[channel], self.traces[channel] = label, trace
+        card, self.title, _ = K.section(self)
+        card.pack(fill="both", expand=True, pady=(T.ui(4), T.ui(6)))
+        holder = K.plot_holder(card)
+        holder.grid_columnconfigure((0, 1), weight=1, uniform="rx")
+        holder.grid_rowconfigure(0, weight=1)
+        self.panels = {}
+        for column, channel in enumerate(RX_CHANNELS):
+            panel = RXPanel(holder, language=language, receiver=self.receiver, channels=(channel,), height=88)
+            panel.grid(row=0, column=column, sticky="nsew", padx=T.ui(3), pady=T.ui(3))
+            self.panels[channel[0]] = panel
+        self.set_language(language)
+
+    @property
+    def receiver(self):
+        return self._receiver
+
+    @receiver.setter
+    def receiver(self, receiver):
+        # Tests and smoke scripts swap in a fixture receiver after construction.
+        self._receiver = receiver
+        for panel in getattr(self, "panels", {}).values():
+            panel.receiver = receiver
+            panel._last_update = 0.0
 
     def set_language(self, language):
         self.language = language
-        self._last_update = 0.0
+        self.title.configure(text=self.TITLE["vi" if language == "vi" else "en"])
+        for panel in self.panels.values():
+            panel.set_language(language)
 
     def periodic_update(self):
-        now = time.monotonic()
-        if not self.winfo_ismapped() or now - self._last_update < REFRESH_S:
+        if not self.winfo_ismapped():
             return
-        self._last_update = now
-        vi = self.language == "vi"
-        messages = _MESSAGES["vi" if vi else "en"]
-        for channel, trace in self.traces.items():
-            status, samples = channel_view(self.receiver, channel, now, trace.window_s)
-            message = messages.get(status, status)
-            title = "THU OPT101" if vi else "OPT101 RX"
-            self.labels[channel].configure(text=f"{title} · A{channel} · {message}")
-            # Each channel retains its own real timestamps. Never zero-fill A2
-            # or interpolate missing reads. The axis is seconds relative to now.
-            points = [(s.timestamp - now + trace.window_s, raw_to_millivolts(s.raw) / 1000) for s in samples]
-            trace.tick_offset_s = -trace.window_s
-            trace.update_samples(points, empty_text=message if not points else "")
+        for panel in self.panels.values():
+            panel.periodic_update()
 
 
 class RXPanel(LaneView):
     """A0/A2 lanes for the Classic page; same data and rules as RXMonitor."""
 
-    def __init__(self, master, language="en", receiver=None, **kwargs):
+    def __init__(self, master, language="en", receiver=None, channels=RX_CHANNELS, **kwargs):
         super().__init__(master, **kwargs)
         self.receiver = receiver or OPT101Receiver.get_instance()
         self.language = language
+        self.channels = tuple(channels)
         self.end_s = 0.0
         self._last_update = 0.0
 
@@ -126,7 +116,7 @@ class RXPanel(LaneView):
         self._last_update = now
         copy = _PANEL["vi" if self.language == "vi" else "en"]
         lanes = []
-        for channel, name, color in RX_CHANNELS:
+        for channel, name, color in self.channels:
             status, samples = channel_view(self.receiver, channel, now, self.window_s)
             state, message, sub = copy.get(status, (status, status, ""))
             detail = state

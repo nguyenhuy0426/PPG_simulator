@@ -20,6 +20,7 @@ class SelectButton(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self._values, self._command, self._value = list(values), command, ""
+        self._disabled = False
         self._label = ctk.CTkLabel(self, text="", font=font or T.font(12), text_color=T.INK, anchor="w")
         self._label.grid(row=0, column=0, sticky="ew", padx=(pad, 4), pady=2)
         self._chevron = ctk.CTkLabel(self, text="", image=icons.icon("chevron", T.MUTED, icon_size))
@@ -34,12 +35,16 @@ class SelectButton(ctk.CTkFrame):
             widget.configure(cursor="hand2")
 
     def _hover(self, inside):
+        if self._disabled:
+            return
         colour = T.SUBTLE if inside else T.PANEL
         self.configure(fg_color=colour)
         for widget in (self._label, self._chevron):
             widget.configure(fg_color=colour)
 
     def _open(self):
+        if self._disabled:
+            return
         self._menu.open(self.winfo_rootx(), self.winfo_rooty() + self.winfo_height() + 2)
 
     def _chosen(self, value):
@@ -61,3 +66,16 @@ class SelectButton(ctk.CTkFrame):
     def set_values(self, values):
         self._values = list(values)
         self._menu.configure(values=self._values)
+
+    def set_enabled(self, enabled):
+        self._disabled = not enabled
+        self._label.configure(text_color=T.INK if enabled else T.FAINT)
+
+    def configure(self, require_redraw=False, **kwargs):
+        """CTkOptionMenu-compatible: accepts values= and state= as well."""
+        if "values" in kwargs:
+            self.set_values(kwargs.pop("values"))
+        if "state" in kwargs:
+            self.set_enabled(kwargs.pop("state") != "disabled")
+        if kwargs or require_redraw:
+            super().configure(require_redraw=require_redraw, **kwargs)

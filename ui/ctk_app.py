@@ -17,6 +17,9 @@ from ui.rx_monitor import RXMonitor
 
 
 class CTkApp(ctk.CTk):
+    # Pages that show RX next to TX themselves; the shared RX dock hides there.
+    OWN_RX_PAGES = ("Pathology", "Calibration")
+
     def __init__(self, language="en", theme=T.LIGHT):
         self.theme = T.normalise_theme(theme)
         T.install(self.theme)
@@ -28,6 +31,7 @@ class CTkApp(ctk.CTk):
         # from the actual desktop resolution so 1024x600 touch panels stay
         # usable and Full-HD/QHD displays do not render tiny controls.
         ctk.set_widget_scaling(self.layout.widget_scale)
+        T.set_layout(self.layout)
         self.language = normalise_language(language)
         self.title(text(self.language, "title"))
         self.geometry(self.layout.geometry)
@@ -80,8 +84,8 @@ class CTkApp(ctk.CTk):
             host.language = self.language
         self.frames = {
             "Pathology": PathologyFrame(self.fixed_host, fg_color="transparent"),
-            "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
-            "Playback": PlaybackFrame(self.page_host, fg_color="transparent"),
+            "Calibration": CalibrationFrame(self.fixed_host, fg_color="transparent"),
+            "Playback": PlaybackFrame(self.fixed_host, fg_color="transparent"),
             "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
         for host in {self.page_host, self.fixed_host}:
@@ -150,7 +154,7 @@ class CTkApp(ctk.CTk):
             self.page_host.grid()
         if self.layout.compact and host is self.page_host:
             self.page_host._parent_canvas.yview_moveto(0)
-        if name == "Pathology":
+        if name in self.OWN_RX_PAGES:
             self.rx_monitor.grid_remove()
         else:
             self.rx_monitor.grid()
@@ -237,8 +241,9 @@ class CTkApp(ctk.CTk):
             name.configure(text=text(language, key))
         self.research_label.configure(text=text(language, "research"))
         self._mode_shown = None
-        self.frames["Neural"].set_language(language)
-        self.frames["Pathology"].set_language(language)
+        for frame in self.frames.values():
+            if hasattr(frame, "set_language"):
+                frame.set_language(language)
         self.rx_monitor.set_language(language)
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():

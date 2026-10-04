@@ -33,8 +33,8 @@ def main():
         for page in app.frames:
             app._show_frame(page)
             pump()
-            if page == "Pathology":
-                # Classic shows RX next to TX instead of the persistent dock.
+            if page in app.OWN_RX_PAGES:
+                # Classic and Calibration show RX next to TX instead of the dock.
                 assert not app.rx_monitor.winfo_ismapped()
                 panel = app.frames[page].rx_panel
                 assert panel.winfo_ismapped()
@@ -44,15 +44,15 @@ def main():
                 panel = app.rx_monitor
                 assert panel.winfo_ismapped()
                 assert panel.winfo_y() + panel.winfo_height() <= app.winfo_height()
-                assert all(not trace.samples for trace in panel.traces.values())
-                assert "Chưa bật" in panel.labels[2].cget("text")
+                assert all(not p.lanes[0].points for p in panel.panels.values())
+                assert panel.panels[2].lanes[0].message == "Chưa gắn cảm biến"
             ImageGrab.grab(xdisplay=os.environ["DISPLAY"], bbox=(0, 0, 958, 531)).save(output / f"{page.lower()}.png")
         app.open_signal_setup()
         pump()
         assert app.settings_rx_monitor.winfo_ismapped()
         app.set_language("en")
         pump()
-        assert "Disabled" in app.settings_rx_monitor.labels[2].cget("text")
+        assert app.settings_rx_monitor.panels[2].lanes[0].message == "No sensor installed"
         app.close_signal_setup()
 
         # Deterministic channel fixtures test mapping, independent timestamps,
@@ -64,21 +64,23 @@ def main():
             state.status = "ok"
             state.buffer.extend(RXSample(now + dt, raw, False) for dt in (-.4, -.39, -.1, -.09))
         app.rx_monitor.receiver = rx
-        app._show_frame("Calibration")
+        app._show_frame("Playback")
         pump()
         for channel, raw in ((0, 100), (2, 2000)):
-            trace = app.rx_monitor.traces[channel]
-            assert len(trace.samples) == 4
-            assert abs(trace.samples[-1][1] * 1000 - raw_to_millivolts(raw)) < 1e-9
-            wave_lines = [item for item in trace.find_all() if trace.type(item) == "line"
-                          and trace.itemcget(item, "fill") == trace.channels[0][2]]
+            view = app.rx_monitor.panels[channel]
+            lane = view.lanes[0]
+            assert len(lane.points) == 4
+            assert abs(lane.points[-1][1] - raw_to_millivolts(raw)) < 1e-9
+            # The 0.29 s hole between the two pairs breaks the line in two.
+            wave_lines = [item for item in view.find_all() if view.type(item) == "line"
+                          and view.itemcget(item, "fill") == lane.color]
             assert len(wave_lines) == 2, wave_lines
         for state in rx._channels.values():
             state.buffer.clear()
             state.buffer.append(RXSample(time.monotonic() - 20, 999, False))
         pump()
-        assert all(not t.samples for t in app.rx_monitor.traces.values())
-        assert "Stale" in app.rx_monitor.labels[0].cget("text")
+        assert all(not p.lanes[0].points for p in app.rx_monitor.panels.values())
+        assert app.rx_monitor.panels[0].lanes[0].message == "No fresh samples"
         # The Classic RX card applies the same rules to the same receiver.
         classic = app.frames["Pathology"].rx_panel
         classic.receiver = rx

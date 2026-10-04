@@ -52,6 +52,18 @@ WHITE = "#FFFFFF"
 FONT_PREFERENCE = ("Inter", "Ubuntu", "Noto Sans", "DejaVu Sans")
 _font_family = None
 _canvases = weakref.WeakSet()
+_layout = None
+
+
+def set_layout(layout):
+    """Remember the screen profile so any widget can size itself with ui()."""
+    global _layout
+    _layout = layout
+
+
+def ui(pixels):
+    """Logical CTk size for `pixels` on the 1024x600 panel (see LayoutProfile.ui)."""
+    return _layout.ui(pixels) if _layout is not None else pixels
 
 
 def normalise_theme(value):

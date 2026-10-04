@@ -14,21 +14,25 @@ class TouchSlider(ctk.CTkFrame):
         self._auto = optional and value is None
         self._disabled = False
         self.grid_columnconfigure(1, weight=1)
-        self.minus = ctk.CTkButton(self, text="−", width=38, height=36,
-                                 command=lambda: self._move(-1))
+        # Same control language as the Classic setpoint cards: outlined −/+,
+        # a bold readout and a 28 px touch strip that draws a 6 px track.
+        u = T.ui
+        button = dict(width=u(34), height=u(34), font=T.font(u(17)))
+        self.minus = T.outline_button(self, "−", command=lambda: self._move(-1), **button)
         self.minus.grid(row=0, column=0)
-        self.readout = T.label(self, "", 13, True)
+        self.readout = T.label(self, "", u(16), True)
         self.readout.grid(row=0, column=1, sticky="ew")
-        self.plus = ctk.CTkButton(self, text="+", width=38, height=36,
-                                command=lambda: self._move(1))
+        self.plus = T.outline_button(self, "+", command=lambda: self._move(1), **button)
         self.plus.grid(row=0, column=2)
-        self.slider = ctk.CTkSlider(self, from_=minimum, to=maximum, height=32,
-                                   button_length=24, command=self._slide)
-        self.slider.grid(row=1, column=0, columnspan=3, sticky="ew", pady=2)
+        self.slider = ctk.CTkSlider(self, from_=minimum, to=maximum, height=u(28), border_width=u(11),
+                                   button_length=u(2), corner_radius=u(3), button_corner_radius=u(4),
+                                   progress_color=T.ACCENT, button_color=T.INK,
+                                   button_hover_color=T.ACCENT, command=self._slide)
+        self.slider.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(u(4), 0))
         if optional:
             self.auto_var = ctk.BooleanVar(value=self._auto)
-            self.auto = ctk.CTkCheckBox(self, text="Auto", variable=self.auto_var,
-                                       command=self._toggle_auto, height=28)
+            self.auto = ctk.CTkCheckBox(self, text="Auto", variable=self.auto_var, font=T.font(u(12)),
+                                       command=self._toggle_auto, height=u(28))
             self.auto.grid(row=2, column=0, columnspan=3, sticky="w")
         self.set(value)
 
