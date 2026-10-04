@@ -7,7 +7,8 @@ from ui.theme import AXIS, DARK, GRID, IR, PLOT_TEXT, RED
 
 class TraceView(tk.Canvas):
     def __init__(self, master, **kwargs):
-        super().__init__(master, bg=DARK, highlightthickness=0, **kwargs)
+        super().__init__(master, bg=T.resolve(DARK), highlightthickness=0, **kwargs)
+        T.track_canvas(self)
         self.samples = []
         self.channels = ((1, "IR", IR), (2, "RED", RED))
         self.window_s = 8.0
@@ -24,6 +25,7 @@ class TraceView(tk.Canvas):
 
     def render(self):
         self.delete("all")
+        self.configure(bg=T.resolve(DARK))
         w, h = self.winfo_width(), self.winfo_height()
         if w < 100 or h < 80:
             return
@@ -96,7 +98,8 @@ class LaneView(tk.Canvas):
     """
 
     def __init__(self, master, **kwargs):
-        super().__init__(master, bg=DARK, highlightthickness=0, **kwargs)
+        super().__init__(master, bg=T.resolve(DARK), highlightthickness=0, **kwargs)
+        T.track_canvas(self)
         self.lanes = []
         self.window_s = 8.0
         self.end_s = None            # None: follow the newest sample; 0 with relative times
@@ -115,6 +118,7 @@ class LaneView(tk.Canvas):
 
     def render(self):
         self.delete("all")
+        self.configure(bg=T.resolve(DARK))
         w, h = self.winfo_width(), self.winfo_height()
         if w < 120 or h < 80 or not self.lanes:
             return

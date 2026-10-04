@@ -55,13 +55,14 @@ def start_ble(engine):
     return ble
 
 
-def save_current_config(engine, language="en"):
+def save_current_config(engine, language="en", theme="light"):
     try:
         p = engine.get_ppg_params()
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
         from ui.i18n import normalise_language
         cfg["language"] = normalise_language(language)
+        cfg["theme"] = theme if theme in ("light", "dark") else "light"
         save_config(cfg)
     except Exception as e:
         log.error(f"Failed to save config: {e}")
@@ -114,7 +115,7 @@ def main():
         finally:
             if ble_server is not None:
                 ble_server.stop()
-            save_current_config(engine, config.get("language", "en"))
+            save_current_config(engine, config.get("language", "en"), config.get("theme", "light"))
             rx.shutdown()
             engine.shutdown()
             log.info("Shutdown complete.")
@@ -124,7 +125,7 @@ def main():
     # Simulation will be started manually via the GUI
 
     # Initialize UI
-    app = CTkApp(language=config.get("language", "en"))
+    app = CTkApp(language=config.get("language", "en"), theme=config.get("theme", "light"))
     app._show_frame(args.page)
 
     # Do not let SIGINT/SIGTERM raise KeyboardInterrupt in the middle of a Tk
@@ -143,7 +144,7 @@ def main():
     finally:
         if ble_server is not None:
             ble_server.stop()
-        save_current_config(engine, app.language)
+        save_current_config(engine, app.language, app.theme)
         rx.shutdown()
         engine.shutdown()
         log.info("Shutdown complete.")

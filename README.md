@@ -58,6 +58,8 @@ remains a historical exploratory result; test has already been viewed.
 - Explicit Start/Stop for calibration; only the engine's DAC thread produces its sine output.
 - Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
 - English/Vietnamese UI; touch-sized controls and persistent live OPT101 A0/A2 receiver dock. A2 acquisition awaits an installed sensor.
+- Collapsible left navigation rail (icons collapsed, labels overlay when expanded), light/dark theme saved in `config.json`, and a Classic page with TX and RX side by side. The status line reports *no MCP4725 at 0x60/0x61* instead of claiming LED output when the DACs do not answer.
+- `scripts/deploy_and_run.sh` (run on the laptop): SSH check, `i2cdetect -y 1` report for 0x08/0x60/0x61, rsync to the Pi, restart the app on the Pi display, and a dry-run copy on the laptop.
 
 See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
 for scope, evidence, commercial-reference comparison and physical validation still needed.

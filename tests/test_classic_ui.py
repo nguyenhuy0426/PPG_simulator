@@ -135,3 +135,60 @@ class TestClassicPage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestThemeAndIcons(unittest.TestCase):
+    def test_every_icon_renders_for_both_modes(self):
+        from ui import icons
+        for name in icons.NAMES:
+            light = icons._render(name, "#1E252B")
+            self.assertIsNotNone(light)
+            self.assertIsNotNone(light.getbbox(), name)   # something was drawn
+
+    def test_config_theme_is_normalised(self):
+        import json, tempfile
+        import config_store
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "config.json")
+            saved = config_store.CONFIG_JSON_PATH
+            config_store.CONFIG_JSON_PATH = path
+            try:
+                for stored, expected in (("dark", "dark"), ("blur", "light"), (None, "light")):
+                    with open(path, "w", encoding="utf-8") as handle:
+                        json.dump({"theme": stored}, handle)
+                    self.assertEqual(config_store.load_config()["theme"], expected)
+            finally:
+                config_store.CONFIG_JSON_PATH = saved
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class TestRailAndTheme(unittest.TestCase):
+    def test_rail_navigation_theme_switch_and_collapse(self):
+        from ui import theme as T
+        from ui.ctk_app import CTkApp
+        CTkApp._maximize_to_work_area = lambda self: None
+        app = CTkApp(language="en")
+        app._save_language = lambda: None
+        saved = []
+        app._save_ui_setting = lambda key, value: saved.append((key, value))
+        try:
+            app.update()
+            rail = app.rail
+            self.assertFalse(rail.expanded)
+            rail.items["menu"].invoke()
+            self.assertTrue(rail.expanded)
+            rail.items["Calibration"].invoke()          # picking a page collapses
+            self.assertFalse(rail.expanded)
+            self.assertIs(app.active_frame, app.frames["Calibration"])
+            self.assertTrue(rail.items["Calibration"].active)
+            self.assertFalse(rail.items["Pathology"].active)
+            app.toggle_theme()
+            self.assertEqual(app.theme, T.DARK_MODE)
+            self.assertTrue(T.is_dark())
+            self.assertEqual(app.frames["Pathology"].trace.cget("bg"), T.DARK[1])
+            self.assertEqual(saved, [("theme", "dark")])
+            app.toggle_theme()
+            self.assertFalse(T.is_dark())
+            self.assertEqual(app.frames["Pathology"].trace.cget("bg"), T.DARK[0])
+        finally:
+            app.on_closing()

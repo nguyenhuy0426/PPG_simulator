@@ -29,6 +29,7 @@ _DEFAULT_DC_MV = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
 # Default configuration values
 _DEFAULTS = {
     "language": "en",  # UI-only setting; not copied into PPGParameters.
+    "theme": "light",  # UI-only setting: "light" or "dark".
     "condition": 0,
     "heart_rate": 75.0,
     "perfusion_index": 3.0,
@@ -81,6 +82,7 @@ def load_config() -> dict:
         merged.update(data)
         from ui.i18n import normalise_language
         merged["language"] = normalise_language(merged.get("language"))
+        merged["theme"] = merged.get("theme") if merged.get("theme") in ("light", "dark") else "light"
         log.info(f"Configuration loaded from {CONFIG_JSON_PATH}")
         log.debug(f"Loaded config: {merged}")
         return merged

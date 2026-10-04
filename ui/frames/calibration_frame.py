@@ -67,7 +67,7 @@ class CalibrationFrame(ctk.CTkFrame):
         if not self.winfo_ismapped():
             return
         self.run_btn.configure(text="Stop calibration" if self.engine.is_calibrating else "Start calibration",
-                               fg_color=T.ERROR if self.engine.is_calibrating else T.INK)
+                               fg_color=T.ERROR if self.engine.is_calibrating else T.BUTTON)
         self.trace.update_samples(self.engine.get_display_history() if self.engine.is_calibrating else [])
         rows = []
         for channel, name in ((ADC_CHANNEL_IR, "IR  ·  A0"), (ADC_CHANNEL_RED, "RED  ·  A2")):

@@ -4,7 +4,6 @@ import customtkinter as ctk
 from comm.logger import log
 from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ, MODEL_SAMPLE_RATE_PPG
 from core.signal_engine import SignalEngine
-from ui import icons
 from ui import theme as T
 from ui.frames.pathology_frame import PathologyFrame
 from ui.frames.calibration_frame import CalibrationFrame
@@ -13,52 +12,14 @@ from ui.frames.advanced_frame import AdvancedFrame
 from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
 from ui.i18n import LANGUAGES, normalise_language, text
+from ui.nav_rail import NavRail
 from ui.rx_monitor import RXMonitor
 
 
-class NavTab(ctk.CTkFrame):
-    """Underlined page tab: muted index, label, accent bar when active."""
-
-    def __init__(self, master, index, label, command, ui=round):
-        super().__init__(master, fg_color="transparent", corner_radius=0)
-        self.command, self.active = command, False
-        self.bar = ctk.CTkFrame(self, height=ui(3), corner_radius=0, fg_color=T.PANEL)
-        self.bar.pack(side="bottom", fill="x")
-        row = ctk.CTkFrame(self, fg_color="transparent")
-        row.pack(expand=True, padx=ui(8))
-        self.index = T.label(row, index, ui(11), text_color=T.FAINT)
-        self.index.pack(side="left", padx=(0, ui(6)))
-        self.text = T.label(row, label, ui(14), text_color=T.MUTED)
-        self.text.pack(side="left")
-        for widget in (self, row, self.index, self.text):
-            widget.bind("<Button-1>", lambda _event: self.command())
-            widget.bind("<Enter>", lambda _event: self._hover(True))
-            widget.bind("<Leave>", lambda _event: self._hover(False))
-        for label_widget in (self.index, self.text):
-            label_widget.configure(cursor="hand2")
-
-    def _hover(self, inside):
-        if not self.active:
-            self.text.configure(text_color=T.INK if inside else T.MUTED)
-
-    def set_active(self, active):
-        self.active = active
-        self.text.configure(text_color=T.INK, font=T.font(self.text.cget("font").cget("size"), active))
-        if not active:
-            self.text.configure(text_color=T.MUTED)
-        self.bar.configure(fg_color=T.ACCENT if active else T.PANEL)
-        self.index.configure(text_color=T.ACCENT if active else T.FAINT)
-
-    def set_text(self, label):
-        self.text.configure(text=label)
-
-    def invoke(self):
-        self.command()
-
-
 class CTkApp(ctk.CTk):
-    def __init__(self, language="en"):
-        T.install()
+    def __init__(self, language="en", theme=T.LIGHT):
+        self.theme = T.normalise_theme(theme)
+        T.install(self.theme)
         # Match packaging/linux/ppg-simulator.desktop.in so GNOME associates
         # the running Tk window with the dashboard icon that launched it.
         super().__init__(className="PPGSimulator")
@@ -71,8 +32,8 @@ class CTkApp(ctk.CTk):
         self.title(text(self.language, "title"))
         self.geometry(self.layout.geometry)
         self.minsize(*self.layout.minimum_size)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
         # Recording is engine-owned (one CSVLogger shared by GUI, BLE and the
         # status echo); the engine creates it lazily on the first start.
         self.engine = SignalEngine.get_instance()
@@ -80,37 +41,31 @@ class CTkApp(ctk.CTk):
         self._shutdown_requested = False
         compact = self.layout.compact
         u = self.layout.ui
-        # ── Header: brand, page tabs, settings ──
-        header = ctk.CTkFrame(self, fg_color=T.PANEL, corner_radius=0, height=u(50))
-        header.grid(row=0, column=0, sticky="ew")
-        header.grid_propagate(False)
-        header.grid_columnconfigure(2, weight=1)
-        header.grid_rowconfigure(0, weight=1)
-        ctk.CTkFrame(self, fg_color=T.LINE, corner_radius=0, height=T.hairline()).grid(row=0, column=0, sticky="sew")
         header_pad = u(14)
-        T.label(header, "PPG", u(21), True).grid(row=0, column=0, padx=(header_pad, u(16)))
-        tabs = ctk.CTkFrame(header, fg_color="transparent")
-        tabs.grid(row=0, column=1, sticky="nsw")
-        self.nav_buttons = {}
-        self.nav_keys = (("Pathology", "classic"), ("Calibration", "calibration"),
-                         ("Playback", "recordings"), ("Neural", "neural"))
-        for index, (key, text_key) in enumerate(self.nav_keys, start=1):
-            tab = NavTab(tabs, f"{index:02d}", text(self.language, text_key),
-                         command=lambda k=key: self._show_frame(k), ui=u)
-            tab.pack(side="left", fill="y", padx=(0, u(6)))
-            self.nav_buttons[key] = tab
-        self.signal_setup_bubble = T.outline_button(
-            header, text(self.language, "settings_short"), height=u(36), width=u(116),
-            image=icons.icon("sliders", T.INK, u(16)), compound="left", font=T.font(u(13), True),
-            command=self.toggle_signal_setup)
-        self.signal_setup_bubble.grid(row=0, column=3, padx=header_pad)
+        # ── Navigation rail (overlays the page when expanded) ──
+        self.nav_keys = (("Pathology", "classic", "monitor"), ("Calibration", "calibration", "calibration"),
+                         ("Playback", "recordings", "recordings"), ("Neural", "neural", "morphology"))
+        self.rail = NavRail(self, u, self._show_frame)
+        for key, text_key, icon_name in self.nav_keys:
+            self.rail.add_page(key, icon_name, text(self.language, text_key))
+        self.rail.add_spacer()
+        self.theme_item = self.rail.add("theme", "moon", "", self.toggle_theme)
+        self.signal_setup_bubble = self.rail.add("settings", "sliders", text(self.language, "settings_short"),
+                                                 self.toggle_signal_setup)
+        self._paint_theme_item()
+        self.nav_buttons = {key: self.rail.items[key] for key, _text, _icon in self.nav_keys}
+        # Column 0 reserves the collapsed width; the rail itself is placed on top.
+        ctk.CTkFrame(self, width=self.rail.collapsed_width, fg_color="transparent", corner_radius=0).grid(
+            row=0, column=0, rowspan=3, sticky="ns")
+        self.rail.place(x=0, y=0, relheight=1)
+        self.bind("<Button-1>", self.rail.click_outside, add="+")
 
         # ── Page area ──
         # Compact panels scroll long pages while the header, RX dock and footer
         # stay fixed. The Classic page is laid out to fit 1024x600 without
         # scrolling, so it lives in a plain host that stretches its plots.
         self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if compact else ctk.CTkFrame(self, fg_color="transparent")
-        self.page_host.grid(row=2, column=0, sticky="nsew")
+        self.page_host.grid(row=0, column=1, sticky="nsew")
         self.page_host.grid_columnconfigure(0, weight=1)
         if compact:
             self.page_host._scrollbar.configure(width=28)
@@ -136,12 +91,12 @@ class CTkApp(ctk.CTk):
         # The persistent RX dock serves every page except Classic, which has
         # its own RX card next to the TX plot.
         self.rx_monitor = RXMonitor(self, language=self.language)
-        self.rx_monitor.grid(row=3, column=0, sticky="ew", padx=self.layout.outer_pad)
+        self.rx_monitor.grid(row=1, column=1, sticky="ew", padx=self.layout.outer_pad)
 
         # ── Footer: output health and build ──
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
-        footer.grid(row=4, column=0, sticky="ew")
-        ctk.CTkFrame(self, fg_color=T.LINE, corner_radius=0, height=T.hairline()).grid(row=4, column=0, sticky="new")
+        footer.grid(row=2, column=1, sticky="ew")
+        ctk.CTkFrame(self, fg_color=T.LINE, corner_radius=0, height=T.hairline()).grid(row=2, column=1, sticky="new")
         self.mode_label = T.label(footer, "", u(11), True, corner_radius=u(4), height=u(18))
         self.mode_label.pack(side="left", padx=(header_pad - u(4), u(12)), pady=u(4))
         self.footer_values = {}
@@ -161,6 +116,7 @@ class CTkApp(ctk.CTk):
         self._mode_shown = None
         self.active_frame = None
         self._show_frame("Pathology")
+        self.rail.lift()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         # Ask the window manager for the usable desktop area (excluding the
         # GNOME top bar).  The geometry above remains the fallback for minimal
@@ -187,7 +143,7 @@ class CTkApp(ctk.CTk):
         host = self.active_frame.master
         if host is not self.page_host:
             self.page_host.grid_remove()
-            host.grid(row=2, column=0, sticky="nsew")
+            host.grid(row=0, column=1, sticky="nsew")
         else:
             if self.fixed_host is not self.page_host:
                 self.fixed_host.grid_remove()
@@ -198,8 +154,8 @@ class CTkApp(ctk.CTk):
             self.rx_monitor.grid_remove()
         else:
             self.rx_monitor.grid()
-        for key, tab in self.nav_buttons.items():
-            tab.set_active(key == name)
+        self.rail.select(name)
+        self.rail.lift()
         if hasattr(self.active_frame, "on_show"):
             self.active_frame.on_show()
 
@@ -256,7 +212,7 @@ class CTkApp(ctk.CTk):
         self.signal_setup_panel = panel
         self.settings_rx_monitor = RXMonitor(window, language=self.language)
         self.settings_rx_monitor.grid(row=2, column=0, sticky="ew", padx=self.layout.outer_pad)
-        self.signal_setup_bubble.configure(fg_color=T.SUBTLE, border_color=T.ACCENT)
+        self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
 
@@ -273,9 +229,10 @@ class CTkApp(ctk.CTk):
         self.title(text(language, "title"))
         for host in {self.page_host, self.fixed_host}:
             host.language = language
-        for key, text_key in self.nav_keys:
-            self.nav_buttons[key].set_text(text(language, text_key))
-        self.signal_setup_bubble.configure(text=text(language, "settings_short"))
+        for key, text_key, _icon in self.nav_keys:
+            self.nav_buttons[key].set_label(text(language, text_key))
+        self.signal_setup_bubble.set_label(text(language, "settings_short"))
+        self._paint_theme_item()
         for key, (name, _value) in self.footer_values.items():
             name.configure(text=text(language, key))
         self.research_label.configure(text=text(language, "research"))
@@ -293,6 +250,33 @@ class CTkApp(ctk.CTk):
             self.signal_setup_panel.status.configure(text=text(language, "language_applied"), text_color=T.ACCENT)
         self._save_language()
 
+    def _paint_theme_item(self):
+        dark = self.theme == T.DARK_MODE
+        self.theme_item.set_icon("sun" if dark else "moon")
+        self.theme_item.set_label(text(self.language, "theme_light" if dark else "theme_dark"))
+
+    def set_theme(self, theme):
+        """Switch light/dark live and persist it; signal parameters are untouched."""
+        theme = T.normalise_theme(theme)
+        if theme == self.theme:
+            return
+        self.theme = theme
+        T.apply_mode(theme)
+        self._paint_theme_item()
+        self._save_ui_setting("theme", theme)
+
+    def toggle_theme(self):
+        self.set_theme(T.LIGHT if self.theme == T.DARK_MODE else T.DARK_MODE)
+
+    def _save_ui_setting(self, key, value):
+        try:
+            from config_store import load_config, save_config
+            config = load_config()
+            config[key] = value
+            save_config(config)
+        except OSError:
+            log.exception(f"Could not save UI setting {key}")
+
     def _save_language(self):
         try:
             from config_store import load_config, save_config
@@ -308,7 +292,7 @@ class CTkApp(ctk.CTk):
             window.destroy()
         self.signal_setup_window = None
         self.signal_setup_panel = None
-        self.signal_setup_bubble.configure(fg_color=T.PANEL, border_color=T.LINE)
+        self.signal_setup_bubble.set_active(False)
 
     def toggle_signal_setup(self):
         window = self.signal_setup_window

@@ -49,12 +49,12 @@ class PathologyFrame(ctk.CTkFrame):
         button_h = u(36)
         self._icons = {
             "record": icons.icon("record", T.ERROR, u(14)), "save": icons.icon("save", T.ERROR, u(16)),
-            "stop": icons.icon("stop", T.PANEL, u(14)), "play": icons.icon("play", T.PANEL, u(14)),
+            "stop": icons.icon("stop", T.WHITE, u(14)), "play": icons.icon("play", T.WHITE, u(14)),
         }
         self.record_btn = T.outline_button(bar, "", height=button_h, width=u(116), compound="left",
                                            font=T.font(u(13), True), command=self.toggle_recording)
         self.record_btn.grid(row=0, column=3, padx=(0, u(8)))
-        self.run_btn = ctk.CTkButton(bar, text="", height=button_h, width=u(128), compound="left",
+        self.run_btn = ctk.CTkButton(bar, text="", height=button_h, width=u(128), compound="left", text_color=T.WHITE,
                                      font=T.font(u(13), True), command=self.toggle_simulation)
         self.run_btn.grid(row=0, column=4)
 

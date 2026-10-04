@@ -1,20 +1,24 @@
 """Small stroke icons drawn with Pillow, so no icon font or emoji is needed.
 
-Each icon is rendered on a 24-unit grid at a high resolution and handed to
-CTkImage, which resamples it for the current widget scaling. When Pillow is
-missing the helpers return None and buttons fall back to text only.
+One consistent set: 24-unit grid, 1.8-unit strokes with round caps and
+joins, a single colour per icon. Each icon is rendered at 4x and handed to
+CTkImage, which resamples it for the current widget scaling. A colour may be
+a (light, dark) pair; CTkImage then swaps images with the appearance mode.
+When Pillow is missing the helpers return None and callers fall back to text.
 """
 from functools import lru_cache
+import math
 
 try:
     from PIL import Image, ImageDraw
-except ImportError:  # pragma: no cover - Pillow ships with the test/runtime venvs
+except ImportError:  # pragma: no cover - Pillow ships with the runtime venvs
     Image = ImageDraw = None
 
 import customtkinter as ctk
 
 _GRID = 24
 _RENDER = 96  # px for the 24-unit grid: 4x supersampling
+_STROKE = 1.8
 
 
 def _hex_to_rgba(color):
@@ -22,18 +26,91 @@ def _hex_to_rgba(color):
     return tuple(int(color[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
 
 
+def _stroke(draw, s, rgba, points, closed=False):
+    """Polyline with round caps and joins (Pillow lines have square ends)."""
+    pts = [(x * s, y * s) for x, y in points]
+    if closed:
+        pts.append(pts[0])
+    width = round(_STROKE * s)
+    draw.line(pts, fill=rgba, width=width, joint="curve")
+    r = width / 2
+    for x, y in pts:
+        draw.ellipse((x - r, y - r, x + r, y + r), fill=rgba)
+
+
+def _circle(draw, s, rgba, cx, cy, radius, fill=False):
+    box = ((cx - radius) * s, (cy - radius) * s, (cx + radius) * s, (cy + radius) * s)
+    if fill:
+        draw.ellipse(box, fill=rgba)
+    else:
+        draw.ellipse(box, outline=rgba, width=round(_STROKE * s))
+
+
+def _menu(draw, s, rgba):
+    for y in (7, 12, 17):
+        _stroke(draw, s, rgba, ((4, y), (20, y)))
+
+
+def _monitor(draw, s, rgba):
+    # Live trace: the vital-signs "activity" line.
+    _stroke(draw, s, rgba, ((3, 12), (7, 12), (9.5, 6), (13.5, 18), (16, 12), (21, 12)))
+
+
+def _calibration(draw, s, rgba):
+    # Target with cross-hair ticks: setting a known reference.
+    _circle(draw, s, rgba, 12, 12, 6.5)
+    _circle(draw, s, rgba, 12, 12, 1.6, fill=True)
+    for a, b in (((12, 2.5), (12, 5)), ((12, 19), (12, 21.5)), ((2.5, 12), (5, 12)), ((19, 12), (21.5, 12))):
+        _stroke(draw, s, rgba, (a, b))
+
+
+def _recordings(draw, s, rgba):
+    # Stacked list of saved sessions.
+    for y in (7, 12, 17):
+        _circle(draw, s, rgba, 5, y, 1.3, fill=True)
+        _stroke(draw, s, rgba, ((9, y), (20, y)))
+
+
+def _morphology(draw, s, rgba):
+    # One PPG pulse: systolic peak, dicrotic notch, diastolic wave.
+    points = []
+    for i in range(37):
+        x = 3 + 18 * i / 36
+        y = 18.5 - 11.5 * math.exp(-((x - 8.5) / 2.3) ** 2) - 4.2 * math.exp(-((x - 14.2) / 2.4) ** 2)
+        points.append((x, y))
+    _stroke(draw, s, rgba, points)
+
+
 def _sliders(draw, s, rgba):
-    w = round(1.8 * s)
     for y, knob in ((6, 15), (12, 8), (18, 13)):
-        draw.line((4 * s, y * s, 20 * s, y * s), fill=rgba, width=w)
-        r = 2.4 * s
-        draw.ellipse((knob * s - r, y * s - r, knob * s + r, y * s + r), fill=(255, 255, 255, 255),
-                     outline=rgba, width=w)
+        _stroke(draw, s, rgba, ((4, y), (knob - 2.6, y)))
+        _stroke(draw, s, rgba, ((knob + 2.6, y), (20, y)))
+        _circle(draw, s, rgba, knob, y, 2.2)
+
+
+def _sun(draw, s, rgba):
+    _circle(draw, s, rgba, 12, 12, 4)
+    for k in range(8):
+        a = k * math.pi / 4
+        _stroke(draw, s, rgba, ((12 + 7 * math.cos(a), 12 + 7 * math.sin(a)),
+                                (12 + 9 * math.cos(a), 12 + 9 * math.sin(a))))
+
+
+def _moon(draw, s, rgba):
+    _circle(draw, s, rgba, 11.5, 12.5, 7.5, fill=True)
+    _circle(draw, s, (0, 0, 0, 0), 15.5, 9, 6.5, fill=True)   # cut the crescent
+
+
+def _chevron(draw, s, rgba):
+    _stroke(draw, s, rgba, ((7, 10), (12, 15), (17, 10)))
+
+
+def _collapse(draw, s, rgba):
+    _stroke(draw, s, rgba, ((14, 6), (8, 12), (14, 18)))
 
 
 def _record(draw, s, rgba):
-    r = 5 * s
-    draw.ellipse((12 * s - r, 12 * s - r, 12 * s + r, 12 * s + r), fill=rgba)
+    _circle(draw, s, rgba, 12, 12, 5, fill=True)
 
 
 def _stop(draw, s, rgba):
@@ -46,17 +123,17 @@ def _play(draw, s, rgba):
 
 def _save(draw, s, rgba):
     # Arrow into a tray: "write to disk" without a floppy cliché.
-    w = round(1.8 * s)
-    draw.line((12 * s, 4 * s, 12 * s, 14 * s), fill=rgba, width=w)
-    draw.line((8 * s, 10.5 * s, 12 * s, 14.5 * s, 16 * s, 10.5 * s), fill=rgba, width=w, joint="curve")
-    draw.line((5 * s, 15 * s, 5 * s, 19 * s, 19 * s, 19 * s, 19 * s, 15 * s), fill=rgba, width=w, joint="curve")
+    _stroke(draw, s, rgba, ((12, 4), (12, 14)))
+    _stroke(draw, s, rgba, ((8, 10.5), (12, 14.5), (16, 10.5)))
+    _stroke(draw, s, rgba, ((5, 15), (5, 19), (19, 19), (19, 15)))
 
 
-def _chevron(draw, s, rgba):
-    draw.line((7 * s, 10 * s, 12 * s, 15 * s, 17 * s, 10 * s), fill=rgba, width=round(2 * s), joint="curve")
-
-
-_SHAPES = {"chevron": _chevron, "sliders": _sliders, "record": _record, "stop": _stop, "play": _play, "save": _save}
+_SHAPES = {
+    "menu": _menu, "monitor": _monitor, "calibration": _calibration, "recordings": _recordings,
+    "morphology": _morphology, "sliders": _sliders, "sun": _sun, "moon": _moon, "chevron": _chevron,
+    "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "save": _save,
+}
+NAMES = tuple(_SHAPES)
 
 
 @lru_cache(maxsize=None)
@@ -70,7 +147,8 @@ def _render(name, color):
 
 def icon(name, color, size=16):
     """CTkImage for one icon, or None when Pillow is unavailable."""
-    image = _render(name, color)
-    if image is None:
+    light, dark = (color[0], color[1]) if isinstance(color, (tuple, list)) else (color, color)
+    light_image, dark_image = _render(name, light), _render(name, dark)
+    if light_image is None:
         return None
-    return ctk.CTkImage(light_image=image, dark_image=image, size=(size, size))
+    return ctk.CTkImage(light_image=light_image, dark_image=dark_image, size=(size, size))

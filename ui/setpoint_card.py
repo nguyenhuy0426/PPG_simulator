@@ -21,7 +21,7 @@ class SetpointCard(ctk.CTkFrame):
         self.title_label.grid(row=0, column=0, columnspan=2, sticky="w", padx=(pad, ui(4)), pady=(ui(8), 0))
         self.range_label = T.label(self, f"{limit.minimum:g}–{limit.maximum:g}", ui(11), text_color=T.FAINT)
         self.range_label.grid(row=0, column=2, sticky="e", padx=(ui(4), pad), pady=(ui(8), 0))
-        self.badge = T.label(self, "", ui(11), True, text_color=T.WARN_INK, fg_color=T.WARN_BG,
+        self.badge = T.label(self, "", ui(10), True, text_color=T.WARN_INK, fg_color=T.WARN_BG,
                              corner_radius=ui(4), height=ui(20))
 
         button = dict(width=ui(36), height=ui(36), font=T.font(ui(18)))
@@ -81,7 +81,7 @@ class SetpointCard(ctk.CTkFrame):
     def set_badge(self, text):
         """Show a short state (e.g. 'RED AC decoupled') instead of the range."""
         if text:
-            self.badge.configure(text=f"  {text}  ")
+            self.badge.configure(text=f" {text} ")
             self.badge.grid(row=0, column=2, sticky="e", padx=(self._ui(4), self._ui(10)), pady=(self._ui(8), 0))
             self.range_label.grid_remove()
         else:
