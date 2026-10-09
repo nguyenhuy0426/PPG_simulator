@@ -1,6 +1,9 @@
 """Run controlled data/architecture/loss ablations and benchmark AFTER selection."""
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
+import multiprocessing
+import os
 from pathlib import Path
 import platform
 import time
@@ -18,6 +21,9 @@ ARMS = ("lsm_bidmc", "lsm_multi", "tcn_multi", "hybrid_multi", "diffusion_multi"
 
 
 def train_one(arm, seed, pack, evaluator, output, steps, batch, interval, device):
+    cuda = torch.device(device).type == "cuda"
+    if cuda:
+        torch.cuda.reset_peak_memory_stats(device)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     g, d = networks(arm)
@@ -81,10 +87,38 @@ def train_one(arm, seed, pack, evaluator, output, steps, batch, interval, device
             print(arm, seed, json.dumps(row), flush=True)
     torch.save(dict(generator=g.state_dict(), discriminator=d.state_dict() if d else None,
                     optimizer_g=optg.state_dict(), optimizer_d=optd.state_dict() if optd else None,
-                    torch_rng=torch.get_rng_state(), cuda_rng=torch.cuda.get_rng_state_all() if device == "cuda" else [],
+                    torch_rng=torch.get_rng_state(), cuda_rng=torch.cuda.get_rng_state(device) if cuda else None,
                     numpy_rng=rng.bit_generator.state, arm=arm, seed=seed, step=steps), run/"last_training_state.pt")
-    return dict(arm=arm, seed=seed, best_step=best_step, validation_score=best,
-                training_seconds=time.monotonic()-start, generator_parameters=sum(p.numel() for p in g.parameters()))
+    result = dict(arm=arm, seed=seed, best_step=best_step, validation_score=best,
+                  training_seconds=time.monotonic()-start, generator_parameters=sum(p.numel() for p in g.parameters()),
+                  training_device=str(device), worker_pid=os.getpid(),
+                  peak_cuda_bytes=torch.cuda.max_memory_allocated(device) if cuda else 0)
+    save_json(run/"training_result.json", result)
+    return result
+
+
+def train_shard(device, jobs, input_root, output, steps, batch, interval, eval_samples):
+    """Keep one process on each GPU; independent runs retain their original batches."""
+    torch.set_num_threads(2)
+    if torch.device(device).type == "cuda":
+        torch.cuda.set_device(device)
+    pack, _ = load_input(input_root)
+    evaluator = Evaluator(pack, eval_samples)
+    print("WORKER", device, os.getpid(), jobs, flush=True)
+    return [train_one(arm, seed, pack, evaluator, Path(output), steps, batch, interval, device)
+            for arm, seed in jobs]
+
+
+def train_parallel(jobs, devices, input_root, output, steps, batch, interval, eval_samples):
+    rows = []
+    with ProcessPoolExecutor(max_workers=len(devices), mp_context=multiprocessing.get_context("spawn")) as pool:
+        futures = [pool.submit(train_shard, device, jobs[i::len(devices)], input_root, output,
+                               steps, batch, interval, eval_samples) for i, device in enumerate(devices)]
+        for future in as_completed(futures):
+            rows.extend(future.result())
+            save_json(Path(output)/"selection_progress.json", rows)
+    by_job = {(r["arm"], r["seed"]): r for r in rows}
+    return [by_job[job] for job in jobs]
 
 
 def load_input(root):
@@ -115,6 +149,7 @@ def main(argv=None):
     p.add_argument("--eval-samples", type=int, default=128)
     p.add_argument("--bootstrap", type=int, default=50)
     p.add_argument("--allow-cpu", action="store_true", help="Local smoke tests only")
+    p.add_argument("--gpus", type=int, choices=(1, 2), default=1)
     a = p.parse_args(argv)
     if min(a.steps, a.batch, a.interval, a.eval_samples) < 2 or a.bootstrap < 0:
         raise ValueError("Invalid experiment budget")
@@ -123,6 +158,9 @@ def main(argv=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu" and not a.allow_cpu:
         raise RuntimeError("GPU required for the research run; CPU only allowed for smoke checks")
+    gpu_names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
+    if a.gpus == 2 and (len(gpu_names) != 2 or any("T4" not in name for name in gpu_names)):
+        raise RuntimeError(f"Two T4 GPUs required, allocated: {gpu_names}")
     torch.set_num_threads(2)
     pack, manifest = load_input(a.input_root)
     expected_domains = {"bidmc", "perform_large", "perform_af", "perform_non_af"}
@@ -136,6 +174,7 @@ def main(argv=None):
     evaluator = Evaluator(pack, a.eval_samples)
     configuration = dict(args=vars(a), device=device, python=platform.python_version(), torch=torch.__version__,
                          gpu=torch.cuda.get_device_name() if device == "cuda" else None,
+                         allocated_gpus=gpu_names, training_workers=a.gpus,
                          selection="mean over validation domains of ACF + log-PSD + morphology RBF MMD2; no test selection",
                          bandwidths=evaluator.bandwidths, morphology_center=evaluator.center.tolist(),
                          morphology_scale=evaluator.scale.tolist(),
@@ -146,12 +185,19 @@ def main(argv=None):
                                       "Independent PTT held out in full; no tuning after reading external scores",
                                       "Basic morphology descriptors and two-sample diagnostics are not clinical validation"])
     save_json(output/"configuration.json", configuration)
-    selection = []
-    for arm in a.arms:
-        for seed in a.seeds:
+    jobs = [(arm, seed) for arm in a.arms for seed in a.seeds]
+    training_start = time.monotonic()
+    if a.gpus == 2:
+        selection = train_parallel(jobs, ["cuda:0", "cuda:1"], a.input_root, output,
+                                   a.steps, a.batch, a.interval, a.eval_samples)
+    else:
+        selection = []
+        for arm, seed in jobs:
             row = train_one(arm, seed, pack, evaluator, output, a.steps, a.batch, a.interval, device)
             selection.append(row)
             save_json(output/"selection_progress.json", selection)
+    save_json(output/"training_execution.json", dict(wall_seconds=time.monotonic()-training_start,
+              workers=a.gpus, allocated_gpus=gpu_names, runs=selection))
     averages = {arm: float(np.mean([r["validation_score"] for r in selection if r["arm"] == arm])) for arm in a.arms}
     winner = min(averages, key=averages.get)
     save_json(output/"selection.json", dict(winner=winner, mean_validation=averages, runs=selection))

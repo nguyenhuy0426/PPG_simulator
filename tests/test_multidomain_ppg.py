@@ -136,3 +136,32 @@ def test_end_to_end_all_arms_and_exports(tmp_path):
     g = torch.jit.load(str(output/"hybrid_multi_seed42/generator_cpu.ts"))
     assert g(torch.randn(3, 1200)).shape == (3, 1, 1200)
     assert len(list(output.rglob("last_training_state.pt"))) == 5
+
+
+def test_two_gpu_request_rejects_missing_or_wrong_hardware(monkeypatch, tmp_path):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda i: "Tesla P100" if i else "Tesla T4")
+    with pytest.raises(RuntimeError, match="Two T4 GPUs required"):
+        train.main(["--input-root", "unused", "--output", str(tmp_path/"out"), "--gpus", "2"])
+    assert not (tmp_path/"out").exists()
+
+
+def test_spawned_workers_train_each_run_once_and_match_serial(tmp_path):
+    source = tmp_path/"input"; source.mkdir()
+    pack = toy_pack()
+    np.savez_compressed(source/"windows.npz", **pack)
+    (source/"manifest.json").write_text(json.dumps(dict(protocol="ppg_multidomain_v1", windows_sha256=data.digest(source/"windows.npz"))))
+    output = tmp_path/"parallel"; output.mkdir()
+    jobs = [("lsm_bidmc", 42), ("tcn_multi", 123), ("hybrid_multi", 42)]
+    rows = train.train_parallel(jobs, ["cpu", "cpu"], str(source), str(output), 2, 2, 2, 8)
+    assert [(r["arm"], r["seed"]) for r in rows] == jobs
+    assert len({r["worker_pid"] for r in rows}) == 2
+    assert len(list(output.rglob("training_result.json"))) == len(jobs)
+    serial = tmp_path/"serial"; serial.mkdir()
+    row = train.train_one(*jobs[0], pack, Evaluator(pack, 8), serial, 2, 2, 2, "cpu")
+    assert rows[0]["validation_score"] == pytest.approx(row["validation_score"], abs=1e-6)
+    a = torch.load(output/"lsm_bidmc_seed42/best.pt", weights_only=True)["generator"]
+    b = torch.load(serial/"lsm_bidmc_seed42/best.pt", weights_only=True)["generator"]
+    for key in a:
+        torch.testing.assert_close(a[key], b[key])

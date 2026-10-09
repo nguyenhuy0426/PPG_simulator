@@ -26,6 +26,12 @@ not use Diffusion-TS's Transformer, decomposition, or clean-sample prediction ob
 Default: three seeds (42, 123, 2026), 2,000 updates per arm/seed, batch 32, validation
 every 250 steps, 128 generated evaluation clips. Fifteen trained runs; equal steps and
 batch size, **not equal compute**. CPU timings and training time are reported separately.
+The staged research job requires **two Tesla T4 GPUs** and assigns independent
+arm/seed runs to one spawned process per GPU. Batch 32 and optimizer steps remain
+unchanged; this parallelizes the experiment rather than increasing each run's batch.
+`configuration.json`, `training_execution.json`, and each `training_result.json`
+record allocated GPUs, worker/device identity, peak CUDA memory and elapsed time.
+The script fails before training if Kaggle does not allocate exactly two T4 GPUs.
 This is a bounded first comparison, not a claim that all arms have converged or that
 the winner is globally optimal. No ensemble is assumed superior before measurement.
 
