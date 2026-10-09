@@ -80,7 +80,7 @@ class Evaluator:
             unique = np.unique(subject)
             rng = np.random.default_rng(1803)
             totals = []
-            for _ in range(bootstrap):
+            for _ in range(bootstrap if len(unique) >= 2 else 0):
                 # Resample patients, then all their selected windows; fake resampled independently.
                 ids = np.concatenate([np.flatnonzero(subject == p) for p in rng.choice(unique, len(unique))])
                 fi = rng.integers(len(blocks[0]), size=len(blocks[0]))

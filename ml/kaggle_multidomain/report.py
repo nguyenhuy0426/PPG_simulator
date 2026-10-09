@@ -71,6 +71,12 @@ def report(root):
               "PTT sit/walk/run are a complete source holdout. The MIMIC-derived datasets are related cohorts, not independent hospitals.",
               "No hyperparameter changes are made using these test results; a further improvement round needs a new holdout or nested protocol.", ""]
     lines += ["- "+s for s in manifest.get("limitations", [])]
+    lines += ["", "| Domain | Train windows/groups | Validation windows/groups | Test windows/groups | External windows/groups |",
+              "|---|---:|---:|---:|---:|"]
+    for domain, counts in manifest.get("counts", {}).items():
+        lines.append("| "+domain+" | "+" | ".join(f"{counts[s]['windows']}/{counts[s]['patients']}" for s in ("train", "validation", "test", "external"))+" |")
+    lines += ["", "Groups are source subject identifiers; unresolved PERform waveform groups are not verified clinical patients.",
+              "A domain with fewer than two evaluated patients has no patient-bootstrap interval; its population generalization cannot be estimated.", ""]
     lines += ["- CPU timings describe the Kaggle/host processor; no Raspberry Pi or physical DAC validation.",
               "- Equal steps do not imply equal compute or convergence. Diffusion uses 32 DDIM sampling steps.",
               "- Basic morphology metrics are proxies; no clinical equivalence or reliable AF detection is established.",

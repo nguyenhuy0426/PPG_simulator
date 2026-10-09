@@ -112,6 +112,15 @@ def test_evaluation_fit_does_not_depend_on_test_signals():
     assert a.validation(pack["signal"][:8])[0] == b.validation(pack["signal"][:8])[0]
 
 
+def test_single_patient_has_no_population_bootstrap_interval():
+    pack = toy_pack()
+    pack["subject"][(pack["domain"] == "perform_non_af") & (pack["split"] == "test")] = "one-patient"
+    evaluator = Evaluator(pack, 8)
+    metrics = evaluator.evaluate(pack["signal"][:8], "test", bootstrap=2)
+    assert metrics["perform_non_af"]["sampled_patients"] == 1
+    assert metrics["perform_non_af"]["patient_bootstrap_total_ci95"] is None
+
+
 def test_end_to_end_all_arms_and_exports(tmp_path):
     source = tmp_path/"input"; source.mkdir()
     np.savez_compressed(source/"windows.npz", **toy_pack())
