@@ -81,7 +81,7 @@ def report(output, results, winner):
     args = json.loads((output/"configuration.json").read_text())["args"]
     lines = ["# PhysioMix: vòng cải thiện PPG", "", f"Mô hình chọn **chỉ từ validation**: `{winner}`.", "",
              f"{len(arms)} cấu hình × {len(args['seeds'])} seeds, {args['steps']} steps; 4 pilot × {args['pilot_steps']} steps. Cùng batch/steps, không cùng FLOPs.",
-             "Score chọn: macro MMD + 0.25 |log(đa dạng/train)| + 0.5 (1 − macro recall). Nhỏ hơn tốt hơn.",
+             "Score chọn: macro MMD + 0.25 |log(đa dạng/train)| + 0.5 (1 − macro recall) + 0.25 (1 − macro precision). Nhỏ hơn tốt hơn.",
              "CapnoBase và Wrist test là holdout mới; các miền cũ/PTT đã xem nên chỉ thăm dò.", "",
              "| Cấu hình | Validation | Đa dạng/train trung bình | CPU ms/đoạn | Tham số G |", "|---|---:|---:|---:|---:|"]
     for arm in arms:

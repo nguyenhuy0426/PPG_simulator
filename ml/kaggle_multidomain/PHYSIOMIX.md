@@ -53,7 +53,8 @@ ground truth or a signal-quality certificate.
 1. Four custom pilot variants, seed 42, 2000 steps, batch 32.
 2. A common validation criterion: macro (ACF + log-PSD + morphology MMD²)
    + 0.25 abs(log generated/train morphology diversity)
-   + 0.5 (1 − macro feature recall). Scales/bandwidths fit on training only.
+   + 0.5 (1 − macro feature recall) + 0.25 (1 − macro feature precision).
+   Scales/bandwidths fit on training only.
    Training/pilot evaluators contain no test/external waveform references.
 3. Select one GAN variant and one diffusion variant/sampler from validation.
    Save `PILOT_SELECTION.json` and `FROZEN_PROTOCOL.json` before final training.

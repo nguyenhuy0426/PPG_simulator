@@ -22,6 +22,7 @@ from ml.kaggle_multidomain.physio import (CleanDenoiser, ConditionedCritic, Cond
 from ml.kaggle_multidomain.train import ARMS, train_one
 
 CANDIDATES = ("physiomix_no_div", "physiomix", "physiodiffusion_plain", "physiodiffusion")
+DATA_SHA256 = "af3c3a0ff5bd8dc41a56172ad104349db469c87bd8edae3ade7eda88e05405e0"
 
 
 class QualityEvaluator(Evaluator):
@@ -31,7 +32,9 @@ class QualityEvaluator(Evaluator):
         d = self.diagnostics(generated)
         ratio = d["morphology_pairwise_distance_median"]/max(d["train_morphology_pairwise_distance_median"], 1e-8)
         # Fixed before training: discourage both mode collapse and noise-driven overdispersion.
-        score = mmd+.25*abs(np.log(max(ratio, 1e-6)))+.5*np.mean([1-v["feature_recall"] for v in metrics.values()])
+        score = (mmd+.25*abs(np.log(max(ratio, 1e-6)))+
+                 .5*np.mean([1-v["feature_recall"] for v in metrics.values()])+
+                 .25*np.mean([1-v["feature_precision"] for v in metrics.values()]))
         return float(score), per_domain
 
 
@@ -293,6 +296,8 @@ def main(argv=None):
         raise RuntimeError(f"Two T4 GPUs required, allocated {names}")
     devices = ["cpu"] if a.allow_cpu else ["cuda:0", "cuda:1"]
     pack, manifest = load_input(a.input_root)
+    if not a.allow_cpu and manifest["windows_sha256"] != DATA_SHA256:
+        raise ValueError("Use the independently verified PhysioMix preparation output")
     domains = {"bidmc", "perform_af", "perform_non_af", "perform_large", "wrist"}
     for split in ("train", "validation", "test"):
         if set(pack["domain"][pack["split"] == split]) != domains:
@@ -304,7 +309,8 @@ def main(argv=None):
     save_json(output/"data_manifest.json", manifest)
     configuration = dict(args=vars(a), python=platform.python_version(), torch=torch.__version__,
                          allocated_gpus=names, training_workers=len(devices),
-                         selection="validation macro MMD + 0.25*abs(log diversity ratio) + 0.5*(1-macro feature recall)",
+                         data_sha256=manifest["windows_sha256"],
+                         selection="validation macro MMD + 0.25*abs(log diversity ratio) + 0.5*(1-macro recall) + 0.25*(1-macro precision)",
                          pilot_candidates=list(CANDIDATES),
                          primary_holdouts=["wrist/test", "capnobase/external"],
                          secondary_previously_viewed=["bidmc", "perform_*", "ptt_*"],
