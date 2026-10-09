@@ -191,6 +191,7 @@ def main(argv=None):
     else:
         controls["frozen_previous_lsm"] = {"status": "not_available", "matches": len(old)}
     save_json(output/"controls.json", controls)
+    np.savez_compressed(output/"control_samples.npz", balanced_train_replay=replay)
     from ml.kaggle_multidomain.report import report
     report(output)
     save_json(output/"COMPLETE.json", dict(status="complete", winner_by_validation=winner,

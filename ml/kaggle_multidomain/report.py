@@ -99,6 +99,23 @@ def report(root):
                    yerr=[r["total_mmd_std"] for r in vals], label=arm, capsize=2)
         ax.set_xticks(x, names, rotation=20); ax.set(title=split, ylabel="Total MMD² (lower is better)")
     axes[1].legend(fontsize=7); fig.savefig(root/"domain_benchmark.png", dpi=180); plt.close(fig)
+    from scipy.signal import welch
+    reference = np.load(root/"control_samples.npz", allow_pickle=False)["balanced_train_replay"]
+    f, real_psd = welch(reference, fs=40, nperseg=400, noverlap=200, axis=-1)
+    real_psd /= np.maximum(real_psd.sum(1, keepdims=True), 1e-12)
+    fig, axes = plt.subplots(len(arms), 2, figsize=(12, 2*len(arms)), layout="constrained", squeeze=False)
+    for (wave_ax, psd_ax), arm in zip(axes, arms):
+        seed = min(r["seed"] for r in rows if r["arm"] == arm)
+        x = np.load(root/f"{arm}_seed{seed}"/"samples.npz", allow_pickle=False)["generated"]
+        wave_ax.plot(np.arange(320)/40, x[0, :320], linewidth=1)
+        wave_ax.set(title=f"{arm}: first sample, seed {seed}", xlabel="Seconds", ylabel="Normalized PPG", ylim=(-.05, 1.05))
+        _, psd = welch(x, fs=40, nperseg=400, noverlap=200, axis=-1)
+        psd /= np.maximum(psd.sum(1, keepdims=True), 1e-12)
+        psd_ax.semilogy(f, real_psd.mean(0)+1e-10, label="Balanced training replay", color="black", alpha=.6)
+        psd_ax.semilogy(f, psd.mean(0)+1e-10, label="Generated")
+        psd_ax.set(xlabel="Hz", ylabel="Normalized power", xlim=(0, 10)); psd_ax.legend(fontsize=7)
+    fig.suptitle("Fixed examples (not cherry-picked); distribution metrics use all evaluation samples")
+    fig.savefig(root/"waveforms_and_spectra.png", dpi=180); plt.close(fig)
     return root/"REPORT.md"
 
 
