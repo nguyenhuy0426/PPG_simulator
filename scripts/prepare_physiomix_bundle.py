@@ -76,6 +76,9 @@ def build_model(model_class, conditions, checkpoint):
         module, name = model_class.split(':')
         return getattr(importlib.import_module(module), name)(conditions['size'], conditions['center'], conditions['scale']), None
     from ml.kaggle_multidomain import physio
+    if cfg.get('rel'):
+        return physio.PhysioMixR(conditions['size'], conditions['center'], conditions['scale'], view='v3',
+                                 beat=cfg.get('beat', False), pad=cfg.get('pad', 0)), cfg
     cls = physio.PhysioMixH if cfg.get('osc') else physio.PhysioMix
     return cls(conditions['size'], conditions['center'], conditions['scale'], view='v3'), cfg
 

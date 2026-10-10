@@ -26,11 +26,15 @@ MIN_KNOWN_WINDOWS, MIN_KNOWN_FRACTION = 5, .05
 # Fraction of a mean beat (upstroke and systolic peak) whose absolute duration is kept when an IBI
 # deviates from the mean; only the remainder, diastole, stretches or compresses.
 SYSTOLE = .35
+# Samples generated on each side of the window before band-limiting, then cropped. Real windows are cut
+# from records filtered as a whole, so their ends do not meet; a circularly band-limited window does,
+# and that alone lets a probe separate real windows from their own circularly filtered copies.
+CROP_PAD = 6*FS
 
 
-def view_mask(view):
-    """Zero-phase magnitude |H|^2 of the data view on the generator's rFFT grid."""
-    freq = np.fft.rfftfreq(LENGTH, 1/FS)
+def view_mask(view, n=LENGTH):
+    """Zero-phase magnitude |H|^2 of the data view on the rFFT grid of an n-sample signal."""
+    freq = np.fft.rfftfreq(n, 1/FS)
     if view == "v1":
         return ((freq >= .9) & (freq <= 5)).astype(np.float32)
     spec = VIEWS[view]
@@ -275,9 +279,13 @@ class PhysioMixR(PhysioMixH):
     condition (filling-time dependence of pulse amplitude; not a validated AF model); and the IBI
     sigma may reach the label clip IRR_MAX.
     """
-    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False):
+    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False, pad=0):
         super().__init__(size, center, scale, view, harmonics, beats)
-        self.beat = beat
+        self.beat, self.pad = beat, pad
+        if pad:
+            # Generate pad extra samples on both sides, band-limit the long signal, keep the middle window.
+            self.register_buffer("time", (torch.arange(LENGTH+2*pad, dtype=torch.float32)-pad)/FS)
+            self.register_buffer("band_long", torch.tensor(view_mask(view, LENGTH+2*pad)))
         head = nn.Conv1d(48, 2*harmonics+2, 1)
         nn.init.zeros_(head.weight)
         with torch.no_grad():
@@ -292,7 +300,7 @@ class PhysioMixR(PhysioMixH):
     def beats_of(self, z, hz, sigma):
         """Per output sample: beat index and within-beat phase fraction; plus the beat IBIs (s)."""
         ibi = torch.exp(sigma[:, None]*z[:, 32:32+self.beats]-.5*sigma[:, None]**2)/hz[:, None]
-        onset = torch.cumsum(ibi, 1)-ibi-ibi[:, :1]*torch.sigmoid(z[:, :1])
+        onset = torch.cumsum(ibi, 1)-ibi-ibi[:, :1]*torch.sigmoid(z[:, :1])-self.pad/FS
         index = ((onset[:, :, None] <= self.time[None, None]).sum(1)-1).clamp(0, self.beats-1)
         tau, length = self.time[None]-onset.gather(1, index), ibi.gather(1, index)
         if not self.beat:
@@ -309,11 +317,13 @@ class PhysioMixR(PhysioMixH):
         phi = 2*math.pi*(index.to(z.dtype)+fraction)
         carrier = torch.stack([phi.sin(), phi.cos(), (2*phi).sin(), (3*phi).sin()], 1)
         style = self.style(torch.cat((z[:, :8], condition), 1))
-        h = torch.cat([branch(torch.cat((z[:, None], carrier), 1)) for branch in self.branches], 1)
+        # The trunk's noise channel is reflected into the padding; the IBIs and style use z as before.
+        noise = torch.cat((z[:, :self.pad].flip(1), z, z[:, LENGTH-self.pad:].flip(1)), 1) if self.pad else z
+        h = torch.cat([branch(torch.cat((noise[:, None], carrier), 1)) for branch in self.branches], 1)
         for block, film in zip(self.blocks, self.film):
             gain, bias = film(style).chunk(2, 1)
             h = block(h)*(1+.1*gain[:, :, None])+.1*bias[:, :, None]
-        knots = F.interpolate(self.head(F.avg_pool1d(h, FS)), size=LENGTH, mode="linear", align_corners=False)
+        knots = F.interpolate(self.head(F.avg_pool1d(h, FS)), size=h.shape[-1], mode="linear", align_corners=False)
         amplitude = F.softplus(knots[:, :self.k])
         shape = amplitude/amplitude.sum(1, keepdim=True).clamp_min(1e-6)
         pulse = (shape*torch.sin(self.orders*phi[:, None]+knots[:, self.k:2*self.k])).sum(1, keepdim=True)
@@ -325,7 +335,10 @@ class PhysioMixR(PhysioMixH):
             # The new beat's gain ramps in over its upstroke instead of stepping at the onset.
             gain = gain*(before+(current-before)*(fraction/.2).clamp(0, 1))[:, None]
         y = gain*pulse+knots[:, 2*self.k:2*self.k+1]+.15*torch.tanh(self.out(h))
-        return bandlimit(y, self.view, self.band)
+        if not self.pad:
+            return bandlimit(y, self.view, self.band)
+        y = torch.fft.irfft(torch.fft.rfft(y, dim=-1)*self.band_long, n=y.shape[-1], dim=-1)[..., self.pad:self.pad+LENGTH]
+        return (y-y.amin(-1, keepdim=True))/(y.amax(-1, keepdim=True)-y.amin(-1, keepdim=True)).clamp_min(1e-6)
 
 
 class ConditionedCritic(nn.Module):

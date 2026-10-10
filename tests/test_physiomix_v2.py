@@ -338,3 +338,111 @@ def test_round4_runs_end_to_end_on_cpu_and_freezes_the_rule_first(tmp_path, monk
     for arm in experiment_v4.ROUND4:
         assert (out/"benchmark"/f"{arm}_seed42"/"generator_cpu.ts").exists()
     assert (out/"REPORT_ROUND4.md").exists()
+
+
+def realism_pack():
+    """Toy pack whose states differ in rate, so a waveform CNN can tell them apart."""
+    pack = v3_pack()
+    rates = {"bidmc": 60, "perform_af": 150, "perform_non_af": 90, "perform_large": 45, "wrist": 170, "gxu_finger": 120}
+    for i, domain in enumerate(pack["domain"]):
+        if domain in rates:
+            bpm = rates[domain]-60*(domain == "gxu_finger" and pack["activity_label"][i] == 4)
+            pack["signal"][i] = ppg(bpm, i, sigma=.2 if domain == "perform_af" else .01)
+    return pack
+
+
+def test_realism_compares_unseen_people_with_training_people_and_generators(monkeypatch):
+    from ml.kaggle_multidomain import realism
+    pack = realism_pack()
+    development, to_dev = realism.development_of(pack)
+    seen = []
+
+    def replay(ids, seed):
+        seen.append(set(pack["split"][ids]))
+        assert np.all(development["split"][to_dev(ids)] == "train")
+        return pack["signal"][ids]
+    result = realism.realism(pack, experiment_v3.PromptedEvaluator(development, 8), dict(replay=replay), n=12,
+                             folds=2, steps=5)
+    assert set(result) == set(realism.DATASETS) and seen and all(s == {"train"} for s in seen)
+    for entry in result.values():
+        assert entry["people"] >= 2
+        for name in ("real_other_people", "replay"):
+            assert 0 <= entry[name]["fidelity"] <= 1 and 0 <= entry[name]["indistinguishable"] <= 1
+
+
+def test_condition_following_separates_obedient_from_command_blind_sources():
+    from ml.kaggle_multidomain import realism
+    pack = realism_pack()
+
+    def obedient(ids, seed):
+        return pack["signal"][ids]
+
+    def blind(ids, seed):
+        return pack["signal"][np.random.default_rng(seed).choice(np.flatnonzero(pack["split"] == "train"), len(ids))]
+    result = realism.condition_following(pack, dict(obedient=obedient, blind=blind), steps=150, n=12, swap=12)
+    assert result["real_unseen"]["balanced_accuracy"] > .6
+    assert result["obedient"]["swap_following"] > .6 and result["blind"]["swap_following"] < .3
+    assert result["blind"]["swap_distinct_answers_per_noise"] == 1
+    assert set(result["physiology"]["obedient"]) == set(realism.STATES)
+
+
+def test_cropped_output_is_not_circular_and_keeps_rate_control():
+    torch.manual_seed(0)
+    circular = physio.PhysioMixR(10, CENTER, SCALE, beat=True).eval()
+    cropped = physio.PhysioMixR(10, CENTER, SCALE, beat=True, pad=physio.CROP_PAD).eval()
+    # Same weights; the time grid and long band mask differ by construction.
+    cropped.load_state_dict({k: v for k, v in circular.state_dict().items() if k != "time"}, strict=False)
+    z = torch.randn(64, LENGTH, generator=torch.Generator().manual_seed(1))
+    jump = {}
+    with torch.no_grad():
+        for name, model in (("circular", circular), ("cropped", cropped)):
+            y = model(z, condition_rows(10, 5, 80, .03, 64, CENTER, SCALE)).numpy()[:, 0]
+            jump[name] = float(np.median(np.abs(y[:, -1]-y[:, 0])))
+    assert jump["cropped"] > 1.5*jump["circular"], jump
+    traced = torch.jit.trace(cropped, (torch.randn(2, LENGTH), condition_rows(10, 5, 70, .02, 2, CENTER, SCALE)))
+    for n, bpm in ((1, 40), (3, 120), (5, 175)):
+        z, c = torch.randn(n, LENGTH), condition_rows(10, 5, bpm, .02, n, CENTER, SCALE)
+        out = traced(z, c)
+        torch.testing.assert_close(out, cropped(z, c))
+        assert out.shape == (n, 1, LENGTH) and float(out.min()) >= 0 and float(out.max()) <= 1
+        rate = labels.beat_stats(out.detach().numpy()[:, 0])[:, 0]
+        assert np.all(np.abs(rate-bpm) <= .03*bpm), rate
+
+
+def fake_round4(root, winner="L3_rel_beat_lr", ship=True):
+    root.mkdir(parents=True)
+    (root/"SELECTION_ROUND4.json").write_text(json.dumps(dict(winner=winner, ship=ship)))
+    runs = [dict(arm=winner, seed=s, S_arm=.5+.01*i, S_real_fresh=.33) for i, s in enumerate((42, 123, 2026))]
+    (root/"training_execution.json").write_text(json.dumps(dict(runs=runs)))
+
+
+def test_round5_incumbent_is_round4_winner_only_if_it_shipped(tmp_path):
+    from ml.kaggle_multidomain import experiment_v5
+    fake_round4(tmp_path/"shipped")
+    base, incumbent = experiment_v5.round4_reference(tmp_path/"shipped")
+    assert base["arm"] == incumbent["name"] == "L3_rel_beat_lr" and incumbent["S_arm"] == [.5, .51, .52]
+    fake_round4(tmp_path/"kept", ship=False)
+    _, incumbent = experiment_v5.round4_reference(tmp_path/"kept")
+    assert incumbent["name"] == "round3_physiomix_v2"
+    rows = [dict(arm="L3_rel_beat_lr_crop", seed=s, S_arm=v, S_real_fresh=.3, eligible=True)
+            for s, v in ((42, .40), (123, .41), (2026, .42))]
+    assert experiment_v5.decide(rows, "L3_rel_beat_lr_crop", base | dict(name="r4"))["ship"]
+    rows[0]["eligible"] = False
+    assert not experiment_v5.decide(rows, "L3_rel_beat_lr_crop", base | dict(name="r4"))["ship"]
+
+
+def test_round5_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_v5
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    fake_round4(tmp_path/"r4")
+    experiment_v5.main(["--input-root", str(tmp_path/"input"), "--round4-root", str(tmp_path/"r4"), "--allow-cpu",
+                        "--batch", "4", "--interval", "2", "--eval-samples", "12", "--bootstrap", "2", "--seeds", "42",
+                        "--steps", "2", "--output", str(tmp_path/"r5")])
+    out = tmp_path/"r5"
+    frozen = json.loads((out/"FROZEN_ROUND5.json").read_text())
+    assert frozen["arm"] == "L3_rel_beat_lr_crop" and frozen["config"]["pad"] == physio.CROP_PAD
+    assert (out/"FROZEN_ROUND5.json").stat().st_mtime <= (out/"DECISION_ROUND5.json").stat().st_mtime
+    assert (out/"benchmark"/"L3_rel_beat_lr_crop_seed42"/"generator_cpu.ts").exists()
+    assert (out/"REPORT_ROUND5.md").exists()

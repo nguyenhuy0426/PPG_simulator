@@ -28,9 +28,9 @@ from ml.kaggle_multidomain.data import balanced_indices, balanced_pool
 from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.experiment import QualityEvaluator
 from ml.kaggle_multidomain.models import distribution_loss, networks
-from ml.kaggle_multidomain.physio import (CleanDenoiser, ConditionedCritic, Conditions, DerivCritic, PhysioMix,
-                                        PhysioMixH, PhysioMixR, clean_diffusion_loss, draw, ema_model, update_ema,
-                                        view_mask)
+from ml.kaggle_multidomain.physio import (CROP_PAD, CleanDenoiser, ConditionedCritic, Conditions, DerivCritic,
+                                        PhysioMix, PhysioMixH, PhysioMixR, clean_diffusion_loss, draw, ema_model,
+                                        update_ema, view_mask)
 from ml.kaggle_multidomain.train import train_one
 
 PROTOCOL, VIEW = "ppg_physiomix_v3", "v3"
@@ -49,6 +49,9 @@ LOW_LR = dict(version="v2", osc=True, dc=True, lr=1e-4, schedule="cosine")
 ARMS.update({"L1_v2_lr": LOW_LR, "L2_rel_lr": dict(LOW_LR, rel=True),
              "L3_rel_beat_lr": dict(LOW_LR, rel=True, beat=True),
              "L4_rel_beat_dom_lr": dict(LOW_LR, rel=True, beat=True, domloss=True)})
+# Round 5 (experiment_v5): the round-4 winner with a cropped, non-circular output window.
+ARMS.update({f"{arm}_crop": dict(ARMS[arm], rel=True, pad=CROP_PAD)
+             for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -76,7 +79,7 @@ def config(arm, frozen=None):
             raise ValueError("physiomix_v2 needs the frozen pilot selection")
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
-                   rel=False, beat=False, domloss=False), **ARMS[arm]}
+                   rel=False, beat=False, domloss=False, pad=0), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -91,7 +94,8 @@ def build(cfg, conditions):
     if cfg["diffusion"]:
         return CleanDenoiser(size), None
     if cfg.get("rel"):
-        generator = PhysioMixR(size, conditions.center, conditions.scale, view=VIEW, beat=cfg.get("beat", False))
+        generator = PhysioMixR(size, conditions.center, conditions.scale, view=VIEW, beat=cfg.get("beat", False),
+                               pad=cfg.get("pad", 0))
     else:
         generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
     return generator, (DerivCritic if cfg["dc"] else ConditionedCritic)(size)
