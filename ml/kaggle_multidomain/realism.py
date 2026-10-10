@@ -185,10 +185,12 @@ def condition_following(pack, sources, steps=2500, n=128, swap=64, seed=0):
         return dict(confusion=matrix.tolist(), accuracy=accuracy, balanced_accuracy=float(np.mean(list(accuracy.values()))),
                     motion_probability=motion)
     real = {s: pack["signal"][balanced(pack, unseen[s], n, np.random.default_rng(seed+i))] for i, s in enumerate(names)}
+    # Every source is prompted with the same training windows; their own statistics are what was commanded.
+    prompts = {s: balanced(pack, train[s], n, np.random.default_rng(seed+100+i), replace=True) for i, s in enumerate(names)}
     result = dict(states=names, chance=1/len(names), real_unseen=confusion(real),
-                  physiology=dict(real_unseen={s: physiology(x) for s, x in real.items()}))
+                  physiology=dict(real_unseen={s: physiology(x) for s, x in real.items()},
+                                  real_prompts={s: physiology(pack["signal"][ids]) for s, ids in prompts.items()}))
     for name, generate in sources.items():
-        prompts = {s: balanced(pack, train[s], n, np.random.default_rng(seed+100+i), replace=True) for i, s in enumerate(names)}
         generated = {s: generate(prompts[s], seed+200+i) for i, s in enumerate(names)}
         entry = confusion(generated)
         # Same noise, every state command in turn: a model ignoring the command would give one answer per noise.

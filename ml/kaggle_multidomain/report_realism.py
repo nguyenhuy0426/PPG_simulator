@@ -51,11 +51,14 @@ def physiology_table(result, sources):
     lines = ["| Trạng thái | Nguồn | HR trung vị | CV khoảng nhịp | Đo được nhịp | Độ tuần hoàn (ACF) |",
              "|---|---|---|---|---|---|"]
     for state in result["condition_following"]["states"]:
-        for i, name in enumerate(["real_unseen", *sources]):
+        for i, name in enumerate(["real_unseen", "real_prompts", *sources]):
+            if name not in c:
+                continue
             v = c[name][state]
             hr = "—" if v["hr_median"] is None else f"{v['hr_median']:.0f}"
             cv = "—" if v["ibi_cv_median"] is None else f"{v['ibi_cv_median']:.3f}"
-            lines.append(f"| {STATES[state] if i == 0 else ''} | {'Thật (người chưa dùng)' if name == 'real_unseen' else name} | "
+            label = dict(real_unseen="Thật · người chưa dùng", real_prompts="Thật · đúng các cửa sổ dùng làm lệnh").get(name, name)
+            lines.append(f"| {STATES[state] if i == 0 else ''} | {label} | "
                          f"{hr} | {cv} | {pct(v['rate_measurable'])} | {v['periodicity_median']:.2f} |")
     return lines
 
