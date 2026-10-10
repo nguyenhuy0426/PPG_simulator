@@ -23,6 +23,9 @@ FLOORS = np.array([5, .02, .01], dtype=np.float32)
 # A domain needs this many known labels per field; below it labelling is treated as broken.
 # Motion-dominated wrist exercise legitimately masks most windows (ECG disagrees with PPG periodicity).
 MIN_KNOWN_WINDOWS, MIN_KNOWN_FRACTION = 5, .05
+# Fraction of a mean beat (upstroke and systolic peak) whose absolute duration is kept when an IBI
+# deviates from the mean; only the remainder, diastole, stretches or compresses.
+SYSTOLE = .35
 
 
 def view_mask(view):
@@ -256,6 +259,72 @@ class PhysioMixH(PhysioMix):
         amplitude, theta = F.softplus(knots[:, :self.k]), knots[:, self.k:2*self.k]
         y = ((amplitude*torch.sin(self.orders*phi[:, None]+theta)).sum(1, keepdim=True)+knots[:, -1:]
              +.15*torch.tanh(self.out(h)))
+        return bandlimit(y, self.view, self.band)
+
+
+class PhysioMixR(PhysioMixH):
+    """PhysioMixH with a scale-anchored pulse and optional physiological beat timing.
+
+    Output min-max normalisation leaves the absolute harmonic amplitude free; in PhysioMixH it shrank
+    late in training until the bounded free residual dominated and the measured rate drifted. Here the
+    head sets only the pulse shape (harmonic amplitudes normalised to sum 1) plus a slow gain bounded
+    to [e^-.5, e^.5], so the 0.15 residual stays a minor part of every beat.
+    beat=True: diastole alone absorbs IBI deviations, so each pulse peak keeps a fixed delay after its
+    onset (pure phase warping made peak intervals a moving average of IBIs and under-reported
+    irregularity); each pulse scales by (preceding IBI / mean IBI)^beta with beta in [0, 1] learned per
+    condition (filling-time dependence of pulse amplitude; not a validated AF model); and the IBI
+    sigma may reach the label clip IRR_MAX.
+    """
+    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False):
+        super().__init__(size, center, scale, view, harmonics, beats)
+        self.beat = beat
+        head = nn.Conv1d(48, 2*harmonics+2, 1)
+        nn.init.zeros_(head.weight)
+        with torch.no_grad():
+            head.bias.zero_()
+            head.bias[:2*harmonics+1] = self.head.bias
+        self.head = head
+        if beat:
+            self.coupling = nn.Linear(48, 1)
+            nn.init.zeros_(self.coupling.weight)
+            nn.init.constant_(self.coupling.bias, -2.)
+
+    def beats_of(self, z, hz, sigma):
+        """Per output sample: beat index and within-beat phase fraction; plus the beat IBIs (s)."""
+        ibi = torch.exp(sigma[:, None]*z[:, 32:32+self.beats]-.5*sigma[:, None]**2)/hz[:, None]
+        onset = torch.cumsum(ibi, 1)-ibi-ibi[:, :1]*torch.sigmoid(z[:, :1])
+        index = ((onset[:, :, None] <= self.time[None, None]).sum(1)-1).clamp(0, self.beats-1)
+        tau, length = self.time[None]-onset.gather(1, index), ibi.gather(1, index)
+        if not self.beat:
+            return index, tau/length, ibi
+        mean = 1/hz[:, None]
+        systole = torch.minimum(SYSTOLE*mean, .9*length)
+        late = (systole+(mean-systole)*(tau-systole)/(length-systole))/mean
+        return index, torch.where(tau <= systole, tau/mean, late), ibi
+
+    def forward(self, z, condition):
+        raw = condition[:, -3:]*self.scale+self.center
+        hz = (raw[:, 0]/60).clamp(*self.hz_range)
+        index, fraction, ibi = self.beats_of(z, hz, raw[:, 1].clamp(0, IRR_MAX if self.beat else .3))
+        phi = 2*math.pi*(index.to(z.dtype)+fraction)
+        carrier = torch.stack([phi.sin(), phi.cos(), (2*phi).sin(), (3*phi).sin()], 1)
+        style = self.style(torch.cat((z[:, :8], condition), 1))
+        h = torch.cat([branch(torch.cat((z[:, None], carrier), 1)) for branch in self.branches], 1)
+        for block, film in zip(self.blocks, self.film):
+            gain, bias = film(style).chunk(2, 1)
+            h = block(h)*(1+.1*gain[:, :, None])+.1*bias[:, :, None]
+        knots = F.interpolate(self.head(F.avg_pool1d(h, FS)), size=LENGTH, mode="linear", align_corners=False)
+        amplitude = F.softplus(knots[:, :self.k])
+        shape = amplitude/amplitude.sum(1, keepdim=True).clamp_min(1e-6)
+        pulse = (shape*torch.sin(self.orders*phi[:, None]+knots[:, self.k:2*self.k])).sum(1, keepdim=True)
+        gain = torch.exp(.5*torch.tanh(knots[:, -1:]))
+        if self.beat:
+            beta = torch.sigmoid(self.coupling(style))
+            per_beat = torch.exp(beta*torch.log(torch.cat((ibi[:, :1], ibi[:, :-1]), 1)*hz[:, None]))
+            current, before = per_beat.gather(1, index), per_beat.gather(1, (index-1).clamp_min(0))
+            # The new beat's gain ramps in over its upstroke instead of stepping at the onset.
+            gain = gain*(before+(current-before)*(fraction/.2).clamp(0, 1))[:, None]
+        y = gain*pulse+knots[:, 2*self.k:2*self.k+1]+.15*torch.tanh(self.out(h))
         return bandlimit(y, self.view, self.band)
 
 

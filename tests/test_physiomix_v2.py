@@ -221,3 +221,120 @@ def test_c2st_floor_uses_subject_disjoint_domain_complete_halves(monkeypatch):
         assert set(dev["domain"][half]) == set(dev["domain"][rows & ~half]) == set(DOMAIN_RATE)
     floor = evaluate_v3.c2st_floor(experiment_v3.PromptedEvaluator(dev, 8), "cpu", repeats=2)
     assert len(floor["values"]) == 2 and 0 <= floor["min"] <= floor["mean"] <= floor["max"] <= 1
+
+
+# Round 4: scale-anchored pulse, physiological beat timing, learning-rate schedule and selection rule.
+CENTER, SCALE = np.array([85., .05, .2], np.float32), np.array([20., .08, .06], np.float32)
+
+
+def collapse_amplitude(model):
+    """The late-training v2 failure: harmonic amplitudes shrink while the bounded residual stays active."""
+    with torch.no_grad():
+        shrunk = .01*torch.tensor([1., .35, .12, .05, .02, .01])  # same pulse shape, 1% of the initial size
+        model.head.bias[:model.k] = torch.log(torch.expm1(shrunk))
+        torch.nn.init.normal_(model.out.weight, std=.5, generator=torch.Generator().manual_seed(1))
+    return model.eval()
+
+
+def test_scale_anchored_pulse_keeps_rate_when_harmonic_amplitude_collapses():
+    torch.manual_seed(0)
+    old, new = (collapse_amplitude(cls(10, CENTER, SCALE)) for cls in (physio.PhysioMixH, physio.PhysioMixR))
+    new.load_state_dict({k: v for k, v in old.state_dict().items() if not k.startswith("head.")}, strict=False)
+    errors = {}
+    for name, model in (("old", old), ("new", new)):
+        rates = []
+        for bpm in (60, 150):
+            z = torch.randn(8, LENGTH, generator=torch.Generator().manual_seed(bpm))
+            with torch.no_grad():
+                y = model(z, condition_rows(10, 5, bpm, .02, 8, CENTER, SCALE)).numpy()[:, 0]
+            rates.append(np.abs(np.nan_to_num(labels.beat_stats(y)[:, 0], nan=0.)-bpm))
+        errors[name] = float(np.median(np.concatenate(rates)))
+    assert errors["old"] > 10 and errors["new"] < 2, errors
+
+
+def test_beat_timing_reports_commanded_irregularity_and_matches_sinus_phase():
+    torch.manual_seed(0)
+    warped, timed = physio.PhysioMixR(10, CENTER, SCALE).eval(), physio.PhysioMixR(10, CENTER, SCALE, beat=True).eval()
+    cv = {}
+    for name, model in (("warped", warped), ("timed", timed)):
+        z = torch.randn(48, LENGTH, generator=torch.Generator().manual_seed(4))
+        with torch.no_grad():
+            y = model(z, condition_rows(10, 5, 90, .2, 48, CENTER, SCALE)).numpy()[:, 0]
+        cv[name] = float(np.nanmedian(labels.beat_stats(y)[:, 1]))
+    assert abs(cv["timed"]-.2) < .02 and cv["warped"] < .18, cv
+    z, hz = torch.randn(3, LENGTH), torch.full((3,), 1.4)
+    for a, b in zip(warped.beats_of(z, hz, torch.zeros(3)), timed.beats_of(z, hz, torch.zeros(3))):
+        torch.testing.assert_close(a, b)
+
+
+def test_pulse_amplitude_follows_the_preceding_interval_when_coupled():
+    torch.manual_seed(0)
+    model = physio.PhysioMixR(10, CENTER, SCALE, beat=True).eval()
+    with torch.no_grad():
+        model.coupling.bias.fill_(8.)  # beta ~ 1
+    z = torch.randn(1, LENGTH, generator=torch.Generator().manual_seed(2))
+    raw = torch.tensor([[95., .3]])
+    hz = raw[:, 0]/60
+    index, fraction, ibi = model.beats_of(z, hz, raw[:, 1])
+    with torch.no_grad():
+        y = model(z, condition_rows(10, 5, 95, .3, 1, CENTER, SCALE)).numpy()[0, 0]
+    beat = index.numpy()[0]
+    previous = torch.cat((ibi[:, :1], ibi[:, :-1]), 1).numpy()[0]
+    complete = [k for k in np.unique(beat)[1:-1]]
+    heights = [y[beat == k].max()-y[beat == k].min() for k in complete]
+    assert np.corrcoef(previous[complete], heights)[0, 1] > .6
+    traced = torch.jit.trace(model, (torch.randn(2, LENGTH), condition_rows(10, 5, 70, .02, 2, CENTER, SCALE)))
+    z, c = torch.randn(3, LENGTH), condition_rows(10, 5, 160, .3, 3, CENTER, SCALE)
+    torch.testing.assert_close(traced(z, c), model(z, c))
+
+
+def test_learning_rate_schedule_and_domain_distribution_loss():
+    cfg = experiment_v3.config("L1_v2_lr")
+    assert experiment_v3.learning_rate(cfg, 0, 100) == pytest.approx(1e-4)
+    assert experiment_v3.learning_rate(cfg, 100, 100) == pytest.approx(1e-5)
+    assert experiment_v3.learning_rate(experiment_v3.config("P4_v2_osc_dc"), 50, 100) == 2e-4
+    real = torch.tensor(np.stack([ppg(60+10*i, i) for i in range(8)]))[:, None]
+    domain = torch.tensor([0, 0, 0, 0, 1, 1, 1, 1])
+    assert experiment_v3.domain_distribution_loss(real, real, domain) == 0
+    swapped = real[[4, 5, 6, 7, 0, 1, 2, 3]]
+    # The pooled batch is identical, so only the per-domain term sees the mismatch.
+    from ml.kaggle_multidomain.models import distribution_loss
+    assert float(distribution_loss(swapped, real)) < 1e-6
+    assert float(experiment_v3.domain_distribution_loss(swapped, real, domain)) > 1e-3
+
+
+def test_round4_rule_prefers_fewer_changes_within_tie_and_ships_only_a_clear_gain():
+    from ml.kaggle_multidomain import experiment_v4
+
+    def rows(scores, eligible=True, real=.35):
+        return [dict(arm=arm, seed=seed, S_arm=value+.01*i, S_real_fresh=real, eligible=eligible)
+                for arm, value in scores.items() for i, seed in enumerate((42, 123, 2026))]
+    selection = experiment_v4.select_round4(rows({"L1_v2_lr": .55, "L2_rel_lr": .545, "L3_rel_beat_lr": .50,
+                                                  "L4_rel_beat_dom_lr": .495}))
+    assert selection["winner"] == "L3_rel_beat_lr" and selection["ship"] and selection["ship_seed"] == 42
+    selection = experiment_v4.select_round4(rows({a: .58 for a in experiment_v4.ROUND4}))
+    assert selection["winner"] == "L1_v2_lr" and not selection["ship"]
+    selection = experiment_v4.select_round4(rows({a: .45 for a in experiment_v4.ROUND4}, real=.5))
+    assert not selection["non_inferior"] and not selection["ship"]
+    assert experiment_v4.select_round4(rows({a: .4 for a in experiment_v4.ROUND4}, eligible=False))["winner"] is None
+
+
+def test_round4_runs_end_to_end_on_cpu_and_freezes_the_rule_first(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_v4
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    experiment_v4.main(["--input-root", str(tmp_path/"input"), "--allow-cpu", "--batch", "4", "--interval", "2",
+                        "--eval-samples", "12", "--bootstrap", "2", "--seeds", "42", "--steps", "2",
+                        "--output", str(tmp_path/"r4")])
+    out = tmp_path/"r4"
+    frozen = json.loads((out/"FROZEN_ROUND4.json").read_text())
+    assert frozen["rule_sha256"] == experiment_v4.RULE_SHA256 and set(frozen["arms"]) == set(experiment_v4.ROUND4)
+    assert frozen["arms"]["L3_rel_beat_lr"]["beat"] and not frozen["arms"]["L1_v2_lr"]["rel"]
+    assert (out/"FROZEN_ROUND4.json").stat().st_mtime <= (out/"SELECTION_ROUND4.json").stat().st_mtime
+    assert (out/"SELECTION_ROUND4.json").stat().st_mtime <= (out/"benchmark"/"results.json").stat().st_mtime
+    summary = json.loads((out/"summary.json").read_text())
+    assert set(summary["arms"]) == set(experiment_v4.ROUND4)
+    for arm in experiment_v4.ROUND4:
+        assert (out/"benchmark"/f"{arm}_seed42"/"generator_cpu.ts").exists()
+    assert (out/"REPORT_ROUND4.md").exists()

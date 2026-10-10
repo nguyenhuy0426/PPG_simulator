@@ -29,7 +29,8 @@ from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.experiment import QualityEvaluator
 from ml.kaggle_multidomain.models import distribution_loss, networks
 from ml.kaggle_multidomain.physio import (CleanDenoiser, ConditionedCritic, Conditions, DerivCritic, PhysioMix,
-                                        PhysioMixH, clean_diffusion_loss, draw, ema_model, update_ema, view_mask)
+                                        PhysioMixH, PhysioMixR, clean_diffusion_loss, draw, ema_model, update_ema,
+                                        view_mask)
 from ml.kaggle_multidomain.train import train_one
 
 PROTOCOL, VIEW = "ppg_physiomix_v3", "v3"
@@ -43,6 +44,11 @@ ARMS = {"P0_physiomix_no_div_v3": dict(version="v1"), "P1_v2_lab": dict(version=
         "P4_v2_osc_dc": dict(version="v2", osc=True, dc=True),
         "physiomix_no_div": dict(version="v1"),
         "physiodiffusion": dict(version="v1", diffusion=True, guidance=1.5, sample_steps=32)}
+# Round 4 (experiment_v4): lower cosine-decayed learning rate, then the drift and beat-timing fixes.
+LOW_LR = dict(version="v2", osc=True, dc=True, lr=1e-4, schedule="cosine")
+ARMS.update({"L1_v2_lr": LOW_LR, "L2_rel_lr": dict(LOW_LR, rel=True),
+             "L3_rel_beat_lr": dict(LOW_LR, rel=True, beat=True),
+             "L4_rel_beat_dom_lr": dict(LOW_LR, rel=True, beat=True, domloss=True)})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -69,7 +75,8 @@ def config(arm, frozen=None):
         if not frozen or "physiomix_v2" not in frozen.get("aliases", {}):
             raise ValueError("physiomix_v2 needs the frozen pilot selection")
         arm = frozen["aliases"]["physiomix_v2"]
-    return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32), **ARMS[arm]}
+    return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
+                   rel=False, beat=False, domloss=False), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -83,7 +90,10 @@ def build(cfg, conditions):
     size = conditions.bank.shape[1]
     if cfg["diffusion"]:
         return CleanDenoiser(size), None
-    generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
+    if cfg.get("rel"):
+        generator = PhysioMixR(size, conditions.center, conditions.scale, view=VIEW, beat=cfg.get("beat", False))
+    else:
+        generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
     return generator, (DerivCritic if cfg["dc"] else ConditionedCritic)(size)
 
 
@@ -96,6 +106,26 @@ def sampler(model, cfg, device):
                  for a, b in zip(z.split(64), condition.split(64))]
         return torch.cat(parts).cpu().numpy()[:, 0]
     return run
+
+
+def learning_rate(cfg, step, steps):
+    """Constant, or cosine-decayed to 10% of the initial rate at the last step."""
+    if cfg.get("schedule") != "cosine":
+        return cfg["lr"]
+    return cfg["lr"]*(.1+.45*(1+math.cos(math.pi*min(step, steps)/steps)))
+
+
+def domain_distribution_loss(fake, real, domain):
+    """distribution_loss inside each domain of the batch: a mixed batch can match the pooled spectra
+    while one small domain stays narrow."""
+    total, count = fake.new_zeros(()), 0
+    for d in domain.unique():
+        rows = domain == d
+        n = int(rows.sum())
+        if n >= 3:
+            total = total+n*distribution_loss(fake[rows], real[rows])
+            count += n
+    return total/max(count, 1)
 
 
 def pr_metrics(fake, real):
@@ -212,8 +242,8 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
     if d is not None:
         d.to(device)
     ema, diffusion = ema_model(g), cfg["diffusion"]
-    optg = torch.optim.Adam(g.parameters(), lr=2e-4, betas=(0., .99))
-    optd = torch.optim.Adam(d.parameters(), lr=2e-4, betas=(0., .99)) if d is not None else None
+    optg = torch.optim.Adam(g.parameters(), lr=cfg["lr"], betas=(0., .99))
+    optd = torch.optim.Adam(d.parameters(), lr=cfg["lr"], betas=(0., .99)) if d is not None else None
     run_dir = Path(output)/f"{arm}_seed{seed}"
     run_dir.mkdir()
     save_json(run_dir/"conditions.json", conditions.metadata())
@@ -227,6 +257,9 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
     start = time.monotonic()
     for step in range(1, steps+1):
         g.train()
+        for optimizer in (optg, optd):
+            for group in getattr(optimizer, "param_groups", ()):
+                group["lr"] = learning_rate(cfg, step-1, steps)
         chosen = rng.choice(ids, batch, p=weights)
         real = torch.tensor(pack["signal"][chosen, None], device=device)
         c = torch.tensor(conditions.for_ids(chosen), device=device)
@@ -267,6 +300,8 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             real = real.detach()
             prepare_discriminator_for_generator(d)
             lg = -d(fake, c).mean()+.5*distribution_loss(fake, real)
+            if cfg.get("domloss"):
+                lg = lg+.5*domain_distribution_loss(fake, real, c[:, :domains].argmax(1))
         if not torch.isfinite(lg+ld):
             raise RuntimeError(f"Nonfinite objective: {arm}/{seed}/{step}")
         lg.backward()
@@ -345,8 +380,8 @@ def score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
                 gates=gates, eligible=bool(eligible), latency=latency)
 
 
-def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen):
-    torch.set_num_threads(2)
+def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2):
+    torch.set_num_threads(threads)
     if device.startswith("cuda"):
         torch.cuda.set_device(device)
     pack, _ = load_input(input_root, PROTOCOL)
@@ -363,16 +398,16 @@ def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen):
     return rows
 
 
-def parallel(jobs, devices, input_root, output, steps, batch, interval, n, frozen):
+def parallel(jobs, devices, input_root, output, steps, batch, interval, n, frozen, threads=2):
     Path(output).mkdir(parents=True, exist_ok=False)
     start = time.monotonic()
     if devices == ["cpu"]:
-        rows = worker("cpu", jobs, input_root, output, steps, batch, interval, n, frozen)
+        rows = worker("cpu", jobs, input_root, output, steps, batch, interval, n, frozen, threads)
     else:
         rows = []
         with ProcessPoolExecutor(max_workers=len(devices), mp_context=multiprocessing.get_context("spawn")) as pool:
             futures = [pool.submit(worker, device, jobs[i::len(devices)], input_root, output, steps, batch,
-                                   interval, n, frozen) for i, device in enumerate(devices)]
+                                   interval, n, frozen, threads) for i, device in enumerate(devices)]
             for future in as_completed(futures):
                 rows.extend(future.result())
                 save_json(Path(output)/"selection_progress.json", rows)
@@ -382,7 +417,8 @@ def parallel(jobs, devices, input_root, output, steps, batch, interval, n, froze
     ordered = [by_job[job] for job in jobs]
     save_json(Path(output)/"training_execution.json", dict(
         wall_seconds=time.monotonic()-start, workers=len(devices), steps=steps,
-        allocated_gpus=[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())], runs=ordered))
+        allocated_gpus=[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+        threads_per_worker=threads, cpu_count=os.cpu_count(), runs=ordered))
     return ordered
 
 
