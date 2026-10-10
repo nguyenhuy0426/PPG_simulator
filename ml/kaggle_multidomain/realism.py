@@ -100,7 +100,8 @@ def grouped_c2st(real, real_groups, other, other_groups, folds, steps, seed):
     return float(np.mean(values)), folds
 
 
-def realism(pack, evaluator, sources, n=256, folds=4, steps=600, seed=0):
+def realism(pack, evaluator, sources, n=256, folds=4, steps=600, seed=0, repeats=1):
+    """repeats: C2ST fold assignments averaged; few-person datasets make one assignment noisy."""
     result = {}
     for d, domain in enumerate(DATASETS):
         unseen = balanced(pack, rows(pack, UNSEEN, domain), n, np.random.default_rng(seed+10*d))
@@ -115,10 +116,14 @@ def realism(pack, evaluator, sources, n=256, folds=4, steps=600, seed=0):
         entry = dict(people=int(len(np.unique(pack["subject"][unseen]))), windows=int(len(unseen)), compared=size)
         for name, (x, groups) in candidates.items():
             pr = pr_metrics(evaluator.blocks(x)[2], reference)
-            auc, used = grouped_c2st(real, pack["subject"][unseen], x, groups, folds, steps, seed+d)
-            entry[name] = dict(fidelity=pr["precision"], coverage=pr["recall"], c2st_auc=auc,
-                               indistinguishable=float(1-abs(2*auc-1)), c2st_folds=used)
-            print(domain, name, {k: round(v, 3) for k, v in entry[name].items()}, flush=True)
+            aucs = []
+            for r in range(repeats):
+                auc, used = grouped_c2st(real, pack["subject"][unseen], x, groups, folds, steps, seed+d+1000*r)
+                aucs.append(auc)
+            entry[name] = dict(fidelity=pr["precision"], coverage=pr["recall"], c2st_auc=float(np.mean(aucs)),
+                               c2st_auc_range=[float(min(aucs)), float(max(aucs))],
+                               indistinguishable=float(np.mean([1-abs(2*v-1) for v in aucs])), c2st_folds=used)
+            print(domain, name, {k: round(v, 3) for k, v in entry[name].items() if isinstance(v, float)}, flush=True)
         result[domain] = entry
     return result
 
@@ -205,6 +210,7 @@ def main(argv=None):
     parser.add_argument("--output", required=True)
     parser.add_argument("--samples", type=int, default=256)
     parser.add_argument("--c2st-steps", type=int, default=600)
+    parser.add_argument("--c2st-repeats", type=int, default=3)
     parser.add_argument("--state-steps", type=int, default=2500)
     parser.add_argument("--threads", type=int, default=8)
     a = parser.parse_args(argv)
@@ -220,7 +226,8 @@ def main(argv=None):
         sources["gaussian_shaper"] = gaussian_source(development, to_dev)
     evaluator = PromptedEvaluator(development, 16)
     result = dict(data_sha256=manifest["windows_sha256"], unseen_splits=list(UNSEEN), sources=list(sources),
-                  realism=realism(pack, evaluator, sources, a.samples, steps=a.c2st_steps),
+                  realism=realism(pack, evaluator, sources, a.samples, steps=a.c2st_steps,
+                                          repeats=a.c2st_repeats),
                   condition_following=condition_following(pack, sources, a.state_steps))
     save_json(Path(a.output), result)
     return result

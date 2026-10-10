@@ -446,3 +446,20 @@ def test_round5_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
     assert (out/"FROZEN_ROUND5.json").stat().st_mtime <= (out/"DECISION_ROUND5.json").stat().st_mtime
     assert (out/"benchmark"/"L3_rel_beat_lr_crop_seed42"/"generator_cpu.ts").exists()
     assert (out/"REPORT_ROUND5.md").exists()
+    # The app bundle script rebuilds the cropped generator from source and the app loads its TorchScript.
+    import shutil
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root/"scripts"))
+    import prepare_physiomix_bundle
+    from core.neural_preview import PhysioMixGenerator
+    assets = tmp_path/"assets"
+    assets.mkdir()
+    shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
+    meta = prepare_physiomix_bundle.prepare(out/"benchmark", "L3_rel_beat_lr_crop", tmp_path/"input"/"pack", assets,
+                                            None, "physiomix_round5_test")
+    assert meta["architecture"]["pad"] == physio.CROP_PAD and meta["hr_support_bpm"] == [40., 180.]
+    app = PhysioMixGenerator(assets)
+    preview = app.generate(7, 95, "gxu_finger", .02)
+    assert len(preview.samples) == 1200 and preview.provenance["measured_rate_bpm"] == pytest.approx(95, abs=5)
