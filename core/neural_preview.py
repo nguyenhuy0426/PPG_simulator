@@ -222,7 +222,32 @@ class LSMSequenceGenerator:
 
 
 def estimate_rate_bpm(values, fs):
-    """Autocorrelation pulse rate of a normalized strip: a display check, not clinical HR."""
+    """Pulse rate of a normalized strip for display, not clinical HR: autocorrelation first,
+    beat intervals when an irregular rhythm leaves no usable autocorrelation peak."""
+    rate = _acf_rate_bpm(values, fs)
+    return _beat_rate_bpm(values, fs) if rate is None else rate
+
+
+def _beat_rate_bpm(values, fs, rel=.3):
+    """Span rate over prominent peaks (numpy only); None for flat, unsmooth or beat-poor strips."""
+    import numpy as np
+    x = np.asarray(values, dtype=np.float64)
+    if len(x) < 3 or not np.isfinite(x).all():
+        return None
+    span = np.percentile(x, 95)-np.percentile(x, 5)
+    # A band-limited pulse strip changes slowly between samples; white noise does not.
+    if span <= 0 or np.std(np.diff(x)) > .8*np.std(x):
+        return None
+    w, base = max(1, round(.3*fs)), max(1, round(.6*fs))
+    peaks = [i for i in range(1, len(x)-1) if x[i] == x[max(0, i-w):i+w+1].max() and x[i] > x[i-1]
+             and x[i]-max(x[max(0, i-base):i].min(), x[i+1:i+base+1].min()) >= rel*span]
+    if len(peaks) < 5:
+        return None
+    # Used for irregular rhythms, where a long interval is real rather than a missed beat.
+    return float(60*(len(peaks)-1)/((peaks[-1]-peaks[0])/fs))
+
+
+def _acf_rate_bpm(values, fs):
     import numpy as np
     x = np.asarray(values, dtype=np.float64)
     x = x-x.mean()

@@ -22,7 +22,7 @@
     },
     "physiomix_generator": {
       "file": "physiomix_generator.ts",
-      "sha256": "56c1b851f4c0de590798ba1972e9a96c4d8f97bbf939c5339be2e6d13431d912"
+      "sha256": "16fea68ebb1d2f715f03234323391b248b39e20d5b1710e9e7f864caf665c18b"
     }
   },
   "cwgan_condition": [
@@ -61,54 +61,73 @@
   "lsm_source_sha256": "a0ff8319a281285768b34a290065ee1dc3ac112dcda7b8d54a40d013c6ddf47b",
   "note": "Research preview only. No cWGAN critic artifact exists for pilot v1.",
   "physiomix": {
-    "variant": "physiomix_v1_no_div",
-    "arm": "physiomix_no_div",
-    "seed": 123,
-    "best_step": 5000,
-    "validation_score": 0.5933330366181959,
-    "selection": "lowest validation score among seeds; no test data",
+    "variant": "physiomix_v2_osc_dc",
+    "arm": "physiomix_v2",
+    "seed": 42,
+    "best_step": 2500,
+    "validation_score": 0.5786631538990534,
+    "selection": "lowest S_arm among seeds (validation only); no test data",
+    "condition_version": "v2",
+    "architecture": {
+      "diffusion": false,
+      "osc": true,
+      "dc": true,
+      "guidance": 1.0,
+      "sample_steps": 32,
+      "version": "v2"
+    },
+    "data_support_bpm": [
+      40.0,
+      135.0
+    ],
+    "preprocessing": "v3 view: 0.5\u20138 Hz zero-phase Butterworth, per-window normalized 30 s at 40 Hz",
     "domains": [
       "bidmc",
+      "gxu_finger",
       "perform_af",
       "perform_large",
       "perform_non_af",
       "wrist"
     ],
     "center": [
-      85.0250244140625,
-      0.1757703274488449,
-      0.21306845545768738
+      85.58406066894531,
+      0.09509989619255066,
+      0.2239082008600235
     ],
     "scale": [
-      20.121566772460938,
-      0.23757752776145935,
-      0.060010455548763275
+      19.278717041015625,
+      0.09926457703113556,
+      0.05219563841819763
     ],
     "features": [
-      "PPG_peak_rate_bpm",
-      "PPG_ibi_cv",
+      "consensus_or_ecg_rate_bpm",
+      "robust_ibi_cv",
       "PPG_signal_std"
     ],
     "domain_defaults": {
       "bidmc": [
-        0.03204763844041572,
-        0.2532806694507599
+        0.03328542038798332,
+        0.2458590865135193
+      ],
+      "gxu_finger": [
+        0.05581037327647209,
+        0.23801060020923615
       ],
       "perform_af": [
-        0.2292082554038289,
-        0.20003250986337662
+        0.22413428127765656,
+        0.19636020064353943
       ],
       "perform_large": [
-        0.057218949737318836,
-        0.23452729731798172
+        0.037547286599874496,
+        0.23372143507003784
       ],
       "perform_non_af": [
-        0.03999780839930799,
-        0.23631598055362701
+        0.030788905918598175,
+        0.25675204396247864
       ],
       "wrist": [
-        0.32725509836416705,
-        0.13668928295373917
+        0.2808372676372528,
+        0.14157012104988098
       ]
     },
     "domain_defaults_features": [
@@ -116,15 +135,15 @@
       "PPG_signal_std"
     ],
     "hr_support_bpm": [
-      55.0,
-      130.0
+      40.0,
+      180.0
     ],
-    "hr_support_rule": "train proxy-rate 1-99% quantiles within the 54-198 bpm carrier clamp",
-    "checkpoint_sha256": "2e86948e7b0889daf307efa040a442fe5727a0c30e7d0bb2e01ea7cd553f9f01",
-    "kaggle_export_sha256": "b56492a2cccbf16985a26669a4cfd799e06eb41001d3790e9eb5f12a83a8d7c3",
+    "hr_support_rule": "constructed beat sequence 40-180 bpm; data_support_bpm = train label 1-99%",
+    "checkpoint_sha256": "52abb75f8c7704abca822a86c9ecb72cda71cc61cce3e06872bb4e252367ab01",
+    "kaggle_export_sha256": "253953adc7250fcee7a275b9c636725bcabc3811e29e72a984a5998ce28e58f5",
     "traced_with_torch": "2.10.0+cpu",
-    "pack_sha256": "af3c3a0ff5bd8dc41a56172ad104349db469c87bd8edae3ade7eda88e05405e0",
-    "label_type": "PPG-derived proxies; not ECG ground truth, SpO2, or clinical diagnoses",
+    "pack_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+    "label_type": "Consensus PPG rate (ECG-gated where available), robust IBI CV clipped to 0.35; engineering labels, not clinical measurements",
     "note": "Exploratory research generator. Normalized 30 s shape at 40 Hz; no calibrated AC/DC, SpO2 or paired IR/RED."
   }
 }

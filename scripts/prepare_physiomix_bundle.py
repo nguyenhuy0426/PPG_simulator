@@ -15,7 +15,6 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-CARRIER_BPM = (54., 198.)  # PhysioMix clamps its periodic prior to 0.9-3.3 Hz.
 
 
 def load_pack(path):
@@ -25,8 +24,9 @@ def load_pack(path):
     return pack, manifest
 
 
-def train_statistics(pack, domains, version='v1'):
+def train_statistics(pack, domains, version='v1', view='v1'):
     from ml.kaggle_multidomain.benchmark import morphology
+    from ml.kaggle_multidomain.physio import HZ_RANGE
     from ml.kaggle_multidomain.data_gxu import EDGE_EXCESS_MAX, edge_excess
     train = np.flatnonzero(pack['split'] == 'train')
     x = pack['signal'][train]
@@ -49,8 +49,10 @@ def train_statistics(pack, domains, version='v1'):
         from ml.kaggle_multidomain.labels import robust_labels
         rates = robust_labels(x)[0]
         rates = rates[np.isfinite(rates)]
-    lo = max(CARRIER_BPM[0], 5*np.floor(np.quantile(rates, .01)/5))
-    hi = min(CARRIER_BPM[1], 5*np.ceil(np.quantile(rates, .99)/5))
+    # PhysioMix clamps its periodic prior to the view's HZ_RANGE (v1 0.9-3.3 Hz, v3 0.6-3.3 Hz).
+    carrier = [60*hz for hz in HZ_RANGE[view]]
+    lo = max(carrier[0], 5*np.floor(np.quantile(rates, .01)/5))
+    hi = min(carrier[1], 5*np.ceil(np.quantile(rates, .99)/5))
     return defaults, strips, [float(lo), float(hi)]
 
 
@@ -93,7 +95,7 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
     pack, pack_manifest = load_pack(pack_dir)
     domains = conditions['domains']
     version = conditions.get('version', 'v1')
-    defaults, strips, support = train_statistics(pack, domains, version)
+    defaults, strips, support = train_statistics(pack, domains, version, 'v3' if cfg else 'v1')
     if version == 'v2':
         defaults = conditions['domain_defaults']
     data_support = support
@@ -127,7 +129,7 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
         features=conditions['features'], domain_defaults=defaults, domain_defaults_features=['PPG_ibi_cv', 'PPG_signal_std'],
         hr_support_bpm=support, hr_support_rule=('constructed beat sequence 40-180 bpm; data_support_bpm = train label 1-99%'
                                                  if cfg and cfg.get('osc') else
-                                                 'train proxy-rate 1-99% quantiles within the 54-198 bpm carrier clamp'),
+                                                 'train rate-label 1-99% quantiles within the view carrier clamp'),
         checkpoint_sha256=hashlib.sha256((source/'best.pt').read_bytes()).hexdigest(),
         kaggle_export_sha256=hashlib.sha256((source/'generator_cpu.ts').read_bytes()).hexdigest(),
         traced_with_torch=torch.__version__, pack_sha256=pack_manifest['windows_sha256'],

@@ -8,6 +8,7 @@ import time
 os.environ['PPG_DRY_RUN']='1'
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from PIL import ImageGrab
+import subprocess
 import customtkinter as ctk
 from config_store import config_from_ppg_params
 from core.signal_engine import SignalEngine
@@ -28,7 +29,16 @@ def main():
         assert not errors,errors
     def capture(name):
         pump();x,y=app.winfo_rootx(),app.winfo_rooty()
-        ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height())).save(args.output/name)
+        try:
+            image=ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height()))
+        except OSError:
+            # XWayland refuses root-window reads; the app's own window can still be read.
+            from smoke_physiomix_ui import xwd_window
+            try:
+                image=xwd_window(app.winfo_id())
+            except (OSError,subprocess.CalledProcessError) as exc:
+                print(f'SKIP screenshot {name}: {exc}');return
+        image.save(args.output/name)
     def no_entries(widget):
         assert not isinstance(widget,ctk.CTkEntry)
         for child in widget.winfo_children(): no_entries(child)

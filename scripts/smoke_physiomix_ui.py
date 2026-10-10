@@ -97,12 +97,24 @@ def main():
             results.append((domain, hr, preview.provenance['measured_rate_bpm']))
             capture(f'physiomix-{domain}-{hr}-vi-1280.png')
         lo, hi = panel.pm_meta['hr_support_bpm']
-        panel.hr_slider._slide(45)
-        pump(.3)
-        panel.generate()
-        wait(panel)
-        assert panel.previews['PhysioMix'].hr_target == lo, 'HR outside support must clamp to the learned range'
-        assert str(int(lo)) in panel.status.cget('text')
+        data_lo, data_hi = panel.pm_meta.get('data_support_bpm', (lo, hi))
+        if lo > 40:
+            panel.hr_slider._slide(lo-5)
+            pump(.3)
+            panel.generate()
+            wait(panel)
+            assert panel.previews['PhysioMix'].hr_target == lo, 'HR outside support must clamp to the learned range'
+            assert str(int(lo)) in panel.status.cget('text')
+        if hi > data_hi:
+            target = min(hi, 170)
+            panel.hr_slider._slide(target)
+            pump(.3)
+            panel.generate()
+            wait(panel)
+            preview = panel.previews['PhysioMix']
+            assert preview.provenance['extrapolated_morphology'] and str(int(data_hi)) in panel.status.cget('text')
+            results.append((panel.domain, target, preview.provenance['measured_rate_bpm']))
+            capture(f'physiomix-extrapolated-{target}-vi-1280.png')
         panel.play_btn.invoke()
         pump(.3)
         assert engine.is_waveform_playing

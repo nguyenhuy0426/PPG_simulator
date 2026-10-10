@@ -26,6 +26,19 @@ def test_rate_estimate_tracks_periodic_strips_and_ignores_reflected_wave(bpm):
     assert estimate_rate_bpm(pulse_train(bpm, notch=.9), 40) == pytest.approx(bpm, abs=1.5)
 
 
+def test_rate_estimate_falls_back_to_beats_for_irregular_rhythm():
+    rng = np.random.default_rng(3)
+    ibi = 60/90*np.exp(.35*rng.normal(size=60)-.35**2/2)
+    t, onsets = np.arange(1200)/40, np.cumsum(ibi)
+    k = np.clip(np.searchsorted(onsets, t, side="right")-1, 0, len(ibi)-1)
+    phase = 2*np.pi*(t-onsets[k])/ibi[k]
+    wave = np.sin(phase-np.pi/2)+.3*np.sin(2*phase)
+    strip = (wave-wave.min())/np.ptp(wave)
+    span = onsets[k[-1]]-onsets[k[0]]
+    expected = 60*(k[-1]-k[0])/span
+    assert estimate_rate_bpm(strip, 40) == pytest.approx(expected, rel=.12)
+
+
 def test_rate_estimate_rejects_flat_and_aperiodic_input():
     assert estimate_rate_bpm(np.zeros(1200), 40) is None
     assert estimate_rate_bpm(np.random.default_rng(1).normal(size=1200), 40) is None

@@ -39,7 +39,7 @@ COPY = {
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.',
                physiomix='PhysioMix · có điều kiện', hr_target='Nhịp tim mục tiêu / bpm',
                pm_info='PhysioMix sinh đoạn 30 s theo miền dữ liệu và HR mục tiêu (nhãn proxy PPG). A2 tắt; chưa đo SpO₂.',
-               pm_detail='Seed {seed} · {domain} · yêu cầu {req:.0f} bpm → đo (ACF) {meas} bpm · mô hình thăm dò, không phải HR lâm sàng.',
+               pm_detail='Seed {seed} · {domain} · yêu cầu {req:.0f} bpm → đo được {meas} bpm · mô hình thăm dò, không phải HR lâm sàng.',
                pm_clamped='HR {req:.0f} bpm ngoài vùng mô hình đã học ({lo:.0f}–{hi:.0f}); đã dùng {used:.0f} bpm. ',
                pm_stale='HR đã đổi thành {hr:.0f} bpm · nhấn “Sinh đoạn mới” để áp dụng.',
                pm_extrapolated=' Nhịp ngoài dải dữ liệu train ({lo:.0f}–{hi:.0f} bpm): hình thái là ngoại suy.',
@@ -60,7 +60,7 @@ COPY = {
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.',
                physiomix='PhysioMix · conditioned', hr_target='Target heart rate / bpm',
                pm_info='PhysioMix generates a 30 s strip for a data domain and target HR (PPG proxy labels). A2 off; no measured SpO₂.',
-               pm_detail='Seed {seed} · {domain} · requested {req:.0f} bpm → measured (ACF) {meas} bpm · exploratory model, not clinical HR.',
+               pm_detail='Seed {seed} · {domain} · requested {req:.0f} bpm → measured {meas} bpm · exploratory model, not clinical HR.',
                pm_clamped='HR {req:.0f} bpm is outside the learned range ({lo:.0f}–{hi:.0f}); used {used:.0f} bpm. ',
                pm_stale='HR changed to {hr:.0f} bpm · press “New sequence” to apply.',
                pm_extrapolated=' Rate outside the training data ({lo:.0f}–{hi:.0f} bpm): morphology is extrapolated.',
@@ -143,8 +143,19 @@ class NeuralFrame(ctk.CTkFrame):
         self.play_btn.grid(row=0,column=3)
         self.status=T.label(self,'',u(12),text_color=T.MUTED,anchor='w',justify='left',wraplength=u(900))
         self.status.grid(row=5,column=0,sticky='ew',pady=(u(6),0))
+        # Wrap at the page's real width; a fixed wraplength overflows narrower windows.
+        self._status_wrap=None
+        self.bind('<Configure>',self._fit_status,add='+')
         self.set_language(self.language)
         self.generate()
+
+    def _fit_status(self,_event=None):
+        # CTkFrame delivers <Configure> from its inner canvas, so read the frame's own width.
+        usable=self.winfo_width()-2*max(self.status.winfo_x(),0)
+        wrap=max(T.ui(200),round(usable/self.status._get_widget_scaling())-T.ui(8))
+        if wrap!=self._status_wrap:
+            self._status_wrap=wrap
+            self.status.configure(wraplength=wrap)
 
     def set_language(self, language):
         self.language=language if language in COPY else 'en'
