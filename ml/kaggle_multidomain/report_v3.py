@@ -127,8 +127,11 @@ def report(output, results, frozen):
                      f"{fmt(s.get('c2st_derivative'))} | {fmt(s['gxu_test_Q'])} | {fmt(s['gxu_test_recall'])} | "
                      f"{fmt(c.get('mae_in'), 1)} | {fmt(c.get('mae_ext'), 1)} | {fmt(s['latency_ms'], 1)} |")
     g = references["gaussian_shaper"]["gxu_fresh_test"]
+    floor = references["c2st_real_vs_real_floor"]
+    floor = (f"{floor['mean']:.3f} ({floor['min']:.3f}–{floor['max']:.3f}, {len(floor['values'])} cách chia người)"
+             if isinstance(floor, dict) else f"{floor:.3f}")
     lines += ["", f"Tham chiếu GXU test: train replay Q {references['gxu_train_replay_on_fresh_test']['Q']:.3f}; "
-              f"Gaussian shaper của app Q {g['Q']:.3f}. Sàn C2ST real-vs-real {references['c2st_real_vs_real_floor']:.3f}.",
+              f"Gaussian shaper của app Q {g['Q']:.3f}. Sàn C2ST real-vs-real {floor}.",
               "", "GXU test (22 người khỏe, chưa từng dùng để chọn) là holdout mới duy nhất; mọi split cũ chỉ thăm dò.",
               "Điểm số là độ giống phân bố của PPG đã lọc và độ chính xác điều khiển nhịp tự nhất quán;",
               "không phải độ chính xác thông số sinh lý, SpO2 hay kiểm chứng lâm sàng. Chưa đo trên Pi/DAC.",

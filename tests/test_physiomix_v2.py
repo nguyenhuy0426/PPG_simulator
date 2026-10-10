@@ -206,3 +206,18 @@ def test_full_pilot_then_frozen_benchmark_on_cpu(tmp_path, monkeypatch):
     assert summary["arms"]["physiomix_v2"]["gxu_test_Q"] is not None
     assert (tmp_path/"final"/"REPORT_VI.md").exists() and (tmp_path/"final"/"control_and_fresh_test.png").exists()
     assert (tmp_path/"final"/"benchmark"/"physiomix_v2_seed42"/"generator_cpu.ts").exists()
+
+
+def test_c2st_floor_uses_subject_disjoint_domain_complete_halves(monkeypatch):
+    from ml.kaggle_multidomain import evaluate_v3
+    for name, value in (("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    pack = v3_pack()
+    dev = {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}
+    for split in ("train", "validation"):
+        half = evaluate_v3.subject_halves(dev, split, np.random.default_rng(0))
+        rows = dev["split"] == split
+        assert not set(dev["subject"][half]) & set(dev["subject"][rows & ~half])
+        assert set(dev["domain"][half]) == set(dev["domain"][rows & ~half]) == set(DOMAIN_RATE)
+    floor = evaluate_v3.c2st_floor(experiment_v3.PromptedEvaluator(dev, 8), "cpu", repeats=2)
+    assert len(floor["values"]) == 2 and 0 <= floor["min"] <= floor["mean"] <= floor["max"] <= 1

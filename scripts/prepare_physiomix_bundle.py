@@ -9,10 +9,12 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 CARRIER_BPM = (54., 198.)  # PhysioMix clamps its periodic prior to 0.9-3.3 Hz.
 
 

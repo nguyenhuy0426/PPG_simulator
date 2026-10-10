@@ -4,6 +4,7 @@ Nothing computed here feeds back into any choice. Old test/external splits are e
 The deterministic Gaussian shaper and train replay are report-only references.
 """
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -77,21 +78,40 @@ def state_prompts(development, conditions, code, n, seed):
     return conditions.for_ids(np.random.default_rng(seed).choice(ids, n))
 
 
-def c2st_floor(evaluator, device):
-    """Real-vs-real probe on subject-disjoint validation halves: the AUC a perfect generator would get."""
-    pack = evaluator.pack
-    ids = np.flatnonzero(pack["split"] == "validation")
-    subjects = np.unique(pack["subject"][ids])
-    rng = np.random.default_rng(77)
-    half = set(rng.permutation(subjects)[:len(subjects)//2])
-    a = ids[np.isin(pack["subject"][ids], list(half))]
-    b = ids[~np.isin(pack["subject"][ids], list(half))]
-    ra, rb = rng.permutation(a), rng.permutation(b)
-    split_a, split_b = len(ra)//2, len(rb)//2
+def subject_halves(pack, split, rng):
+    """Within each domain, alternate shuffled subjects into two halves so both halves keep every domain
+    that has at least two subjects."""
+    half = np.zeros(len(pack["signal"]), dtype=bool)
+    for domain in np.unique(pack["domain"][pack["split"] == split]):
+        rows = (pack["split"] == split) & (pack["domain"] == domain)
+        chosen = rng.permutation(np.unique(pack["subject"][rows]))[::2]
+        half |= rows & np.isin(pack["subject"], chosen)
+    return half
+
+
+def c2st_floor(evaluator, device, repeats=5):
+    """Real-vs-real null in the model C2ST layout: the probe trains on two subject-disjoint halves of the
+    train split and is scored on two subject-disjoint halves of validation, pool/subject balanced. Roughly
+    the AUC a generator producing new subjects from the real population would get. Few-subject domains make
+    one split noisy, so the mean and range over `repeats` random splits are returned."""
     from ml.kaggle_multidomain import experiment_v3
-    return control.c2st_auc(pack["signal"][ra[:split_a]], pack["signal"][rb[:split_b]],
-                            pack["signal"][ra[split_a:]], pack["signal"][rb[split_b:]], device,
-                            steps=experiment_v3.C2ST_STEPS)
+    pack = evaluator.pack
+
+    def draw(split, mask, total, seed):
+        view = dict(pack, split=np.where(mask, pack["split"], "excluded"))
+        per = math.ceil(total/len(POOLS))
+        return np.concatenate([pack["signal"][balanced_indices(view, split, np.random.default_rng(seed+i), per, d)]
+                               for i, d in enumerate(POOLS.values())])
+    n_train, n_valid = experiment_v3.C2ST_TRAIN, experiment_v3.C2ST_VALID
+    values = []
+    for repeat in range(repeats):
+        rng = np.random.default_rng(77+repeat)
+        train_a, valid_a = subject_halves(pack, "train", rng), subject_halves(pack, "validation", rng)
+        values.append(control.c2st_auc(draw("train", train_a, n_train, 7001), draw("train", ~train_a, n_train, 7101),
+                                       draw("validation", valid_a, n_valid, 7002),
+                                       draw("validation", ~valid_a, n_valid, 7202),
+                                       device, steps=experiment_v3.C2ST_STEPS, seed=repeat))
+    return dict(mean=float(np.mean(values)), min=float(np.min(values)), max=float(np.max(values)), values=values)
 
 
 def evaluate_frozen(rows, pack, output, frozen, device, bootstrap, n):
