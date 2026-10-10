@@ -11,6 +11,7 @@ BioSignalSimulatorPro-main/
 ml/runs/
 assets/neural/*.ts
 !assets/neural/lsm_generator.ts
+!assets/neural/physiomix_generator.ts
 venv/
 env/
 

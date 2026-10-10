@@ -2,7 +2,10 @@
 import copy
 import math
 
+from collections import Counter
+
 import numpy as np
+from scipy.signal import butter, sosfreqz
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -10,23 +13,98 @@ from torch.nn import functional as F
 from ml.kaggle_lsm.train_lsm import FS, LENGTH
 from ml.kaggle_multidomain.benchmark import morphology
 from ml.kaggle_multidomain.data import balanced_indices
+from ml.kaggle_multidomain.labels import IRR_MAX, robust_labels
 from ml.kaggle_multidomain.models import Denoiser, Residual, ScaleCritic, alpha_schedule
+from ml.kaggle_multidomain.view import VIEWS
+
+# Carrier range per data view: v1's 0.9 Hz FIR edge cannot represent slower fundamentals.
+HZ_RANGE = {"v1": (.9, 3.3), "v3": (.6, 3.3)}
+FLOORS = np.array([5, .02, .01], dtype=np.float32)
+# A domain needs this many known labels per field; below it labelling is treated as broken.
+# Motion-dominated wrist exercise legitimately masks most windows (ECG disagrees with PPG periodicity).
+MIN_KNOWN_WINDOWS, MIN_KNOWN_FRACTION = 5, .05
+
+
+def view_mask(view):
+    """Zero-phase magnitude |H|^2 of the data view on the generator's rFFT grid."""
+    freq = np.fft.rfftfreq(LENGTH, 1/FS)
+    if view == "v1":
+        return ((freq >= .9) & (freq <= 5)).astype(np.float32)
+    spec = VIEWS[view]
+    sos = butter(spec["order"], [spec["low"], spec["high"]], "bandpass", fs=FS, output="sos")
+    return (np.abs(sosfreqz(sos, worN=freq, fs=FS)[1])**2).astype(np.float32)
 
 
 class Conditions:
-    """Only training signals fit scales and supply all unconditional sampling prompts."""
-    def __init__(self, pack):
-        self.pack = pack
+    """Only training signals fit scales and supply all unconditional sampling prompts.
+
+    v1: [domain one-hot, peak-count rate, proxy IBI CV, std] (frozen PhysioMix v1 layout).
+    v2: [domain one-hot, rate known, irregularity known, rate, irregularity, std] with robust
+    consensus/ECG-gated labels; unknown values are imputed from the same domain's known pool.
+    """
+    def __init__(self, pack, version="v1"):
+        if version not in ("v1", "v2"):
+            raise ValueError("Unknown condition version")
+        self.pack, self.version = pack, version
         self.domains = sorted(set(pack["domain"][pack["split"] == "train"]))
         ids = np.flatnonzero(pack["split"] == "train")
-        self.raw = morphology(pack["signal"][ids])[:, [0, 1, 4]].astype(np.float32)
         self.ids = ids
-        self.center = self.raw.mean(0)
-        self.scale = np.maximum(self.raw.std(0), np.array([5, .02, .01], dtype=np.float32))
-        onehot = np.eye(len(self.domains), dtype=np.float32)[
-            [self.domains.index(d) for d in pack["domain"][ids]]]
-        self.bank = np.c_[onehot, (self.raw-self.center)/self.scale].astype(np.float32)
+        domain_of = pack["domain"][ids]
+        onehot = np.eye(len(self.domains), dtype=np.float32)[[self.domains.index(d) for d in domain_of]]
+        if version == "v1":
+            self.raw = morphology(pack["signal"][ids])[:, [0, 1, 4]].astype(np.float32)
+            self.known = np.ones((len(ids), 2), dtype=np.float32)
+            self.center = self.raw.mean(0)
+            self.scale = np.maximum(self.raw.std(0), FLOORS)
+            self.bank = np.c_[onehot, (self.raw-self.center)/self.scale].astype(np.float32)
+        else:
+            self._fit_v2(pack, ids, domain_of, onehot)
         self.lookup = {int(index): i for i, index in enumerate(ids)}
+        self.defaults = {d: [float(np.median(self.raw[(domain_of == d) & (self.known[:, 1] > 0), 1]
+                                             if ((domain_of == d) & (self.known[:, 1] > 0)).any() else self.raw[domain_of == d, 1])),
+                             float(np.median(self.raw[domain_of == d, 2]))] for d in self.domains}
+
+    def _fit_v2(self, pack, ids, domain_of, onehot):
+        signal = pack["signal"][ids]
+        ecg = pack["reference_hr_bpm"][ids] if "reference_hr_bpm" in pack else None
+        rate, irr, source = robust_labels(signal, ecg)
+        ppg_only, _, _ = robust_labels(signal) if ecg is not None else (rate, None, None)
+        known = np.c_[np.isfinite(rate), np.isfinite(irr)].astype(np.float32)
+        raw = np.c_[rate, irr, signal.std(1)].astype(np.float64)
+        rng = np.random.default_rng(20261010)
+        self.coverage, self.label_source, self.label_error = {}, {}, {}
+        for d in self.domains:
+            rows = domain_of == d
+            self.coverage[d] = dict(rate=float(known[rows, 0].mean()), irregularity=float(known[rows, 1].mean()))
+            self.label_source[d] = dict(Counter(source[rows]))
+            counts = known[rows].sum(0)
+            if np.any(counts < max(MIN_KNOWN_WINDOWS, MIN_KNOWN_FRACTION*rows.sum())):
+                raise ValueError(f"Condition label coverage too low in {d}: {self.coverage[d]}")
+            self.coverage[d]["low"] = bool(min(self.coverage[d]["rate"], self.coverage[d]["irregularity"]) < .2)
+            for k in (0, 1):
+                missing = rows & (known[:, k] == 0)
+                raw[missing, k] = rng.choice(raw[rows & (known[:, k] > 0), k], missing.sum())
+            if ecg is not None and np.isfinite(ecg[rows]).any():
+                both = rows & np.isfinite(ecg) & np.isfinite(ppg_only)
+                self.label_error[d] = dict(windows=int(both.sum()), median_abs_bpm=float(np.median(np.abs(ppg_only[both]-ecg[both])))
+                                           if both.any() else None)
+        self.raw = raw.astype(np.float32)
+        self.known = known
+        self.center = np.array([raw[known[:, 0] > 0, 0].mean(), raw[known[:, 1] > 0, 1].mean(), raw[:, 2].mean()],
+                               dtype=np.float32)
+        self.scale = np.maximum(np.array([raw[known[:, 0] > 0, 0].std(), raw[known[:, 1] > 0, 1].std(),
+                                          raw[:, 2].std()], dtype=np.float32), FLOORS)
+        self.bank = np.c_[onehot, known, (self.raw-self.center)/self.scale].astype(np.float32)
+
+    def prompt(self, domain, bpm, sigma, n):
+        """Clean command for the simulator: chosen domain, rate and irregularity, domain-median std."""
+        row = np.zeros(self.bank.shape[1], dtype=np.float32)
+        row[self.domains.index(domain)] = 1
+        if self.version == "v2":
+            row[len(self.domains):len(self.domains)+2] = 1
+        raw = np.array([bpm, sigma, self.defaults[domain][1]], dtype=np.float32)
+        row[-3:] = (raw-self.center)/self.scale
+        return np.repeat(row[None], n, 0)
 
     def for_ids(self, ids):
         try:
@@ -39,17 +117,36 @@ class Conditions:
         return self.for_ids(ids)
 
     def metadata(self):
-        return dict(domains=self.domains, size=self.bank.shape[1], center=self.center.tolist(),
-                    scale=self.scale.tolist(), features=["PPG_peak_rate_bpm", "PPG_ibi_cv", "PPG_signal_std"],
-                    label_type="PPG-derived proxies; not ECG ground truth, SpO2, or clinical diagnoses",
-                    sampling="domain/patient-balanced training-only condition bank; never test prompts",
-                    training_ranges=np.c_[self.raw.min(0), self.raw.max(0)].tolist())
+        result = dict(domains=self.domains, size=self.bank.shape[1], center=self.center.tolist(),
+                      scale=self.scale.tolist(), version=self.version,
+                      features=["PPG_peak_rate_bpm", "PPG_ibi_cv", "PPG_signal_std"],
+                      label_type="PPG-derived proxies; not ECG ground truth, SpO2, or clinical diagnoses",
+                      sampling="domain/patient-balanced training-only condition bank; never test prompts",
+                      training_ranges=np.c_[self.raw.min(0), self.raw.max(0)].tolist(),
+                      domain_defaults=self.defaults, domain_defaults_features=["irregularity", "PPG_signal_std"])
+        if self.version == "v2":
+            result.update(layout=["domain one-hot"]*len(self.domains)+["rate_known", "irregularity_known",
+                                                                        "rate", "irregularity", "PPG_signal_std"],
+                          features=["consensus_or_ecg_rate_bpm", "robust_ibi_cv", "PPG_signal_std"],
+                          label_type="Consensus PPG rate (ECG-gated where available), robust IBI CV clipped to "
+                                     f"{IRR_MAX}; engineering labels, not clinical measurements",
+                          coverage=self.coverage, label_source=self.label_source, ppg_vs_ecg_label_error=self.label_error)
+        return result
 
 
-def bandlimit(x):
+_MASKS = {}
+
+
+def bandlimit(x, view="v1", mask=None):
     """Match the shared filtered target view; it does not reproduce raw motion/optical DC."""
-    freq = torch.fft.rfftfreq(LENGTH, 1/FS, device=x.device)
-    mask = (freq >= .9) & (freq <= 5)
+    if mask is None and view == "v1":
+        freq = torch.fft.rfftfreq(LENGTH, 1/FS, device=x.device)
+        mask = (freq >= .9) & (freq <= 5)
+    elif mask is None:
+        key = (view, str(x.device), x.dtype)
+        if key not in _MASKS:
+            _MASKS[key] = torch.tensor(view_mask(view), device=x.device, dtype=x.dtype)
+        mask = _MASKS[key]
     y = torch.fft.irfft(torch.fft.rfft(x, dim=-1)*mask, n=LENGTH, dim=-1)
     return (y-y.amin(-1, keepdim=True))/(y.amax(-1, keepdim=True)-y.amin(-1, keepdim=True)).clamp_min(1e-6)
 
@@ -88,8 +185,12 @@ def joint_loss(fake, real):
 
 
 class PhysioMix(nn.Module):
-    def __init__(self, size, center, scale):
+    def __init__(self, size, center, scale, view="v1"):
         super().__init__()
+        self.view, self.hz_range = view, HZ_RANGE[view]
+        if view != "v1":
+            # v1 checkpoints carry no mask buffer; only newer views store theirs.
+            self.register_buffer("band", torch.tensor(view_mask(view)))
         self.register_buffer("center", torch.tensor(center, dtype=torch.float32))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float32))
         self.style = nn.Sequential(nn.Linear(8+size, 48), nn.SiLU(), nn.Linear(48, 48))
@@ -102,7 +203,7 @@ class PhysioMix(nn.Module):
 
     def forward(self, z, condition):
         raw = condition[:, -3:]*self.scale+self.center
-        hz = (raw[:, 0]/60).clamp(.9, 3.3)
+        hz = (raw[:, 0]/60).clamp(*self.hz_range)
         time = torch.arange(LENGTH, device=z.device, dtype=z.dtype)/FS
         slow = F.interpolate(z[:, None, :32], size=LENGTH, mode="linear", align_corners=False)[:, 0]
         phase = 2*math.pi*hz[:, None]*time+z[:, :1]*math.pi+raw[:, 1:2].clamp(0, .6)*slow
@@ -112,7 +213,50 @@ class PhysioMix(nn.Module):
         for block, film in zip(self.blocks, self.film):
             gain, bias = film(style).chunk(2, 1)
             h = block(h)*(1+.1*gain[:, :, None])+.1*bias[:, :, None]
-        return bandlimit(carrier[:, :1]+.3*carrier[:, 2:3]+self.out(h))
+        return bandlimit(carrier[:, :1]+.3*carrier[:, 2:3]+self.out(h), self.view, getattr(self, "band", None))
+
+
+class PhysioMixH(PhysioMix):
+    """Constructed beat sequence plus a harmonic pulse head; the trunk only shapes each beat.
+
+    Phase advances one cycle per beat; IBIs are log-normal with sigma from the irregularity
+    command (AF-like, not a validated AF model). Six harmonic amplitudes/phases and a baseline
+    are predicted at 1 s knots, and the free residual is bounded so it cannot override the rate.
+    """
+    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160):
+        super().__init__(size, center, scale, view)
+        self.k, self.beats = harmonics, beats
+        self.head = nn.Conv1d(48, 2*harmonics+1, 1)
+        nn.init.zeros_(self.head.weight)
+        with torch.no_grad():
+            amplitude = torch.tensor([1., .35, .12, .05, .02, .01])[:harmonics]
+            self.head.bias[:harmonics] = torch.log(torch.expm1(amplitude))
+            self.head.bias[harmonics:2*harmonics] = torch.tensor([0., -1.2, -2.2, -3., -3.5, -4.])[:harmonics]
+            self.head.bias[-1] = 0
+        self.register_buffer("orders", torch.arange(1, harmonics+1, dtype=torch.float32)[None, :, None])
+        self.register_buffer("time", torch.arange(LENGTH, dtype=torch.float32)/FS)
+
+    def phase(self, z, hz, sigma):
+        ibi = torch.exp(sigma[:, None]*z[:, 32:32+self.beats]-.5*sigma[:, None]**2)/hz[:, None]
+        onset = torch.cumsum(ibi, 1)-ibi-ibi[:, :1]*torch.sigmoid(z[:, :1])
+        index = ((onset[:, :, None] <= self.time[None, None]).sum(1)-1).clamp(0, self.beats-1)
+        return 2*math.pi*(index.to(z.dtype)+(self.time[None]-onset.gather(1, index))/ibi.gather(1, index))
+
+    def forward(self, z, condition):
+        raw = condition[:, -3:]*self.scale+self.center
+        hz = (raw[:, 0]/60).clamp(*self.hz_range)
+        phi = self.phase(z, hz, raw[:, 1].clamp(0, .3))
+        carrier = torch.stack([phi.sin(), phi.cos(), (2*phi).sin(), (3*phi).sin()], 1)
+        style = self.style(torch.cat((z[:, :8], condition), 1))
+        h = torch.cat([branch(torch.cat((z[:, None], carrier), 1)) for branch in self.branches], 1)
+        for block, film in zip(self.blocks, self.film):
+            gain, bias = film(style).chunk(2, 1)
+            h = block(h)*(1+.1*gain[:, :, None])+.1*bias[:, :, None]
+        knots = F.interpolate(self.head(F.avg_pool1d(h, FS)), size=LENGTH, mode="linear", align_corners=False)
+        amplitude, theta = F.softplus(knots[:, :self.k]), knots[:, self.k:2*self.k]
+        y = ((amplitude*torch.sin(self.orders*phi[:, None]+theta)).sum(1, keepdim=True)+knots[:, -1:]
+             +.15*torch.tanh(self.out(h)))
+        return bandlimit(y, self.view, self.band)
 
 
 class ConditionedCritic(nn.Module):
@@ -125,6 +269,28 @@ class ConditionedCritic(nn.Module):
         values = []
         for net, projection in zip(self.scales, self.projections):
             h = net.net[:-1](x)
+            values.append(net.net[-1](h).mean((1, 2))+
+                          (h.mean(-1)*projection(condition)).sum(1)/math.sqrt(128))
+            x = F.avg_pool1d(x, 4, stride=2, padding=1)
+        return torch.stack(values, 1)
+
+
+class DerivCritic(ConditionedCritic):
+    """Each scale also sees first/second differences, where the v1 critic was blind."""
+    def __init__(self, size):
+        super().__init__(size)
+        for net in self.scales:
+            net.net[0] = nn.utils.spectral_norm(nn.Conv1d(3, 16, 7, stride=2, padding=3))
+
+    @staticmethod
+    def channels(x):
+        return torch.cat((x, 10*F.pad(torch.diff(x, dim=-1), (1, 0)),
+                          20*F.pad(torch.diff(x, n=2, dim=-1), (1, 1))), 1)
+
+    def forward(self, x, condition):
+        values = []
+        for net, projection in zip(self.scales, self.projections):
+            h = net.net[:-1](self.channels(x))
             values.append(net.net[-1](h).mean((1, 2))+
                           (h.mean(-1)*projection(condition)).sum(1)/math.sqrt(128))
             x = F.avg_pool1d(x, 4, stride=2, padding=1)
@@ -151,7 +317,7 @@ class CleanDenoiser(Denoiser):
         return self.out(h).tanh()
 
 
-def clean_diffusion_loss(model, real, condition, regularized=True):
+def clean_diffusion_loss(model, real, condition, regularized=True, view="v1"):
     t = torch.randint(100, (len(real),), device=real.device)
     a = alpha_schedule(real.device)[t, None, None]
     target = 2*real-1
@@ -164,12 +330,12 @@ def clean_diffusion_loss(model, real, condition, regularized=True):
     if regularized:
         early = t < 60
         if early.sum() >= 2:
-            loss = loss+.1*joint_loss(bandlimit(clean[early]), real[early])
+            loss = loss+.1*joint_loss(bandlimit(clean[early], view), real[early])
     return loss
 
 
 @torch.no_grad()
-def draw(model, z, condition, diffusion=False, guidance=1., sample_steps=32):
+def draw(model, z, condition, diffusion=False, guidance=1., sample_steps=32, view="v1"):
     if not diffusion:
         return model(z, condition)
     x = z[:, None]
@@ -183,7 +349,7 @@ def draw(model, z, condition, diffusion=False, guidance=1., sample_steps=32):
         eps = (x-a[t].sqrt()*clean)/(1-a[t]).sqrt().clamp_min(1e-6)
         x = (a[steps[i+1]].sqrt()*clean+(1-a[steps[i+1]]).sqrt()*eps
              if i+1 < len(steps) else clean)
-    return bandlimit(x)
+    return bandlimit(x, view)
 
 
 def ema_model(model):

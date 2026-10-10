@@ -19,6 +19,10 @@
     "tcn_critic": {
       "file": "tcn_critic.ts",
       "sha256": "835ea655b216bf78a2da387b6100396484c52a8208827c68ccb39d3deff62ae2"
+    },
+    "physiomix_generator": {
+      "file": "physiomix_generator.ts",
+      "sha256": "56c1b851f4c0de590798ba1972e9a96c4d8f97bbf939c5339be2e6d13431d912"
     }
   },
   "cwgan_condition": [
@@ -55,5 +59,72 @@
   "lsm_variant": "lsm_repo_corrected",
   "lsm_revision": "v2: consistent D train-mode during G update",
   "lsm_source_sha256": "a0ff8319a281285768b34a290065ee1dc3ac112dcda7b8d54a40d013c6ddf47b",
-  "note": "Research preview only. No cWGAN critic artifact exists for pilot v1."
+  "note": "Research preview only. No cWGAN critic artifact exists for pilot v1.",
+  "physiomix": {
+    "variant": "physiomix_v1_no_div",
+    "arm": "physiomix_no_div",
+    "seed": 123,
+    "best_step": 5000,
+    "validation_score": 0.5933330366181959,
+    "selection": "lowest validation score among seeds; no test data",
+    "domains": [
+      "bidmc",
+      "perform_af",
+      "perform_large",
+      "perform_non_af",
+      "wrist"
+    ],
+    "center": [
+      85.0250244140625,
+      0.1757703274488449,
+      0.21306845545768738
+    ],
+    "scale": [
+      20.121566772460938,
+      0.23757752776145935,
+      0.060010455548763275
+    ],
+    "features": [
+      "PPG_peak_rate_bpm",
+      "PPG_ibi_cv",
+      "PPG_signal_std"
+    ],
+    "domain_defaults": {
+      "bidmc": [
+        0.03204763844041572,
+        0.2532806694507599
+      ],
+      "perform_af": [
+        0.2292082554038289,
+        0.20003250986337662
+      ],
+      "perform_large": [
+        0.057218949737318836,
+        0.23452729731798172
+      ],
+      "perform_non_af": [
+        0.03999780839930799,
+        0.23631598055362701
+      ],
+      "wrist": [
+        0.32725509836416705,
+        0.13668928295373917
+      ]
+    },
+    "domain_defaults_features": [
+      "PPG_ibi_cv",
+      "PPG_signal_std"
+    ],
+    "hr_support_bpm": [
+      55.0,
+      130.0
+    ],
+    "hr_support_rule": "train proxy-rate 1-99% quantiles within the 54-198 bpm carrier clamp",
+    "checkpoint_sha256": "2e86948e7b0889daf307efa040a442fe5727a0c30e7d0bb2e01ea7cd553f9f01",
+    "kaggle_export_sha256": "b56492a2cccbf16985a26669a4cfd799e06eb41001d3790e9eb5f12a83a8d7c3",
+    "traced_with_torch": "2.10.0+cpu",
+    "pack_sha256": "af3c3a0ff5bd8dc41a56172ad104349db469c87bd8edae3ade7eda88e05405e0",
+    "label_type": "PPG-derived proxies; not ECG ground truth, SpO2, or clinical diagnoses",
+    "note": "Exploratory research generator. Normalized 30 s shape at 40 Hz; no calibrated AC/DC, SpO2 or paired IR/RED."
+  }
 }

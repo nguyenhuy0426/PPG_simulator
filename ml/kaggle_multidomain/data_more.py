@@ -15,7 +15,7 @@ BASE_SHA256 = "7c8f8bbb2b60db0605cc40d4d7c56efa92acab3b82bee78ae1faeca7f22aade8"
 ACTIVITIES = ("walk", "run", "low_resistance_bike", "high_resistance_bike")
 
 
-def finite_windows(raw, fs):
+def finite_windows(raw, fs, view="v1"):
     """Never interpolate missing physiological samples or filter across a recording gap."""
     if not np.isfinite(fs) or fs < 10 or fs > 10000:
         raise ValueError("Invalid sampling frequency")
@@ -27,7 +27,7 @@ def finite_windows(raw, fs):
         if (end-first)/fs < 30:
             rejected["short_finite_spans"] += 1
             continue
-        clips, bad = windows(raw[first:end], fs)
+        clips, bad = windows(raw[first:end], fs, view)
         rejected.update(bad)
         result.extend((round(first*FS/fs)+start, wave) for start, wave in clips)
     return result, rejected
@@ -58,13 +58,13 @@ def reference_rate(peaks, fs, start):
     return float(60/np.median(np.diff(selected))) if len(selected) >= 2 else float("nan")
 
 
-def prepare(input_root, cache, output):
+def prepare(input_root, cache, output, view="v1", base_sha=BASE_SHA256):
     import h5py
     import wfdb
 
     pack, base = load_base(input_root)
-    if base["windows_sha256"] != BASE_SHA256:
-        raise ValueError("Use the verified frozen v2 dataset")
+    if base["windows_sha256"] != base_sha or base.get("view", "v1") != view:
+        raise ValueError("Use the verified frozen base dataset for this view")
     cache, output = Path(cache), Path(output)
     output.mkdir(parents=True, exist_ok=False)
     keys = ("signal", "subject", "domain", "split", "record", "start")
@@ -81,7 +81,7 @@ def prepare(input_root, cache, output):
     checksums = {}
 
     def append(raw, fs, subject, domain, split, record, peaks, code=-1):
-        clips, bad = finite_windows(raw, fs)
+        clips, bad = finite_windows(raw, fs, view)
         rejected.update({domain+":"+key: count for key, count in bad.items()})
         for start, wave in clips:
             fingerprint = digest_row(wave)
@@ -136,8 +136,8 @@ def prepare(input_root, cache, output):
                        for split in ("train", "validation", "test", "external")}
               for domain in sorted(set(extended["domain"]))}
     np.savez_compressed(output/"windows.npz", **extended)
-    manifest = dict(protocol=PROTOCOL, windows_sha256=digest(output/"windows.npz"),
-                    base_manifest=base, base_windows_sha256=BASE_SHA256, fs_hz=FS, seconds=30,
+    manifest = dict(protocol=PROTOCOL, windows_sha256=digest(output/"windows.npz"), view=view,
+                    base_manifest=base, base_windows_sha256=base_sha, fs_hz=FS, seconds=30,
                     sources=dict(wrist=wrist, capnobase=capno), source_sha256=checksums,
                     counts=counts, wrist_subject_assignment=assignment, rejected=dict(rejected),
                     label_schema=dict(domain="9 source/activity domains; 5 training domains",

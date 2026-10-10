@@ -221,6 +221,119 @@ class LSMSequenceGenerator:
                             hr_control=False, diagnosis_labels=False))
 
 
+def estimate_rate_bpm(values, fs):
+    """Autocorrelation pulse rate of a normalized strip: a display check, not clinical HR."""
+    import numpy as np
+    x = np.asarray(values, dtype=np.float64)
+    x = x-x.mean()
+    acf = np.fft.irfft(np.abs(np.fft.rfft(x, 2*len(x)))**2, 2*len(x))[:len(x)]
+    if not np.isfinite(acf).all() or acf[0] <= 0:
+        return None
+    acf /= acf[0]
+    lo, hi = int(fs*60/200), min(int(fs*60/30), len(acf)-2)
+    peaks = [i for i in range(max(lo, 1), hi+1) if acf[i-1] <= acf[i] > acf[i+1] and acf[i] > .2]
+    if not peaks:
+        return None
+    lag = max(peaks, key=lambda i: acf[i])
+    # A non-integer period or reflected wave can make a period multiple win; prefer the
+    # shortest comparable sub-multiple.
+    for k in (4, 3, 2):
+        near = [i for i in peaks if abs(i-lag/k) <= max(1, .1*lag/k) and acf[i] >= .8*acf[lag]]
+        if near:
+            lag = max(near, key=lambda i: acf[i])
+            break
+    a, b, c = acf[lag-1], acf[lag], acf[lag+1]
+    shift = .5*(a-c)/(a-2*b+c) if a-2*b+c else 0.
+    return float(60*fs/(lag+shift))
+
+
+def physiomix_metadata(bundle=DEFAULT_BUNDLE):
+    """Conditioning schema for the UI without importing torch; None if not packaged."""
+    try:
+        manifest = json.loads((Path(bundle)/'manifest.json').read_text())
+    except (OSError, ValueError):
+        return None
+    if 'physiomix_generator' not in manifest.get('models', {}):
+        return None
+    return manifest.get('physiomix')
+
+
+class PhysioMixGenerator:
+    """Conditioned 30 s GAN: domain one-hot plus standardized PPG proxy rate, IBI CV and std."""
+    def __init__(self, bundle=DEFAULT_BUNDLE):
+        import torch
+        self.torch = torch
+        torch.set_num_threads(1)
+        bundle = Path(bundle)
+        self.manifest = json.loads((bundle/'manifest.json').read_text())
+        if 'physiomix' not in self.manifest or 'physiomix_generator' not in self.manifest['models']:
+            raise RuntimeError('PhysioMix bundle missing. Run scripts/prepare_physiomix_bundle.py first.')
+        entry = self.manifest['models']['physiomix_generator']
+        path = bundle/entry['file']
+        if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
+            raise ValueError('PhysioMix generator checksum mismatch')
+        self.meta, self.sha256 = self.manifest['physiomix'], entry['sha256']
+        self.model = torch.jit.load(str(path), map_location='cpu').eval()
+
+    def condition(self, domain, heart_rate, irregularity=None):
+        meta = self.meta
+        if domain not in meta['domains']:
+            raise ValueError(f'Unknown PhysioMix domain: {domain}')
+        lo, hi = meta['hr_support_bpm']
+        if not math.isfinite(heart_rate) or not lo <= heart_rate <= hi:
+            raise ValueError(f'PhysioMix HR target must be {lo}–{hi} bpm')
+        default_irregularity, std = meta['domain_defaults'][domain]
+        irregularity = default_irregularity if irregularity is None else float(irregularity)
+        if not math.isfinite(irregularity) or not 0 <= irregularity <= .35:
+            raise ValueError('Irregularity must be 0–0.35')
+        raw = (heart_rate, irregularity, std)
+        onehot = [1. if name == domain else 0. for name in meta['domains']]
+        # v2 conditions carry known-label flags between the domain and the standardized values.
+        flags = [1., 1.] if meta.get('condition_version') == 'v2' else []
+        return onehot+flags+[(v-c)/s for v, c, s in zip(raw, meta['center'], meta['scale'])]
+
+    def generate(self, seed, heart_rate=75., domain='bidmc', irregularity=None):
+        if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**32:
+            raise ValueError('Seed must be an integer from 0 to 4294967295')
+        torch = self.torch
+        condition = self.condition(domain, float(heart_rate), irregularity)
+        rng = torch.Generator(device='cpu').manual_seed(seed)
+        with torch.inference_mode():
+            wave = self.model(torch.randn(1, 1200, generator=rng), torch.tensor([condition]))
+        if tuple(wave.shape) != (1, 1, 1200) or not torch.isfinite(wave).all():
+            raise ValueError('Invalid PhysioMix output')
+        if wave.min() < -1e-6 or wave.max() > 1.000001 or wave.max()-wave.min() < 1e-6:
+            raise ValueError('Flat or out-of-range PhysioMix output')
+        values = wave[0, 0].clamp(0, 1).tolist()
+        samples = [(i/40, 1.5+.045*x, 1.5+.0216*x) for i, x in enumerate(values)]
+        return Preview('PhysioMix', samples, 40, seed, float(heart_rate), None, self.sha256,
+                       tuple(condition), self.meta['variant'],
+                       dict(domain=domain, measured_rate_bpm=estimate_rate_bpm(values, 40),
+                            requested_rate_bpm=float(heart_rate), exploratory=True, paired_ir_red=False,
+                            extrapolated_morphology=not (self.meta.get('data_support_bpm', self.meta['hr_support_bpm'])[0]
+                                                         <= heart_rate <= self.meta.get('data_support_bpm', self.meta['hr_support_bpm'])[1]),
+                            conditioning=self.meta.get('label_type', 'PPG-derived proxy labels; not ECG HR or diagnosis'),
+                            preprocessing=self.meta.get('preprocessing', '0.9–5 Hz band-limited, per-window normalized 30 s at 40 Hz')))
+
+
+def physiomix_reference_preview(domain, bundle=DEFAULT_BUNDLE):
+    """One processed TRAIN strip of the chosen domain; native timing, never pulse repetition."""
+    path = Path(bundle)/'physiomix_real_strips.json'
+    raw = path.read_bytes()
+    data = json.loads(raw)
+    if domain not in data['strips']:
+        raise ValueError(f'No real training strip for {domain}')
+    entry = dict(data['strips'][domain])
+    wave = entry.pop('waveform')
+    if entry['split'] != 'train' or len(wave) != 1200 or not all(
+            math.isfinite(x) and 0 <= x <= 1.000001 for x in wave):
+        raise ValueError('Invalid real training strip')
+    return Preview('Real sequence', [(i/40, 1.5+.045*x, 1.5+.0216*x) for i, x in enumerate(wave)],
+                   40, None, None, None, hashlib.sha256(raw).hexdigest(), None, 'real_train_30s_'+domain,
+                   dict(**entry, pack_sha256=data['pack_sha256'], measured_rate_bpm=estimate_rate_bpm(wave, 40),
+                        paired_ir_red=False, independent_validation=False))
+
+
 def sequence_reference_preview(bundle=DEFAULT_BUNDLE):
     """One real processed training strip; native timing, never pulse repetition."""
     path=Path(bundle)/'real_train_strip.json'

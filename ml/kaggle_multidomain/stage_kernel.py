@@ -11,15 +11,22 @@ import zlib
 def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
     root = Path(__file__).resolve().parents[2]
     branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=root, text=True).strip()
-    if not branch.startswith("codex/ppg-multidomain"):
+    # Research kernels are staged only from an experiment branch, never from main or a detached HEAD.
+    if not branch.startswith(("codex/ppg-multidomain", "claude/model-benchmark")):
         raise RuntimeError("Stage this experiment from its dedicated branch")
-    sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/bidmc_split.json"]
-    physio = mode.startswith("physio_")
+    sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py",
+               "ml/kaggle_multidomain/bidmc_split.json"]
+    physio = mode.startswith(("physio_", "physio3_"))
     if mode == "train" or physio:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("models", "benchmark", "train", "report")]
     if physio:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_more", "physio", "experiment", "report_more")]
         sources += [f"ml/kaggle_multidomain/{name}_sources.json" for name in ("wrist", "capnobase")]
+    if mode.startswith("physio3_"):
+        sources += ["ml/kaggle_multidomain/data_gxu.py"]
+    if mode in ("physio3_pilot", "physio3_final"):
+        sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("labels", "control", "experiment_v3", "evaluate_v3", "report_v3")]
+        sources += ["models/__init__.py", "models/waveform.py", "models/limits.py"]
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -29,6 +36,20 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
              ",".join(repr(str(s)) for s in seeds)+"])")
     if mode == "physio_prepare":
         entry = "from ml.kaggle_multidomain.data_more import prepare\nprepare('/kaggle/input', '/tmp/physio_raw', '/kaggle/working/physio_data')"
+    if mode == "physio3_prepare":
+        # One chained v3 view: every source re-windowed with the same DC-safe band-pass, then GXU.
+        entry = ("from ml.kaggle_multidomain import data, data_more, data_gxu\n"
+                 "_, base = data.prepare('/tmp/v3/cache', '/tmp/v3/base', True, 'v3')\n"
+                 "_, more = data_more.prepare('/tmp/v3/base', '/tmp/v3/cache', '/tmp/v3/more', 'v3', base['windows_sha256'])\n"
+                 "data_gxu.prepare('/tmp/v3/more', '/tmp/v3/cache', '/kaggle/working/physio3_data', None, 'v3', "
+                 "more['windows_sha256'], 'ppg_physiomix_v3')")
+    if mode in ("physio3_pilot", "physio3_final"):
+        stage = mode.split("_")[1]
+        args = ["--input-root", "/kaggle/input", "--output", "/kaggle/working/physiomix3", "--stage", stage,
+                "--steps", str(steps), "--pilot-steps", str(steps), "--seeds", *map(str, seeds)]
+        if stage == "final":
+            args += ["--pilot-root", "/kaggle/input"]
+        entry = f"from ml.kaggle_multidomain.experiment_v3 import main\nmain({args!r})"
     if mode == "physio_train":
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
                  f"main(['--input-root','/kaggle/input','--output','/kaggle/working/physiomix','--steps','{steps}','--seeds',"+
@@ -44,21 +65,29 @@ for name, text in FILES.items():
     path.write_text(text)
 sys.path.insert(0, str(root))
 """.replace("PAYLOAD", repr(payload))
-    if mode in ("prepare", "physio_prepare"):
+    if mode in ("prepare", "physio_prepare", "physio3_prepare"):
         script += "subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'wfdb==4.3.1', 'h5py>=3.10,<4'], check=True)\n"
     script += f"pathlib.Path('/kaggle/working/source_manifest.json').write_text({json.dumps(dict(branch=branch, files=hashes))!r})\n"+entry+"\n"
-    if mode in ("train", "physio_train"):
+    if mode in ("train", "physio_train", "physio3_pilot", "physio3_final"):
         script = "if __name__ == '__main__':\n"+"\n".join("    "+line for line in script.splitlines())+"\n"
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     (output/"run.py").write_text(script)
     metadata = json.loads(Path(__file__).with_name("kernel-metadata.json").read_text())
-    metadata.update(code_file="run.py", enable_gpu=mode in ("train", "physio_train"))
+    metadata.update(code_file="run.py", enable_gpu=mode in ("train", "physio_train", "physio3_pilot", "physio3_final"))
     if mode == "prepare":
         metadata.update(id="charlesday2612/ppg-multidomain-data-v1", title="PPG Multidomain Data v1", kernel_sources=[])
     if mode == "physio_prepare":
         metadata.update(id="charlesday2612/ppg-physiomix-data-v1", title="PPG PhysioMix Data v1",
                         kernel_sources=["charlesday2612/ppg-multidomain-data-v1"])
+    if mode == "physio3_prepare":
+        metadata.update(id="charlesday2612/ppg-physiomix3-data-v1", title="PPG PhysioMix3 Data v1", kernel_sources=[])
+    if mode == "physio3_pilot":
+        metadata.update(id="charlesday2612/ppg-physiomix3-pilot-v1", title="PPG PhysioMix3 Pilot v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "physio3_final":
+        metadata.update(id="charlesday2612/ppg-physiomix3-benchmark-v1", title="PPG PhysioMix3 Benchmark v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physiomix3-pilot-v1"])
     if mode == "physio_train":
         metadata.update(id="charlesday2612/ppg-physiomix-benchmark-v1", title="PPG PhysioMix Benchmark v1",
                         kernel_sources=["charlesday2612/ppg-physiomix-data-v1"])
@@ -71,8 +100,10 @@ sys.path.insert(0, str(root))
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--output", required=True)
-    p.add_argument("--mode", choices=("prepare", "train", "physio_prepare", "physio_train"), required=True)
+    p.add_argument("--mode", choices=("prepare", "train", "physio_prepare", "physio_train", "physio3_prepare",
+                                      "physio3_pilot", "physio3_final"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     a = p.parse_args()
-    print(stage(a.output, a.mode, a.steps or (6000 if a.mode == "physio_train" else 2000), a.seeds))
+    default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000}.get(a.mode, 2000)
+    print(stage(a.output, a.mode, a.steps or default, a.seeds))

@@ -11,9 +11,9 @@ import subprocess
 
 import numpy as np
 from scipy.io import loadmat
-from scipy.signal import resample_poly
 
-from ml.kaggle_lsm.train_lsm import DATA_URL, MAT_HASH, FS, LENGTH, bandpass, normalize, save_json
+from ml.kaggle_lsm.train_lsm import DATA_URL, MAT_HASH, FS, LENGTH, normalize, save_json
+from ml.kaggle_multidomain.view import describe as describe_view, resample_filter
 
 ZENODO = "https://zenodo.org/records/15906524/files/"
 PTT = "https://physionet.org/files/pulse-transit-time-ppg/1.0.0/"
@@ -82,14 +82,14 @@ def split_patients(patients, seed=20261009):
             (patients[:n], patients[n:2*n], patients[2*n:])) for p in group}
 
 
-def windows(raw, fs):
+def windows(raw, fs, view="v1"):
     raw = np.asarray(raw, dtype=np.float64).reshape(-1)
     if not np.isfinite(fs) or fs < 2*5 or fs > 10000:
         raise ValueError("Invalid sampling frequency")
     if not np.isfinite(raw).all() or len(raw)/fs < 30 or np.ptp(raw) < 1e-8:
         return [], Counter(invalid_record=1)
     ratio = Fraction(FS/float(fs)).limit_denominator(10000)
-    wave = bandpass(resample_poly(raw, ratio.numerator, ratio.denominator))
+    wave = resample_filter(raw, ratio.numerator, ratio.denominator, view)
     result, rejected = [], Counter()
     for start in range(0, len(wave)-LENGTH+1, LENGTH):
         raw_segment = raw[round(start*fs/FS):round((start+LENGTH)*fs/FS)]
@@ -149,7 +149,7 @@ def balanced_indices(pack, split, rng, n, domains=None):
     return rng.choice(ids, n, p=weights)
 
 
-def prepare(cache, output, include_ptt=True):
+def prepare(cache, output, include_ptt=True, view="v1"):
     cache, output = Path(cache), Path(output)
     output.mkdir(parents=True, exist_ok=False)
     records, licenses, sources = {}, {}, {}
@@ -175,7 +175,7 @@ def prepare(cache, output, include_ptt=True):
     rows, seen, rejected = [], set(), Counter()
 
     def append(raw, fs, subject, domain, split, record):
-        accepted, bad = windows(raw, fs)
+        accepted, bad = windows(raw, fs, view)
         rejected.update({domain+":"+k: v for k, v in bad.items()})
         for start, wave in accepted:
             fingerprint = hashlib.sha256(np.round(wave, 5).tobytes()).hexdigest()
@@ -220,7 +220,7 @@ def prepare(cache, output, include_ptt=True):
                           patients=len(set(pack["subject"][(pack["domain"] == d) & (pack["split"] == s)])))
                    for s in ("train", "validation", "test", "external")} for d in sorted(set(pack["domain"]))}
     manifest = dict(protocol="ppg_multidomain_v1", fs_hz=FS, seconds=30, sources=sources,
-                    preprocessing="resample_poly; 161-tap 0.9-5Hz zero-phase FIR; per-window minmax; no learned preprocessing",
+                    preprocessing=describe_view(view), view=view,
                     counts=counts, rejected=dict(rejected), patients=assignment, licenses=licenses,
                     waveform_patient_aliases=aliases,
                     unresolved_waveform_groups=sum(p.startswith("mimic-record:") for p in assignment),
