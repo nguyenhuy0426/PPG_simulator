@@ -79,7 +79,7 @@ def build_model(model_class, conditions, checkpoint):
     if cfg.get('flow'):
         from ml.kaggle_multidomain.flow import FlowGenerator
         return FlowGenerator(conditions['size'], conditions['center'], conditions['scale'], cfg['sample_steps'],
-                             cfg['guidance'], cfg.get('width', 1.)), cfg
+                             cfg['guidance'], cfg.get('width', 1.), cfg.get('flag_scaffold', False)), cfg
     if cfg.get('rel'):
         return physio.PhysioMixR(conditions['size'], conditions['center'], conditions['scale'], view='v3',
                                  beat=cfg.get('beat', False), pad=cfg.get('pad', 0),
@@ -122,7 +122,7 @@ def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix'):
         condition[i, -3:] = (raw-torch.tensor(conditions['center']))/torch.tensor(conditions['scale'])
     with torch.no_grad():
         torch.testing.assert_close(exported(z, condition), model(z, condition), **tolerance)
-        traced = torch.jit.trace(model, (z[:2], condition[:2]))
+        traced = model.export(z[:2], condition[:2]) if hasattr(model, 'export') else torch.jit.trace(model, (z[:2], condition[:2]))
         torch.testing.assert_close(traced(z, condition), model(z, condition), **tolerance)
     output.mkdir(parents=True, exist_ok=True)
     model_key = CONDITIONED[slot][1]

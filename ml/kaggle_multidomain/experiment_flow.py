@@ -37,7 +37,12 @@ INCUMBENT_ARM = "L3_rel_beat_lr_crop_r1w_motion_dom"
 DESCRIPTION = {"F1_flow": "PhysioFlow: constructed peak-phase scaffold + conditional rectified-flow 1D U-Net "
                           "(6.9M parameters, attention at 150/75 samples), velocity MSE, logit-normal times",
                "F2_flow_deriv": "PhysioFlow with an added first-difference loss on the x0 estimate (weight 1, "
-                                "low-noise weighted)"}
+                                "low-noise weighted)",
+               "F3_flow_flag_deriv": "PhysioFlow (6.9M-parameter U-Net, rectified flow) whose rhythm scaffold is given "
+                                     "only when the rate is known (as in training), plus the x0 first-difference loss "
+                                     "(weight 1)",
+               "F4_flow_flag_deriv03": "PhysioFlow with the flag-gated rhythm scaffold and the x0 first-difference loss "
+                                       "at weight 0.3"}
 
 
 def sampler_arms(arm):

@@ -69,7 +69,10 @@ ARMS.update({f"{arm}_crop_r1w_motion_dom": dict(ARMS[f"{arm}_crop_r1w_motion"], 
 # Round 10 (experiment_flow): PhysioFlow, a constructed rhythm scaffold + conditional rectified-flow U-Net, no critic.
 # Each trained arm is scored under several fixed samplers (Heun steps, guidance); a sampler arm reuses its base's run.
 FLOW = dict(version="v2", flow=True, lr=3e-4, schedule="cosine", sample_steps=8, guidance=1., latency_limit_ms=5000.)
-FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.)}
+FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
+              # Loop 2: the scaffold follows the rate-known flag (as in training), with the difference loss at 1 and 0.3.
+              "F3_flow_flag_deriv": dict(FLOW, deriv=1., flag_scaffold=True),
+              "F4_flow_flag_deriv03": dict(FLOW, deriv=.3, flag_scaffold=True)}
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 ARMS.update(FLOW_BASES)
 ARMS.update({f"{arm}_s{s}_w{w:g}": dict(cfg, sample_steps=s, guidance=w)
@@ -102,7 +105,7 @@ def config(arm, frozen=None):
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
-                   motion=False, flow=False, deriv=0., width=1., latency_limit_ms=50.), **ARMS[arm]}
+                   motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, latency_limit_ms=50.), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -116,7 +119,7 @@ def build(cfg, conditions):
     size = conditions.bank.shape[1]
     if cfg["flow"]:
         return FlowGenerator(size, conditions.center, conditions.scale, cfg["sample_steps"], cfg["guidance"],
-                             cfg["width"]), None
+                             cfg["width"], cfg["flag_scaffold"]), None
     if cfg["diffusion"]:
         return CleanDenoiser(size), None
     if cfg.get("rel"):
@@ -240,7 +243,8 @@ def c2st(evaluator, run, conditions, seed, device, derivative=True, width=16):
 def deployment_gates(model, conditions):
     model = model.cpu().eval()
     z, c = torch.randn(2, LENGTH), torch.tensor(conditions.prompt(conditions.domains[0], 75., .02, 2))
-    traced = torch.jit.trace(model, (z, c))
+    # Flows export a scripted sampler around one traced network pass; tracing them would unroll every step.
+    traced = model.export(z, c) if hasattr(model, "export") else torch.jit.trace(model, (z, c))
     for n, bpm, sigma in ((1, 45., .02), (2, 130., .2), (5, 175., .1)):
         z = torch.randn(n, LENGTH)
         c = torch.tensor(conditions.prompt(conditions.domains[-1], bpm, sigma, n))

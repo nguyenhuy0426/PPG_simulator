@@ -59,11 +59,25 @@ def test_generator_follows_the_scaffold_contract_and_traces():
     with torch.no_grad():
         y = g(z, c)
     assert y.shape == (3, 1, LENGTH) and float(y.min()) == 0 and float(y.max()) == 1
-    traced = torch.jit.trace(g, (torch.randn(2, LENGTH), condition_rows(10, 5, 80, .02, 2, CENTER, SCALE)))
-    torch.testing.assert_close(traced(z, c), y)
+    exported = g.export(torch.randn(2, LENGTH), condition_rows(10, 5, 80, .02, 2, CENTER, SCALE))
+    torch.testing.assert_close(exported(z, c), y)
     # Same z, other command: a different rhythm scaffold reaches the network.
     s75, s150 = (g.scaffold_of(z, condition_rows(10, 5, bpm, .02, 3, CENTER, SCALE)) for bpm in (75, 150))
     assert not torch.allclose(s75, s150) and torch.all(s75[:, 2] == 1)
+
+
+def test_flag_gated_scaffold_drops_when_the_rate_is_unknown_and_exports_the_same():
+    torch.manual_seed(0)
+    g = flow.FlowGenerator(10, CENTER, SCALE, sample_steps=2, width=.25, flag_scaffold=True).eval()
+    z, c = torch.randn(4, LENGTH), condition_rows(10, 5, 80, .02, 4, CENTER, SCALE)
+    c[2:, flow.RATE_KNOWN] = 0          # masked rate label, as most wrist-exercise training windows
+    s = g.scaffold_of(z, c)
+    assert torch.all(s[:2, 2] == 1) and torch.all(s[2:] == 0)
+    exported = g.export(z[:2], c[:2])
+    with torch.no_grad():
+        torch.testing.assert_close(exported(z, c), g(z, c))
+    # The always-on variant ignores the flag (pilot-1 behaviour).
+    assert torch.all(flow.FlowGenerator(10, CENTER, SCALE, width=.25).scaffold_of(z, c)[:, 2] == 1)
 
 
 def test_flow_loss_learns_a_scaffolded_pulse_quickly():
@@ -133,7 +147,7 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
         monkeypatch.setattr(experiment_v3, name, value)
     monkeypatch.setattr(experiment_flow, "CONTROL_N", 1)
     # A narrow net keeps the CPU run short; the architecture is otherwise the Kaggle one.
-    for arm in [a for a in experiment_v3.ARMS if a.startswith(("F1_flow", "F2_flow"))]:
+    for arm in [a for a in experiment_v3.ARMS if experiment_v3.ARMS[a].get("flow")]:
         monkeypatch.setitem(experiment_v3.ARMS, arm, dict(experiment_v3.ARMS[arm], width=.25))
     # A 4-step CPU net is not data-like, so its diversity gate is a coin toss; this test covers the plumbing
     # (pilot -> frozen final -> bundle -> app), so finite outputs are enough to count as eligible here.
@@ -147,12 +161,12 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     save_v3(tmp_path/"input"/"pack", v3_pack())
     common = ["--input-root", str(tmp_path/"input"), "--allow-cpu", "--batch", "4", "--interval", "2",
               "--eval-samples", "12", "--steps", "4"]
-    experiment_flow.main(common+["--stage", "pilot", "--samplers", "F1_flow_s8_w1", "F2_flow_deriv_s8_w1.5",
-                                 "--output", str(tmp_path/"pilot")])
+    experiment_flow.main(common+["--stage", "pilot", "--arms", "F1_flow", "F3_flow_flag_deriv", "--samplers",
+                                 "F1_flow_s8_w1", "F3_flow_flag_deriv_s8_w1.5", "--output", str(tmp_path/"pilot")])
     selection = json.loads((tmp_path/"pilot"/"PILOT_SELECTION_FLOW.json").read_text())
-    assert {c["sampler"] for c in selection["candidates"]} == {"F1_flow_s8_w1", "F2_flow_deriv_s8_w1.5"}
+    assert {c["sampler"] for c in selection["candidates"]} == {"F1_flow_s8_w1", "F3_flow_flag_deriv_s8_w1.5"}
     assert (tmp_path/"pilot"/"pilot"/"F1_flow_seed42"/"scaffolds.json").exists()
-    assert selection["winner"] in ("F1_flow_s8_w1", "F2_flow_deriv_s8_w1.5")
+    assert selection["winner"] in ("F1_flow_s8_w1", "F3_flow_flag_deriv_s8_w1.5")
     fake_round9(tmp_path/"r9")
     experiment_flow.main(common+["--stage", "final", "--pilot-root", str(tmp_path/"pilot"), "--incumbent-root",
                                  str(tmp_path/"r9"), "--seeds", "42", "--bootstrap", "2", "--output", str(tmp_path/"final")])

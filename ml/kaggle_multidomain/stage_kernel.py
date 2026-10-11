@@ -17,7 +17,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
         raise RuntimeError("Stage this experiment from its dedicated branch")
     sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py",
                "ml/kaggle_multidomain/bidmc_split.json"]
-    flow = mode.startswith("flow10_")
+    flow = mode.startswith(("flow10_", "flow10b_"))
     physio = flow or mode.startswith(("physio_", "physio3_", "physio4", "physio5", "physio6", "physio7", "physio8",
                                       "physio9"))
     if mode == "train" or physio:
@@ -92,6 +92,10 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
         stage = mode.split("_")[1]
         args = ["--input-root", "/kaggle/input", "--output", "/kaggle/working/physioflow10", "--stage", stage,
                 "--steps", str(steps), "--interval", "2000"]
+        if mode == "flow10b_pilot":
+            # Loop 2 (after pilot 1): flag-gated scaffold arms; guidance 1.5 lost on every pilot-1 arm, so it is dropped.
+            args += ["--arms", "F3_flow_flag_deriv", "F4_flow_flag_deriv03", "--samplers"]
+            args += [f"{arm}_s{s}_w1" for arm in ("F3_flow_flag_deriv", "F4_flow_flag_deriv03") for s in (8, 16)]
         if stage == "final":
             args += ["--pilot-root", "/kaggle/input", "--incumbent-root", "/kaggle/input", "--seeds", *map(str, seeds)]
         entry = f"from ml.kaggle_multidomain.experiment_flow import main\nmain({args!r})"
@@ -165,6 +169,13 @@ sys.path.insert(0, str(root))
     if mode == "flow10_pilot":
         metadata.update(id="charlesday2612/ppg-physioflow10-pilot-v1", title="PPG PhysioFlow10 Pilot v1",
                         kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "flow10b_pilot":
+        metadata.update(id="charlesday2612/ppg-physioflow10b-pilot-v1", title="PPG PhysioFlow10b Pilot v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "flow10b_final":
+        metadata.update(id="charlesday2612/ppg-physioflow10b-final-v1", title="PPG PhysioFlow10b Final v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10b-pilot-v1",
+                                        "charlesday2612/ppg-physiomix9-motion-dom-v1"])
     if mode == "flow10_final":
         # Round 9's output supplies the incumbent (its DECISION_ROUND5.json); the pilot supplies the frozen sampler.
         metadata.update(id="charlesday2612/ppg-physioflow10-final-v1", title="PPG PhysioFlow10 Final v1",
@@ -184,12 +195,12 @@ if __name__ == "__main__":
     p.add_argument("--output", required=True)
     p.add_argument("--mode", choices=("prepare", "train", "physio_prepare", "physio_train", "physio3_prepare",
                                       "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
-                                      "flow10_pilot", "flow10_final"), required=True)
+                                      "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
                "physio7": 20000, "physio8": 20000, "physio9": 20000, "flow10_pilot": 16000,
-               "flow10_final": 16000}.get(a.mode, 2000)
+               "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000}.get(a.mode, 2000)
     print(stage(a.output, a.mode, a.steps or default, a.seeds))

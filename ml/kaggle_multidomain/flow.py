@@ -234,15 +234,23 @@ def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=
     return loss
 
 
+# v2 condition layout [domain one-hot, rate_known, irregularity_known, rate, irregularity, std]: rate_known is 5th last.
+RATE_KNOWN = -5
+
+
 class FlowGenerator(nn.Module):
     """generator(z, condition) -> (n, 1, LENGTH) in [0, 1], like PhysioMix; z is the starting noise and
     (reversed) the rhythm noise. Fixed-step Heun integration from t=1 to 0; guidance > 1 mixes in the
-    unconditioned velocity (classifier-free guidance). Deterministic given z, so it traces to TorchScript."""
-    def __init__(self, size, center, scale, sample_steps=8, guidance=1., width=1.):
+    unconditioned velocity (classifier-free guidance). Deterministic given z.
+
+    flag_scaffold: the scaffold is given only when the condition says the rate is known, as in training,
+    where windows with masked rate labels (most wrist exercise, a third of AF) never had one. Otherwise
+    every prompt gets a scaffold. export() gives TorchScript with the integration loop kept as a loop."""
+    def __init__(self, size, center, scale, sample_steps=8, guidance=1., width=1., flag_scaffold=False):
         super().__init__()
         channels = tuple(int(round(c*width/8))*8 for c in (32, 64, 128, 160, 160))
         self.net = UNet1D(size, channels)
-        self.sample_steps, self.guidance = int(sample_steps), float(guidance)
+        self.sample_steps, self.guidance, self.flag_scaffold = int(sample_steps), float(guidance), bool(flag_scaffold)
         self.register_buffer("center", torch.tensor(center, dtype=torch.float32))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float32))
         self.register_buffer("time", torch.arange(LENGTH, dtype=torch.float32)/FS)
@@ -251,7 +259,8 @@ class FlowGenerator(nn.Module):
         raw = condition[:, -3:]*self.scale+self.center
         hz = (raw[:, 0]/60).clamp(*HZ_RANGE)
         phase = constructed_phase(z, hz, raw[:, 1].clamp(0, IRR_MAX), self.time)
-        return scaffold(phase, torch.ones_like(hz, dtype=torch.bool))
+        present = condition[:, RATE_KNOWN] > .5 if self.flag_scaffold else torch.ones_like(hz, dtype=torch.bool)
+        return scaffold(phase, present)
 
     def velocity(self, x, t, scaffold3, condition):
         tt = torch.zeros_like(x[:, 0, 0])+t
@@ -268,6 +277,69 @@ class FlowGenerator(nn.Module):
         steps = self.sample_steps
         for i in range(steps):
             t, t_next = 1-i/steps, 1-(i+1)/steps
+            v = self.velocity(x, t, s, condition)
+            proposal = x+(t_next-t)*v
+            if i < steps-1:
+                x = x+(t_next-t)*.5*(v+self.velocity(proposal, t_next, s, condition))
+            else:
+                x = proposal
+        return (x-x.amin(-1, keepdim=True))/(x.amax(-1, keepdim=True)-x.amin(-1, keepdim=True)).clamp_min(1e-6)
+
+    def export(self, z, condition):
+        """TorchScript: the U-Net traced once (one network evaluation), the sampler scripted around it.
+        Tracing forward() instead unrolls every step into one graph (tens of network copies)."""
+        net = self.net.eval()
+        n = len(z)
+        example = (z[:, None], torch.full((n,), .5), self.scaffold_of(z, condition), condition, torch.ones(n))
+        sampler = FlowSampler(torch.jit.trace(net, example), self.center, self.scale, self.time,
+                              self.sample_steps, self.guidance, self.flag_scaffold)
+        return torch.jit.script(sampler)
+
+
+class FlowSampler(nn.Module):
+    """Scriptable twin of FlowGenerator.forward around a traced velocity network."""
+    def __init__(self, net, center, scale, time, sample_steps: int, guidance: float, flag_scaffold: bool):
+        super().__init__()
+        self.net = net
+        self.register_buffer("center", center.clone())
+        self.register_buffer("scale", scale.clone())
+        self.register_buffer("time", time.clone())
+        self.sample_steps, self.guidance, self.flag_scaffold = sample_steps, guidance, flag_scaffold
+        self.hz_lo, self.hz_hi, self.irr_max, self.beats = HZ_RANGE[0], HZ_RANGE[1], IRR_MAX, BEATS
+        self.rate_known = RATE_KNOWN
+
+    def scaffold_of(self, z, condition):
+        raw = condition[:, -3:]*self.scale+self.center
+        hz = (raw[:, 0]/60).clamp(self.hz_lo, self.hz_hi)
+        sigma = raw[:, 1].clamp(0., self.irr_max)
+        u = z.flip(1)
+        ibi = torch.exp(sigma[:, None]*u[:, :self.beats]-.5*sigma[:, None]**2)/hz[:, None]
+        first = -ibi[:, :1]*torch.sigmoid(u[:, self.beats:self.beats+1])
+        peaks = first+torch.cumsum(ibi, 1)-ibi
+        index = ((peaks[:, :, None] <= self.time[None, None]).sum(1)-1).clamp(0, self.beats-1)
+        phase = index.to(z.dtype)+(self.time[None]-peaks.gather(1, index))/ibi.gather(1, index)
+        if self.flag_scaffold:
+            flag = (condition[:, self.rate_known] > .5).to(z.dtype)[:, None]
+        else:
+            flag = torch.ones_like(hz)[:, None]
+        angle = 2*math.pi*phase
+        return torch.stack((angle.sin()*flag, angle.cos()*flag, flag.expand_as(phase)), 1)
+
+    def velocity(self, x, t: float, s, condition):
+        tt = torch.zeros_like(x[:, 0, 0])+t
+        if self.guidance == 1.:
+            return self.net(x, tt, s, condition, torch.ones_like(tt))
+        both = self.net(torch.cat((x, x)), torch.cat((tt, tt)), torch.cat((s, s)), torch.cat((condition, condition)),
+                        torch.cat((torch.ones_like(tt), torch.zeros_like(tt))))
+        parts = both.chunk(2)
+        return parts[1]+self.guidance*(parts[0]-parts[1])
+
+    def forward(self, z, condition):
+        s = self.scaffold_of(z, condition)
+        x = z[:, None]
+        steps = self.sample_steps
+        for i in range(steps):
+            t, t_next = 1.-i/steps, 1.-(i+1)/steps
             v = self.velocity(x, t, s, condition)
             proposal = x+(t_next-t)*v
             if i < steps-1:
