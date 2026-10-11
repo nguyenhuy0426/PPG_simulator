@@ -27,6 +27,7 @@ from ml.kaggle_multidomain.benchmark import MORPH_NAMES, cpu_latency, sample
 from ml.kaggle_multidomain.data import balanced_indices, balanced_pool
 from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.experiment import QualityEvaluator
+from ml.kaggle_multidomain.flow import FlowGenerator
 from ml.kaggle_multidomain.models import distribution_loss, networks
 from ml.kaggle_multidomain.physio import (CROP_PAD, CleanDenoiser, ConditionedCritic, Conditions, DerivCritic,
                                         PhysioMix, PhysioMixH, PhysioMixR, clean_diffusion_loss, draw, ema_model,
@@ -65,6 +66,14 @@ ARMS.update({f"{arm}_crop_r1w_motion": dict(ARMS[f"{arm}_crop_r1w"], motion=True
 # adversarial signal alone; the per-domain spectral/ACF distribution loss targets wrist's concentrated spectrum directly.
 ARMS.update({f"{arm}_crop_r1w_motion_dom": dict(ARMS[f"{arm}_crop_r1w_motion"], domloss=True)
              for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
+# Round 10 (experiment_flow): PhysioFlow, a constructed rhythm scaffold + conditional rectified-flow U-Net, no critic.
+# Each trained arm is scored under several fixed samplers (Heun steps, guidance); a sampler arm reuses its base's run.
+FLOW = dict(version="v2", flow=True, lr=3e-4, schedule="cosine", sample_steps=8, guidance=1., latency_limit_ms=5000.)
+FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.)}
+FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
+ARMS.update(FLOW_BASES)
+ARMS.update({f"{arm}_s{s}_w{w:g}": dict(cfg, sample_steps=s, guidance=w)
+             for arm, cfg in FLOW_BASES.items() for s, w in FLOW_SAMPLERS})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -93,7 +102,7 @@ def config(arm, frozen=None):
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
-                   motion=False), **ARMS[arm]}
+                   motion=False, flow=False, deriv=0., width=1., latency_limit_ms=50.), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -105,6 +114,9 @@ def conditions_for(pack, version):
 
 def build(cfg, conditions):
     size = conditions.bank.shape[1]
+    if cfg["flow"]:
+        return FlowGenerator(size, conditions.center, conditions.scale, cfg["sample_steps"], cfg["guidance"],
+                             cfg["width"]), None
     if cfg["diffusion"]:
         return CleanDenoiser(size), None
     if cfg.get("rel"):
@@ -393,7 +405,7 @@ def score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
         except (RuntimeError, AssertionError) as error:
             gates["trace_ok"] = False
             gates["trace_error"] = str(error)[:300]
-        gates["latency_ok"] = bool(latency and latency["median_ms"] < 50)
+        gates["latency_ok"] = bool(latency and latency["median_ms"] < cfg["latency_limit_ms"])
     eligible = gates["finite"] and not gates["flat"] and gates["rho_ok"] and gates["d_clipped_ok"] and \
         gates.get("trace_ok", True) and gates.get("latency_ok", True)
     return dict(S_arm=real_score["S_real"]+.5*ctrl["C"]+.5*max(0, auc-.5), S_real_fresh=real_score["S_real"],
@@ -413,6 +425,9 @@ def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, 
     for arm, seed in jobs:
         if arm in BASELINES:
             row = train_one(arm, seed, development, evaluator, Path(output), steps, batch, interval, device)
+        elif ARMS.get(arm, {}).get("flow"):
+            from ml.kaggle_multidomain.experiment_flow import train_flow
+            row = train_flow(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen)
         else:
             row = train_conditional(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen)
         rows.append(row)
