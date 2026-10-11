@@ -490,3 +490,12 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
     assert frozen["incumbent"]["name"] == "round3_physiomix_v2"
     result = json.loads((tmp_path/"r6"/"benchmark"/"L3_rel_beat_lr_crop_r1_seed42"/"training_result.json").read_text())
     assert result["stability"]["r1_updates"] == 1 and "r1_clipped" in result["stability"]
+
+
+@pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7"])
+def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
+    from ml.kaggle_multidomain import stage_kernel
+    out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
+    manifest = json.loads((out/"source_manifest.json").read_text())
+    entry = (out/"run.py").read_text().rsplit("from ml.kaggle_multidomain.", 1)[1].split(" import")[0]
+    assert f"ml/kaggle_multidomain/{entry}.py" in manifest["files"]
