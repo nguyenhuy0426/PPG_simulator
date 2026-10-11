@@ -30,6 +30,10 @@ SYSTOLE = .35
 # from records filtered as a whole, so their ends do not meet; a circularly band-limited window does,
 # and that alone lets a probe separate real windows from their own circularly filtered copies.
 CROP_PAD = 6*FS
+# Motion oscillator band (Hz): arm swing, step and pedal cadences. Real wrist-exercise windows have a
+# concentrated spectrum (median spectral entropy 0.72, ACF peak 0.52) that beat-to-beat irregularity
+# alone cannot produce (round 7: 0.82, 0.24). The starting amplitude logit leaves other domains near unchanged.
+MOTION_HZ, MOTION_HARMONICS, MOTION_MAX, MOTION_INIT = (.5, 3.5), 3, 1.5, -3.
 
 
 def view_mask(view, n=LENGTH):
@@ -278,10 +282,13 @@ class PhysioMixR(PhysioMixH):
     irregularity); each pulse scales by (preceding IBI / mean IBI)^beta with beta in [0, 1] learned per
     condition (filling-time dependence of pulse amplitude; not a validated AF model); and the IBI
     sigma may reach the label clip IRR_MAX.
+    motion=True: an additive periodic motion component whose cadence, harmonic shape and amplitude
+    (0..MOTION_MAX of the pulse) are set per condition and noise; it models wrist motion artifact as a
+    waveform, not as a measured accelerometer signal.
     """
-    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False, pad=0):
+    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False, pad=0, motion=False):
         super().__init__(size, center, scale, view, harmonics, beats)
-        self.beat, self.pad = beat, pad
+        self.beat, self.pad, self.with_motion = beat, pad, motion
         if pad:
             # Generate pad extra samples on both sides, band-limit the long signal, keep the middle window.
             self.register_buffer("time", (torch.arange(LENGTH+2*pad, dtype=torch.float32)-pad)/FS)
@@ -296,6 +303,15 @@ class PhysioMixR(PhysioMixH):
             self.coupling = nn.Linear(48, 1)
             nn.init.zeros_(self.coupling.weight)
             nn.init.constant_(self.coupling.bias, -2.)
+        if motion:
+            # [cadence logit, amplitude logit, harmonic amplitude logits, harmonic phases]
+            self.motion = nn.Linear(48, 2+2*MOTION_HARMONICS)
+            nn.init.zeros_(self.motion.weight)
+            with torch.no_grad():
+                self.motion.bias.zero_()
+                self.motion.bias[1] = MOTION_INIT
+                self.motion.bias[2:2+MOTION_HARMONICS] = torch.log(torch.expm1(torch.tensor([1., .5, .25])))
+            self.register_buffer("motion_orders", torch.arange(1, MOTION_HARMONICS+1, dtype=torch.float32)[None, :, None])
 
     def beats_of(self, z, hz, sigma):
         """Per output sample: beat index and within-beat phase fraction; plus the beat IBIs (s)."""
@@ -309,6 +325,17 @@ class PhysioMixR(PhysioMixH):
         systole = torch.minimum(SYSTOLE*mean, .9*length)
         late = (systole+(mean-systole)*(tau-systole)/(length-systole))/mean
         return index, torch.where(tau <= systole, tau/mean, late), ibi
+
+    def motion_component(self, style, z):
+        """(n, 1, samples) periodic motion term on this model's time grid; cadence fixed within a window."""
+        m = self.motion(style)
+        hz = MOTION_HZ[0]+(MOTION_HZ[1]-MOTION_HZ[0])*torch.sigmoid(m[:, :1])
+        phi = 2*math.pi*hz*self.time[None]+math.pi*z[:, 1:2]
+        shape = F.softplus(m[:, 2:2+MOTION_HARMONICS])
+        shape = shape/shape.sum(1, keepdim=True)
+        wave = (shape[:, :, None]*torch.sin(self.motion_orders*phi[:, None]
+                                             +m[:, 2+MOTION_HARMONICS:, None])).sum(1, keepdim=True)
+        return MOTION_MAX*torch.sigmoid(m[:, 1:2])[:, :, None]*wave
 
     def forward(self, z, condition):
         raw = condition[:, -3:]*self.scale+self.center
@@ -335,6 +362,8 @@ class PhysioMixR(PhysioMixH):
             # The new beat's gain ramps in over its upstroke instead of stepping at the onset.
             gain = gain*(before+(current-before)*(fraction/.2).clamp(0, 1))[:, None]
         y = gain*pulse+knots[:, 2*self.k:2*self.k+1]+.15*torch.tanh(self.out(h))
+        if self.with_motion:
+            y = y+self.motion_component(style, z)
         if not self.pad:
             return bandlimit(y, self.view, self.band)
         y = torch.fft.irfft(torch.fft.rfft(y, dim=-1)*self.band_long, n=y.shape[-1], dim=-1)[..., self.pad:self.pad+LENGTH]

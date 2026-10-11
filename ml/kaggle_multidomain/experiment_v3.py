@@ -58,6 +58,9 @@ ARMS.update({f"{arm}_crop_r1": dict(ARMS[f"{arm}_crop"], r1_scaled_clip=True)
 # Round 7: round 5 (R1 effectively ~0.1x through clipping) beat round 6 (full R1) on C2ST 0.78 vs 0.90.
 ARMS.update({f"{arm}_crop_r1w": dict(ARMS[f"{arm}_crop_r1"], r1_weight=.1)
              for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
+# Round 8: round 7 plus a periodic motion component (wrist coverage 40% -> 18% and a spread spectrum in round 7).
+ARMS.update({f"{arm}_crop_r1w_motion": dict(ARMS[f"{arm}_crop_r1w"], motion=True)
+             for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -85,7 +88,8 @@ def config(arm, frozen=None):
             raise ValueError("physiomix_v2 needs the frozen pilot selection")
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
-                   rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.), **ARMS[arm]}
+                   rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
+                   motion=False), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -101,7 +105,7 @@ def build(cfg, conditions):
         return CleanDenoiser(size), None
     if cfg.get("rel"):
         generator = PhysioMixR(size, conditions.center, conditions.scale, view=VIEW, beat=cfg.get("beat", False),
-                               pad=cfg.get("pad", 0))
+                               pad=cfg.get("pad", 0), motion=cfg.get("motion", False))
     else:
         generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
     return generator, (DerivCritic if cfg["dc"] else ConditionedCritic)(size)

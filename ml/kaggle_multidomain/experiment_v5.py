@@ -7,11 +7,18 @@ waveform. One arm, three seeds. The rule names the incumbent (round-4 winner if 
 round-3 v2) with its per-seed scores and is frozen before training; the GXU test is scored after.
 Round 6 (variant crop_r1) repeats it with the critic clip on lazy-R1 steps scaled by the 16-step interval:
 in round 5 every R1 step was clipped (median norm ~100 vs limit 10), failing the d_clipped gate on all seeds.
+Round 8 (crop_r1w_motion) targets one pool: it ships on a clear validation wrist-Q gain while S_arm stays within
+the pooled seed SD of the incumbent.
 """
 VARIANTS = {"crop": "a {pad}-sample cropped output",
             "crop_r1": "a {pad}-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160)",
             "crop_r1w": "a {pad}-sample cropped output, the x16 R1-step clip and the R1 weight lowered to 0.1, about "
-                        "the effective strength of round 5's always-clipped R1 (norm 10 of ~100)"}
+                        "the effective strength of round 5's always-clipped R1 (norm 10 of ~100)",
+            "crop_r1w_motion": "a {pad}-sample cropped output, the x16 R1-step clip, R1 weight 0.1 and an added periodic "
+                               "motion component (0.5-3.5 Hz cadence, 3 harmonics, amplitude up to 1.5x the pulse, set "
+                               "per condition and noise)"}
+# Variants judged on one validation pool first; the others are judged on S_arm.
+TARGETED = {"crop_r1w_motion": "wrist"}
 import argparse
 import hashlib
 import json
@@ -34,7 +41,12 @@ from ml.kaggle_multidomain.report_v3 import fmt, stat, summarize
 def scores(execution, arm):
     rows = sorted((r for r in json.loads(execution.read_text())["runs"] if r["arm"] == arm), key=lambda r: r["seed"])
     return dict(arm=arm, S_arm=[r["S_arm"] for r in rows], S_real_fresh=[r["S_real_fresh"] for r in rows],
-                seeds=[r["seed"] for r in rows])
+                seeds=[r["seed"] for r in rows], wrist_Q=[pool_q(r, "wrist") for r in rows])
+
+
+def pool_q(row, pool):
+    """Fresh-seed validation Q of one pool at the selected checkpoint (None for rows without it)."""
+    return row.get("prompted_validation", {}).get("pools", {}).get(pool, {}).get("Q")
 
 
 def round4_reference(root, incumbent_root=None):
@@ -60,6 +72,21 @@ def rule_text(base, incumbent, variant="crop"):
     mean = sum(incumbent["S_arm"])/len(incumbent["S_arm"])
     arm = f"{base['arm']}_{variant}"
     change = VARIANTS[variant].format(pad=config(arm)["pad"])
+    target = TARGETED.get(variant)
+    if target:
+        values = incumbent.get(f"{target}_Q") or []
+        if not values or None in values:
+            raise ValueError(f"Incumbent {incumbent['name']} has no per-seed validation {target} Q")
+        return (f"PhysioMix {variant} rule (validation only; locked criterion sha256 {CRITERION_SHA256}).\n"
+                f"Arm {arm} = round-4 winner {base['arm']} with {change}, same seeds, steps and learning-rate schedule "
+                "as round 4; every round-3 gate unchanged.\n"
+                f"Incumbent: {incumbent['name']}, S_arm {incumbent['S_arm']}, S_real {incumbent['S_real_fresh']}, "
+                f"validation {target} Q {values} (mean S_arm {mean:.4f}).\n"
+                f"Ship the arm only if every seed passes the round-3 gates, its mean validation {target} Q beats the "
+                f"incumbent's by more than the pooled seed SD of {target} Q, its mean S_arm is at most the incumbent's "
+                "mean + the pooled seed SD of S_arm, and its mean S_real is at most the incumbent's + 0.05; the shipped "
+                "seed is its lowest-S_arm seed. Otherwise the incumbent stays. The GXU test is scored only after this "
+                "decision is saved.")
     return (f"PhysioMix {variant} rule (validation only; locked criterion sha256 {CRITERION_SHA256}).\n"
             f"Arm {arm} = round-4 winner {base['arm']} with {change}, same seeds, steps and learning-rate schedule "
             "as round 4; every round-3 gate unchanged.\n"
@@ -70,7 +97,7 @@ def rule_text(base, incumbent, variant="crop"):
             "lowest-S_arm seed. Otherwise the incumbent stays. The GXU test is scored only after this decision is saved.")
 
 
-def decide(rows, arm, incumbent):
+def decide(rows, arm, incumbent, target=None):
     mine = [r for r in rows if r["arm"] == arm]
     s_arm, s_real = stat([r["S_arm"] for r in mine]), stat([r["S_real_fresh"] for r in mine])
     ref, ref_real = stat(incumbent["S_arm"]), stat(incumbent["S_real_fresh"])
@@ -78,9 +105,19 @@ def decide(rows, arm, incumbent):
     pooled = math.sqrt(((s_arm["sd"] or 0)**2+(ref["sd"] or 0)**2)/2)
     gap = ref["mean"]-s_arm["mean"]
     non_inferior = s_real["mean"] <= ref_real["mean"]+.05
-    return dict(arm=arm, incumbent=incumbent["name"], ship=bool(eligible and gap > pooled and non_inferior),
-                ship_seed=min(mine, key=lambda r: r["S_arm"])["seed"], eligible=eligible, gap=gap, pooled_sd=pooled,
-                non_inferior=non_inferior, S_arm=s_arm, S_real=s_real, incumbent_S_arm=ref, incumbent_S_real=ref_real)
+    result = dict(arm=arm, incumbent=incumbent["name"], ship=bool(eligible and gap > pooled and non_inferior),
+                  ship_seed=min(mine, key=lambda r: r["S_arm"])["seed"], eligible=eligible, gap=gap, pooled_sd=pooled,
+                  non_inferior=non_inferior, S_arm=s_arm, S_real=s_real, incumbent_S_arm=ref, incumbent_S_real=ref_real)
+    if target is None:
+        return result
+    own, theirs = stat([pool_q(r, target) for r in mine]), stat(incumbent[f"{target}_Q"])
+    if own is None:
+        return dict(result, ship=False, target=target, target_Q=None, incumbent_target_Q=theirs)
+    target_pooled = math.sqrt(((own["sd"] or 0)**2+(theirs["sd"] or 0)**2)/2)
+    target_gap, overall_ok = theirs["mean"]-own["mean"], s_arm["mean"] <= ref["mean"]+pooled
+    return dict(result, ship=bool(eligible and target_gap > target_pooled and overall_ok and non_inferior),
+                target=target, target_Q=own, incumbent_target_Q=theirs, target_gap=target_gap,
+                target_pooled_sd=target_pooled, S_arm_within_pooled_sd=overall_ok)
 
 
 def main(argv=None):
@@ -120,7 +157,7 @@ def main(argv=None):
               data_sha256=manifest["windows_sha256"], view=VIEW, gxu_test_subjects=sealed_count))
     rows = parallel([(arm, seed) for seed in a.seeds], devices, a.input_root, output/"benchmark", a.steps, a.batch,
                     a.interval, a.eval_samples, None, threads)
-    decision = decide(rows, arm, incumbent)
+    decision = decide(rows, arm, incumbent, TARGETED.get(a.variant))
     save_json(output/"DECISION_ROUND5.json", decision)
     print("DECISION", arm, "ship", decision["ship"], flush=True)
     from ml.kaggle_multidomain.evaluate_v3 import evaluate_frozen
@@ -136,6 +173,9 @@ def main(argv=None):
         f"# PhysioMix round 5: {arm}", "",
         f"Đưa vào app: **{decision['ship']}** so với {incumbent['name']} (S_arm {fmt(decision['incumbent_S_arm'])}); "
         f"chênh {decision['gap']:.3f}, SD gộp {decision['pooled_sd']:.3f}.", "",
+        *([f"Mục tiêu {decision['target']}: Q {fmt(decision['target_Q'])} so với {fmt(decision['incumbent_target_Q'])}; "
+           f"chênh {decision.get('target_gap', float('nan')):.3f}, SD gộp {decision.get('target_pooled_sd', float('nan')):.3f}.", ""]
+          if "target" in decision else []),
         f"S_arm {fmt(s['S_arm'])}, S_real {fmt(s['S_real'])}, C {fmt(s['C'])}, C2ST đạo hàm {fmt(s['c2st_derivative'])}, "
         f"C2ST raw {fmt(s['c2st_raw'])}, GXU test Q {fmt(s['gxu_test_Q'])} (test đã mở ở round 3; chỉ báo cáo).", "",
         "![Control](control_and_fresh_test.png)", "![Waveforms](waveforms_gxu.png)"])+"\n")

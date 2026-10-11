@@ -1,6 +1,7 @@
 """PhysioMix v2 round: robust labels, v3 view, constructed-rate generator, derivative critic,
 condition schema, holdout isolation and the full pilot -> frozen benchmark flow on CPU."""
 import json
+import math
 
 import pytest
 
@@ -492,10 +493,99 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
     assert result["stability"]["r1_updates"] == 1 and "r1_clipped" in result["stability"]
 
 
-@pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7"])
+@pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
     manifest = json.loads((out/"source_manifest.json").read_text())
     entry = (out/"run.py").read_text().rsplit("from ml.kaggle_multidomain.", 1)[1].split(" import")[0]
     assert f"ml/kaggle_multidomain/{entry}.py" in manifest["files"]
+
+
+def test_motion_component_starts_near_off_and_can_add_a_cadence_line():
+    torch.manual_seed(0)
+    plain = physio.PhysioMixR(10, CENTER, SCALE, beat=True, pad=physio.CROP_PAD).eval()
+    moving = physio.PhysioMixR(10, CENTER, SCALE, beat=True, pad=physio.CROP_PAD, motion=True).eval()
+    # A round-7 checkpoint has no motion head; the shared weights load unchanged.
+    missing = moving.load_state_dict(plain.state_dict(), strict=False).missing_keys
+    assert set(missing) == {"motion.weight", "motion.bias", "motion_orders"}
+    z, c = torch.randn(16, LENGTH, generator=torch.Generator().manual_seed(3)), condition_rows(10, 5, 70, .02, 16, CENTER, SCALE)
+    with torch.no_grad():
+        before, after = plain(z, c).numpy()[:, 0], moving(z, c).numpy()[:, 0]
+    assert np.median(np.abs(after-before)) < .05
+    assert np.all(np.abs(labels.beat_stats(after)[:, 0]-70) <= .03*70)
+    with torch.no_grad():
+        moving.motion.bias[0] = math.log((2.5-physio.MOTION_HZ[0])/(physio.MOTION_HZ[1]-2.5))  # 2.5 Hz cadence
+        moving.motion.bias[1] = 8.  # full amplitude
+        y = moving(z, c).numpy()[:, 0]
+    freq = np.fft.rfftfreq(LENGTH, 1/FS)
+    power = np.abs(np.fft.rfft(y-y.mean(1, keepdims=True)))**2
+    assert np.all(np.abs(freq[power.argmax(1)]-2.5) <= .15), freq[power.argmax(1)]
+    traced = torch.jit.trace(moving, (torch.randn(2, LENGTH), condition_rows(10, 5, 70, .02, 2, CENTER, SCALE)))
+    torch.testing.assert_close(traced(z, c), moving(z, c))
+
+
+def fake_round7(root, wrist=(.62, .62, .72)):
+    (root/"benchmark").mkdir(parents=True)
+    (root/"DECISION_ROUND5.json").write_text(json.dumps(dict(arm="L3_rel_beat_lr_crop_r1w", ship=True)))
+    runs = [dict(arm="L3_rel_beat_lr_crop_r1w", seed=s, S_arm=v, S_real_fresh=.36,
+                 prompted_validation=dict(pools=dict(wrist=dict(Q=q))))
+            for s, v, q in zip((42, 123, 2026), (.46, .51, .56), wrist)]
+    (root/"benchmark"/"training_execution.json").write_text(json.dumps(dict(runs=runs)))
+
+
+def test_round8_rule_ships_on_a_clear_wrist_gain_without_an_overall_loss(tmp_path):
+    from ml.kaggle_multidomain import experiment_v5
+    assert experiment_v3.config("L3_rel_beat_lr_crop_r1w_motion")["motion"]
+    assert not experiment_v3.config("L3_rel_beat_lr_crop_r1w")["motion"]
+    fake_round4(tmp_path/"r4", ship=False)
+    fake_round7(tmp_path/"r7")
+    base, incumbent = experiment_v5.round4_reference(tmp_path/"r4", tmp_path/"r7")
+    assert incumbent["wrist_Q"] == [.62, .62, .72]
+    rule = experiment_v5.rule_text(base, incumbent, "crop_r1w_motion")
+    assert "validation wrist Q [0.62, 0.62, 0.72]" in rule and "motion component" in rule
+    with pytest.raises(ValueError):
+        experiment_v5.rule_text(base, dict(incumbent, wrist_Q=[None]*3), "crop_r1w_motion")
+    arm = "L3_rel_beat_lr_crop_r1w_motion"
+
+    def rows(s_arm, wrist):
+        return [dict(arm=arm, seed=s, S_arm=a, S_real_fresh=.36, eligible=True,
+                     prompted_validation=dict(pools=dict(wrist=dict(Q=q)))) for s, a, q in zip((42, 123, 2026), s_arm, wrist)]
+    better_wrist = (.45, .48, .50)
+    decision = experiment_v5.decide(rows((.49, .52, .55), better_wrist), arm, incumbent, "wrist")
+    assert decision["ship"] and decision["target_gap"] > decision["target_pooled_sd"]
+    # Same wrist gain but S_arm worse than the incumbent beyond the pooled SD: not shipped.
+    assert not experiment_v5.decide(rows((.60, .62, .64), better_wrist), arm, incumbent, "wrist")["ship"]
+    # Within-noise wrist change: not shipped even with a better S_arm.
+    assert not experiment_v5.decide(rows((.40, .41, .42), (.60, .63, .70)), arm, incumbent, "wrist")["ship"]
+
+
+def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_v5
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    fake_round4(tmp_path/"r4", ship=False)
+    fake_round7(tmp_path/"r7")
+    experiment_v5.main(["--input-root", str(tmp_path/"input"), "--round4-root", str(tmp_path/"r4"), "--allow-cpu",
+                        "--incumbent-root", str(tmp_path/"r7"), "--batch", "4", "--interval", "2", "--eval-samples", "12",
+                        "--bootstrap", "2", "--seeds", "42", "--steps", "2", "--variant", "crop_r1w_motion",
+                        "--output", str(tmp_path/"r8")])
+    out = tmp_path/"r8"
+    frozen = json.loads((out/"FROZEN_ROUND5.json").read_text())
+    assert frozen["arm"] == "L3_rel_beat_lr_crop_r1w_motion" and frozen["config"]["motion"]
+    assert frozen["incumbent"]["name"] == "L3_rel_beat_lr_crop_r1w"
+    decision = json.loads((out/"DECISION_ROUND5.json").read_text())
+    assert decision["target"] == "wrist"
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root/"scripts"))
+    import prepare_physiomix_bundle
+    import shutil
+    assets = tmp_path/"assets"
+    assets.mkdir()
+    shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
+    meta = prepare_physiomix_bundle.prepare(out/"benchmark", "L3_rel_beat_lr_crop_r1w_motion", tmp_path/"input"/"pack",
+                                            assets, None, "physiomix_round8_test")
+    assert meta["architecture"]["motion"]
