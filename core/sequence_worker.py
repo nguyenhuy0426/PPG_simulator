@@ -7,13 +7,13 @@ import json
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('seed', type=int)
-    parser.add_argument('--model', choices=('lsm', 'physiomix'), default='lsm')
+    parser.add_argument('--model', choices=('lsm', 'physiomix', 'physioflow'), default='lsm')
     parser.add_argument('--hr', type=float, default=75.)
     parser.add_argument('--domain', default='bidmc')
     args = parser.parse_args(argv)
-    if args.model == 'physiomix':
+    if args.model in ('physiomix', 'physioflow'):
         from core.neural_preview import PhysioMixGenerator
-        preview = PhysioMixGenerator().generate(args.seed, args.hr, args.domain)
+        preview = PhysioMixGenerator(slot=args.model).generate(args.seed, args.hr, args.domain)
     else:
         from core.neural_preview import LSMSequenceGenerator
         preview = LSMSequenceGenerator().generate(args.seed)

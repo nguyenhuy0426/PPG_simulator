@@ -135,6 +135,15 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     # A narrow net keeps the CPU run short; the architecture is otherwise the Kaggle one.
     for arm in [a for a in experiment_v3.ARMS if a.startswith(("F1_flow", "F2_flow"))]:
         monkeypatch.setitem(experiment_v3.ARMS, arm, dict(experiment_v3.ARMS[arm], width=.25))
+    # A 4-step CPU net is not data-like, so its diversity gate is a coin toss; this test covers the plumbing
+    # (pilot -> frozen final -> bundle -> app), so finite outputs are enough to count as eligible here.
+    real_score_arm = experiment_flow.score_arm
+
+    def plumbing_score(*args, **kwargs):
+        result = real_score_arm(*args, **kwargs)
+        assert result["gates"]["finite"] and result["gates"]["trace_ok"]
+        return dict(result, eligible=True)
+    monkeypatch.setattr(experiment_flow, "score_arm", plumbing_score)
     save_v3(tmp_path/"input"/"pack", v3_pack())
     common = ["--input-root", str(tmp_path/"input"), "--allow-cpu", "--batch", "4", "--interval", "2",
               "--eval-samples", "12", "--steps", "4"]
@@ -143,8 +152,7 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     selection = json.loads((tmp_path/"pilot"/"PILOT_SELECTION_FLOW.json").read_text())
     assert {c["sampler"] for c in selection["candidates"]} == {"F1_flow_s8_w1", "F2_flow_deriv_s8_w1.5"}
     assert (tmp_path/"pilot"/"pilot"/"F1_flow_seed42"/"scaffolds.json").exists()
-    if selection["winner"] is None:
-        pytest.skip("4-step CPU nets failed a gate; the final stage needs an eligible pilot winner")
+    assert selection["winner"] in ("F1_flow_s8_w1", "F2_flow_deriv_s8_w1.5")
     fake_round9(tmp_path/"r9")
     experiment_flow.main(common+["--stage", "final", "--pilot-root", str(tmp_path/"pilot"), "--incumbent-root",
                                  str(tmp_path/"r9"), "--seeds", "42", "--bootstrap", "2", "--output", str(tmp_path/"final")])
@@ -157,4 +165,22 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     traced = torch.jit.load(str(run/"generator_cpu.ts"))
     y = traced(torch.randn(2, LENGTH), condition_rows(11, 6, 90, .02, 2, CENTER, SCALE))
     assert y.shape == (2, 1, LENGTH) and np.isfinite(y.detach().numpy()).all()
+    # The app bundle script rebuilds the flow from source into its own slot; the app loads it by slot.
+    import shutil
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root/"scripts"))
+    import prepare_physiomix_bundle
+    from core.neural_preview import PhysioMixGenerator, physiomix_metadata
+    assets = tmp_path/"assets"
+    assets.mkdir()
+    shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
+    meta = prepare_physiomix_bundle.prepare(out/"benchmark", selection["winner"], tmp_path/"input"/"pack", assets, None,
+                                            "physioflow_round10_test", "physioflow")
+    assert meta["architecture"]["flow"] and meta["hr_support_bpm"] == [40., 180.]
+    assert physiomix_metadata(assets, "physioflow")["variant"] == "physioflow_round10_test"
+    assert physiomix_metadata(assets)["variant"] != "physioflow_round10_test"
+    preview = PhysioMixGenerator(assets, slot="physioflow").generate(7, 95, "gxu_finger", .02)
+    assert preview.name == "PhysioFlow" and len(preview.samples) == 1200 and preview.hr_target == 95
     assert labels.IRR_MAX == .35

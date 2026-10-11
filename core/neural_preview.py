@@ -272,41 +272,50 @@ def _acf_rate_bpm(values, fs):
     return float(60*fs/(lag+shift))
 
 
-def physiomix_metadata(bundle=DEFAULT_BUNDLE):
+# Conditioned generators sharing one (z, condition) TorchScript contract: manifest key -> (display name, model entry).
+CONDITIONED = {'physiomix': ('PhysioMix', 'physiomix_generator'),
+               'physioflow': ('PhysioFlow', 'physioflow_generator')}
+
+
+def physiomix_metadata(bundle=DEFAULT_BUNDLE, slot='physiomix'):
     """Conditioning schema for the UI without importing torch; None if not packaged."""
     try:
         manifest = json.loads((Path(bundle)/'manifest.json').read_text())
     except (OSError, ValueError):
         return None
-    if 'physiomix_generator' not in manifest.get('models', {}):
+    if CONDITIONED[slot][1] not in manifest.get('models', {}):
         return None
-    return manifest.get('physiomix')
+    return manifest.get(slot)
 
 
 class PhysioMixGenerator:
-    """Conditioned 30 s GAN: domain one-hot plus standardized PPG proxy rate, IBI CV and std."""
-    def __init__(self, bundle=DEFAULT_BUNDLE):
+    """Conditioned 30 s generator: domain one-hot plus standardized PPG proxy rate, IBI CV and std.
+
+    slot 'physiomix' is the GAN; 'physioflow' the flow-matching model (same contract, slower: it
+    integrates its network over several steps inside the TorchScript module)."""
+    def __init__(self, bundle=DEFAULT_BUNDLE, slot='physiomix'):
         import torch
         self.torch = torch
         torch.set_num_threads(1)
         bundle = Path(bundle)
+        self.name, key = CONDITIONED[slot]
         self.manifest = json.loads((bundle/'manifest.json').read_text())
-        if 'physiomix' not in self.manifest or 'physiomix_generator' not in self.manifest['models']:
-            raise RuntimeError('PhysioMix bundle missing. Run scripts/prepare_physiomix_bundle.py first.')
-        entry = self.manifest['models']['physiomix_generator']
+        if slot not in self.manifest or key not in self.manifest['models']:
+            raise RuntimeError(f'{self.name} bundle missing. Run scripts/prepare_physiomix_bundle.py first.')
+        entry = self.manifest['models'][key]
         path = bundle/entry['file']
         if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
-            raise ValueError('PhysioMix generator checksum mismatch')
-        self.meta, self.sha256 = self.manifest['physiomix'], entry['sha256']
+            raise ValueError(f'{self.name} generator checksum mismatch')
+        self.meta, self.sha256 = self.manifest[slot], entry['sha256']
         self.model = torch.jit.load(str(path), map_location='cpu').eval()
 
     def condition(self, domain, heart_rate, irregularity=None):
         meta = self.meta
         if domain not in meta['domains']:
-            raise ValueError(f'Unknown PhysioMix domain: {domain}')
+            raise ValueError(f'Unknown {self.name} domain: {domain}')
         lo, hi = meta['hr_support_bpm']
         if not math.isfinite(heart_rate) or not lo <= heart_rate <= hi:
-            raise ValueError(f'PhysioMix HR target must be {lo}–{hi} bpm')
+            raise ValueError(f'{self.name} HR target must be {lo}–{hi} bpm')
         default_irregularity, std = meta['domain_defaults'][domain]
         irregularity = default_irregularity if irregularity is None else float(irregularity)
         if not math.isfinite(irregularity) or not 0 <= irregularity <= .35:
@@ -326,12 +335,12 @@ class PhysioMixGenerator:
         with torch.inference_mode():
             wave = self.model(torch.randn(1, 1200, generator=rng), torch.tensor([condition]))
         if tuple(wave.shape) != (1, 1, 1200) or not torch.isfinite(wave).all():
-            raise ValueError('Invalid PhysioMix output')
+            raise ValueError(f'Invalid {self.name} output')
         if wave.min() < -1e-6 or wave.max() > 1.000001 or wave.max()-wave.min() < 1e-6:
-            raise ValueError('Flat or out-of-range PhysioMix output')
+            raise ValueError(f'Flat or out-of-range {self.name} output')
         values = wave[0, 0].clamp(0, 1).tolist()
         samples = [(i/40, 1.5+.045*x, 1.5+.0216*x) for i, x in enumerate(values)]
-        return Preview('PhysioMix', samples, 40, seed, float(heart_rate), None, self.sha256,
+        return Preview(self.name, samples, 40, seed, float(heart_rate), None, self.sha256,
                        tuple(condition), self.meta['variant'],
                        dict(domain=domain, measured_rate_bpm=estimate_rate_bpm(values, 40),
                             requested_rate_bpm=float(heart_rate), exploratory=True, paired_ir_red=False,

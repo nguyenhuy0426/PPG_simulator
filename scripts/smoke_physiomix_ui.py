@@ -31,7 +31,10 @@ def xwd_window(window_id):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=Path('docs/ui/physiomix'))
+    parser.add_argument('--mode', choices=('PhysioMix', 'PhysioFlow'), default='PhysioMix')
     args = parser.parse_args()
+    mode, prefix = args.mode, args.mode.lower()
+    from ui.frames.neural_frame import MODE_KEYS
     args.output.mkdir(parents=True, exist_ok=True)
     engine = SignalEngine.get_instance()
     engine.begin()
@@ -62,7 +65,7 @@ def main():
         deadline = time.monotonic()+60
         while panel._busy and time.monotonic() < deadline:
             pump(.1)
-        assert not panel._busy and 'PhysioMix' in panel.previews, panel.status.cget('text')
+        assert not panel._busy and mode in panel.previews, panel.status.cget('text')
 
     try:
         pump(1)
@@ -71,18 +74,18 @@ def main():
         pump(1)
         app._show_frame('Neural')
         panel = app.frames['Neural']
-        assert panel.pm_meta, 'PhysioMix bundle missing'
+        assert panel.metas[mode], f'{mode} bundle missing'
         copy = __import__('ui.frames.neural_frame', fromlist=['COPY']).COPY['vi']
         panel.hr_slider._slide(72)
         pump(.3)
-        panel.mode_menu.invoke(copy['physiomix'])
+        panel.mode_menu.invoke(copy[MODE_KEYS[mode]])
         wait(panel)
-        preview = panel.previews['PhysioMix']
+        preview = panel.previews[mode]
         assert len(preview.samples) == 1200 and preview.native_fs == 40 and preview.hr_target == 72
         measured = preview.provenance['measured_rate_bpm']
         assert measured is not None and abs(measured-72) < 6, measured
         assert 'Real PhysioMix' in panel.previews
-        capture('physiomix-bidmc-72-vi-1280.png')
+        capture(f'{prefix}-bidmc-72-vi-1280.png')
         results = [('bidmc', 72, measured)]
         for domain, hr in (('gxu_finger', 62), ('perform_af', 95), ('perform_large', 120)):
             if domain not in panel.pm_meta['domains']:
@@ -92,10 +95,10 @@ def main():
             panel.profile_menu.invoke(copy['domains'][domain])
             assert panel.profile_menu.get() == copy['domains'][domain]
             wait(panel)
-            preview = panel.previews['PhysioMix']
+            preview = panel.previews[mode]
             assert preview.provenance['domain'] == domain and preview.hr_target == hr
             results.append((domain, hr, preview.provenance['measured_rate_bpm']))
-            capture(f'physiomix-{domain}-{hr}-vi-1280.png')
+            capture(f'{prefix}-{domain}-{hr}-vi-1280.png')
         lo, hi = panel.pm_meta['hr_support_bpm']
         data_lo, data_hi = panel.pm_meta.get('data_support_bpm', (lo, hi))
         if lo > 40:
@@ -103,7 +106,7 @@ def main():
             pump(.3)
             panel.generate()
             wait(panel)
-            assert panel.previews['PhysioMix'].hr_target == lo, 'HR outside support must clamp to the learned range'
+            assert panel.previews[mode].hr_target == lo, 'HR outside support must clamp to the learned range'
             assert str(int(lo)) in panel.status.cget('text')
         if hi > data_hi:
             target = min(hi, 170)
@@ -111,19 +114,19 @@ def main():
             pump(.3)
             panel.generate()
             wait(panel)
-            preview = panel.previews['PhysioMix']
+            preview = panel.previews[mode]
             assert preview.provenance['extrapolated_morphology'] and str(int(data_hi)) in panel.status.cget('text')
             results.append((panel.domain, target, preview.provenance['measured_rate_bpm']))
-            capture(f'physiomix-extrapolated-{target}-vi-1280.png')
+            capture(f'{prefix}-extrapolated-{target}-vi-1280.png')
         panel.play_btn.invoke()
         pump(.3)
         assert engine.is_waveform_playing
         assert 0 < engine.dac_manager.last_ir < 4095
-        capture('physiomix-playing-vi-1280.png')
+        capture(f'{prefix}-playing-vi-1280.png')
         panel.play_btn.invoke()
         pump()
         assert not engine.is_running and engine.dac_manager.last_ir == 0
-        print('PASS: PhysioMix conditioned inference', results, f'clamp to {lo:.0f}-{hi:.0f} bpm, DAC dry-run start/stop')
+        print(f'PASS: {mode} conditioned inference', results, f'clamp to {lo:.0f}-{hi:.0f} bpm, DAC dry-run start/stop')
     finally:
         app.on_closing()
         engine.shutdown()

@@ -37,7 +37,8 @@ COPY = {
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.',
-               physiomix='PhysioMix · có điều kiện', hr_target='Nhịp tim mục tiêu / bpm',
+               physiomix='PhysioMix · có điều kiện', physioflow='PhysioFlow · flow matching', hr_target='Nhịp tim mục tiêu / bpm',
+               pf_info='PhysioFlow (flow matching) sinh đoạn 30 s theo miền dữ liệu và HR mục tiêu; chậm hơn PhysioMix vài giây trên CPU. A2 tắt; chưa đo SpO₂.',
                pm_info='PhysioMix sinh đoạn 30 s theo miền dữ liệu và HR mục tiêu (nhãn proxy PPG). A2 tắt; chưa đo SpO₂.',
                pm_detail='Seed {seed} · {domain} · yêu cầu {req:.0f} bpm → đo được {meas} bpm · mô hình thăm dò, không phải HR lâm sàng.',
                pm_clamped='HR {req:.0f} bpm ngoài vùng mô hình đã học ({lo:.0f}–{hi:.0f}); đã dùng {used:.0f} bpm. ',
@@ -58,7 +59,8 @@ COPY = {
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.',
-               physiomix='PhysioMix · conditioned', hr_target='Target heart rate / bpm',
+               physiomix='PhysioMix · conditioned', physioflow='PhysioFlow · flow matching', hr_target='Target heart rate / bpm',
+               pf_info='PhysioFlow (flow matching) generates a 30 s strip for a data domain and target HR; a few seconds slower than PhysioMix on CPU. A2 off; no measured SpO₂.',
                pm_info='PhysioMix generates a 30 s strip for a data domain and target HR (PPG proxy labels). A2 off; no measured SpO₂.',
                pm_detail='Seed {seed} · {domain} · requested {req:.0f} bpm → measured {meas} bpm · exploratory model, not clinical HR.',
                pm_clamped='HR {req:.0f} bpm is outside the learned range ({lo:.0f}–{hi:.0f}); used {used:.0f} bpm. ',
@@ -67,7 +69,10 @@ COPY = {
                domains=dict(bidmc='ICU · BIDMC', perform_large='ICU · MIMIC PERform', perform_af='AF cohort',
                             perform_non_af='Non-AF cohort', wrist='Wrist · exercise', gxu_finger='Finger · healthy')),
 }
-GAN_MODES = ('LSM-GAN', 'PhysioMix')
+# Conditioned generators share one worker contract (domain + target HR) and the same reference strips.
+CONDITIONED_MODES = ('PhysioMix', 'PhysioFlow')
+GAN_MODES = ('LSM-GAN',)+CONDITIONED_MODES
+MODE_KEYS = {'LSM-GAN': 'lsm', 'PhysioMix': 'physiomix', 'PhysioFlow': 'physioflow'}
 
 
 class NeuralFrame(ctk.CTkFrame):
@@ -76,8 +81,9 @@ class NeuralFrame(ctk.CTkFrame):
         self.language = getattr(master, 'language', 'en')
         self.engine, self.rx = SignalEngine.get_instance(), OPT101Receiver.get_instance()
         self.mode, self.profile = 'Gaussian (fitted)', 'With notch'
-        self.pm_meta = physiomix_metadata()
-        self.domain = self.pm_meta['domains'][0] if self.pm_meta else None
+        self.metas = {mode: physiomix_metadata(slot=MODE_KEYS[mode]) for mode in CONDITIONED_MODES}
+        available = [meta for meta in self.metas.values() if meta]
+        self.domain = available[0]['domains'][0] if available else None
         self._pm_note = ''
         self.previews = {}
         self._process = None
@@ -170,8 +176,8 @@ class NeuralFrame(ctk.CTkFrame):
             label.configure(text=t[key])
         self.generate_btn.configure(text=t['generate'])
         self.export_btn.configure(text=t['export'])
-        self.info.configure(text=t['pm_info' if self.mode=='PhysioMix' else 'info'])
-        self.mode_menu.configure(values=[t['fitted'],t['lsm']]+([t['physiomix']] if self.pm_meta else []))
+        self.info.configure(text=self._info_text())
+        self.mode_menu.configure(values=[t['fitted'],t['lsm']]+[t[MODE_KEYS[m]] for m in CONDITIONED_MODES if self.metas[m]])
         self.mode_menu.set(self._mode_label())
         self._sync_profile_menu()
         self.left_label.configure(text=t['tx'])
@@ -182,24 +188,33 @@ class NeuralFrame(ctk.CTkFrame):
 
     def _mode_label(self):
         t=COPY[self.language]
-        return t[{'LSM-GAN':'lsm','PhysioMix':'physiomix'}.get(self.mode,'fitted')]
+        return t[MODE_KEYS.get(self.mode,'fitted')]
+
+    @property
+    def pm_meta(self):
+        """Schema of the selected conditioned generator (domains, HR support, defaults)."""
+        return self.metas.get(self.mode)
+
+    def _info_text(self):
+        t=COPY[self.language]
+        return t[{'PhysioMix':'pm_info','PhysioFlow':'pf_info'}.get(self.mode,'info')]
 
     def _sync_profile_menu(self):
         t=COPY[self.language]
-        if self.mode=='PhysioMix':
+        if self.mode in CONDITIONED_MODES:
             self.profile_menu.configure(values=[t['domains'].get(d,d) for d in self.pm_meta['domains']])
             self.profile_menu.set(t['domains'].get(self.domain,self.domain))
         else:
             self.profile_menu.configure(values=[t['with_notch'],t['no_notch']])
             self.profile_menu.set(t['with_notch' if self.profile=='With notch' else 'no_notch'])
         self.profile_menu.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
-        self.control_labels['hr'].configure(text=t['hr_target' if self.mode=='PhysioMix' else 'hr'])
+        self.control_labels['hr'].configure(text=t['hr_target' if self.mode in CONDITIONED_MODES else 'hr'])
 
     def _load_reference(self):
         try:
             if self.mode=='LSM-GAN':
                 self.previews['Real sequence']=sequence_reference_preview()
-            elif self.mode=='PhysioMix':
+            elif self.mode in CONDITIONED_MODES:
                 self.previews['Real PhysioMix']=physiomix_reference_preview(self.domain)
         except (OSError,ValueError,KeyError) as exc:
             self.status.configure(text=str(exc),text_color=T.ERROR)
@@ -207,11 +222,13 @@ class NeuralFrame(ctk.CTkFrame):
     def change_mode(self,label):
         self._stop_owned_output()
         t=COPY[self.language]
-        self.mode={t['lsm']:'LSM-GAN',t['physiomix']:'PhysioMix'}.get(label,'Gaussian (fitted)')
-        if self.mode=='PhysioMix' and not self.pm_meta:
+        self.mode={t[key]:mode for mode,key in MODE_KEYS.items()}.get(label,'Gaussian (fitted)')
+        if self.mode in CONDITIONED_MODES and not self.pm_meta:
             self.mode='Gaussian (fitted)'
+        if self.mode in CONDITIONED_MODES and self.domain not in self.pm_meta['domains']:
+            self.domain=self.pm_meta['domains'][0]
         self.mode_menu.set(self._mode_label())
-        self.info.configure(text=t['pm_info' if self.mode=='PhysioMix' else 'info'])
+        self.info.configure(text=self._info_text())
         self._load_reference()
         self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
         self._sync_profile_menu()
@@ -221,10 +238,11 @@ class NeuralFrame(ctk.CTkFrame):
 
     def change_profile(self,label):
         self._stop_owned_output()
-        if self.mode=='PhysioMix':
+        if self.mode in CONDITIONED_MODES:
             names=COPY[self.language]['domains']
             self.domain=next((d for d in self.pm_meta['domains'] if names.get(d,d)==label),self.domain)
-            self.previews.pop('PhysioMix',None)
+            for mode in CONDITIONED_MODES:
+                self.previews.pop(mode,None)
             self._load_reference()
         else:
             self.profile='With notch' if label==COPY[self.language]['with_notch'] else 'No notch'
@@ -265,11 +283,11 @@ class NeuralFrame(ctk.CTkFrame):
         self._started = time.monotonic()
         command=[sys.executable,'-m','core.sequence_worker',str(secrets.randbits(32))]
         self._pm_note=''
-        if self.mode=='PhysioMix':
+        if self.mode in CONDITIONED_MODES:
             requested,used,lo,hi=self._physiomix_hr()
             if used!=requested:
                 self._pm_note=COPY[self.language]['pm_clamped'].format(req=requested,lo=lo,hi=hi,used=used)
-            command+=['--model','physiomix','--hr',f'{used:g}','--domain',self.domain]
+            command+=['--model',MODE_KEYS[self.mode],'--hr',f'{used:g}','--domain',self.domain]
         try:
             self._process = subprocess.Popen(
                 command,
@@ -315,7 +333,7 @@ class NeuralFrame(ctk.CTkFrame):
         t=COPY[self.language]
         if self.mode=='LSM-GAN':
             return t['detail'].format(seed=preview.seed)
-        if self.mode!='PhysioMix':
+        if self.mode not in CONDITIONED_MODES:
             return t['reference']
         requested,used,_lo,_hi=self._physiomix_hr()
         if abs(used-preview.hr_target)>.5:
@@ -330,7 +348,8 @@ class NeuralFrame(ctk.CTkFrame):
         return text
 
     def _reference_rows(self):
-        ref=self.previews.get({'LSM-GAN':'Real sequence','PhysioMix':'Real PhysioMix'}.get(self.mode,'Real reference'))
+        ref=self.previews.get('Real sequence' if self.mode=='LSM-GAN' else
+                              'Real PhysioMix' if self.mode in CONDITIONED_MODES else 'Real reference')
         return WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
 
     def _draw_tx(self,generated,reference):

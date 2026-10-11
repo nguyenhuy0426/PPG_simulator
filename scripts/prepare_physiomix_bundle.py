@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package a validation-selected PhysioMix generator for the Neural page (CPU, TorchScript).
+"""Package a validation-selected PhysioMix (or PhysioFlow, --slot physioflow) generator for the Neural page.
 
 The seed is chosen by validation score only. The Kaggle TorchScript export is checked against
 the EMA checkpoint rebuilt from source, then re-traced with the local torch. Domain defaults,
@@ -76,6 +76,10 @@ def build_model(model_class, conditions, checkpoint):
         module, name = model_class.split(':')
         return getattr(importlib.import_module(module), name)(conditions['size'], conditions['center'], conditions['scale']), None
     from ml.kaggle_multidomain import physio
+    if cfg.get('flow'):
+        from ml.kaggle_multidomain.flow import FlowGenerator
+        return FlowGenerator(conditions['size'], conditions['center'], conditions['scale'], cfg['sample_steps'],
+                             cfg['guidance'], cfg.get('width', 1.)), cfg
     if cfg.get('rel'):
         return physio.PhysioMixR(conditions['size'], conditions['center'], conditions['scale'], view='v3',
                                  beat=cfg.get('beat', False), pad=cfg.get('pad', 0),
@@ -84,8 +88,9 @@ def build_model(model_class, conditions, checkpoint):
     return cls(conditions['size'], conditions['center'], conditions['scale'], view='v3'), cfg
 
 
-def prepare(run, arm, pack_dir, output, model_class, variant):
+def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix'):
     import torch
+    from core.neural_preview import CONDITIONED
     chosen, key = choose_run(run, arm)
     source = run/f"{arm}_seed{chosen['seed']}"
     conditions = json.loads((source/'conditions.json').read_text())
@@ -103,8 +108,11 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
     if version == 'v2':
         defaults = conditions['domain_defaults']
     data_support = support
-    if cfg and cfg.get('osc'):
+    constructed = bool(cfg and (cfg.get('osc') or cfg.get('flow')))
+    if constructed:
         support = [40., 180.]  # rate is constructed; morphology outside data_support is extrapolated
+    # A flow integrates its network over many steps, so cross-version float differences add up a little.
+    tolerance = dict(atol=2e-4, rtol=1e-3) if cfg and cfg.get('flow') else dict(atol=1e-5, rtol=1e-4)
     condition = torch.zeros(4, conditions['size'])
     for i, domain in enumerate(domains[:4]):
         condition[i, domains.index(domain)] = 1
@@ -113,17 +121,17 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
         raw = torch.tensor([75.+15*i, *defaults[domain]])
         condition[i, -3:] = (raw-torch.tensor(conditions['center']))/torch.tensor(conditions['scale'])
     with torch.no_grad():
-        torch.testing.assert_close(exported(z, condition), model(z, condition), atol=1e-5, rtol=1e-4)
+        torch.testing.assert_close(exported(z, condition), model(z, condition), **tolerance)
         traced = torch.jit.trace(model, (z[:2], condition[:2]))
-        torch.testing.assert_close(traced(z, condition), model(z, condition), atol=1e-5, rtol=1e-4)
+        torch.testing.assert_close(traced(z, condition), model(z, condition), **tolerance)
     output.mkdir(parents=True, exist_ok=True)
-    target = output/'physiomix_generator.ts'
+    model_key = CONDITIONED[slot][1]
+    target = output/f'{model_key}.ts'
     traced.save(str(target))
     manifest_path = output/'manifest.json'
     manifest = json.loads(manifest_path.read_text())
-    manifest['models']['physiomix_generator'] = dict(file=target.name,
-                                                     sha256=hashlib.sha256(target.read_bytes()).hexdigest())
-    manifest['physiomix'] = dict(
+    manifest['models'][model_key] = dict(file=target.name, sha256=hashlib.sha256(target.read_bytes()).hexdigest())
+    manifest[slot] = dict(
         variant=variant, arm=arm, seed=chosen['seed'], best_step=chosen['best_step'],
         validation_score=chosen[key], selection=f'lowest {key} among seeds (validation only); no test data',
         condition_version=version, architecture=cfg, data_support_bpm=data_support,
@@ -132,7 +140,7 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
         domains=domains, center=conditions['center'], scale=conditions['scale'],
         features=conditions['features'], domain_defaults=defaults, domain_defaults_features=['PPG_ibi_cv', 'PPG_signal_std'],
         hr_support_bpm=support, hr_support_rule=('constructed beat sequence 40-180 bpm; data_support_bpm = train label 1-99%'
-                                                 if cfg and cfg.get('osc') else
+                                                 if constructed else
                                                  'train rate-label 1-99% quantiles within the view carrier clamp'),
         checkpoint_sha256=hashlib.sha256((source/'best.pt').read_bytes()).hexdigest(),
         kaggle_export_sha256=hashlib.sha256((source/'generator_cpu.ts').read_bytes()).hexdigest(),
@@ -144,7 +152,7 @@ def prepare(run, arm, pack_dir, output, model_class, variant):
         pack_sha256=pack_manifest['windows_sha256'], rule='train split; edge-clean; proxy rate nearest domain median',
         strips=strips), indent=1)+'\n')
     print(f"Packaged {arm} seed {chosen['seed']} ({key} {chosen[key]:.4f}); HR support {support}")
-    return manifest['physiomix']
+    return manifest[slot]
 
 
 if __name__ == '__main__':
@@ -155,5 +163,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, default=ROOT/'assets/neural')
     parser.add_argument('--model-class', default='ml.kaggle_multidomain.physio:PhysioMix')
     parser.add_argument('--variant', default='physiomix_v1_no_div')
+    parser.add_argument('--slot', choices=('physiomix', 'physioflow'), default='physiomix')
     a = parser.parse_args()
-    prepare(a.run, a.arm, a.pack, a.output, a.model_class, a.variant)
+    prepare(a.run, a.arm, a.pack, a.output, a.model_class, a.variant, a.slot)
