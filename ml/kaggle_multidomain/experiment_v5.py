@@ -9,7 +9,9 @@ Round 6 (variant crop_r1) repeats it with the critic clip on lazy-R1 steps scale
 in round 5 every R1 step was clipped (median norm ~100 vs limit 10), failing the d_clipped gate on all seeds.
 """
 VARIANTS = {"crop": "a {pad}-sample cropped output",
-            "crop_r1": "a {pad}-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160)"}
+            "crop_r1": "a {pad}-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160)",
+            "crop_r1w": "a {pad}-sample cropped output, the x16 R1-step clip and the R1 weight lowered to 0.1, about "
+                        "the effective strength of round 5's always-clipped R1 (norm 10 of ~100)"}
 import argparse
 import hashlib
 import json
@@ -29,18 +31,28 @@ from ml.kaggle_multidomain.experiment_v4 import ROUND3_V2
 from ml.kaggle_multidomain.report_v3 import fmt, stat, summarize
 
 
-def round4_reference(root):
-    """Winner, ship decision and per-seed scores of round 4, read from its own outputs."""
-    root = Path(root)
-    selection = json.loads(next(root.rglob("SELECTION_ROUND4.json")).read_text())
-    runs = json.loads(next(root.rglob("training_execution.json")).read_text())["runs"]
+def scores(execution, arm):
+    rows = sorted((r for r in json.loads(execution.read_text())["runs"] if r["arm"] == arm), key=lambda r: r["seed"])
+    return dict(arm=arm, S_arm=[r["S_arm"] for r in rows], S_real_fresh=[r["S_real_fresh"] for r in rows],
+                seeds=[r["seed"] for r in rows])
+
+
+def round4_reference(root, incumbent_root=None):
+    """Round-4 winner (the base arm) and the incumbent: the latest shipped arm, read from each round's own
+    outputs. incumbent_root holds a later shipped round (DECISION_ROUND5.json with its benchmark)."""
+    path = next(Path(root).rglob("SELECTION_ROUND4.json"))
+    selection = json.loads(path.read_text())
     winner = selection["winner"]
     if winner is None:
         raise ValueError("Round 4 selected no eligible arm")
-    rows = sorted((r for r in runs if r["arm"] == winner), key=lambda r: r["seed"])
-    base = dict(arm=winner, S_arm=[r["S_arm"] for r in rows], S_real_fresh=[r["S_real_fresh"] for r in rows],
-                seeds=[r["seed"] for r in rows])
+    base = scores(path.parent/"benchmark"/"training_execution.json", winner)
     incumbent = dict(base, name=winner) if selection["ship"] else dict(ROUND3_V2, name="round3_physiomix_v2")
+    if incumbent_root is not None:
+        path = next(Path(incumbent_root).rglob("DECISION_ROUND5.json"))
+        decision = json.loads(path.read_text())
+        if decision["ship"]:
+            incumbent = dict(scores(path.parent/"benchmark"/"training_execution.json", decision["arm"]),
+                             name=decision["arm"])
     return base, incumbent
 
 
@@ -75,6 +87,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-root", required=True)
     parser.add_argument("--round4-root", required=True, help="Directory holding round-4 outputs")
+    parser.add_argument("--incumbent-root", help="Directory holding a later round whose shipped arm is the incumbent")
     parser.add_argument("--output", required=True)
     parser.add_argument("--steps", type=int, default=20000)
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
@@ -88,7 +101,7 @@ def main(argv=None):
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     if not a.allow_cpu and (len(names) != 2 or any("T4" not in name for name in names)):
         raise RuntimeError(f"Two T4 GPUs required, allocated {names}")
-    base, incumbent = round4_reference(a.round4_root)
+    base, incumbent = round4_reference(a.round4_root, a.incumbent_root)
     arm = f"{base['arm']}_{a.variant}"
     devices = ["cpu"] if a.allow_cpu else [f"cuda:{i % 2}" for i in range(len(a.seeds))]
     threads = 1 if len(devices) > 2 else 2

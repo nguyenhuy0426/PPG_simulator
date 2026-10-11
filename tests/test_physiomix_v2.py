@@ -410,10 +410,10 @@ def test_cropped_output_is_not_circular_and_keeps_rate_control():
 
 
 def fake_round4(root, winner="L3_rel_beat_lr", ship=True):
-    root.mkdir(parents=True)
+    (root/"benchmark").mkdir(parents=True)
     (root/"SELECTION_ROUND4.json").write_text(json.dumps(dict(winner=winner, ship=ship)))
     runs = [dict(arm=winner, seed=s, S_arm=.5+.01*i, S_real_fresh=.33) for i, s in enumerate((42, 123, 2026))]
-    (root/"training_execution.json").write_text(json.dumps(dict(runs=runs)))
+    (root/"benchmark"/"training_execution.json").write_text(json.dumps(dict(runs=runs)))
 
 
 def test_round5_incumbent_is_round4_winner_only_if_it_shipped(tmp_path):
@@ -424,6 +424,15 @@ def test_round5_incumbent_is_round4_winner_only_if_it_shipped(tmp_path):
     fake_round4(tmp_path/"kept", ship=False)
     _, incumbent = experiment_v5.round4_reference(tmp_path/"kept")
     assert incumbent["name"] == "round3_physiomix_v2"
+    later = tmp_path/"r6"/"benchmark"
+    later.mkdir(parents=True)
+    (later.parent/"DECISION_ROUND5.json").write_text(json.dumps(dict(arm="L3_rel_beat_lr_crop_r1", ship=True)))
+    (later/"training_execution.json").write_text(json.dumps(dict(runs=[
+        dict(arm="L3_rel_beat_lr_crop_r1", seed=s, S_arm=.45, S_real_fresh=.3) for s in (42, 123, 2026)])))
+    base, incumbent = experiment_v5.round4_reference(tmp_path/"kept", tmp_path/"r6")
+    assert base["arm"] == "L3_rel_beat_lr" and incumbent["name"] == "L3_rel_beat_lr_crop_r1"
+    assert incumbent["S_arm"] == [.45, .45, .45]
+    assert experiment_v3.config("L3_rel_beat_lr_crop_r1w")["r1_weight"] == .1
     rows = [dict(arm="L3_rel_beat_lr_crop", seed=s, S_arm=v, S_real_fresh=.3, eligible=True)
             for s, v in ((42, .40), (123, .41), (2026, .42))]
     assert experiment_v5.decide(rows, "L3_rel_beat_lr_crop", base | dict(name="r4"))["ship"]

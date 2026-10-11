@@ -55,6 +55,9 @@ ARMS.update({f"{arm}_crop": dict(ARMS[arm], rel=True, pad=CROP_PAD)
 # Round 6: every round-5 lazy-R1 step hit the fixed critic clip (median norm ~100 vs 10), weakening R1 ~10x.
 ARMS.update({f"{arm}_crop_r1": dict(ARMS[f"{arm}_crop"], r1_scaled_clip=True)
              for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
+# Round 7: round 5 (R1 effectively ~0.1x through clipping) beat round 6 (full R1) on C2ST 0.78 vs 0.90.
+ARMS.update({f"{arm}_crop_r1w": dict(ARMS[f"{arm}_crop_r1"], r1_weight=.1)
+             for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -82,7 +85,7 @@ def config(arm, frozen=None):
             raise ValueError("physiomix_v2 needs the frozen pilot selection")
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
-                   rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False), **ARMS[arm]}
+                   rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -296,7 +299,7 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             margin = (pr.mean()-pf.mean()).detach()
             if regularize:
                 grad = torch.autograd.grad(pr.mean(1).sum(), real, create_graph=True)[0]
-                r1 = .5*16*grad.square().flatten(1).sum(1).mean()
+                r1 = .5*16*cfg.get("r1_weight", 1.)*grad.square().flatten(1).sum(1).mean()
                 ld = ld+r1
                 stability["r1_updates"] += 1
             ld.backward()
