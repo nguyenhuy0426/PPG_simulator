@@ -22,7 +22,7 @@
     },
     "physiomix_generator": {
       "file": "physiomix_generator.ts",
-      "sha256": "1a7facccddbb80eefa6ba0b4c4ad4a465baa8fd5203674159e6529d932835bbd"
+      "sha256": "8a10436251d8f32e82ef918e74c22593d79c8c020b9f074725fe2361164ee073"
     }
   },
   "cwgan_condition": [
@@ -61,11 +61,11 @@
   "lsm_source_sha256": "a0ff8319a281285768b34a290065ee1dc3ac112dcda7b8d54a40d013c6ddf47b",
   "note": "Research preview only. No cWGAN critic artifact exists for pilot v1.",
   "physiomix": {
-    "variant": "physiomix_r7_crop_r1w",
-    "arm": "L3_rel_beat_lr_crop_r1w",
-    "seed": 42,
-    "best_step": 6500,
-    "validation_score": 0.4574784997424784,
+    "variant": "physiomix_r9_motion_dom",
+    "arm": "L3_rel_beat_lr_crop_r1w_motion_dom",
+    "seed": 123,
+    "best_step": 3500,
+    "validation_score": 0.5025288682026399,
     "selection": "lowest S_arm among seeds (validation only); no test data",
     "condition_version": "v2",
     "architecture": {
@@ -78,10 +78,11 @@
       "schedule": "cosine",
       "rel": true,
       "beat": true,
-      "domloss": false,
+      "domloss": true,
       "pad": 240,
       "r1_scaled_clip": true,
       "r1_weight": 0.1,
+      "motion": true,
       "version": "v2"
     },
     "data_support_bpm": [
@@ -147,8 +148,8 @@
       180.0
     ],
     "hr_support_rule": "constructed beat sequence 40-180 bpm; data_support_bpm = train label 1-99%",
-    "checkpoint_sha256": "07b49f124d4b3f838f0a1b2ebd78ad3726e4e79a593084ac8e15969a043281b1",
-    "kaggle_export_sha256": "76836a0e75a482c3c7d07129fe2acefc32914f4431657b280889746cc5271f86",
+    "checkpoint_sha256": "36d5ef5f1040854049f8eb146e4349174bd2251d9499dac0e8ed8b633dc78036",
+    "kaggle_export_sha256": "3ca6aa7de100fbe642ce96b471dd7480641e9fbe0b5d2f71fc36591e58ed1192",
     "traced_with_torch": "2.10.0+cpu",
     "pack_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
     "label_type": "Consensus PPG rate (ECG-gated where available), robust IBI CV clipped to 0.35; engineering labels, not clinical measurements",
