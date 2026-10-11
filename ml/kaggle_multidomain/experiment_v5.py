@@ -9,6 +9,7 @@ Round 6 (variant crop_r1) repeats it with the critic clip on lazy-R1 steps scale
 in round 5 every R1 step was clipped (median norm ~100 vs limit 10), failing the d_clipped gate on all seeds.
 Round 8 (crop_r1w_motion) targets one pool: it ships on a clear validation wrist-Q gain while S_arm stays within
 the pooled seed SD of the incumbent.
+Round 9 (crop_r1w_motion_dom) adds the per-domain distribution loss to round 8 under the same wrist rule.
 """
 VARIANTS = {"crop": "a {pad}-sample cropped output",
             "crop_r1": "a {pad}-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160)",
@@ -16,9 +17,12 @@ VARIANTS = {"crop": "a {pad}-sample cropped output",
                         "the effective strength of round 5's always-clipped R1 (norm 10 of ~100)",
             "crop_r1w_motion": "a {pad}-sample cropped output, the x16 R1-step clip, R1 weight 0.1 and an added periodic "
                                "motion component (0.5-3.5 Hz cadence, 3 harmonics, amplitude up to 1.5x the pulse, set "
-                               "per condition and noise)"}
+                               "per condition and noise)",
+            "crop_r1w_motion_dom": "a {pad}-sample cropped output, the x16 R1-step clip, R1 weight 0.1, the round-8 "
+                                   "periodic motion component and the per-domain spectral/ACF distribution loss "
+                                   "(weight 0.5; round 8's motion amplitude collapsed to <= 1% of the pulse)"}
 # Variants judged on one validation pool first; the others are judged on S_arm.
-TARGETED = {"crop_r1w_motion": "wrist"}
+TARGETED = {"crop_r1w_motion": "wrist", "crop_r1w_motion_dom": "wrist"}
 import argparse
 import hashlib
 import json

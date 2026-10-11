@@ -493,7 +493,7 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
     assert result["stability"]["r1_updates"] == 1 and "r1_clipped" in result["stability"]
 
 
-@pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8"])
+@pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
@@ -538,6 +538,8 @@ def test_round8_rule_ships_on_a_clear_wrist_gain_without_an_overall_loss(tmp_pat
     from ml.kaggle_multidomain import experiment_v5
     assert experiment_v3.config("L3_rel_beat_lr_crop_r1w_motion")["motion"]
     assert not experiment_v3.config("L3_rel_beat_lr_crop_r1w")["motion"]
+    nine = experiment_v3.config("L3_rel_beat_lr_crop_r1w_motion_dom")
+    assert nine["motion"] and nine["domloss"] and experiment_v5.TARGETED["crop_r1w_motion_dom"] == "wrist"
     fake_round4(tmp_path/"r4", ship=False)
     fake_round7(tmp_path/"r7")
     base, incumbent = experiment_v5.round4_reference(tmp_path/"r4", tmp_path/"r7")
@@ -560,7 +562,8 @@ def test_round8_rule_ships_on_a_clear_wrist_gain_without_an_overall_loss(tmp_pat
     assert not experiment_v5.decide(rows((.40, .41, .42), (.60, .63, .70)), arm, incumbent, "wrist")["ship"]
 
 
-def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
+@pytest.mark.parametrize("variant", ["crop_r1w_motion", "crop_r1w_motion_dom"])
+def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch, variant):
     from ml.kaggle_multidomain import experiment_v5
     for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
         monkeypatch.setattr(experiment_v3, name, value)
@@ -569,11 +572,12 @@ def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
     fake_round7(tmp_path/"r7")
     experiment_v5.main(["--input-root", str(tmp_path/"input"), "--round4-root", str(tmp_path/"r4"), "--allow-cpu",
                         "--incumbent-root", str(tmp_path/"r7"), "--batch", "4", "--interval", "2", "--eval-samples", "12",
-                        "--bootstrap", "2", "--seeds", "42", "--steps", "2", "--variant", "crop_r1w_motion",
+                        "--bootstrap", "2", "--seeds", "42", "--steps", "2", "--variant", variant,
                         "--output", str(tmp_path/"r8")])
     out = tmp_path/"r8"
     frozen = json.loads((out/"FROZEN_ROUND5.json").read_text())
-    assert frozen["arm"] == "L3_rel_beat_lr_crop_r1w_motion" and frozen["config"]["motion"]
+    arm = f"L3_rel_beat_lr_{variant}"
+    assert frozen["arm"] == arm and frozen["config"]["motion"]
     assert frozen["incumbent"]["name"] == "L3_rel_beat_lr_crop_r1w"
     decision = json.loads((out/"DECISION_ROUND5.json").read_text())
     assert decision["target"] == "wrist"
@@ -586,6 +590,6 @@ def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
     assets = tmp_path/"assets"
     assets.mkdir()
     shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
-    meta = prepare_physiomix_bundle.prepare(out/"benchmark", "L3_rel_beat_lr_crop_r1w_motion", tmp_path/"input"/"pack",
+    meta = prepare_physiomix_bundle.prepare(out/"benchmark", arm, tmp_path/"input"/"pack",
                                             assets, None, "physiomix_round8_test")
     assert meta["architecture"]["motion"]

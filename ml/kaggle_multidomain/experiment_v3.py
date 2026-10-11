@@ -61,6 +61,10 @@ ARMS.update({f"{arm}_crop_r1w": dict(ARMS[f"{arm}_crop_r1"], r1_weight=.1)
 # Round 8: round 7 plus a periodic motion component (wrist coverage 40% -> 18% and a spread spectrum in round 7).
 ARMS.update({f"{arm}_crop_r1w_motion": dict(ARMS[f"{arm}_crop_r1w"], motion=True)
              for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
+# Round 9: round 8's motion amplitude collapsed to <= 1% of the pulse in every domain (wrist included) under the
+# adversarial signal alone; the per-domain spectral/ACF distribution loss targets wrist's concentrated spectrum directly.
+ARMS.update({f"{arm}_crop_r1w_motion_dom": dict(ARMS[f"{arm}_crop_r1w_motion"], domloss=True)
+             for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
