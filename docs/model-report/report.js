@@ -211,20 +211,18 @@
   function drawRounds() {
     const svg = $("rounds-chart"); clear(svg);
     const b = { ...box(svg), l: 44 };
-    const rounds = R.rounds.slice();
-    if (R.round8 && R.round8.S_arm) rounds.push({ round: "R8", change: "Bộ dao động chuyển động", S_arm: R.round8.S_arm.mean, sd: R.round8.S_arm.sd, shipped: R.round8.ship });
+    const rounds = R.rounds.concat(R.targeted || []);
     const { X, Y } = axes(svg, b, -0.5, rounds.length - 0.5, 0.4, 0.7, [], [0.4, 0.5, 0.6, 0.7], null, (v) => v.toFixed(1));
     rounds.forEach((r, i) => {
       const color = r.shipped ? css("--s1") : css("--s4");
       el("line", { x1: X(i), x2: X(i), y1: Y(r.S_arm - r.sd), y2: Y(r.S_arm + r.sd), stroke: color, "stroke-width": 2 }, svg);
       const c = el("circle", { cx: X(i), cy: Y(r.S_arm), r: 6, fill: color }, svg);
-      hover(c, `${r.round}: ${r.change} · S_arm ${fmt(r.S_arm, 3)} ± ${fmt(r.sd, 3)}${r.shipped ? " · đưa vào app" : ""}`);
+      const wrist = r.wrist_Q != null ? ` · cổ tay Q ${fmt(r.wrist_Q, 3)} (trước ${fmt(r.incumbent_wrist_Q, 3)})` : "";
+      hover(c, `${r.round}: ${r.change} · S_arm ${fmt(r.S_arm, 3)} ± ${fmt(r.sd, 3)}${wrist}${r.shipped ? " · đưa vào app" : ""}`);
       el("text", { x: X(i), y: b.b + 16, "text-anchor": "middle" }, svg).textContent = r.round;
     });
     el("text", { x: b.l + 4, y: b.t + 4 }, svg).textContent = "tím = đã đưa vào app · xám = không";
-    const note = $("round8-note");
-    if (!R.round8) note.textContent = "Vòng 8 (thêm bộ dao động chuyển động cho cổ tay) đang train; trang sẽ cập nhật khi có kết quả.";
-    else note.textContent = `Vòng 8: ${R.round8.ship ? "đạt quy tắc, đưa vào app" : "không đạt quy tắc, giữ vòng 7"} (cổ tay Q ${fmt(R.round8.target_Q && R.round8.target_Q.mean, 3)} so với ${fmt(R.round8.incumbent_target_Q && R.round8.incumbent_target_Q.mean, 3)}).`;
+    $("rounds-note").textContent = (R.targeted || []).map((r) => `${r.round} (${r.change}) được chấm theo quy tắc riêng cho cổ tay: Q validation cổ tay ${fmt(r.wrist_Q, 3)} so với ${fmt(r.incumbent_wrist_Q, 3)}, chênh ${fmt(r.gap, 3)} ${r.gap > r.pooled_sd ? ">" : "<"} SD gộp ${fmt(r.pooled_sd, 3)} → ${r.shipped ? "đưa vào app" : "giữ model cũ"}; S_arm chỉ cần không kém hơn quá SD gộp.`).join(" ");
   }
   function drawTraining() {
     const svg = $("train-chart"); clear(svg);
@@ -248,7 +246,7 @@
   }
 
   // ---------- realism ----------
-  const SOURCES = [["real_other_people", "Thật · người khác (trần)", "--real"], ["round7", "PhysioMix (app)", "--s1"], ["gaussian_shaper", "Gaussian cũ", "--s3"]];
+  const SOURCES = [["real_other_people", "Thật · người khác (trần)", "--real"], ["app", "PhysioMix (app)", "--s1"], ["round7", "PhysioMix vòng 7 (trước)", "--s4"], ["gaussian_shaper", "Gaussian cũ", "--s3"]];
   function drawBars(metric) {
     const svg = $("real-bars"); clear(svg);
     const b = box(svg);
@@ -270,12 +268,22 @@
     });
     legend($("bars-legend"), SOURCES.map(([, label, color]) => [css(color), label]));
   }
+  (function tradeoff() {
+    const box = $("tradeoff");
+    const doms = Object.keys(NAMES).filter((d) => R.realism[d] && R.realism[d].app && R.realism[d].round7);
+    if (!doms.length) { box.remove(); return; }
+    html("b", "Đánh đổi của model hiện tại so với vòng 7 (người chưa dùng): ", box);
+    box.appendChild(document.createTextNode(doms.map((d) => {
+      const a = R.realism[d].app, o = R.realism[d].round7;
+      return `${SHORT[d]} độ phủ ${pct(o.coverage)}→${pct(a.coverage)}, không phân biệt được ${pct(o.indistinguishable)}→${pct(a.indistinguishable)}`;
+    }).join("; ") + ". Cổ tay tốt lên rõ; các tập khác bị CNN tách thật/giả nhận ra dễ hơn. Quy tắc chọn (chỉ dùng validation) chấp nhận đánh đổi này vì điểm tổng S_arm vẫn trong độ lệch chuẩn giữa các seed."));
+  })();
   let metric = "indistinguishable";
   segmented($("metric-seg"), [["fidelity", "Độ giống"], ["coverage", "Độ phủ"], ["indistinguishable", "Không phân biệt được"]], metric, (k) => { metric = k; drawBars(k); });
 
   // ---------- states ----------
   (function drawStates() {
-    const cols = [["real_unseen", "Thật (người chưa dùng)"], ["round7", "PhysioMix (app)"], ["gaussian_shaper", "Gaussian cũ"]].filter(([k]) => R.following[k]);
+    const cols = [["real_unseen", "Thật (người chưa dùng)"], ["app", "PhysioMix (app)"], ["round7", "Vòng 7 (trước)"], ["gaussian_shaper", "Gaussian cũ"]].filter(([k]) => R.following[k]);
     const head = document.querySelector("#state-table thead"), body = document.querySelector("#state-table tbody");
     const hr = html("tr", null, head);
     html("th", "Trạng thái yêu cầu", hr);
@@ -291,7 +299,7 @@
     const tr = html("tr", null, body);
     html("td", "Trung bình 7 trạng thái (đoán mò 14%)", tr).style.fontWeight = 600;
     cols.forEach(([k]) => (html("td", pct(R.following[k].balanced), tr).className = "num"));
-    const f = R.following.round7;
+    const f = R.following.app;
     $("swap-text").textContent = `Giữ nguyên nhiễu z, chỉ đổi lệnh trạng thái: ${pct(f.swap)} mẫu được CNN gọi đúng trạng thái mới, và mỗi nhiễu cho trung bình ${fmt(f.distinct, 1)}/7 câu trả lời khác nhau. Nếu model bỏ qua lệnh, mỗi nhiễu chỉ cho 1 câu trả lời. Vậy lệnh quyết định kiểu tín hiệu; nhiễu chỉ tạo khác biệt giữa các lần sinh (như người khác nhau).`;
   })();
 

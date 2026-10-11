@@ -31,6 +31,11 @@ ROUNDS = [
     dict(round='R6', name='crop_r1', change='Sửa ngưỡng cắt gradient R1', S_arm=0.570, sd=0.023, shipped=True),
     dict(round='R7', name='crop_r1w', change='Giảm trọng số R1 còn 0,1', S_arm=0.510, sd=0.053, shipped=True),
 ]
+# Wrist-targeted rounds (8, 9): S_arm only had to stay within the incumbent's pooled SD; their frozen rule and
+# decision are in docs/physiomix-v3/rules/DECISION_ROUND{8,9}.json.
+TARGETED_ROUNDS = {'R8': ('Bộ dao động chuyển động', 'DECISION_ROUND8.json'),
+                   'R9': ('Dao động chuyển động + loss khớp phân bố theo miền', 'DECISION_ROUND9.json')}
+APP_SOURCE = 'app'      # name of the shipped model's run in the realism file (passed with --app-source)
 
 
 def git_commit():
@@ -160,26 +165,27 @@ def lsm_section():
         return dict(error=str(error))
 
 
-def realism_section(path):
+def realism_section(path, app):
     result = json.loads(Path(path).read_text())
-    keep = [s for s in ('real_other_people', 'round7', 'round6', 'v2_round3', 'gaussian_shaper')]
-    realism = {d: {k: {m: round(v[m], 3) for m in ('fidelity', 'coverage', 'indistinguishable')}
+    keep = ('real_other_people', app, 'round7', 'gaussian_shaper')
+    rename = lambda k: APP_SOURCE if k == app else k
+    realism = {d: {rename(k): {m: round(v[m], 3) for m in ('fidelity', 'coverage', 'indistinguishable')}
                    for k, v in entry.items() if k in keep}
                for d, entry in result['realism'].items()}
     for d, entry in result['realism'].items():
         realism[d]['people'] = entry['people']
     cond = result['condition_following']
-    sources = [s for s in ('real_unseen', 'round7', 'round6', 'v2_round3', 'gaussian_shaper') if s in cond]
-    following = {s: dict(accuracy={k: round(v, 3) for k, v in cond[s]['accuracy'].items()},
+    sources = [s for s in ('real_unseen', app, 'round7', 'gaussian_shaper') if s in cond]
+    following = {rename(s): dict(accuracy={k: round(v, 3) for k, v in cond[s]['accuracy'].items()},
                          motion={k: round(v, 3) for k, v in cond[s]['motion_probability'].items()},
                          balanced=round(cond[s]['balanced_accuracy'], 3),
                          swap=round(cond[s]['swap_following'], 3) if 'swap_following' in cond[s] else None,
                          distinct=round(cond[s]['swap_distinct_answers_per_noise'], 2)
                          if 'swap_distinct_answers_per_noise' in cond[s] else None)
                  for s in sources}
-    physiology = {s: {k: dict(hr=v['hr_median'], cv=v['ibi_cv_median'], acf=v['periodicity_median'])
-                      for k, v in cond['physiology'][s].items()}
-                  for s in ('real_unseen', 'real_prompts', 'round7') if s in cond['physiology']}
+    physiology = {rename(s): {k: dict(hr=v['hr_median'], cv=v['ibi_cv_median'], acf=v['periodicity_median'])
+                              for k, v in cond['physiology'][s].items()}
+                  for s in ('real_unseen', 'real_prompts', app, 'round7') if s in cond['physiology']}
     return dict(realism=realism, states=cond['states'], following=following, physiology=physiology)
 
 
@@ -218,22 +224,28 @@ def rx_section():
                              measured=round(estimate_rx_rate(example).bpm, 1)))
 
 
-def round8_decision(path):
-    path = Path(path)
-    if not path.exists():
-        return None
-    decision = json.loads(path.read_text())
-    return {k: decision.get(k) for k in ('arm', 'ship', 'S_arm', 'S_real', 'target', 'target_Q', 'incumbent_target_Q',
-                                         'target_gap', 'target_pooled_sd', 'gap', 'pooled_sd')}
+def targeted_rounds(rules):
+    out = []
+    for name, (change, file) in TARGETED_ROUNDS.items():
+        path = Path(rules)/file
+        if not path.exists():
+            continue
+        d = json.loads(path.read_text())
+        out.append(dict(round=name, change=change, S_arm=round(d['S_arm']['mean'], 3), sd=round(d['S_arm']['sd'], 3),
+                        shipped=d['ship'], target=d.get('target'), wrist_Q=round(d['target_Q']['mean'], 3),
+                        wrist_Q_sd=round(d['target_Q']['sd'], 3), incumbent_wrist_Q=round(d['incumbent_target_Q']['mean'], 3),
+                        gap=round(d['target_gap'], 3), pooled_sd=round(d['target_pooled_sd'], 3)))
+    return out
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pack', type=Path, default=ROOT/'ml/runs/physio3-data-v1/physio3_data')
-    parser.add_argument('--realism', type=Path, default=ROOT/'ml/runs/realism-v1/realism_round7.json')
-    parser.add_argument('--run', type=Path, default=ROOT/'ml/runs/physiomix7-r1w-result-v1/physiomix7/benchmark')
-    parser.add_argument('--round8', type=Path,
-                        default=ROOT/'ml/runs/physiomix8-motion-result-v1/physiomix8/DECISION_ROUND5.json')
+    parser.add_argument('--realism', type=Path, default=ROOT/'ml/runs/realism-v1/realism_round9.json')
+    parser.add_argument('--app-source', default='round9', help='Run name of the shipped model in the realism file')
+    parser.add_argument('--run', type=Path,
+                        default=ROOT/'ml/runs/physiomix9-motion-dom-result-v1/physiomix9/benchmark')
+    parser.add_argument('--rules', type=Path, default=ROOT/'docs/physiomix-v3/rules')
     parser.add_argument('--output', type=Path, default=ROOT/'docs/model-report/data.js')
     a = parser.parse_args(argv)
     from core.neural_preview import PhysioMixGenerator
@@ -241,8 +253,8 @@ def main(argv=None):
     report = dict(generated=datetime.date.today().isoformat(), commit=git_commit(),
                   physiomix=physiomix_section(pm), lsm=lsm_section(), compare=compare_sources(pm),
                   real=real_strips(a.pack), datasets=dataset_counts(a.pack), rounds=ROUNDS,
-                  round8=round8_decision(a.round8), training=training_curves(a.run, pm.meta['arm']),
-                  rx=rx_section(), **realism_section(a.realism))
+                  targeted=targeted_rounds(a.rules), training=training_curves(a.run, pm.meta['arm']),
+                  rx=rx_section(), **realism_section(a.realism, a.app_source))
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text('// Generated by scripts/build_model_report.py; do not edit by hand.\nwindow.REPORT = '
                         + json.dumps(report, ensure_ascii=False, separators=(',', ':'), allow_nan=False) + ';\n')

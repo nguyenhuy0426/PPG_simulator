@@ -163,9 +163,10 @@
         <text x="885" y="106" text-anchor="middle" fill="var(--ink)">+ độ khuếch đại chậm, nền</text>
 
         <rect x="780" y="150" width="210" height="90" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="885" y="174" text-anchor="middle" font-weight="700" fill="var(--ink)">⑤ Phần dư nhỏ</text>
-        <text x="885" y="196" text-anchor="middle" fill="var(--ink)">±0,15 (bị chặn, không</text>
-        <text x="885" y="216" text-anchor="middle" fill="var(--ink)">thể lấn át nhịp)</text>
+        <text x="885" y="172" text-anchor="middle" font-weight="700" fill="var(--ink)">⑤ Phần dư + chuyển động</text>
+        <text x="885" y="192" text-anchor="middle" fill="var(--ink)">dư ±0,15 (bị chặn)</text>
+        <text x="885" y="210" text-anchor="middle" fill="var(--ink)">+ dao động 0,5–3,5 Hz</text>
+        <text x="885" y="228" text-anchor="middle" fill="var(--ink)">(học theo tập; cổ tay)</text>
 
         <rect x="250" y="290" width="740" height="110" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
         <text x="620" y="316" text-anchor="middle" font-weight="700" fill="var(--rule)">⑥ Hoàn thiện như dữ liệu thật</text>
@@ -255,7 +256,7 @@
         <rect x="650" y="20" width="330" height="180" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
         <text x="815" y="46" text-anchor="middle" font-weight="700" fill="var(--rule)">Giữ cho ổn định</text>
         <text x="668" y="72" fill="var(--ink)">• hinge loss + phạt R1 (trọng số 0,1)</text>
-        <text x="668" y="94" fill="var(--ink)">• loss khớp phân bố (phổ, ACF, độ dốc)</text>
+        <text x="668" y="94" fill="var(--ink)">• loss khớp phổ + ACF, chung và từng tập</text>
         <text x="668" y="116" fill="var(--ink)">• trung bình trượt EMA của generator</text>
         <text x="668" y="138" fill="var(--ink)">• Adam 1e-4, giảm cosine, 20 000 bước</text>
         <text x="668" y="160" fill="var(--ink)">• chấm validation mỗi 500 bước</text>
@@ -277,7 +278,7 @@
       </ol></div>
     <div class="card"><h3 style="margin-top:0">S_arm qua các vòng (thấp = tốt)</h3>
       <svg class="chart" id="rounds-chart" viewBox="0 0 460 260"></svg>
-      <p class="small muted" id="round8-note"></p></div>
+      <p class="small muted" id="rounds-note"></p></div>
   </div>
   <h3>Điểm validation theo bước train (bản trong app, 3 seed)</h3>
   <div class="card"><svg class="chart" id="train-chart" viewBox="0 0 900 260"></svg><div class="legend" id="train-legend"></div>
@@ -294,6 +295,7 @@
   </div>
   <div class="controls" style="margin-top:14px"><div class="seg" id="metric-seg"></div></div>
   <div class="card"><svg class="chart" id="real-bars" viewBox="0 0 900 300"></svg><div class="legend" id="bars-legend"></div></div>
+  <div class="callout" id="tradeoff"></div>
   <div class="callout info" id="results-note">Không có một con số “% giống thật” duy nhất: theo thống kê dạng sóng, model đạt gần mức thật ở GXU và PERform Large; còn CNN chuyên tách thật/giả vẫn nhận ra mẫu sinh ở GXU và AF. Bộ tạo Gaussian cũ bị nhận ra ở mọi tập (0%). Tập không AF chỉ có 2 người chưa dùng nên số của nó dao động mạnh, đừng đọc là “giống hơn cả thật”.</div>
 </section>
 
@@ -306,7 +308,7 @@
     <div class="card"><h3 style="margin-top:0">Phép thử “cùng nhiễu, đổi lệnh”</h3><p class="small" id="swap-text"></p></div>
     <div class="card"><h3 style="margin-top:0">Giới hạn</h3><ul class="small">
       <li>Không có núm “mức vận động” riêng: vận động gắn với tập cổ tay, nên khác biệt còn gồm vị trí cảm biến.</li>
-      <li>PPG cổ tay thật tuần hoàn theo bước chân/đạp xe; bản trong app còn sinh phần chuyển động như nhiễu (vòng 8 đang thử bộ dao động chuyển động).</li>
+      <li>PPG cổ tay thật tuần hoàn theo bước chân/đạp xe. Vòng 9 thêm bộ dao động chuyển động và loss khớp phổ theo từng tập; độ phủ cổ tay tăng, nhưng biên độ dao động học được vẫn nhỏ (~3% xung) — phổ cổ tay vẫn trải rộng hơn thật.</li>
       <li>“Sau gắng sức” của GXU là ngồi nghỉ sau tập, không phải đang chuyển động.</li></ul></div>
   </div>
 </section>

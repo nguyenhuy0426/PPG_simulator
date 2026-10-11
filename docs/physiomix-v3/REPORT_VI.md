@@ -6,10 +6,16 @@ Ngày 2026-10-11. Cùng dữ liệu v3 (SHA-256 `5036fb64…6433`), cùng tiêu 
 
 ## Model đang nằm trong app
 
-Round 7, seed 42 (bước 6 500), commit `258515be`. Giống round 6 nhưng giảm trọng số phạt R1 của critic còn 0,1.
-Theo quy tắc khoá trước: S_arm validation 0,510 ± 0,053 so với round 6 0,570 ± 0,023 (chênh 0,059 > SD gộp 0,041),
-S_real 0,360 so với 0,357, mọi seed qua mọi cổng. Kiểm tra trên laptop (DRY RUN): pytest 809 passed;
-smoke test giao diện PASS (yêu cầu 72/62/95 AF/120/170 bpm, đo ra 71,7/61,7/93,1/118,9/170,4). Chưa đo trên Pi/DAC/OPT101.
+Round 9, seed 123 (bước 3 500), commit `5e4622aa`: round 7 thêm bộ dao động chuyển động và loss khớp phổ/ACF
+theo từng miền. Được chọn theo quy tắc riêng cho cổ tay, khoá trước khi train: Q cổ tay validation 0,527 ± 0,060 so
+với round 7 0,653 ± 0,059 (chênh 0,126 > SD gộp 0,059); S_arm 0,530 ± 0,029 vẫn trong 0,510 + SD gộp 0,043; S_real
+0,344 so với 0,360; mọi seed qua mọi cổng. Kiểm tra trên laptop (DRY RUN): pytest 820 passed; smoke test giao diện
+PASS (72/62/95 AF/120/170 bpm đo ra 71,9/61,7/87,8/119,2/169,2; AF 95 bpm trung vị 20 seed 92,1). Chưa đo trên
+Pi/DAC/OPT101. **Đánh đổi**: cổ tay tốt lên rõ, nhưng CNN tách thật/giả nhận ra mẫu sinh của các miền khác dễ hơn
+(mục 4). Muốn quay về round 7 thì revert commit `5e4622aa`.
+
+Round 7 (seed 42, commit `258515be`) là model trước đó: giảm trọng số phạt R1 còn 0,1; S_arm 0,510 ± 0,053 so với
+round 6 0,570 ± 0,023.
 
 ## 1. Train lâu hơn với learning rate thấp hơn: không giúp
 
@@ -32,6 +38,8 @@ dựng sẵn. Kết quả: yêu cầu 150 bpm đo ra 128–136 bpm.
 | Sinh dài 6 s mỗi bên rồi cắt (round 5) | Lọc FFT vòng làm lộ mẫu giả: cửa sổ thật qua cùng bộ lọc cũng bị nhận ra với AUC 0,98 | C2ST đạo hàm 0,91 → 0,78; S_arm 0,527 |
 | Ngưỡng cắt gradient ở bước R1 nhân 16 (round 6) | Round 5 trượt cổng `d_clipped`: mọi bước lazy-R1 bị cắt (chuẩn ~100 > 10) | Qua mọi cổng; S_arm 0,570 |
 | Trọng số R1 0,1 (round 7) | Round 6 phạt R1 mạnh gấp ~10 lần mức hiệu dụng ở round 5 (vốn luôn bị cắt về 10/~100) | C2ST đạo hàm 0,90 → 0,75; S_arm 0,510 |
+| Bộ dao động chuyển động 0,5–3,5 Hz (round 8) | Phổ cổ tay sinh ra trải rộng (entropy 0,82, ACF 0,24; thật 0,72 và 0,52), độ phủ cổ tay 18% | Biên độ học được co về ≤ 1% xung; Q cổ tay 0,653 → 0,607 nằm trong nhiễu seed: không đạt |
+| + loss khớp phổ/ACF theo từng miền (round 9) | Riêng tín hiệu đối kháng không kéo được phần chuyển động | Q cổ tay → 0,527; độ phủ cổ tay người chưa dùng 18% → 56%; biên độ dao động vẫn nhỏ (~2,6% xung) |
 
 | Round · biến thể | S_arm val (↓) | S_real | C2ST đạo hàm | Q BIDMC | Q AF+nonAF | Q cổ tay | GXU test Q* |
 |---|---|---|---|---|---|---|---|
@@ -42,7 +50,9 @@ dựng sẵn. Kết quả: yêu cầu 150 bpm đo ra 128–136 bpm.
 | R4 · L4 + phân bố từng miền | 0,606 ± 0,020 | 0,378 | 0,928 | 0,718 | 0,426 | 0,666 | 0,211 |
 | R5 · L3 + cắt cửa sổ (trượt cổng) | 0,527 ± 0,022 | 0,368 | 0,782 | 0,613 | 0,399 | 0,637 | 0,222 |
 | R6 · R5 + sửa ngưỡng R1 | 0,570 ± 0,023 | 0,357 | 0,896 | 0,618 | 0,333 | 0,677 | 0,231 |
-| **R7 · R6 + trọng số R1 0,1 (app hiện tại)** | **0,510 ± 0,053** | 0,360 | 0,753 | 0,616 | 0,373 | 0,653 | 0,215 |
+| R7 · R6 + trọng số R1 0,1 | 0,510 ± 0,053 | 0,360 | 0,753 | 0,616 | 0,373 | 0,653 | 0,215 |
+| R8 · R7 + dao động chuyển động (không đạt) | 0,523 ± 0,021 | 0,354 | 0,799 | 0,646 | 0,365 | 0,607 | 0,192 |
+| **R9 · R8 + loss phổ/ACF từng miền (app hiện tại)** | 0,530 ± 0,029 | 0,344 | 0,827 | 0,645 | 0,362 | **0,527** | 0,194 |
 
 \* GXU test đã mở ở round 3; chỉ báo cáo. Q thấp hơn là giống thật hơn; train replay (dữ liệu thật) đạt 0,078.
 
@@ -66,19 +76,21 @@ Mỗi chỉ số đặt cạnh dữ liệu thật của người khác, tức m�
 
 ![Realism](realism_by_dataset.png)
 
-Không có một con số "% giống thật" duy nhất. Model trong app (round 7), theo thứ tự độ giống · độ phủ · không phân biệt được:
+Không có một con số "% giống thật" duy nhất. Theo thứ tự độ giống · độ phủ · không phân biệt được:
 
-| Tập dữ liệu | Round 7 (app) | Round 6 | Dữ liệu thật người khác (trần) |
+| Tập dữ liệu | Round 9 (app) | Round 7 | Dữ liệu thật người khác (trần) |
 |---|---|---|---|
-| GXU ngón tay, 44 người | 96% · 70% · 21% | 93% · 70% · 7% | 98% · 99% · 94% |
-| PERform Large (ICU), 191 người | 98% · 73% · 57% | 99% · 64% · 39% | 98% · 95% · 97% |
-| BIDMC (ICU), 14 người | 61% · 71% · 57% | 55% · 51% · 36% | 51% · 88% · 96% |
-| PERform AF, 4 người | 58% · 68% · 18% | 50% · 66% · 12% | 55% · 83% · 56% |
-| Cổ tay khi vận động, 4 người | 82% · 18% · 42% | 89% · 40% · 40% | 77% · 54% · 92% |
+| GXU ngón tay, 44 người | 95% · 76% · 9% | 96% · 70% · 21% | 98% · 99% · 94% |
+| PERform Large (ICU), 191 người | 98% · 63% · 36% | 98% · 73% · 57% | 98% · 95% · 97% |
+| BIDMC (ICU), 14 người | 49% · 67% · 45% | 61% · 71% · 57% | 51% · 88% · 96% |
+| PERform AF, 4 người | 51% · 46% · 7% | 58% · 68% · 18% | 55% · 83% · 56% |
+| Cổ tay khi vận động, 4 người | 92% · **56%** · 52% | 82% · 18% · 42% | 77% · 54% · 92% |
 
-Round 7 tốt hơn ở GXU, PERform Large, BIDMC và AF. Cổ tay kém đi: độ phủ 40% → 18%, tức model sinh vận động theo
-ít kiểu hơn dữ liệu thật. Bộ không AF chỉ có 2 người nên không đủ tin cậy để so. Bộ tạo Gaussian cũ của app: 0% không
-phân biệt được ở mọi tập.
+Round 9 đưa độ phủ cổ tay lên ngang mức dữ liệu thật của người khác (56% so với 54%). Đổi lại, ở GXU, PERform Large,
+BIDMC và AF, CNN tách thật/giả nhận ra mẫu sinh dễ hơn round 7, và độ phủ AF giảm 68% → 46%. Trên validation, điểm
+phân bố từng nhóm của round 9 ngang round 7 (GXU 0,199 so với 0,218; AF+nonAF 0,362 so với 0,373); phần kém đi nằm ở
+AUC đạo hàm 0,753 → 0,827, đã tính trong S_arm và được quy tắc chấp nhận vì nằm trong SD gộp. Bộ không AF chỉ có 2
+người nên không đủ tin cậy để so. Bộ tạo Gaussian cũ của app: 0% không phân biệt được ở mọi tập.
 Dấu hiệu còn lại ở GXU (đo trên round 6): kết cấu "gợn" nhỏ. Mẫu sinh có 152 cực trị mỗi cửa sổ so với 138 ở dữ liệu thật,
 độ cong |Δ²| trung vị 0,0146 so với 0,0117.
 
@@ -88,21 +100,23 @@ Không ngẫu nhiên. Trạng thái do người dùng chọn qua miền dữ li�
 (PPG cổ tay khi đi bộ/chạy/đạp xe) hay "Ngón tay" GXU khi nghỉ/sau gắng sức; cùng với HR và độ bất thường.
 Kiểm chứng bằng một CNN chỉ học trên dữ liệu thật để gọi tên 7 trạng thái (đoán mò 14%):
 
-| | Dữ liệu thật (người chưa dùng) | v2 | Round 6 | Round 7 (app) | Gaussian cũ |
-|---|---|---|---|---|---|
-| Lệnh "cổ tay vận động" được nhận đúng | 86% | 91% | 91% | 100% | 8% |
-| P(vận động) khi lệnh là trạng thái nghỉ | ≤ 4% | ≤ 8% | ≤ 6% | < 1% | ≤ 2% |
-| Trung bình 7 trạng thái | 51% | 52% | 54% | 56% | 20% |
-| Cùng nhiễu, chỉ đổi lệnh: đầu ra theo lệnh | — | 48% | 53% | 55% | 17% |
+| | Dữ liệu thật (người chưa dùng) | v2 | Round 6 | Round 7 | Round 9 (app) | Gaussian cũ |
+|---|---|---|---|---|---|---|
+| Lệnh "cổ tay vận động" được nhận đúng | 86% | 91% | 91% | 100% | 78% | 8% |
+| P(vận động) khi lệnh là trạng thái nghỉ | ≤ 4% | ≤ 8% | ≤ 6% | < 1% | ≤ 6% | ≤ 2% |
+| Trung bình 7 trạng thái | 50% | 52% | 54% | 56% | 54% | 20% |
+| Cùng nhiễu, chỉ đổi lệnh: đầu ra theo lệnh | — | 48% | 53% | 55% | 49% | 17% |
 
-Nếu model bỏ qua lệnh thì mỗi nhiễu chỉ cho một câu trả lời; thực tế mỗi nhiễu cho trung bình 5,2/7 câu
-trả lời khác nhau (round 7). Nhiễu z chỉ tạo khác biệt giữa các lần sinh (người khác nhau, nhịp khác nhau).
+Nếu model bỏ qua lệnh thì mỗi nhiễu chỉ cho một câu trả lời; thực tế mỗi nhiễu cho trung bình 4,9/7 câu
+trả lời khác nhau (round 9). Round 9 sinh cổ tay đa dạng hơn (độ phủ 56%), nên giống dữ liệu thật hơn ở chỗ không
+phải mẫu nào cũng "vận động" rõ: tỉ lệ nhận đúng 78% gần với dữ liệu thật (86%) hơn mức 100% của round 7. Nhiễu z chỉ tạo khác biệt giữa các lần sinh (người khác nhau, nhịp khác nhau).
 
 Giới hạn quan trọng:
 - Không có núm "mức vận động" riêng: vận động gắn với bộ cổ tay khi tập, nên khác biệt còn gồm vị trí cảm
   biến (cổ tay vs ngón tay).
-- PPG cổ tay thật khi tập khá tuần hoàn (ACF 0,62) theo nhịp bước chân/đạp, không theo nhịp tim. Model sinh
-  phần chuyển động như nhiễu hỗn loạn (ACF 0,27 ở round 7), và theo ít kiểu hơn (độ phủ 18%).
+- PPG cổ tay thật khi tập khá tuần hoàn (ACF 0,62) theo nhịp bước chân/đạp, không theo nhịp tim. Model vẫn sinh
+  phần chuyển động như nhiễu hỗn loạn (ACF 0,22 ở round 9, 0,27 ở round 7); bộ dao động chuyển động chỉ học được
+  biên độ ~2,6% xung, nên phổ cổ tay vẫn trải rộng hơn thật.
 - "Sau gắng sức" của GXU là ngồi nghỉ sau tập, không phải đang chuyển động.
 
 ## 6. Giới hạn và hướng tiếp
@@ -112,12 +126,12 @@ Giới hạn quan trọng:
 - Validation đã được dùng qua nhiều round, nên điểm validation hơi lạc quan. GXU test (dùng lại) và đánh giá
   trên người validation + test cho cùng xu hướng.
 - Tiếp theo:
-  1. Núm vận động thật: bộ dao động thứ hai theo nhịp bước/đạp, học từ dữ liệu có gia tốc kế
-     (PPG-DaLiA hoặc kênh IMU của PTT/cổ tay).
+  1. Núm vận động thật: bộ dao động chuyển động đã có (round 9) nhưng chỉ học được biên độ ~2,6% xung. Bước tiếp là
+     điều kiện hoá nó bằng nhịp bước/đạp đo từ gia tốc kế (bộ Wrist PhysioNet có kênh gia tốc), thay vì để GAN tự tìm.
   2. Giảm "gợn" nhỏ ở GXU: làm mượt hoặc thu hẹp phần dư.
   3. Thêm người BIDMC/AF.
   4. Đo trên phần cứng.
 
-![Round 7: HR control và GXU test](round7_control_and_gxu_test.png)
-![Round 7: dạng sóng GXU](round7_waveforms_gxu.png)
+![Round 9: HR control và GXU test](round9_control_and_gxu_test.png)
+![Round 9: dạng sóng GXU](round9_waveforms_gxu.png)
 ![App: AF 95 bpm](ui-af-95-vi-1280.png)
