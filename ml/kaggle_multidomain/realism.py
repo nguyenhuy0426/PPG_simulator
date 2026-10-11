@@ -83,6 +83,27 @@ def gaussian_source(development, to_dev):
     return generate
 
 
+def lsm_source(path):
+    """The app's LSM-GAN: trained on BIDMC (0.9-5 Hz view) without conditions, so prompts are ignored.
+    Its output is put through the same data view as the other sources; it cannot add the 5-8 Hz band it never learned."""
+    model = torch.jit.load(str(path), map_location="cpu").eval()
+    mask = view_mask("v3")
+
+    def generate(train_ids, seed):
+        z = torch.randn(len(train_ids), LENGTH, generator=torch.Generator().manual_seed(seed))
+        with torch.no_grad():
+            y = torch.cat([model(part) for part in z.split(64)])[:, 0].numpy().astype(np.float64)
+        y = np.fft.irfft(np.fft.rfft(y-y.mean(1, keepdims=True), axis=1)*mask, n=LENGTH, axis=1)
+        return ((y-y.min(1, keepdims=True))/np.maximum(np.ptp(y, 1, keepdims=True), 1e-9)).astype(np.float32)
+    return generate
+
+
+def narrow_view(x):
+    """LSM-GAN's own training view (0.9-5 Hz), re-normalised; applied to real and generated windows alike."""
+    y = np.fft.irfft(np.fft.rfft(np.asarray(x, np.float64), axis=-1)*view_mask("v1"), n=LENGTH, axis=-1)
+    return ((y-y.min(-1, keepdims=True))/np.maximum(np.ptp(y, -1, keepdims=True), 1e-9)).astype(np.float32)
+
+
 def folds_of(groups, folds, rng):
     unique = rng.permutation(np.unique(groups))
     fold = {g: i % folds for i, g in enumerate(unique)}
@@ -100,10 +121,12 @@ def grouped_c2st(real, real_groups, other, other_groups, folds, steps, seed):
     return float(np.mean(values)), folds
 
 
-def realism(pack, evaluator, sources, n=256, folds=4, steps=600, seed=0, repeats=1):
+def realism(pack, evaluator, sources, n=256, folds=4, steps=600, seed=0, repeats=1, datasets=DATASETS):
     """repeats: C2ST fold assignments averaged; few-person datasets make one assignment noisy."""
     result = {}
     for d, domain in enumerate(DATASETS):
+        if domain not in datasets:
+            continue
         unseen = balanced(pack, rows(pack, UNSEEN, domain), n, np.random.default_rng(seed+10*d))
         train = rows(pack, ("train",), domain)
         size = min(n, len(train))
@@ -209,12 +232,16 @@ def main(argv=None):
     parser.add_argument("--data", required=True, help="Directory holding the verified v3 pack")
     parser.add_argument("--run", action="append", default=[], help="name=run_dir:arm[:alias]")
     parser.add_argument("--gaussian", action="store_true")
+    parser.add_argument("--lsm", help="TorchScript LSM-GAN generator to evaluate as source lsm_gan")
     parser.add_argument("--output", required=True)
     parser.add_argument("--samples", type=int, default=256)
     parser.add_argument("--c2st-steps", type=int, default=600)
     parser.add_argument("--c2st-repeats", type=int, default=3)
     parser.add_argument("--state-steps", type=int, default=2500)
     parser.add_argument("--threads", type=int, default=8)
+    parser.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=DATASETS)
+    parser.add_argument("--narrow-view", action="store_true",
+                        help="Score everything in LSM-GAN's 0.9-5 Hz view (fairness check); skips state tests")
     a = parser.parse_args(argv)
     torch.set_num_threads(a.threads)
     pack, manifest = load_input(a.data, PROTOCOL)
@@ -224,13 +251,22 @@ def main(argv=None):
         name, rest = spec.split("=", 1)
         run_dir, arm, *alias = rest.split(":")
         sources[name] = model_source(development, to_dev, run_dir, arm, alias[0] if alias else None)
+    if a.lsm:
+        sources["lsm_gan"] = lsm_source(a.lsm)
     if a.gaussian:
         sources["gaussian_shaper"] = gaussian_source(development, to_dev)
+    if a.narrow_view:
+        # Sources were built on the original view; only what is scored changes.
+        pack = {**pack, "signal": narrow_view(pack["signal"])}
+        development, to_dev = development_of(pack)
+        sources = {name: (lambda ids, seed, g=generate: narrow_view(g(ids, seed))) for name, generate in sources.items()}
     evaluator = PromptedEvaluator(development, 16)
     result = dict(data_sha256=manifest["windows_sha256"], unseen_splits=list(UNSEEN), sources=list(sources),
+                  view="0.9-5 Hz (LSM-GAN training view)" if a.narrow_view else "v3 0.5-8 Hz",
                   realism=realism(pack, evaluator, sources, a.samples, steps=a.c2st_steps,
-                                          repeats=a.c2st_repeats),
-                  condition_following=condition_following(pack, sources, a.state_steps))
+                                  repeats=a.c2st_repeats, datasets=a.datasets))
+    if not a.narrow_view:
+        result["condition_following"] = condition_following(pack, sources, a.state_steps)
     save_json(Path(a.output), result)
     return result
 
