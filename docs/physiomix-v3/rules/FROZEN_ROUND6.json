@@ -1,0 +1,59 @@
+{
+  "rule": "PhysioMix crop_r1 rule (validation only; locked criterion sha256 813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0).\nArm L3_rel_beat_lr_crop_r1 = round-4 winner L3_rel_beat_lr with a 240-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160), same seeds, steps and learning-rate schedule as round 4; every round-3 gate unchanged.\nIncumbent: round3_physiomix_v2, S_arm [0.5786631538990534, 0.5822552091758637, 0.6259113024743039], S_real [0.37724536685135757, 0.3394293098960376, 0.38247588889461326] (mean S_arm 0.5956).\nShip the crop arm only if every seed passes the round-3 gates, its mean S_arm beats the incumbent by more than the pooled seed SD and its mean S_real is at most the incumbent's + 0.05; the shipped seed is its lowest-S_arm seed. Otherwise the incumbent stays. The GXU test is scored only after this decision is saved.",
+  "rule_sha256": "5afddc974d142ecbdceccf54d885cf123198329e517cf3c553c44cdcfb2834fa",
+  "arm": "L3_rel_beat_lr_crop_r1",
+  "config": {
+    "diffusion": false,
+    "osc": true,
+    "dc": true,
+    "guidance": 1.0,
+    "sample_steps": 32,
+    "lr": 0.0001,
+    "schedule": "cosine",
+    "rel": true,
+    "beat": true,
+    "domloss": false,
+    "pad": 240,
+    "r1_scaled_clip": true,
+    "version": "v2"
+  },
+  "base": {
+    "arm": "L3_rel_beat_lr",
+    "S_arm": [
+      0.6211372923327776,
+      0.5674914506180107,
+      0.5748566820616423
+    ],
+    "S_real_fresh": [
+      0.3780438308498101,
+      0.3485776437531507,
+      0.3747629952227456
+    ],
+    "seeds": [
+      42,
+      123,
+      2026
+    ]
+  },
+  "incumbent": {
+    "S_arm": [
+      0.5786631538990534,
+      0.5822552091758637,
+      0.6259113024743039
+    ],
+    "S_real_fresh": [
+      0.37724536685135757,
+      0.3394293098960376,
+      0.38247588889461326
+    ],
+    "name": "round3_physiomix_v2"
+  },
+  "seeds": [
+    42,
+    123,
+    2026
+  ],
+  "steps": 20000,
+  "data_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "gxu_test_subject_sha256": "a0d0c0e982ab31f265ab02853efe93c26ab8d547df68eef2576f8489079ebb45"
+}

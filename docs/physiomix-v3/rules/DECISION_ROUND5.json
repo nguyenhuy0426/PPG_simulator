@@ -1,0 +1,30 @@
+{
+  "arm": "L3_rel_beat_lr_crop",
+  "incumbent": "round3_physiomix_v2",
+  "ship": false,
+  "ship_seed": 2026,
+  "eligible": false,
+  "gap": 0.06901978487802807,
+  "pooled_sd": 0.02436353061302677,
+  "non_inferior": true,
+  "S_arm": {
+    "mean": 0.526590103638379,
+    "sd": 0.022255465996019897,
+    "n": 3
+  },
+  "S_real": {
+    "mean": 0.3681049691581488,
+    "sd": 0.011711109845241627,
+    "n": 3
+  },
+  "incumbent_S_arm": {
+    "mean": 0.5956098885164071,
+    "sd": 0.026303183859825552,
+    "n": 3
+  },
+  "incumbent_S_real": {
+    "mean": 0.36638352188066947,
+    "sd": 0.02348907720613138,
+    "n": 3
+  }
+}
