@@ -39,7 +39,6 @@ class CTkApp(ctk.CTk):
         self.engine = SignalEngine.get_instance()
         self._closing = False
         self._shutdown_requested = False
-        compact = self.layout.compact
         u = self.layout.ui
         header_pad = u(14)
         # ── Navigation rail (overlays the page when expanded) ──
@@ -61,31 +60,21 @@ class CTkApp(ctk.CTk):
         self.bind("<Button-1>", self.rail.click_outside, add="+")
 
         # ── Page area ──
-        # Compact panels scroll long pages while the rail and footer
-        # stay fixed. The Classic page is laid out to fit 1024x600 without
-        # scrolling, so it lives in a plain host that stretches its plots.
-        self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if compact else ctk.CTkFrame(self, fg_color="transparent")
+        # Every page is laid out to fit 1024x600 without scrolling, so one
+        # plain host stretches their plots to the window height.
+        self.page_host = ctk.CTkFrame(self, fg_color="transparent")
         self.page_host.grid(row=0, column=1, sticky="nsew")
         self.page_host.grid_columnconfigure(0, weight=1)
-        if compact:
-            self.page_host._scrollbar.configure(width=28)
-            self.fixed_host = ctk.CTkFrame(self, fg_color="transparent")
-            self.fixed_host.grid_columnconfigure(0, weight=1)
-            self.fixed_host.grid_rowconfigure(0, weight=1)
-        else:
-            self.page_host.grid_rowconfigure(0, weight=1)
-            self.fixed_host = self.page_host
-        for host in {self.page_host, self.fixed_host}:
-            host.layout = self.layout
-            host.language = self.language
+        self.page_host.grid_rowconfigure(0, weight=1)
+        self.page_host.layout = self.layout
+        self.page_host.language = self.language
         self.frames = {
-            "Pathology": PathologyFrame(self.fixed_host, fg_color="transparent"),
-            "Calibration": CalibrationFrame(self.fixed_host, fg_color="transparent"),
-            "Playback": PlaybackFrame(self.fixed_host, fg_color="transparent"),
+            "Pathology": PathologyFrame(self.page_host, fg_color="transparent"),
+            "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
+            "Playback": PlaybackFrame(self.page_host, fg_color="transparent"),
             "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
-        for host in {self.page_host, self.fixed_host}:
-            host.frames = self.frames
+        self.page_host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
         # ── Footer: output health and build ──
@@ -135,16 +124,6 @@ class CTkApp(ctk.CTk):
         self.active_frame = self.frames[name]
         self.active_frame.grid(row=0, column=0, sticky="nsew",
                                padx=self.layout.outer_pad, pady=self.layout.outer_pady)
-        host = self.active_frame.master
-        if host is not self.page_host:
-            self.page_host.grid_remove()
-            host.grid(row=0, column=1, sticky="nsew")
-        else:
-            if self.fixed_host is not self.page_host:
-                self.fixed_host.grid_remove()
-            self.page_host.grid()
-        if self.layout.compact and host is self.page_host:
-            self.page_host._parent_canvas.yview_moveto(0)
         self.rail.select(name)
         self.rail.lift()
         if hasattr(self.active_frame, "on_show"):
@@ -216,8 +195,7 @@ class CTkApp(ctk.CTk):
             return
         self.language = language
         self.title(text(language, "title"))
-        for host in {self.page_host, self.fixed_host}:
-            host.language = language
+        self.page_host.language = language
         for key, text_key, _icon in self.nav_keys:
             self.nav_buttons[key].set_label(text(language, text_key))
         self.signal_setup_bubble.set_label(text(language, "settings_short"))

@@ -193,3 +193,43 @@ class TestRailAndTheme(unittest.TestCase):
             self.assertEqual(app.frames["Pathology"].trace.cget("bg"), T.DARK[0])
         finally:
             app.on_closing()
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class TestTouchPanelPages(unittest.TestCase):
+    def test_every_page_fits_the_1024x600_panel_with_readable_plots(self):
+        """Emulates the Pi panel (compact profile, 0.75 scaling); resizing a desktop window does not."""
+        import time
+        from unittest import mock
+        from ui.ctk_app import CTkApp
+        with mock.patch.object(CTkApp, "winfo_screenwidth", lambda self: 1024), \
+                mock.patch.object(CTkApp, "winfo_screenheight", lambda self: 600), \
+                mock.patch.object(CTkApp, "_maximize_to_work_area", lambda self: None):
+            app = CTkApp(language="vi")
+        app._save_language = lambda: None
+        try:
+            self.assertTrue(app.layout.compact)
+            app.geometry("1024x600+0+0")
+
+            def pump(seconds):
+                end = time.monotonic() + seconds
+                while time.monotonic() < end:
+                    app.update()
+                    time.sleep(.01)
+            for name in ("Pathology", "Calibration", "Playback", "Neural"):
+                app._show_frame(name)
+                pump(.4)
+                page = app.frames[name]
+                bottom = app.winfo_rooty() + app.winfo_height()
+                self.assertLessEqual(page.winfo_reqheight(), page.master.winfo_height(), name)
+                self.assertGreaterEqual(page.rx_panel.winfo_height(), 150, name)
+                self.assertLessEqual(page.rx_panel.winfo_rooty() + page.rx_panel.winfo_height(), bottom, name)
+            neural = app.frames["Neural"]
+            self.assertGreaterEqual(neural.trace.winfo_height(), 150)
+            for widget in (neural.play_btn, neural.export_btn, neural.seek, neural.status):
+                self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), bottom)
+            # Generated and reference lanes share the TX view and both draw.
+            self.assertEqual(len(neural.trace.lanes), 2)
+            self.assertTrue(all(lane.points for lane in neural.trace.lanes))
+        finally:
+            app.on_closing()

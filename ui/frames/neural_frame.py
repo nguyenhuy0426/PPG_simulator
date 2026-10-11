@@ -21,14 +21,14 @@ from ui import theme as T
 from ui.rx_monitor import RXPanel
 from ui.select_button import SelectButton
 from ui.touch_slider import TouchSlider
-from ui.trace_view import TraceView
+from ui.trace_view import Lane, LaneView
 
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
                hr='Nhịp tim Gaussian / bpm', dc='DC / mV', ac='AC IR / mV',
                fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
-               play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất sóng CSV',
+               play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
                real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
                info='GAN sinh cả đoạn 30 s, không điều khiển HR/notch. A2 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
@@ -49,7 +49,7 @@ COPY = {
                hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
                fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory',
                with_notch='Visible notch', no_notch='No visible notch',
-               play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export waveform CSV',
+               play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
                real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
                info='GAN generates a whole 30 s strip; no HR/notch control. A2 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
@@ -87,7 +87,7 @@ class NeuralFrame(ctk.CTkFrame):
         u = T.ui
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
-        self.title_label, self.info, _actions = K.page_header(self)
+        self.title_label, self.info, actions = K.page_header(self)
 
         source, self.source_title, tools = K.section(self, span=3)
         source.grid(row=1, column=0, sticky='ew', pady=(0, u(8)))
@@ -104,7 +104,7 @@ class NeuralFrame(ctk.CTkFrame):
             label=T.label(source,'',u(12),text_color=T.MUTED,anchor='w')
             label.grid(row=1,column=col,sticky='ew',padx=u(12))
             self.control_labels[key]=label
-            control=TouchSlider(source,lo,hi,step,value=value,
+            control=TouchSlider(source,lo,hi,step,value=value,inline=True,
                                 command=lambda _value,k=key:self.adjust(k))
             control.grid(row=2,column=col,sticky='ew',padx=u(12),pady=(0,u(10)))
             setattr(self,key+'_slider',control)
@@ -115,34 +115,33 @@ class NeuralFrame(ctk.CTkFrame):
         plots.grid_rowconfigure(0,weight=1)
         # TX on the left (generated lane over its reference lane), RX on the
         # right: the same split as the Classic and Calibration pages.
-        tx, self.left_label, _ = K.section(plots)
+        tx, self.left_label, tx_tools = K.section(plots)
         tx.grid(row=0,column=0,sticky='nsew',padx=(0,u(4)))
-        holder=K.plot_holder(tx)
-        self.trace=TraceView(holder,height=96)
-        self.trace.pack(fill='both',expand=True,padx=u(3),pady=(u(3),0))
-        self.reference_trace=TraceView(holder,height=96)
-        self.reference_trace.pack(fill='both',expand=True,padx=u(3),pady=(0,u(3)))
-        rx, self.rx_title, _ = K.section(plots)
-        rx.grid(row=0,column=1,sticky='nsew',padx=(u(4),0))
-        self.rx_panel=RXPanel(K.plot_holder(rx),language=self.language,height=196)
-        self.rx_panel.pack(fill='both',expand=True,padx=u(3),pady=u(3))
-
-        bottom=ctk.CTkFrame(self,fg_color='transparent')
-        bottom.grid(row=4,column=0,sticky='ew',pady=(u(8),0))
-        bottom.grid_columnconfigure(1,weight=1)
-        self.seek_label=T.label(bottom,'',u(12),text_color=T.MUTED)
-        self.seek_label.grid(row=0,column=0,padx=(u(2),u(8)))
-        self.seek=ctk.CTkSlider(bottom,from_=0,to=22,height=u(28),border_width=u(11),button_length=u(2),
+        # Seek lives in the TX card header and Play/Export in the page header, as on the other pages:
+        # a separate bottom bar left the 1024x600 panel no height for the plots.
+        self.seek_label=T.label(tx_tools,'',u(12),text_color=T.MUTED)
+        self.seek_label.pack(side='left',padx=(0,u(6)))
+        self.seek=ctk.CTkSlider(tx_tools,from_=0,to=22,width=u(120),height=u(28),border_width=u(11),button_length=u(2),
                                 corner_radius=u(3),button_corner_radius=u(4),progress_color=T.ACCENT,
                                 button_color=T.INK,button_hover_color=T.ACCENT,command=lambda _:self.render())
         self.seek.set(0)
-        self.seek.grid(row=0,column=1,sticky='ew',padx=(0,u(10)))
-        self.export_btn=K.secondary_button(bottom,command=self.export,width=150,icon='save')
-        self.export_btn.grid(row=0,column=2,padx=(0,u(8)))
-        self.play_btn=K.primary_button(bottom,command=self.toggle_output,width=150)
-        self.play_btn.grid(row=0,column=3)
-        self.status=T.label(self,'',u(12),text_color=T.MUTED,anchor='w',justify='left',wraplength=u(900))
-        self.status.grid(row=5,column=0,sticky='ew',pady=(u(6),0))
+        self.seek.pack(side='left')
+        holder=K.plot_holder(tx)
+        # One view, two lanes (generated over real reference) on one time axis, like the RX panel:
+        # two separate views each needed their own axis and minimum height.
+        self.trace=LaneView(holder,height=120)
+        self.trace.pack(fill='both',expand=True,padx=u(3),pady=u(3))
+        rx, self.rx_title, _ = K.section(plots)
+        rx.grid(row=0,column=1,sticky='nsew',padx=(u(4),0))
+        self.rx_panel=RXPanel(K.plot_holder(rx),language=self.language,height=120)
+        self.rx_panel.pack(fill='both',expand=True,padx=u(3),pady=u(3))
+
+        self.export_btn=K.secondary_button(actions,command=self.export,width=120,icon='save')
+        self.export_btn.pack(side='left',padx=(0,u(8)))
+        self.play_btn=K.primary_button(actions,command=self.toggle_output,width=150)
+        self.play_btn.pack(side='left')
+        self.status=T.label(self,'',u(12),text_color=T.MUTED,anchor='w',justify='left',wraplength=u(900),height=u(20))
+        self.status.grid(row=4,column=0,sticky='ew',pady=(u(6),0))
         # Wrap at the page's real width; a fixed wraplength overflows narrower windows.
         self._status_wrap=None
         self.bind('<Configure>',self._fit_status,add='+')
@@ -152,10 +151,14 @@ class NeuralFrame(ctk.CTkFrame):
     def _fit_status(self,_event=None):
         # CTkFrame delivers <Configure> from its inner canvas, so read the frame's own width.
         usable=self.winfo_width()-2*max(self.status.winfo_x(),0)
-        wrap=max(T.ui(200),round(usable/self.status._get_widget_scaling())-T.ui(8))
-        if wrap!=self._status_wrap:
-            self._status_wrap=wrap
+        scaling=self.status._get_widget_scaling()
+        wrap=max(T.ui(200),round(usable/scaling)-T.ui(8))
+        # The subtitle shares its row with Play/Export, so it wraps short of the buttons.
+        info=max(T.ui(200),round((usable-self.play_btn.master.winfo_reqwidth())/scaling)-T.ui(16))
+        if (wrap,info)!=self._status_wrap:
+            self._status_wrap=(wrap,info)
             self.status.configure(wraplength=wrap)
+            self.info.configure(wraplength=info)
 
     def set_language(self, language):
         self.language=language if language in COPY else 'en'
@@ -326,21 +329,28 @@ class NeuralFrame(ctk.CTkFrame):
             text+=t['pm_extrapolated'].format(lo=lo,hi=hi)
         return text
 
+    def _reference_rows(self):
+        ref=self.previews.get({'LSM-GAN':'Real sequence','PhysioMix':'Real PhysioMix'}.get(self.mode,'Real reference'))
+        return WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
+
+    def _draw_tx(self,generated,reference):
+        """Rows (time_s, IR_V, ...): generated lane over its real reference lane, in mV."""
+        t=COPY[self.language]
+        lanes=[Lane(self._mode_label(),T.IR,'mV',[(r[0],r[1]*1000) for r in generated]),
+               Lane(t['real'],T.PLOT_TEXT,'mV',[(r[0],r[1]*1000) for r in reference])]
+        ends=[rows[-1][0] for rows in (generated,reference) if rows]
+        self.trace.update_lanes(lanes,end_s=max([self.trace.window_s]+ends) if ends else None)
+
     def render(self):
         t=COPY[self.language]
-        self.trace.channels=((1,self._mode_label(),T.IR),)
-        self.reference_trace.channels=((1,t['real'],T.PLOT_TEXT),)
         preview=self.previews.get(self.mode)
         K.set_running(self.play_btn,self.engine.is_waveform_playing,t['play'],t['stop'])
         self.play_btn.configure(state='normal' if preview is not None and not self._busy else 'disabled')
         self.export_btn.configure(state='normal' if preview is not None else 'disabled')
         if not self.engine.is_waveform_playing:
             start=self.seek.get()
-            self.trace.update_samples([s for s in self.clip().samples if start<=s[0]<=start+8] if preview else [])
-        ref=self.previews.get({'LSM-GAN':'Real sequence','PhysioMix':'Real PhysioMix'}.get(self.mode,'Real reference'))
-        start=self.seek.get()
-        rows=WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
-        self.reference_trace.update_samples([s for s in rows if start<=s[0]<=start+8])
+            self._draw_tx([s for s in self.clip().samples if start<=s[0]<=start+8] if preview else [],
+                          [s for s in self._reference_rows() if start<=s[0]<=start+8])
         if preview and not self.engine.is_waveform_playing and not self._busy:
             self.status.configure(text=self._status_detail(preview),text_color=T.MUTED)
 
@@ -382,7 +392,10 @@ class NeuralFrame(ctk.CTkFrame):
             if now-self._last_live_render<.1:
                 return
             self._last_live_render=now
-            self.trace.update_samples(self.engine.get_display_history())
+            history=self.engine.get_display_history()
+            # Clip playback stamps samples in clip time, so the reference lane shows the same seconds.
+            end=history[-1][0] if history else 0
+            self._draw_tx(history,[s for s in self._reference_rows() if end-self.trace.window_s<=s[0]<=end])
             rx_status=self.rx.channel_status(0)
             if self.rx.is_simulated: rx_status='dry-run'
             elif rx_status in ('ok','saturated') and self.rx.is_stale(0): rx_status+=' / stale'

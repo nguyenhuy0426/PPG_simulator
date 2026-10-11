@@ -54,6 +54,8 @@ def main():
         for widget in (panel.play_btn,panel.export_btn,panel.status,panel.trace,panel.rx_panel):
             assert widget.winfo_rootx()+widget.winfo_width()<=app.winfo_rootx()+app.winfo_width()
             assert widget.winfo_rooty()+widget.winfo_height()<=app.winfo_rooty()+app.winfo_height()
+        # Desktop scaling in a 1024x600 window (the Pi panel itself is covered by tests/test_classic_ui.py).
+        assert panel.trace.winfo_height()>=100 and panel.rx_panel.winfo_height()>=100
         capture('gaussian-vi-1024.png')
         panel.play_btn.invoke();pump(.3)
         assert engine.is_waveform_playing
