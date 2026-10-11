@@ -7,10 +7,11 @@ from ui.theme import AXIS, DARK, GRID, IR, PLOT_TEXT, RED  # noqa: F401  (re-exp
 
 class Lane:
     """One horizontal strip of a LaneView: its own samples, scale and status."""
-    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s")
+    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s", "badge")
 
-    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None):
+    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None, badge=""):
         self.title, self.color, self.detail = title, color, detail
+        self.badge = badge            # right-aligned header reading, e.g. the received pulse rate
         self.points = points          # [(time_s, value_mV), ...] in time order
         self.message, self.submessage = message, submessage
         self.max_gap_s = max_gap_s    # break the line across gaps longer than this
@@ -88,6 +89,8 @@ class LaneView(tk.Canvas):
             if lane.detail:
                 x1 = self.bbox(title_id)[2] + round(8 * scale)
                 self.create_text(x1, header_y, text=lane.detail, fill=AXIS, font=small, anchor="w")
+            if lane.badge:
+                self.create_text(right - 4, header_y, text=lane.badge, fill=lane.color, font=bold, anchor="e")
             plot_top, plot_bottom = y0 + round(26 * scale), y0 + lane_h - round(8 * scale)
             points = [p for p in lane.points if start <= p[0] <= end]
             if not points:

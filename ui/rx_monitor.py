@@ -1,12 +1,22 @@
 """Shared read-only view of the existing receiver; never starts ADC or DAC IO."""
 import time
 
+from core.rx_heart_rate import estimate_rx_rate
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from ui import theme as T
 from ui.trace_view import Lane, LaneView
 
 RX_CHANNELS = ((0, "IR", T.IR), (2, "RED", T.RED))
 REFRESH_S = 0.1
+RATE_REFRESH_S = 1.0   # rate recomputed at most once a second per channel (~3 ms each on the x86 laptop; Pi unmeasured)
+
+# Received pulse rate shown in each live lane header: (label, reasons there is none).
+_RATE = {
+    "vi": ("Nhịp RX", {"short": "cần ≥ 5 s liên tục", "saturated": "chạm trần ADC", "weak": "tín hiệu yếu",
+                       "unclear": "không rõ nhịp đều"}),
+    "en": ("RX rate", {"short": "needs ≥ 5 s gap-free", "saturated": "ADC clipping", "weak": "weak signal",
+                       "unclear": "no clear regular rhythm"}),
+}
 
 # Short lane-header state plus the centred explanation shown in an empty lane.
 _PANEL = {
@@ -57,6 +67,7 @@ class RXPanel(LaneView):
         self.channels = tuple(channels)
         self.end_s = 0.0
         self._last_update = 0.0
+        self._rates = {}       # channel -> (computed_at, RxRate)
 
     def set_language(self, language):
         self.language = language
@@ -78,5 +89,19 @@ class RXPanel(LaneView):
             lanes.append(Lane(f"A{channel}  {name}", color, detail,
                               [(s.timestamp - now, raw_to_millivolts(s.raw)) for s in samples],
                               message if not samples else "", sub.format(name=name) if not samples else "",
-                              max_gap_s=0.05))
+                              max_gap_s=0.05, badge=self.rate_badge(channel, status, samples, now)))
         self.update_lanes(lanes, end_s=0.0)
+
+    def rate_badge(self, channel, status, samples, now):
+        """Pulse rate of the received samples; empty when there are no real samples (dry-run, off)."""
+        if not samples or status not in ("ok", "saturated"):
+            self._rates.pop(channel, None)
+            return ""
+        computed_at, rate = self._rates.get(channel, (None, None))
+        if computed_at is None or now - computed_at >= RATE_REFRESH_S:
+            rate = estimate_rx_rate(samples)
+            self._rates[channel] = (now, rate)
+        label, reasons = _RATE["vi" if self.language == "vi" else "en"]
+        if rate.bpm is None:
+            return f"{label}  — {reasons.get(rate.reason, rate.reason)}"
+        return f"{label}  {rate.bpm:.0f} bpm"
