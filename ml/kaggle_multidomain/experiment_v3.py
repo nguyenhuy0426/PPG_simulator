@@ -52,6 +52,9 @@ ARMS.update({"L1_v2_lr": LOW_LR, "L2_rel_lr": dict(LOW_LR, rel=True),
 # Round 5 (experiment_v5): the round-4 winner with a cropped, non-circular output window.
 ARMS.update({f"{arm}_crop": dict(ARMS[arm], rel=True, pad=CROP_PAD)
              for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
+# Round 6: every round-5 lazy-R1 step hit the fixed critic clip (median norm ~100 vs 10), weakening R1 ~10x.
+ARMS.update({f"{arm}_crop_r1": dict(ARMS[f"{arm}_crop"], r1_scaled_clip=True)
+             for arm in ("L1_v2_lr", "L2_rel_lr", "L3_rel_beat_lr", "L4_rel_beat_dom_lr")})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -79,7 +82,7 @@ def config(arm, frozen=None):
             raise ValueError("physiomix_v2 needs the frozen pilot selection")
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
-                   rel=False, beat=False, domloss=False, pad=0), **ARMS[arm]}
+                   rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -297,9 +300,12 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
                 ld = ld+r1
                 stability["r1_updates"] += 1
             ld.backward()
-            dn = torch.nn.utils.clip_grad_norm_(d.parameters(), 10, error_if_nonfinite=True)
+            # Lazy R1 multiplies its gradient by the 16-step interval; r1_scaled_clip scales the limit to match.
+            limit = 10*(16 if regularize and cfg.get("r1_scaled_clip") else 1)
+            dn = torch.nn.utils.clip_grad_norm_(d.parameters(), limit, error_if_nonfinite=True)
             stability["max_d_grad_norm"] = max(stability["max_d_grad_norm"], float(dn))
-            stability["d_clipped"] += int(dn > 10)
+            stability["d_clipped"] += int(dn > limit)
+            stability["r1_clipped"] = stability.get("r1_clipped", 0)+int(regularize and dn > limit)
             optd.step()
             real = real.detach()
             prepare_discriminator_for_generator(d)

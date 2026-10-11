@@ -1,11 +1,15 @@
-"""PhysioMix round 5: the round-4 winner with a cropped (non-circular) output window.
+"""PhysioMix rounds 5-6: the round-4 winner with a cropped (non-circular) output window.
 
 A derivative C2ST probe separated unseen real GXU windows from circularly band-limited copies of other
 people's real windows (AUC 0.98) about as well as from round-3 v2 (0.975), while the unmodified real
 windows scored 0.53: most of the detectability came from the circular output filter, not the learned
 waveform. One arm, three seeds. The rule names the incumbent (round-4 winner if round 4 shipped, else
 round-3 v2) with its per-seed scores and is frozen before training; the GXU test is scored after.
+Round 6 (variant crop_r1) repeats it with the critic clip on lazy-R1 steps scaled by the 16-step interval:
+in round 5 every R1 step was clipped (median norm ~100 vs limit 10), failing the d_clipped gate on all seeds.
 """
+VARIANTS = {"crop": "a {pad}-sample cropped output",
+            "crop_r1": "a {pad}-sample cropped output and the critic clip on lazy-R1 steps scaled x16 (10 -> 160)"}
 import argparse
 import hashlib
 import json
@@ -40,11 +44,13 @@ def round4_reference(root):
     return base, incumbent
 
 
-def rule_text(base, incumbent):
+def rule_text(base, incumbent, variant="crop"):
     mean = sum(incumbent["S_arm"])/len(incumbent["S_arm"])
-    return (f"PhysioMix round 5 rule (validation only; locked criterion sha256 {CRITERION_SHA256}).\n"
-            f"Arm {base['arm']}_crop = round-4 winner {base['arm']} with a {config(base['arm']+'_crop')['pad']}-sample "
-            "cropped output, same seeds, steps and learning-rate schedule as round 4.\n"
+    arm = f"{base['arm']}_{variant}"
+    change = VARIANTS[variant].format(pad=config(arm)["pad"])
+    return (f"PhysioMix {variant} rule (validation only; locked criterion sha256 {CRITERION_SHA256}).\n"
+            f"Arm {arm} = round-4 winner {base['arm']} with {change}, same seeds, steps and learning-rate schedule "
+            "as round 4; every round-3 gate unchanged.\n"
             f"Incumbent: {incumbent['name']}, S_arm {incumbent['S_arm']}, S_real {incumbent['S_real_fresh']} "
             f"(mean S_arm {mean:.4f}).\n"
             "Ship the crop arm only if every seed passes the round-3 gates, its mean S_arm beats the incumbent by more "
@@ -76,13 +82,14 @@ def main(argv=None):
     parser.add_argument("--interval", type=int, default=500)
     parser.add_argument("--eval-samples", type=int, default=256)
     parser.add_argument("--bootstrap", type=int, default=200)
+    parser.add_argument("--variant", choices=tuple(VARIANTS), default="crop")
     parser.add_argument("--allow-cpu", action="store_true")
     a = parser.parse_args(argv)
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     if not a.allow_cpu and (len(names) != 2 or any("T4" not in name for name in names)):
         raise RuntimeError(f"Two T4 GPUs required, allocated {names}")
     base, incumbent = round4_reference(a.round4_root)
-    arm = base["arm"]+"_crop"
+    arm = f"{base['arm']}_{a.variant}"
     devices = ["cpu"] if a.allow_cpu else [f"cuda:{i % 2}" for i in range(len(a.seeds))]
     threads = 1 if len(devices) > 2 else 2
     pack, manifest = load_input(a.input_root, PROTOCOL)
@@ -91,7 +98,7 @@ def main(argv=None):
     output = Path(a.output)
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
-    rule = rule_text(base, incumbent)
+    rule = rule_text(base, incumbent, a.variant)
     save_json(output/"FROZEN_ROUND5.json", dict(rule=rule, rule_sha256=hashlib.sha256(rule.encode()).hexdigest(),
               arm=arm, config=config(arm), base=base, incumbent=incumbent, seeds=a.seeds, steps=a.steps,
               data_sha256=manifest["windows_sha256"], gxu_test_subject_sha256=seal))

@@ -463,3 +463,21 @@ def test_round5_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
     app = PhysioMixGenerator(assets)
     preview = app.generate(7, 95, "gxu_finger", .02)
     assert len(preview.samples) == 1200 and preview.provenance["measured_rate_bpm"] == pytest.approx(95, abs=5)
+
+
+def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_v5
+    assert experiment_v3.config("L3_rel_beat_lr_crop_r1")["r1_scaled_clip"]
+    assert not experiment_v3.config("L3_rel_beat_lr_crop")["r1_scaled_clip"]
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    fake_round4(tmp_path/"r4", ship=False)
+    experiment_v5.main(["--input-root", str(tmp_path/"input"), "--round4-root", str(tmp_path/"r4"), "--allow-cpu",
+                        "--batch", "4", "--interval", "16", "--eval-samples", "12", "--bootstrap", "2", "--seeds", "42",
+                        "--steps", "16", "--variant", "crop_r1", "--output", str(tmp_path/"r6")])
+    frozen = json.loads((tmp_path/"r6"/"FROZEN_ROUND5.json").read_text())
+    assert frozen["arm"] == "L3_rel_beat_lr_crop_r1" and "x16" in frozen["rule"]
+    assert frozen["incumbent"]["name"] == "round3_physiomix_v2"
+    result = json.loads((tmp_path/"r6"/"benchmark"/"L3_rel_beat_lr_crop_r1_seed42"/"training_result.json").read_text())
+    assert result["stability"]["r1_updates"] == 1 and "r1_clipped" in result["stability"]
