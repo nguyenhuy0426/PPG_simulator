@@ -136,3 +136,20 @@ def test_gxu_archive_listing_requires_all_records(tmp_path):
         zf.writestr("x/Raw_data/001_1.csv", synthetic_gxu_csv())
     with pytest.raises(ValueError, match="444"):
         list(gxu.gxu_records(archive))
+
+
+@pytest.mark.parametrize("seed,bpm", [(69, 110), (103, 95), (148, 110), (159, 95), (259, 110)])
+def test_irregular_strip_locked_on_two_beat_lag_reports_the_beat_rate(seed, bpm):
+    """AF-like strips where the autocorrelation peaks at two beats (about half the rate, shown as e.g.
+    46-53 bpm for 95 bpm AF in the app); the peak intervals do not alternate, so the beat rate is shown."""
+    from core.neural_preview import _acf_rate_bpm
+    rng = np.random.default_rng(seed)
+    ibi = 60/bpm*np.exp(.25*rng.normal(size=60)-.25**2/2)
+    t, onsets = np.arange(1200)/40, np.cumsum(ibi)
+    k = np.clip(np.searchsorted(onsets, t, side="right")-1, 0, len(ibi)-1)
+    phase = 2*np.pi*(t-onsets[k])/ibi[k]
+    wave = np.sin(phase-np.pi/2)+.3*np.sin(2*phase)
+    strip = (wave-wave.min())/np.ptp(wave)
+    expected = 60*(k[-1]-k[0])/(onsets[k[-1]]-onsets[k[0]])
+    assert _acf_rate_bpm(strip, 40) == pytest.approx(expected/2, rel=.12)
+    assert estimate_rate_bpm(strip, 40) == pytest.approx(expected, rel=.05)

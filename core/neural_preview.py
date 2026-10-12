@@ -223,13 +223,20 @@ class LSMSequenceGenerator:
 
 def estimate_rate_bpm(values, fs):
     """Pulse rate of a normalized strip for display, not clinical HR: autocorrelation first,
-    beat intervals when an irregular rhythm leaves no usable autocorrelation peak."""
+    beat intervals when an irregular rhythm leaves no usable autocorrelation peak or locks it
+    onto a multiple of the beat period (AF strips did so in ~40% of synthetic cases)."""
     rate = _acf_rate_bpm(values, fs)
-    return _beat_rate_bpm(values, fs) if rate is None else rate
+    peaks = _beat_peaks(values, fs)
+    beats = _span_rate(peaks, fs)
+    if rate is None or beats is None:
+        return beats if rate is None else rate
+    locked = any(abs(k*rate-beats) <= .12*beats for k in (2, 3))
+    # A reflected (dicrotic) wave also doubles the peak count, but its intervals alternate short/long.
+    return beats if locked and _alternation(peaks) > -.3 else rate
 
 
-def _beat_rate_bpm(values, fs, rel=.3):
-    """Span rate over prominent peaks (numpy only); None for flat, unsmooth or beat-poor strips."""
+def _beat_peaks(values, fs, rel=.3):
+    """Prominent peak indices (numpy only); None for flat, unsmooth or beat-poor strips."""
     import numpy as np
     x = np.asarray(values, dtype=np.float64)
     if len(x) < 3 or not np.isfinite(x).all():
@@ -241,10 +248,26 @@ def _beat_rate_bpm(values, fs, rel=.3):
     w, base = max(1, round(.3*fs)), max(1, round(.6*fs))
     peaks = [i for i in range(1, len(x)-1) if x[i] == x[max(0, i-w):i+w+1].max() and x[i] > x[i-1]
              and x[i]-max(x[max(0, i-base):i].min(), x[i+1:i+base+1].min()) >= rel*span]
-    if len(peaks) < 5:
-        return None
+    return peaks if len(peaks) >= 5 else None
+
+
+def _span_rate(peaks, fs):
     # Used for irregular rhythms, where a long interval is real rather than a missed beat.
-    return float(60*(len(peaks)-1)/((peaks[-1]-peaks[0])/fs))
+    return None if peaks is None else float(60*(len(peaks)-1)/((peaks[-1]-peaks[0])/fs))
+
+
+def _alternation(peaks):
+    """Lag-1 correlation of successive peak intervals: about -1 when intervals alternate short/long."""
+    import numpy as np
+    ibi = np.diff(peaks).astype(np.float64)
+    if len(ibi) < 4 or ibi[:-1].std() == 0 or ibi[1:].std() == 0:
+        return 0.
+    return float(np.corrcoef(ibi[:-1], ibi[1:])[0, 1])
+
+
+def _beat_rate_bpm(values, fs, rel=.3):
+    """Span rate over prominent peaks; None for flat, unsmooth or beat-poor strips."""
+    return _span_rate(_beat_peaks(values, fs, rel), fs)
 
 
 def _acf_rate_bpm(values, fs):
