@@ -220,3 +220,12 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     preview = PhysioMixGenerator(assets, slot="physioflow").generate(7, 95, "gxu_finger", .02)
     assert preview.name == "PhysioFlow" and len(preview.samples) == 1200 and preview.hr_target == 95
     assert labels.IRR_MAX == .35
+
+
+def test_copy_check_flags_shifted_training_windows_only():
+    from ml.kaggle_multidomain.realism import nearest_train_correlation
+    rng = np.random.default_rng(0)
+    train = rng.normal(size=(40, LENGTH))
+    copies = np.roll(train[:4], 37, axis=1)+.01*rng.normal(size=(4, LENGTH))
+    assert np.all(nearest_train_correlation(copies, train) > .99)
+    assert np.all(nearest_train_correlation(rng.normal(size=(4, LENGTH)), train) < .3)

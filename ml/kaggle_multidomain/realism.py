@@ -104,6 +104,39 @@ def narrow_view(x):
     return ((y-y.min(-1, keepdims=True))/np.maximum(np.ptp(y, -1, keepdims=True), 1e-9)).astype(np.float32)
 
 
+def nearest_train_correlation(x, train, chunk=8):
+    """Per window, the highest Pearson correlation with any training window over every circular shift.
+    A generator that copies training windows sits near 1; real windows of unseen people give the baseline."""
+    def unit(a):
+        a = np.asarray(a, np.float64)
+        a = a-a.mean(1, keepdims=True)
+        return a/np.maximum(np.linalg.norm(a, axis=1, keepdims=True), 1e-12)
+    spectra = np.conj(np.fft.rfft(unit(train), axis=1))
+    best = []
+    for part in np.array_split(unit(x), max(1, len(x)//chunk)):
+        product = np.fft.rfft(part, axis=1)[:, None]*spectra[None]
+        best.append(np.fft.irfft(product, n=LENGTH, axis=2).max(axis=(1, 2)))
+    return np.concatenate(best)
+
+
+def memorization(pack, sources, n=128, seed=0):
+    """Copy check per dataset: max shift-invariant correlation with the dataset's training windows."""
+    result = {}
+    for d, domain in enumerate(DATASETS):
+        train = rows(pack, ("train",), domain)
+        unseen = balanced(pack, rows(pack, UNSEEN, domain), n, np.random.default_rng(seed+10*d))
+        prompts = balanced(pack, train, min(n, len(train)), np.random.default_rng(seed+10*d+2))
+        windows = dict(real_unseen=pack["signal"][unseen])
+        windows.update({name: generate(prompts, seed+10*d+5) for name, generate in sources.items()})
+        result[domain] = {}
+        for name, x in windows.items():
+            r = nearest_train_correlation(x, pack["signal"][train])
+            result[domain][name] = dict(median=float(np.median(r)), p95=float(np.quantile(r, .95)),
+                                        above_0_99=float((r > .99).mean()))
+        print("memorization", domain, {k: round(v["median"], 3) for k, v in result[domain].items()}, flush=True)
+    return result
+
+
 def folds_of(groups, folds, rng):
     unique = rng.permutation(np.unique(groups))
     fold = {g: i % folds for i, g in enumerate(unique)}
@@ -267,6 +300,7 @@ def main(argv=None):
                                   repeats=a.c2st_repeats, datasets=a.datasets))
     if not a.narrow_view:
         result["condition_following"] = condition_following(pack, sources, a.state_steps)
+        result["memorization"] = memorization(pack, sources)
     save_json(Path(a.output), result)
     return result
 
