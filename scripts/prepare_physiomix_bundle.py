@@ -89,17 +89,22 @@ def build_model(model_class, conditions, checkpoint):
     return cls(conditions['size'], conditions['center'], conditions['scale'], view='v3'), cfg
 
 
-def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix'):
+def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix', sampler=None):
+    """sampler: a flow sampler arm (e.g. F3_flow_flag_deriv_s16_w1) to package the trained arm's weights with;
+    its Kaggle export belongs to whichever sampler was scored last, so it is not compared then."""
     import torch
     from core.neural_preview import CONDITIONED
     chosen, key = choose_run(run, arm)
     source = run/f"{arm}_seed{chosen['seed']}"
     conditions = json.loads((source/'conditions.json').read_text())
     checkpoint = torch.load(source/'best.pt', map_location='cpu', weights_only=True)
+    if sampler:
+        from ml.kaggle_multidomain.experiment_v3 import config
+        checkpoint = dict(checkpoint, config=config(sampler))
     model, cfg = build_model(model_class, conditions, checkpoint)
     model.load_state_dict(checkpoint['generator'])
     model.eval()
-    exported = torch.jit.load(str(source/'generator_cpu.ts'), map_location='cpu').eval()
+    exported = None if sampler else torch.jit.load(str(source/'generator_cpu.ts'), map_location='cpu').eval()
     rng = torch.Generator().manual_seed(1234)
     z = torch.randn(4, 1200, generator=rng)
     pack, pack_manifest = load_pack(pack_dir)
@@ -122,7 +127,8 @@ def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix'):
         raw = torch.tensor([75.+15*i, *defaults[domain]])
         condition[i, -3:] = (raw-torch.tensor(conditions['center']))/torch.tensor(conditions['scale'])
     with torch.no_grad():
-        torch.testing.assert_close(exported(z, condition), model(z, condition), **tolerance)
+        if exported is not None:
+            torch.testing.assert_close(exported(z, condition), model(z, condition), **tolerance)
         traced = model.export(z[:2], condition[:2]) if hasattr(model, 'export') else torch.jit.trace(model, (z[:2], condition[:2]))
         torch.testing.assert_close(traced(z, condition), model(z, condition), **tolerance)
     output.mkdir(parents=True, exist_ok=True)
@@ -144,7 +150,8 @@ def prepare(run, arm, pack_dir, output, model_class, variant, slot='physiomix'):
                                                  if constructed else
                                                  'train rate-label 1-99% quantiles within the view carrier clamp'),
         checkpoint_sha256=hashlib.sha256((source/'best.pt').read_bytes()).hexdigest(),
-        kaggle_export_sha256=hashlib.sha256((source/'generator_cpu.ts').read_bytes()).hexdigest(),
+        kaggle_export_sha256=None if sampler else hashlib.sha256((source/'generator_cpu.ts').read_bytes()).hexdigest(),
+        sampler=sampler or arm,
         traced_with_torch=torch.__version__, pack_sha256=pack_manifest['windows_sha256'],
         label_type=conditions['label_type'],
         note='Exploratory research generator. Normalized 30 s shape at 40 Hz; no calibrated AC/DC, SpO2 or paired IR/RED.')
@@ -165,5 +172,6 @@ if __name__ == '__main__':
     parser.add_argument('--model-class', default='ml.kaggle_multidomain.physio:PhysioMix')
     parser.add_argument('--variant', default='physiomix_v1_no_div')
     parser.add_argument('--slot', choices=('physiomix', 'physioflow'), default='physiomix')
+    parser.add_argument('--sampler', help='Flow sampler arm to package the trained weights with')
     a = parser.parse_args()
-    prepare(a.run, a.arm, a.pack, a.output, a.model_class, a.variant, a.slot)
+    prepare(a.run, a.arm, a.pack, a.output, a.model_class, a.variant, a.slot, a.sampler)
