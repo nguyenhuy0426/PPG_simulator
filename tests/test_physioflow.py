@@ -216,7 +216,8 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
                                             "physioflow_round10_test", "physioflow")
     assert meta["architecture"]["flow"] and meta["hr_support_bpm"] == [40., 180.]
     assert physiomix_metadata(assets, "physioflow")["variant"] == "physioflow_round10_test"
-    assert physiomix_metadata(assets)["variant"] != "physioflow_round10_test"
+    # The copied manifest lists PhysioMix too, but its model file is not in this bundle, so it is not offered.
+    assert physiomix_metadata(assets) is None
     preview = PhysioMixGenerator(assets, slot="physioflow").generate(7, 95, "gxu_finger", .02)
     assert preview.name == "PhysioFlow" and len(preview.samples) == 1200 and preview.hr_target == 95
     assert labels.IRR_MAX == .35
