@@ -1,0 +1,381 @@
+{
+ "loop": 6,
+ "change": "Như vòng 5 (loss phổ log dải chặn trên ước lượng x0 ở t < 0,25) nhưng trọng số 0,3 (F9) và 0,1 (F10): ở λ 1 gradient của nó gấp ~5 lần phần vận tốc và clip cắt 80–92% số bước. Pilot seed 42, 20 000 bước, Kaggle 2 × T4, sampler 16 bước Heun.",
+ "go_limits": {
+  "wrist_Q": 0.601,
+  "S_arm": 0.487
+ },
+ "go_final": true,
+ "winner": "F10_flow_unif_stop01_s16_w1",
+ "selection_reason": "argmin S_arm over eligible (arm, sampler) pairs, seed 42 within {'wrist_Q': 0.601, 'S_arm': 0.487}",
+ "baseline_round10_seed42": {
+  "S_arm": 0.472,
+  "S_real": 0.37,
+  "C": 0.027,
+  "auc": 0.678,
+  "wrist_Q": 0.857
+ },
+ "incumbent_round9": {
+  "S_arm": 0.53,
+  "wrist_Q": 0.527
+ },
+ "loop5": [
+  {
+   "arm": "F7_flow_unif_stop1",
+   "S_arm": 0.505,
+   "S_real": 0.297,
+   "C": 0.199,
+   "auc": 0.718,
+   "wrist_Q": 0.524
+  },
+  {
+   "arm": "F8_flow_unif_stop3",
+   "S_arm": 0.517,
+   "S_real": 0.305,
+   "C": 0.213,
+   "auc": 0.712,
+   "wrist_Q": 0.56
+  }
+ ],
+ "conclusion": "Cả hai nhánh qua ngưỡng go. F10 (λ 0,1) thắng: S_arm 0,449 (vòng 4 seed 42: 0,472), Q cổ tay 0,581 (0,857), C 0,066, AUC 0,704; clip 38% số bước (F7: 80%). F9 (λ 0,3): S_arm 0,457, Q cổ tay 0,501, C 0,147 (clip 58%). Cổ tay còn một điểm khoá hài bậc 2 (lệnh 50 bpm ra 103 bpm ở F10; 70 → 140 ở F9). Theo quy tắc khoá trước: chạy final 3 seed của F10_flow_unif_stop01_s16_w1 với cùng luật và cùng incumbent (PhysioMix vòng 9).",
+ "candidates": [
+  {
+   "arm": "F9_flow_unif_stop03",
+   "sampler": "F9_flow_unif_stop03_s16_w1",
+   "S_arm": 0.457,
+   "S_real": 0.298,
+   "C": 0.147,
+   "auc": 0.672,
+   "eligible": true,
+   "latency_ms": 1311,
+   "Q": {
+    "gxu_finger": 0.107,
+    "perform_large": 0.11,
+    "bidmc": 0.648,
+    "perform_cohort": 0.394,
+    "wrist": 0.501
+   },
+   "control": {
+    "mae_in": 2.099,
+    "mae_ext": 1.187,
+    "spearman": 0.983,
+    "auc_irr": 0.968,
+    "lock_rate": 0.019
+   },
+   "wrist_median_hr_at_40_180": [
+    42.1,
+    77.1,
+    79.6,
+    140.0,
+    80.1,
+    90.0,
+    100.2,
+    110.2,
+    120.1,
+    130.0,
+    140.0,
+    150.2,
+    160.1,
+    169.7,
+    180.1
+   ],
+   "wrist_pool": {
+    "acf_mmd2": 0.039,
+    "log_psd_mmd2": 0.157,
+    "morphology_mmd2": 0.072,
+    "total_mmd": 0.268,
+    "precision": 0.404,
+    "recall": 0.831,
+    "one_nn": 0.848,
+    "Q": 0.501
+   },
+   "best_step": 10000,
+   "stability": {
+    "updates": 20000,
+    "nonfinite_losses": 0,
+    "max_grad_norm": 66.3814926147461,
+    "clipped": 11517
+   }
+  },
+  {
+   "arm": "F10_flow_unif_stop01",
+   "sampler": "F10_flow_unif_stop01_s16_w1",
+   "S_arm": 0.449,
+   "S_real": 0.314,
+   "C": 0.066,
+   "auc": 0.704,
+   "eligible": true,
+   "latency_ms": 1357,
+   "Q": {
+    "gxu_finger": 0.094,
+    "perform_large": 0.107,
+    "bidmc": 0.684,
+    "perform_cohort": 0.416,
+    "wrist": 0.581
+   },
+   "control": {
+    "mae_in": 0.245,
+    "mae_ext": 2.06,
+    "spearman": 0.991,
+    "auc_irr": 0.999,
+    "lock_rate": 0.008
+   },
+   "wrist_median_hr_at_40_180": [
+    46.9,
+    102.6,
+    60.1,
+    70.1,
+    80.0,
+    90.0,
+    100.3,
+    110.2,
+    120.1,
+    130.0,
+    140.0,
+    150.2,
+    160.1,
+    169.7,
+    180.1
+   ],
+   "wrist_pool": {
+    "acf_mmd2": 0.036,
+    "log_psd_mmd2": 0.179,
+    "morphology_mmd2": 0.088,
+    "total_mmd": 0.303,
+    "precision": 0.472,
+    "recall": 0.708,
+    "one_nn": 0.882,
+    "Q": 0.581
+   },
+   "best_step": 12000,
+   "stability": {
+    "updates": 20000,
+    "nonfinite_losses": 0,
+    "max_grad_norm": 65.9529037475586,
+    "clipped": 7503
+   }
+  }
+ ],
+ "curves": {
+  "F9_flow_unif_stop03": [
+   {
+    "step": 4000,
+    "S_real": 0.484,
+    "C": 0.064,
+    "Q": {
+     "gxu_finger": 0.311,
+     "perform_large": 0.267,
+     "bidmc": 0.763,
+     "perform_cohort": 0.531,
+     "wrist": 0.881
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.411,
+    "C": 0.085,
+    "Q": {
+     "gxu_finger": 0.202,
+     "perform_large": 0.177,
+     "bidmc": 0.775,
+     "perform_cohort": 0.493,
+     "wrist": 0.775
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.37,
+    "C": 0.091,
+    "Q": {
+     "gxu_finger": 0.154,
+     "perform_large": 0.132,
+     "bidmc": 0.74,
+     "perform_cohort": 0.467,
+     "wrist": 0.735
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.344,
+    "C": 0.143,
+    "Q": {
+     "gxu_finger": 0.124,
+     "perform_large": 0.12,
+     "bidmc": 0.7,
+     "perform_cohort": 0.413,
+     "wrist": 0.752
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.327,
+    "C": 0.186,
+    "Q": {
+     "gxu_finger": 0.111,
+     "perform_large": 0.104,
+     "bidmc": 0.704,
+     "perform_cohort": 0.388,
+     "wrist": 0.695
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.327,
+    "C": 0.213,
+    "Q": {
+     "gxu_finger": 0.111,
+     "perform_large": 0.087,
+     "bidmc": 0.702,
+     "perform_cohort": 0.401,
+     "wrist": 0.72
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.336,
+    "C": 0.213,
+    "Q": {
+     "gxu_finger": 0.108,
+     "perform_large": 0.108,
+     "bidmc": 0.75,
+     "perform_cohort": 0.402,
+     "wrist": 0.677
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.343,
+    "C": 0.204,
+    "Q": {
+     "gxu_finger": 0.127,
+     "perform_large": 0.103,
+     "bidmc": 0.756,
+     "perform_cohort": 0.398,
+     "wrist": 0.683
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.336,
+    "C": 0.205,
+    "Q": {
+     "gxu_finger": 0.129,
+     "perform_large": 0.108,
+     "bidmc": 0.743,
+     "perform_cohort": 0.385,
+     "wrist": 0.629
+    }
+   }
+  ],
+  "F10_flow_unif_stop01": [
+   {
+    "step": 4000,
+    "S_real": 0.465,
+    "C": 0.021,
+    "Q": {
+     "gxu_finger": 0.285,
+     "perform_large": 0.243,
+     "bidmc": 0.76,
+     "perform_cohort": 0.542,
+     "wrist": 0.83
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.399,
+    "C": 0.02,
+    "Q": {
+     "gxu_finger": 0.208,
+     "perform_large": 0.166,
+     "bidmc": 0.718,
+     "perform_cohort": 0.456,
+     "wrist": 0.834
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.366,
+    "C": 0.048,
+    "Q": {
+     "gxu_finger": 0.145,
+     "perform_large": 0.125,
+     "bidmc": 0.724,
+     "perform_cohort": 0.425,
+     "wrist": 0.858
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.351,
+    "C": 0.072,
+    "Q": {
+     "gxu_finger": 0.123,
+     "perform_large": 0.112,
+     "bidmc": 0.745,
+     "perform_cohort": 0.4,
+     "wrist": 0.815
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.345,
+    "C": 0.071,
+    "Q": {
+     "gxu_finger": 0.118,
+     "perform_large": 0.091,
+     "bidmc": 0.751,
+     "perform_cohort": 0.41,
+     "wrist": 0.775
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.355,
+    "C": 0.105,
+    "Q": {
+     "gxu_finger": 0.126,
+     "perform_large": 0.104,
+     "bidmc": 0.741,
+     "perform_cohort": 0.401,
+     "wrist": 0.829
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.349,
+    "C": 0.135,
+    "Q": {
+     "gxu_finger": 0.112,
+     "perform_large": 0.107,
+     "bidmc": 0.735,
+     "perform_cohort": 0.412,
+     "wrist": 0.788
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.359,
+    "C": 0.138,
+    "Q": {
+     "gxu_finger": 0.13,
+     "perform_large": 0.104,
+     "bidmc": 0.74,
+     "perform_cohort": 0.405,
+     "wrist": 0.822
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.352,
+    "C": 0.193,
+    "Q": {
+     "gxu_finger": 0.119,
+     "perform_large": 0.101,
+     "bidmc": 0.762,
+     "perform_cohort": 0.397,
+     "wrist": 0.752
+    }
+   }
+  ]
+ }
+}
