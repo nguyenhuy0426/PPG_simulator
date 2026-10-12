@@ -1,0 +1,50 @@
+{
+ "note": "GXU finger test (sealed until round 3; report only). Evaluated on the laptop CPU after the resumed scoring.",
+ "runs": [
+  {
+   "seed": 42,
+   "Q": 0.12982130916092732,
+   "total_mmd": 0.09100043287226756,
+   "precision": 0.9375,
+   "recall": 0.9536082474226805,
+   "windows": 388,
+   "subjects": 22,
+   "c2st_raw_auc": 0.656760265876015
+  },
+  {
+   "seed": 123,
+   "Q": 0.15209877643264935,
+   "total_mmd": 0.07586649550481428,
+   "precision": 0.921875,
+   "recall": 0.8865979381443299,
+   "windows": 388,
+   "subjects": 22,
+   "c2st_raw_auc": 0.6813557351316784
+  },
+  {
+   "seed": 2026,
+   "Q": 0.16091514521133077,
+   "total_mmd": 0.11049633077834109,
+   "precision": 0.9375,
+   "recall": 0.9304123711340206,
+   "windows": 388,
+   "subjects": 22,
+   "c2st_raw_auc": 0.6745615564986531
+  }
+ ],
+ "mean_Q": 0.14761174360163581,
+ "train_replay_floor_Q": 0.07809165711022026,
+ "c2st_real_vs_real_floor": {
+  "mean": 0.4570285606560468,
+  "min": 0.36420397775473656,
+  "max": 0.6889018757658592,
+  "values": [
+   0.36420397775473656,
+   0.3971797530398718,
+   0.4508436233386747,
+   0.6889018757658592,
+   0.38401357338109154
+  ]
+ },
+ "round9_gxu_test_Q_mean": 0.194
+}

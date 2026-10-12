@@ -65,9 +65,12 @@ xong trên Kaggle rồi tiến trình chết khi chấm hai seed còn lại (l�
 lỗi). Seed 42 và 2026 được chấm trên CPU laptop bằng đúng `score_arm` (`--resume-from`); bộ đếm ổn định khi train của hai
 seed này mất cùng tiến trình.
 
-GXU test (niêm phong tới vòng 3, chỉ báo cáo; `rules/GXU_TEST_seed42.json`): seed 42 Q 0,130 (độ phủ 95%, độ giống 94%)
-so với PhysioMix vòng 9 trung bình 0,194; sàn dữ liệu thật (train replay) 0,078. Chỉ seed 42 được chấm trên CPU laptop:
-tiến trình dừng trước hai seed còn lại (nhiều khả năng do bộ nhớ khi chạy song song), nên số này là một seed.
+GXU test (niêm phong tới vòng 3, chỉ báo cáo; `rules/GXU_TEST_ROUND10.json`, chấm trên CPU laptop): Q seed 42 / 123 /
+2026 = 0,130 / 0,152 / 0,161 (trung bình 0,148) so với PhysioMix vòng 9 trung bình 0,194; sàn dữ liệu thật (train replay)
+0,078. C2ST thô (không đạo hàm) 0,66–0,68.
+
+![Vòng 10: HR control và GXU test](round10_control_and_gxu_test.png)
+![Vòng 10: dạng sóng GXU](round10_waveforms_gxu.png)
 
 ## Giống người thật đến đâu (người chưa dùng để train)
 
