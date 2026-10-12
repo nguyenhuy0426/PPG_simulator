@@ -53,6 +53,15 @@ FLOW_LOOP = [
          conclusion='t đều thắng: S_arm 0,470, bám nhịp ổn định cả khi train lâu. Cách “dừng sớm + lọc” bị CNN nhận ra '
                     'gần như 100% (AUC 0,99, dấu vết ở mép cửa sổ) nên bị loại, dù trên laptop nó làm phổ cổ tay đẹp hơn.'),
 ]
+# Pilots run after the 3-seed final (loop 5 targeted wrist); shown below the final's row.
+FLOW_LOOP_AFTER_FINAL = [
+    dict(name='Vòng 5 (pilot cổ tay)', pilot='physioflow10d-pilot-result-v1/physioflow10/pilot', go_limits=True,
+         change='Phần thua cổ tay là nhiễu sót ở 12–20 Hz sinh ra trên quỹ đạo lấy mẫu. Thêm loss phổ log ở dải chặn '
+                '(< 0,5 Hz, > 8 Hz) trên ước lượng x0 ở t nhỏ, trọng số 1 và 3.',
+         conclusion='Cổ tay đạt (Q 0,524, ngang PhysioMix) và S_real tốt hơn, nhưng cổ tay không còn bám nhịp chậm '
+                    '(lệnh 40–80 bpm ra 67–131 bpm): C 0,03 → 0,20, S_arm 0,505 vượt ngưỡng khoá trước 0,487 → '
+                    'không chạy final 3 seed.'),
+]
 INCUMBENT_ROW = dict(name='PhysioMix vòng 9 (app)', change='Mốc so sánh: 3 seed, model đang dùng trong app.',
                      S_arm=0.530, S_arm_sd=0.029, S_real=0.344, auc=0.827, wrist_Q=0.527, reference=True,
                      conclusion='—')
@@ -301,15 +310,18 @@ def mean(values):
 
 def flow_loop(final_dir, conclusion):
     """Rows of the engineering-loop table: best eligible sampler of each pilot, the 3-seed final, the incumbent."""
-    rows = []
-    for it in FLOW_LOOP:
-        if not (RUNS/it['pilot']).exists():
-            continue
-        candidates = [c for c in flow_pilot(RUNS/it['pilot'])['candidates'] if c['eligible']]
-        best = min(candidates, key=lambda c: c['S_arm']) if candidates else {}
-        rows.append(dict(name=it['name'], change=it['change'], conclusion=it['conclusion'], sampler=best.get('sampler'),
-                         S_arm=best.get('S_arm'), S_real=best.get('S_real'), auc=best.get('auc'),
-                         wrist_Q=best.get('Q', {}).get('wrist')))
+    def pilot_rows(loop):
+        rows = []
+        for it in loop:
+            if not (RUNS/it['pilot']).exists():
+                continue
+            candidates = [c for c in flow_pilot(RUNS/it['pilot'])['candidates'] if c['eligible']]
+            best = min(candidates, key=lambda c: c['S_arm']) if candidates else {}
+            rows.append(dict(name=it['name'], change=it['change'], conclusion=it['conclusion'],
+                             sampler=best.get('sampler'), S_arm=best.get('S_arm'), S_real=best.get('S_real'),
+                             auc=best.get('auc'), wrist_Q=best.get('Q', {}).get('wrist')))
+        return rows
+    rows = pilot_rows(FLOW_LOOP)
     decision = None
     if final_dir and (Path(final_dir)/'DECISION_ROUND10.json').exists():
         decision = json.loads((Path(final_dir)/'DECISION_ROUND10.json').read_text())
@@ -327,7 +339,7 @@ def flow_loop(final_dir, conclusion):
         decision['note'] = ('Chấm điểm: ' + ', '.join(f"seed {k} trên {'CPU laptop' if v == 'cpu' else 'GPU Kaggle'}"
                                                       for k, v in sorted(devices.items()))
                             + ' (tiến trình Kaggle dừng khi đang chấm hai seed; cùng code, chạy lại từ checkpoint).')
-    return rows+[INCUMBENT_ROW], decision
+    return rows+pilot_rows(FLOW_LOOP_AFTER_FINAL)+[INCUMBENT_ROW], decision
 
 
 def main(argv=None):

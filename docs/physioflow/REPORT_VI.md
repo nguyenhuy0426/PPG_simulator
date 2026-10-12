@@ -69,6 +69,46 @@ GXU test (niêm phong tới vòng 3, chỉ báo cáo; `rules/GXU_TEST_seed42.jso
 so với PhysioMix vòng 9 trung bình 0,194; sàn dữ liệu thật (train replay) 0,078. Chỉ seed 42 được chấm trên CPU laptop:
 tiến trình dừng trước hai seed còn lại (nhiều khả năng do bộ nhớ khi chạy song song), nên số này là một seed.
 
+## Vòng 5: nhắm riêng vào cổ tay (sau quyết định vòng 4)
+
+Bằng chứng: `loop/probe_loop5_wrist.json` (chẩn đoán và thử trên laptop), `loop/pilot5.json`,
+`rules/PILOT_SELECTION_LOOP5.json`.
+
+**Chẩn đoán** (laptop CPU, checkpoint seed 42 đang có trong app, validation, cùng nhiễu như `score_arm`; Q cổ tay tái
+lập đúng 0,857):
+
+- 75% MMD phổ log cổ tay (0,287 / 0,385) nằm ở dải 12–20 Hz. Ở đó mẫu sinh cao hơn dữ liệu thật 0,86 bậc log10. Dữ liệu
+  thật nằm đúng sàn 1e-8 sau bộ lọc 0,5–8 Hz, còn mẫu sinh vẫn sót nhiễu nền trải đều theo thời gian. Trong dải 0,5–8 Hz
+  phổ log khớp tốt. Năng lượng 0,5–1 Hz cao gấp đôi nếu tính tuyến tính, nhưng gần như không góp vào MMD.
+- Khử nhiễu một bước từ x_t đúng phân bố train chỉ dư 0,25 bậc (GXU 0,17). Phần dư lớn của cổ tay (0,72–0,77) sinh ra
+  trên quỹ đạo lấy mẫu ở t 0,75–1: nếu bắt đầu từ x_0,75 thật thì phần dư chỉ còn 0,46. Đây là lệch train/sinh của một
+  tập chỉ có 83 cửa sổ.
+- Loại: lấy mẫu cổ tay nhiều hơn (cổ tay đã chiếm 1/6 mỗi batch, gấp ~12 lần tỉ lệ thật, và Q cổ tay xấu dần khi train
+  lâu); đổi khung nhịp cho cổ tay (ép tắt khung, phổ log vẫn 0,34); lọc ở đầu ra (đã bị C2ST bắt ở vòng 3).
+
+**Thử trên laptop** (fine-tune 400 bước, chỉ để xem cơ chế, so với đối chứng cùng điều kiện): loss phổ log toàn dải
+làm cổ tay và GXU xấu đi (0,50 → 0,77; 0,07 → 0,14). Nhiễu đầu vào chống exposure bias (γ 0,1 / 0,3) cũng làm cổ tay
+xấu đi. Chỉ loss phổ log **dải chặn** (0,1–0,5 Hz và > 8 Hz) giúp, và ít (Q cổ tay 0,88 → 0,81).
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước): F6 + loss phổ log dải chặn trên ước lượng x0 ở t < 0,25, trọng số 1
+(F7) và 3 (F8). Ngưỡng đi tiếp được ghi trong code trước khi chạy (commit `40c9d1b0`): Q cổ tay ≤ 0,601 **và**
+S_arm ≤ 0,487.
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay | log-PSD cổ tay |
+|---|---|---|---|---|---|---|
+| Vòng 4, seed 42 (F6) | 0,472 | 0,370 | 0,027 | 0,678 | 0,857 | 0,385 |
+| F7 (dải chặn, 1) | 0,505 | **0,297** | 0,199 | 0,718 | **0,524** | 0,112 |
+| F8 (dải chặn, 3) | 0,517 | 0,305 | 0,213 | 0,712 | 0,560 | 0,122 |
+| PhysioMix vòng 9 (3 seed) | 0,530 | 0,344 | 0,045 | 0,827 | 0,527 | |
+
+Train từ đầu, loss dải chặn sửa được cổ tay (Q 0,857 → 0,524, ngang PhysioMix) và cải thiện S_real ở mọi tập trừ
+PERform Large. Nhưng ở cổ tay, mạng không còn bám khung nhịp chậm: lệnh 40–80 bpm cho ra 67–131 bpm (Spearman cổ tay
+0,83 / 0,80; năm tập còn lại vẫn 1,0). Vì vậy C tăng từ 0,027 lên 0,199 và S_arm vượt ngưỡng.
+
+**Quyết định: theo ngưỡng khoá trước, không chạy final 3 seed. PhysioMix vòng 9 vẫn là model của app; PhysioFlow
+trong app vẫn là seed 42 của vòng 4.** Hướng tiếp theo nếu làm: giữ loss dải chặn và sửa riêng việc bám nhịp chậm của
+cổ tay. Dữ liệu cổ tay khi vận động gần như không có nhịp < 80 bpm, nên việc bám nhịp chậm ở đây là ngoại suy.
+
 ## Giống người thật đến đâu (người chưa dùng để train)
 
 `ml/runs/realism-v1/realism_round10.json` (laptop CPU; số của PhysioMix trùng khớp với lần đo vòng 9). Mỗi ô: độ giống ·
@@ -100,6 +140,6 @@ tiến trình dừng trước hai seed còn lại (nhiều khả năng do bộ n
   thật, không phải kiểm chứng lâm sàng. Validation đã dùng qua nhiều vòng (PhysioMix và PhysioFlow), nên điểm validation
   hơi lạc quan; GXU test đã mở từ vòng 3 và chỉ để báo cáo.
 - Cổ tay chỉ có 4 người, 83 cửa sổ train: PhysioFlow bám sát các cửa sổ train cổ tay hơn mức người thật (kiểm tra chép
-  dữ liệu), và phổ cổ tay vẫn khác thật (quá nhiều năng lượng dưới 1 Hz).
+  dữ liệu), và phổ cổ tay vẫn khác thật, chủ yếu do nhiễu sót ở 12–20 Hz (vòng 5).
 - Chạy chậm hơn PhysioMix ~100 lần (giây so với mili giây); app chạy nó trong tiến trình riêng, không chặn DAC. Chưa đo
   trên Pi/DAC/OPT101.

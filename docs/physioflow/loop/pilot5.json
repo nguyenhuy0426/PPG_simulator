@@ -1,0 +1,365 @@
+{
+ "loop": 5,
+ "change": "Loss phổ log dải chặn (0,1–0,5 Hz và > 8 Hz, trọng số 1 − |H|² của bộ lọc 0,5–8 Hz) trên ước lượng x0 ở t < 0,25, trọng số 1 (F7) và 3 (F8); còn lại như F6 (vòng 4). Pilot seed 42, 20 000 bước, Kaggle 2 × T4, chấm validation bằng sampler 16 bước Heun.",
+ "go_limits": {
+  "wrist_Q": 0.601,
+  "S_arm": 0.487
+ },
+ "go_final": false,
+ "winner": null,
+ "selection_reason": "no eligible pair within {'wrist_Q': 0.601, 'S_arm': 0.487}",
+ "baseline_round10_seed42": {
+  "S_arm": 0.472,
+  "S_real": 0.37,
+  "C": 0.027,
+  "auc": 0.678,
+  "wrist_Q": 0.857
+ },
+ "incumbent_round9": {
+  "S_arm": 0.53,
+  "wrist_Q": 0.527
+ },
+ "conclusion": "Cổ tay đạt (Q 0,524 / 0,560 ≤ 0,601; log-PSD MMD cổ tay 0,385 → 0,112) và S_real tốt hơn rõ (0,370 → 0,297), nhưng điều khiển nhịp cổ tay ở 40–80 bpm hỏng (lệnh 40 bpm ra 67/120 bpm; Spearman cổ tay 0,83 / 0,80), C 0,027 → 0,199 nên S_arm 0,505 / 0,517 > 0,487. Theo ngưỡng khoá trước: không chạy final 3 seed; PhysioMix vòng 9 vẫn là model của app.",
+ "candidates": [
+  {
+   "arm": "F7_flow_unif_stop1",
+   "sampler": "F7_flow_unif_stop1_s16_w1",
+   "S_arm": 0.505,
+   "S_real": 0.297,
+   "C": 0.199,
+   "auc": 0.718,
+   "eligible": true,
+   "latency_ms": 1352,
+   "Q": {
+    "gxu_finger": 0.084,
+    "perform_large": 0.13,
+    "bidmc": 0.645,
+    "perform_cohort": 0.384,
+    "wrist": 0.524
+   },
+   "mae_ext": 2.39,
+   "control": {
+    "mae_in": 2.438,
+    "mae_ext": 2.392,
+    "spearman": 0.972,
+    "auc_irr": 0.959,
+    "lock_rate": 0.033
+   },
+   "wrist_median_hr_at_40_180": [
+    66.9,
+    101.6,
+    118.2,
+    131.5,
+    90.6,
+    92.0,
+    100.3,
+    110.2,
+    120.1,
+    130.0,
+    140.0,
+    150.2,
+    160.1,
+    169.7,
+    180.1
+   ],
+   "wrist_pool": {
+    "acf_mmd2": 0.039,
+    "log_psd_mmd2": 0.112,
+    "morphology_mmd2": 0.073,
+    "total_mmd": 0.224,
+    "precision": 0.517,
+    "recall": 0.64,
+    "one_nn": 0.876,
+    "Q": 0.524
+   },
+   "best_step": 16000,
+   "stability": {
+    "updates": 20000,
+    "nonfinite_losses": 0,
+    "max_grad_norm": 67.91480255126953,
+    "clipped": 16031
+   }
+  },
+  {
+   "arm": "F8_flow_unif_stop3",
+   "sampler": "F8_flow_unif_stop3_s16_w1",
+   "S_arm": 0.517,
+   "S_real": 0.305,
+   "C": 0.213,
+   "auc": 0.712,
+   "eligible": true,
+   "latency_ms": 1284,
+   "Q": {
+    "gxu_finger": 0.106,
+    "perform_large": 0.111,
+    "bidmc": 0.638,
+    "perform_cohort": 0.392,
+    "wrist": 0.56
+   },
+   "mae_ext": 4.05,
+   "control": {
+    "mae_in": 1.835,
+    "mae_ext": 4.048,
+    "spearman": 0.967,
+    "auc_irr": 0.954,
+    "lock_rate": 0.017
+   },
+   "wrist_median_hr_at_40_180": [
+    119.6,
+    104.8,
+    119.9,
+    85.0,
+    95.5,
+    89.9,
+    100.3,
+    110.2,
+    120.1,
+    130.1,
+    140.0,
+    150.2,
+    160.1,
+    169.7,
+    180.1
+   ],
+   "wrist_pool": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.122,
+    "morphology_mmd2": 0.066,
+    "total_mmd": 0.228,
+    "precision": 0.506,
+    "recall": 0.584,
+    "one_nn": 0.854,
+    "Q": 0.56
+   },
+   "best_step": 20000,
+   "stability": {
+    "updates": 20000,
+    "nonfinite_losses": 0,
+    "max_grad_norm": 98.7163314819336,
+    "clipped": 18402
+   }
+  }
+ ],
+ "curves": {
+  "F7_flow_unif_stop1": [
+   {
+    "step": 4000,
+    "S_real": 0.516,
+    "C": 0.167,
+    "Q": {
+     "gxu_finger": 0.362,
+     "perform_large": 0.301,
+     "bidmc": 0.843,
+     "perform_cohort": 0.54,
+     "wrist": 0.862
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.405,
+    "C": 0.149,
+    "Q": {
+     "gxu_finger": 0.216,
+     "perform_large": 0.187,
+     "bidmc": 0.743,
+     "perform_cohort": 0.468,
+     "wrist": 0.787
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.359,
+    "C": 0.209,
+    "Q": {
+     "gxu_finger": 0.166,
+     "perform_large": 0.137,
+     "bidmc": 0.686,
+     "perform_cohort": 0.459,
+     "wrist": 0.723
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.345,
+    "C": 0.193,
+    "Q": {
+     "gxu_finger": 0.137,
+     "perform_large": 0.118,
+     "bidmc": 0.679,
+     "perform_cohort": 0.465,
+     "wrist": 0.737
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.319,
+    "C": 0.195,
+    "Q": {
+     "gxu_finger": 0.117,
+     "perform_large": 0.11,
+     "bidmc": 0.671,
+     "perform_cohort": 0.394,
+     "wrist": 0.664
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.311,
+    "C": 0.199,
+    "Q": {
+     "gxu_finger": 0.112,
+     "perform_large": 0.091,
+     "bidmc": 0.649,
+     "perform_cohort": 0.403,
+     "wrist": 0.625
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.305,
+    "C": 0.179,
+    "Q": {
+     "gxu_finger": 0.089,
+     "perform_large": 0.072,
+     "bidmc": 0.689,
+     "perform_cohort": 0.406,
+     "wrist": 0.626
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.312,
+    "C": 0.187,
+    "Q": {
+     "gxu_finger": 0.112,
+     "perform_large": 0.072,
+     "bidmc": 0.696,
+     "perform_cohort": 0.396,
+     "wrist": 0.61
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.317,
+    "C": 0.196,
+    "Q": {
+     "gxu_finger": 0.105,
+     "perform_large": 0.081,
+     "bidmc": 0.73,
+     "perform_cohort": 0.388,
+     "wrist": 0.607
+    }
+   }
+  ],
+  "F8_flow_unif_stop3": [
+   {
+    "step": 4000,
+    "S_real": 0.661,
+    "C": 0.139,
+    "Q": {
+     "gxu_finger": 0.525,
+     "perform_large": 0.441,
+     "bidmc": 0.95,
+     "perform_cohort": 0.685,
+     "wrist": 0.94
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.463,
+    "C": 0.114,
+    "Q": {
+     "gxu_finger": 0.29,
+     "perform_large": 0.24,
+     "bidmc": 0.792,
+     "perform_cohort": 0.535,
+     "wrist": 0.766
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.377,
+    "C": 0.154,
+    "Q": {
+     "gxu_finger": 0.194,
+     "perform_large": 0.156,
+     "bidmc": 0.681,
+     "perform_cohort": 0.473,
+     "wrist": 0.696
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.345,
+    "C": 0.182,
+    "Q": {
+     "gxu_finger": 0.14,
+     "perform_large": 0.123,
+     "bidmc": 0.677,
+     "perform_cohort": 0.434,
+     "wrist": 0.705
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.319,
+    "C": 0.202,
+    "Q": {
+     "gxu_finger": 0.105,
+     "perform_large": 0.101,
+     "bidmc": 0.639,
+     "perform_cohort": 0.406,
+     "wrist": 0.705
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.311,
+    "C": 0.217,
+    "Q": {
+     "gxu_finger": 0.096,
+     "perform_large": 0.095,
+     "bidmc": 0.663,
+     "perform_cohort": 0.396,
+     "wrist": 0.641
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.303,
+    "C": 0.235,
+    "Q": {
+     "gxu_finger": 0.098,
+     "perform_large": 0.087,
+     "bidmc": 0.657,
+     "perform_cohort": 0.4,
+     "wrist": 0.551
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.309,
+    "C": 0.234,
+    "Q": {
+     "gxu_finger": 0.096,
+     "perform_large": 0.092,
+     "bidmc": 0.682,
+     "perform_cohort": 0.403,
+     "wrist": 0.568
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.308,
+    "C": 0.222,
+    "Q": {
+     "gxu_finger": 0.099,
+     "perform_large": 0.092,
+     "bidmc": 0.683,
+     "perform_cohort": 0.399,
+     "wrist": 0.538
+    }
+   }
+  ]
+ }
+}
