@@ -153,3 +153,15 @@ def test_irregular_strip_locked_on_two_beat_lag_reports_the_beat_rate(seed, bpm)
     expected = 60*(k[-1]-k[0])/(onsets[k[-1]]-onsets[k[0]])
     assert _acf_rate_bpm(strip, 40) == pytest.approx(expected/2, rel=.12)
     assert estimate_rate_bpm(strip, 40) == pytest.approx(expected, rel=.05)
+
+
+def test_a_manifest_entry_without_its_model_file_is_not_offered(tmp_path):
+    import json
+    import shutil
+    from pathlib import Path
+    shutil.copy(Path(DEFAULT_BUNDLE)/"manifest.json", tmp_path/"manifest.json")
+    manifest = json.loads((tmp_path/"manifest.json").read_text())
+    assert "physiomix_generator" in manifest["models"]
+    assert physiomix_metadata(tmp_path) is None
+    (tmp_path/manifest["models"]["physiomix_generator"]["file"]).write_bytes(b"x")
+    assert physiomix_metadata(tmp_path) == manifest["physiomix"]

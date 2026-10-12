@@ -1,0 +1,42 @@
+{
+  "arm": "F6_flow_flag_deriv_unif_s16_w1",
+  "incumbent": "round9_L3_rel_beat_lr_crop_r1w_motion_dom",
+  "ship": false,
+  "ship_seed": 42,
+  "eligible": true,
+  "gap": 0.04772065614419191,
+  "pooled_sd": 0.023403643578077584,
+  "non_inferior": true,
+  "S_arm": {
+    "mean": 0.48212878761287975,
+    "sd": 0.01543594286902425,
+    "n": 3
+  },
+  "S_real": {
+    "mean": 0.3680916096791176,
+    "sd": 0.011488418267959963,
+    "n": 3
+  },
+  "incumbent_S_arm": {
+    "mean": 0.5298494437570717,
+    "sd": 0.02927785397196324,
+    "n": 3
+  },
+  "incumbent_S_real": {
+    "mean": 0.34375041348844687,
+    "sd": 0.013837685214358573,
+    "n": 3
+  },
+  "wrist_Q": {
+    "mean": 0.7926993856950947,
+    "sd": 0.08670354902632112,
+    "n": 3
+  },
+  "incumbent_wrist_Q": {
+    "mean": 0.526627467244943,
+    "sd": 0.05964817165583148,
+    "n": 3
+  },
+  "wrist_pooled_sd": 0.07441575705333921,
+  "wrist_non_inferior": false
+}

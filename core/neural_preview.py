@@ -306,7 +306,9 @@ def physiomix_metadata(bundle=DEFAULT_BUNDLE, slot='physiomix'):
         manifest = json.loads((Path(bundle)/'manifest.json').read_text())
     except (OSError, ValueError):
         return None
-    if CONDITIONED[slot][1] not in manifest.get('models', {}):
+    entry = manifest.get('models', {}).get(CONDITIONED[slot][1])
+    # A manifest entry without its model file (e.g. a checkout without the large TorchScript) is not offered.
+    if entry is None or not (Path(bundle)/entry['file']).is_file():
         return None
     return manifest.get(slot)
 
