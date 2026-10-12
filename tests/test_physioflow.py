@@ -220,6 +220,13 @@ def test_round10_pilot_then_final_on_cpu(tmp_path, monkeypatch):
     preview = PhysioMixGenerator(assets, slot="physioflow").generate(7, 95, "gxu_finger", .02)
     assert preview.name == "PhysioFlow" and len(preview.samples) == 1200 and preview.hr_target == 95
     assert labels.IRR_MAX == .35
+    # A final whose workers died while scoring is resumed from its checkpoints with the same score_arm.
+    (run/"training_result.json").unlink()
+    experiment_flow.main(common+["--stage", "final", "--resume-from", str(out), "--output", str(tmp_path/"resumed")])
+    resumed = json.loads((tmp_path/"resumed"/"benchmark"/"training_execution.json").read_text())
+    assert resumed["runs"][0]["stability"]["note"].startswith("worker terminated")
+    assert resumed["runs"][0]["best_step"] == frozen["steps"] or resumed["runs"][0]["best_step"] > 0
+    assert (tmp_path/"resumed"/"DECISION_ROUND10.json").exists() and (tmp_path/"resumed"/"REPORT_ROUND10.md").exists()
 
 
 def test_copy_check_flags_shifted_training_windows_only():

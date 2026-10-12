@@ -150,6 +150,52 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     return result
 
 
+def resume_row(arm, seed, pack, evaluator, run_dir, device, steps):
+    """Score a trained run whose worker died before scoring: best checkpoint from its history, same score_arm.
+    Training counters (clipping, non-finite losses) lived in the dead worker and are not recovered."""
+    history = json.loads((run_dir/"history.json").read_text())
+    best = min(history, key=lambda h: h["checkpoint_score"])
+    conditions = conditions_for(pack, config(arm)["version"])
+    model, _ = build(config(arm), conditions)
+    scaffolds = json.loads((run_dir/"scaffolds.json").read_text())["usable_share"]
+    result = dict(arm=arm, seed=seed, best_step=best["step"], checkpoint_score=best["checkpoint_score"], config=config(arm),
+                  training_seconds=history[-1]["seconds"], generator_parameters=sum(p.numel() for p in model.parameters()),
+                  training_device="cuda (final kernel)", scaffolds=scaffolds, resumed_scoring_device=str(device),
+                  stability=dict(updates=steps, note="worker terminated while scoring; counters not recovered"))
+    scored = score_arm(arm, seed, pack, evaluator, run_dir, device, None, steps)
+    save_json(run_dir/"sampler_scores.json", {arm: scored})
+    result.update(scored, samplers={arm: dict(S_arm=scored["S_arm"], S_real=scored["S_real_fresh"], C=scored["C_fresh"],
+                                              auc=scored["c2st_derivative_auc"], eligible=scored["eligible"],
+                                              gates=scored["gates"], latency=scored["latency"])})
+    save_json(run_dir/"training_result.json", result)
+    return result
+
+
+def resume_final(a, output, pack):
+    """Rebuild the final's benchmark from a run that trained every seed but died while scoring some of them."""
+    import shutil
+    source = next(Path(a.resume_from).rglob("FROZEN_ROUND10.json")).parent
+    shutil.copy(source/"FROZEN_ROUND10.json", output/"FROZEN_ROUND10.json")
+    shutil.copytree(source/"benchmark", output/"benchmark")
+    frozen = json.loads((output/"FROZEN_ROUND10.json").read_text())
+    arm = frozen["arm"]
+    development = {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}
+    from ml.kaggle_multidomain.experiment_v3 import PromptedEvaluator
+    evaluator = PromptedEvaluator(development, a.eval_samples)
+    device = "cpu" if a.allow_cpu else "cuda:0"
+    rows, started = [], time.monotonic()
+    for seed in frozen["seeds"]:
+        run_dir = output/"benchmark"/f"{arm}_seed{seed}"
+        done = run_dir/"training_result.json"
+        rows.append(json.loads(done.read_text()) if done.exists() else
+                    resume_row(arm, seed, development, evaluator, run_dir, device, frozen["steps"]))
+        print("SCORED", arm, seed, round(rows[-1]["S_arm"], 4), flush=True)
+    save_json(output/"benchmark"/"training_execution.json", dict(
+        wall_seconds=time.monotonic()-started, resumed_from=str(source), steps=frozen["steps"], runs=rows,
+        note="seeds without training_result.json were scored here, one at a time, after the final's worker pool died"))
+    return arm, frozen["incumbent"], rows
+
+
 def select_pilot(rows):
     """Lowest S_arm among eligible (arm, sampler) pairs of the seed-42 pilot; validation-derived fields only."""
     candidates = [dict(arm=r["arm"], sampler=v, **s) for r in rows for v, s in r["samplers"].items()]
@@ -208,6 +254,7 @@ def main(argv=None):
     parser.add_argument("--pilot-root", help="Directory holding PILOT_SELECTION_FLOW.json (final)")
     parser.add_argument("--incumbent-root", help="Directory holding the round-9 outputs (final)")
     parser.add_argument("--arms", nargs="+", default=list(FLOW_BASES), choices=list(FLOW_BASES))
+    parser.add_argument("--resume-from", help="Final: a final run that trained every seed but died while scoring")
     parser.add_argument("--arm", help="Final: the sampler arm chosen across pilot loops (validation S_arm); "
                                       "default: the mounted pilot's winner")
     parser.add_argument("--samplers", nargs="+", help="Pilot sampler arms (default: every FLOW_SAMPLERS one)")
@@ -244,6 +291,9 @@ def main(argv=None):
                   data_sha256=manifest["windows_sha256"], wall_seconds=time.monotonic()-started))
         print("PILOT COMPLETE", selection["winner"], flush=True)
         return
+    if a.resume_from:
+        arm, incumbent, rows = resume_final(a, output, pack)
+        return finish_final(a, output, pack, manifest, arm, incumbent, rows, started)
     pilot = json.loads(next(Path(a.pilot_root).rglob("PILOT_SELECTION_FLOW.json")).read_text())
     if pilot["criterion_sha256"] != CRITERION_SHA256 or not (pilot["winner"] or a.arm):
         raise ValueError("Pilot used a different criterion or found no eligible PhysioFlow sampler")
@@ -259,6 +309,11 @@ def main(argv=None):
     devices = ["cpu"] if a.allow_cpu else [f"cuda:{i % 2}" for i in range(len(a.seeds))]
     rows = parallel([(arm, seed) for seed in a.seeds], devices, a.input_root, output/"benchmark", a.steps, a.batch,
                     a.interval, a.eval_samples, dict(samplers=[arm]), 1 if len(devices) > 2 else 2)
+    return finish_final(a, output, pack, manifest, arm, incumbent, rows, started)
+
+
+def finish_final(a, output, pack, manifest, arm, incumbent, rows, started):
+    devices = ["cpu"] if a.allow_cpu else ["cuda:0"]
     decision = decide(rows, arm, incumbent)
     save_json(output/"DECISION_ROUND10.json", decision)
     print("DECISION", arm, "ship", decision["ship"], flush=True)
