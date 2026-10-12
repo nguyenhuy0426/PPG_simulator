@@ -75,7 +75,14 @@ FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
               "F4_flow_flag_deriv03": dict(FLOW, deriv=.3, flag_scaffold=True),
               # Loop 3: logit-normal times rarely reach t < 0.05, where the last steps set the fine texture.
               "F5_flow_flag_deriv_mix": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="mix"),
-              "F6_flow_flag_deriv_unif": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform")}
+              "F6_flow_flag_deriv_unif": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform"),
+              # Loop 5 (wrist): 75% of the round-10 wrist log-PSD MMD sat in the 12-20 Hz stop band (residual noise
+              # above the real floor); a stop-band log-PSD loss on the low-t x0 estimate, at two weights (the full-band
+              # loss and input perturbation made it worse in laptop fine-tune probes, docs/physioflow/loop).
+              "F7_flow_unif_stop1": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=1.,
+                                         spectral_stop=True),
+              "F8_flow_unif_stop3": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=3.,
+                                         spectral_stop=True)}
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 # Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
 FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
@@ -111,7 +118,8 @@ def config(arm, frozen=None):
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
                    motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, t_dist="logit", t_end=0.,
-                   finish_filter=False, latency_limit_ms=50.), **ARMS[arm]}
+                   finish_filter=False, spectral=0., spectral_stop=False, input_noise=0.,
+                   latency_limit_ms=50.), **ARMS[arm]}
 
 
 def conditions_for(pack, version):

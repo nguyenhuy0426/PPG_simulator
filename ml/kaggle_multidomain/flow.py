@@ -32,6 +32,9 @@ RATE_TOLERANCE = (6., .10)               # peak rate vs label: max(6 bpm, 10%)
 HZ_RANGE = (.6, 3.3)                     # same carrier range as PhysioMix on the v3 view
 BEATS = 160                              # constructed peaks per window (>= 30 s at 198 bpm)
 FINISH_PAD = 6*FS                        # reflected samples each side for the optional finishing data-view filter
+# The criterion's log-PSD (train_lsm.features): Welch, 10 s Hann segments, 50% overlap, normalised, log10(+1e-8).
+WELCH, WELCH_HOP, LOG_PSD_FLOOR = 400, 200, 1e-8
+SPECTRAL_T = .25                         # the log-PSD loss ramps from 1 at t=0 to 0 here (last 4 of 16 Heun steps)
 
 
 def window_peaks(row, fs=FS):
@@ -229,22 +232,64 @@ def flow_times(n, device, t_dist="logit"):
     return torch.where(torch.rand(n, device=device) < .5, logit, uniform)
 
 
-def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=.15, deriv=0., t_dist="logit"):
+def log_psd(x):
+    """(n, 200) log10 normalised Welch PSD of (n, 1, L) windows at 0.1-20 Hz, as train_lsm.features computes it
+    (Hann, constant detrend per segment, one-sided density), in float32 so it can be a training loss."""
+    segments = x[:, 0].float().unfold(-1, WELCH, WELCH_HOP)
+    segments = segments-segments.mean(-1, keepdim=True)
+    window = torch.hann_window(WELCH, periodic=True, dtype=segments.dtype, device=segments.device)
+    # |X|^2 as re^2 + im^2: abs() of a zero (the detrended DC bin) has no clean gradient.
+    power = torch.view_as_real(torch.fft.rfft(segments*window, dim=-1)).square().sum(-1).mean(1)
+    power = torch.cat((power[:, :1], 2*power[:, 1:-1], power[:, -1:]), -1)
+    power = power/power.sum(-1, keepdim=True).clamp_min(1e-12)
+    return torch.log10(power[:, 1:]+LOG_PSD_FLOOR)
+
+
+def stop_band_weight(view="v3"):
+    """(200,) weight of each log_psd bin: 1 - |H|^2 of the data view on the Welch grid, ~0 in the pass band."""
+    return torch.tensor(1-view_mask(view, WELCH)[1:])
+
+
+def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=.15, deriv=0., t_dist="logit",
+              spectral=0., spectral_stop=False, input_noise=0.):
     """Rectified-flow velocity MSE; deriv adds an x0 first-difference term weighted towards low noise (the
-    derivative C2ST probe reads exactly these differences)."""
+    derivative C2ST probe reads exactly these differences).
+
+    spectral adds a per-window log-PSD error of the x0 estimate against its own real window, ramped down to zero
+    at SPECTRAL_T: near t=0 the estimate is what the last sampling steps output, and on the log scale the
+    0.1-0.5 Hz and 12-20 Hz stop bands of the data view (where real windows sit at the floor) weigh as much as
+    the pulse band. Mean over the batch, like the other terms. spectral_stop keeps only the stop bands
+    (stop_band_weight): there every real window is at the floor, so the posterior-mean x0 estimate is ~0 at any t
+    and the term only sharpens what the velocity MSE already asks for, without pulling the pulse band.
+
+    input_noise (gamma) perturbs the network input with extra noise gamma*t*xi while the targets stay those of the
+    unperturbed path (input perturbation against exposure bias, Ning et al. 2023): sampling trajectories leave the
+    training marginal (wrist: the 12-20 Hz residual grows from the high-noise steps on), and with the x0 terms the
+    network learns to return a clean estimate from a slightly noisier input than its time label says."""
     x0 = standardize(real)
     n = len(x0)
     t = flow_times(n, x0.device, t_dist)
     noise = torch.randn_like(x0)
     xt = (1-t[:, None, None])*x0+t[:, None, None]*noise
+    if input_noise:
+        xt = xt+input_noise*t[:, None, None]*torch.randn_like(x0)
     keep = (torch.rand(n, device=x0.device) >= cond_drop).to(x0.dtype)
     present = present & (torch.rand(n, device=x0.device) >= scaffold_drop)
     v = net(xt, t, scaffold(phase, present), condition, keep)
     loss = F.mse_loss(v, noise-x0)
+    estimate = xt-t[:, None, None]*v
     if deriv:
-        estimate = xt-t[:, None, None]*v
         weight = (1-t)[:, None, None]**2
         loss = loss+deriv*(weight*(10*(torch.diff(estimate, dim=-1)-torch.diff(x0, dim=-1))).square()).mean()
+    if spectral:
+        weight = (1-t/SPECTRAL_T).clamp_min(0)
+        error = (log_psd(estimate)-log_psd(x0)).square()
+        if spectral_stop:
+            bins = stop_band_weight().to(error.device)
+            error = (error*bins).sum(-1)/bins.sum()
+        else:
+            error = error.mean(-1)
+        loss = loss+spectral*(weight*error).mean()
     return loss
 
 

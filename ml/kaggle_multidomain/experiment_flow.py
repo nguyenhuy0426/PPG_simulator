@@ -47,7 +47,15 @@ DESCRIPTION = {"F1_flow": "PhysioFlow: constructed peak-phase scaffold + conditi
                                          "x0 first-difference loss 1) trained on a half logit-normal, half uniform "
                                          "flow-time mixture",
                "F6_flow_flag_deriv_unif": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1) trained "
-                                          "on uniform flow times"}
+                                          "on uniform flow times",
+               "F7_flow_unif_stop1": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
+                                     "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 1)",
+               "F8_flow_unif_stop3": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
+                                     "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 3)"}
+# Loop 5 (wrist) go/no-go for a 3-seed final, fixed before its pilot ran: the seed-42 pilot must reach the round-10
+# wrist bound (round-9 mean 0.527 + round-10 pooled SD 0.074) and keep S_arm within one round-10 seed SD (0.015) of
+# round 10's own seed 42 (0.472). Validation only.
+GO_LIMITS = dict(wrist_Q=.601, S_arm=.487)
 
 
 def sampler_arms(arm):
@@ -96,7 +104,8 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast("cuda", enabled=cuda):
             loss = flow_loss(g.net, signal[rows], phase[rows], usable[rows], bank[rows], deriv=cfg["deriv"],
-                             t_dist=cfg["t_dist"])
+                             t_dist=cfg["t_dist"], spectral=cfg["spectral"], spectral_stop=cfg["spectral_stop"],
+                             input_noise=cfg["input_noise"])
         if not torch.isfinite(loss):
             stability["nonfinite_losses"] += 1
             if stability["nonfinite_losses"] > max(10, .01*steps):
@@ -145,7 +154,8 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     own = scored.get(arm) or min(scored.values(), key=lambda r: r["S_arm"])
     result.update(own, samplers={v: dict(S_arm=r["S_arm"], S_real=r["S_real_fresh"], C=r["C_fresh"],
                                          auc=r["c2st_derivative_auc"], eligible=r["eligible"], gates=r["gates"],
-                                         latency=r["latency"]) for v, r in scored.items()})
+                                         latency=r["latency"], wrist_Q=r["prompted_validation"]["pools"]["wrist"]["Q"])
+                                  for v, r in scored.items()})
     save_json(run_dir/"training_result.json", result)
     return result
 
@@ -166,7 +176,8 @@ def resume_row(arm, seed, pack, evaluator, run_dir, device, steps):
     save_json(run_dir/"sampler_scores.json", {arm: scored})
     result.update(scored, samplers={arm: dict(S_arm=scored["S_arm"], S_real=scored["S_real_fresh"], C=scored["C_fresh"],
                                               auc=scored["c2st_derivative_auc"], eligible=scored["eligible"],
-                                              gates=scored["gates"], latency=scored["latency"])})
+                                              gates=scored["gates"], latency=scored["latency"],
+                                              wrist_Q=scored["prompted_validation"]["pools"]["wrist"]["Q"])})
     save_json(run_dir/"training_result.json", result)
     return result
 
@@ -196,14 +207,24 @@ def resume_final(a, output, pack):
     return arm, frozen["incumbent"], rows
 
 
-def select_pilot(rows):
-    """Lowest S_arm among eligible (arm, sampler) pairs of the seed-42 pilot; validation-derived fields only."""
+def select_pilot(rows, go=None):
+    """Lowest S_arm among eligible (arm, sampler) pairs of the seed-42 pilot; validation-derived fields only.
+    With go limits only pairs within them can win, and go_final says whether any did (else no 3-seed final)."""
     candidates = [dict(arm=r["arm"], sampler=v, **s) for r in rows for v, s in r["samplers"].items()]
-    eligible = [c for c in candidates if c["eligible"]]
+    eligible = [c for c in candidates if c["eligible"] and (go is None or (
+        c["wrist_Q"] <= go["wrist_Q"] and c["S_arm"] <= go["S_arm"]))]
     winner = min(eligible, key=lambda c: c["S_arm"]) if eligible else None
-    return dict(winner=winner and winner["sampler"], base=winner and winner["arm"], candidates=candidates,
-                reason="argmin S_arm over eligible (arm, sampler) pairs, seed 42" if winner else "no eligible pair",
-                criterion_sha256=CRITERION_SHA256)
+    reason = "argmin S_arm over eligible (arm, sampler) pairs, seed 42"+(f" within {go}" if go else "")
+    result = dict(winner=winner and winner["sampler"], base=winner and winner["arm"], candidates=candidates,
+                  reason=reason if winner else "no eligible pair"+(f" within {go}" if go else ""),
+                  criterion_sha256=CRITERION_SHA256)
+    return dict(result, go_limits=go, go_final=winner is not None) if go else result
+
+
+def final_devices(seeds, allow_cpu=False):
+    """One worker per GPU, at most two; parallel() gives worker i the seeds i, i+2, ... so a third seed waits for
+    the first worker. Three concurrent workers (two on one GPU) lost the round-10 pool while scoring."""
+    return ["cpu"] if allow_cpu else ["cuda:0", "cuda:1"][:len(seeds)]
 
 
 def incumbent_scores(root):
@@ -258,6 +279,8 @@ def main(argv=None):
     parser.add_argument("--arm", help="Final: the sampler arm chosen across pilot loops (validation S_arm); "
                                       "default: the mounted pilot's winner")
     parser.add_argument("--samplers", nargs="+", help="Pilot sampler arms (default: every FLOW_SAMPLERS one)")
+    parser.add_argument("--go", action="store_true", help="Pilot: apply the loop-5 GO_LIMITS (wrist Q, S_arm) to "
+                                                          "the winner; final: refuse a pilot that did not pass them")
     parser.add_argument("--steps", type=int, default=12000)
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
     parser.add_argument("--batch", type=int, default=128)
@@ -285,7 +308,7 @@ def main(argv=None):
         samplers = a.samplers or [s for arm in a.arms for s in sampler_arms(arm)]
         rows = parallel(jobs, devices, a.input_root, output/"pilot", a.steps, a.batch, a.interval, a.eval_samples,
                         dict(samplers=samplers), 2)
-        selection = select_pilot(rows)
+        selection = select_pilot(rows, GO_LIMITS if a.go else None)
         save_json(output/"PILOT_SELECTION_FLOW.json", selection)
         save_json(output/"COMPLETE.json", dict(status="pilot_complete", winner=selection["winner"],
                   data_sha256=manifest["windows_sha256"], wall_seconds=time.monotonic()-started))
@@ -297,6 +320,8 @@ def main(argv=None):
     pilot = json.loads(next(Path(a.pilot_root).rglob("PILOT_SELECTION_FLOW.json")).read_text())
     if pilot["criterion_sha256"] != CRITERION_SHA256 or not (pilot["winner"] or a.arm):
         raise ValueError("Pilot used a different criterion or found no eligible PhysioFlow sampler")
+    if a.go and not pilot.get("go_final"):
+        raise ValueError("The pilot did not pass its go limits; no 3-seed final")
     arm = a.arm or pilot["winner"]
     if a.arm and a.arm not in {c["sampler"] for c in pilot["candidates"]}:
         pilot = dict(pilot, note=f"final arm {a.arm} chosen across pilot loops on validation S_arm; this mounted "
@@ -306,9 +331,9 @@ def main(argv=None):
     save_json(output/"FROZEN_ROUND10.json", dict(rule=rule, rule_sha256=hashlib.sha256(rule.encode()).hexdigest(),
               arm=arm, config=config(arm), incumbent=incumbent, seeds=a.seeds, steps=a.steps, batch=a.batch,
               data_sha256=manifest["windows_sha256"], gxu_test_subject_sha256=seal, pilot=pilot))
-    devices = ["cpu"] if a.allow_cpu else [f"cuda:{i % 2}" for i in range(len(a.seeds))]
+    devices = final_devices(a.seeds, a.allow_cpu)
     rows = parallel([(arm, seed) for seed in a.seeds], devices, a.input_root, output/"benchmark", a.steps, a.batch,
-                    a.interval, a.eval_samples, dict(samplers=[arm]), 1 if len(devices) > 2 else 2)
+                    a.interval, a.eval_samples, dict(samplers=[arm]), 2)
     return finish_final(a, output, pack, manifest, arm, incumbent, rows, started)
 
 

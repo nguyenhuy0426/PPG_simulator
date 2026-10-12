@@ -237,3 +237,143 @@ def test_copy_check_flags_shifted_training_windows_only():
     copies = np.roll(train[:4], 37, axis=1)+.01*rng.normal(size=(4, LENGTH))
     assert np.all(nearest_train_correlation(copies, train) > .99)
     assert np.all(nearest_train_correlation(rng.normal(size=(4, LENGTH)), train) < .3)
+
+
+def test_log_psd_matches_the_criterion_features():
+    from ml.kaggle_lsm.train_lsm import features
+    rng = np.random.default_rng(0)
+    x = np.stack([ppg(60+10*i, seed=i) for i in range(4)]+[rng.normal(size=LENGTH) for _ in range(2)]).astype(np.float32)
+    np.testing.assert_allclose(flow.log_psd(torch.tensor(x[:, None])).numpy(), features(x)[1], atol=1e-3)
+    # As a loss it must give finite gradients, also for a flat window (every detrended bin exactly zero).
+    windows = torch.tensor(np.r_[x[:1], np.full((1, LENGTH), .5, np.float32)][:, None], requires_grad=True)
+    flow.log_psd(windows).sum().backward()
+    assert torch.isfinite(windows.grad).all()
+
+
+class EstimateNet(torch.nn.Module):
+    """Returns the velocity whose x0 estimate (x_t - t v) is exactly `target`, whatever the noise draw."""
+    def __init__(self, target):
+        super().__init__()
+        self.target = target
+
+    def forward(self, x, t, scaffold3, condition, cond_flag):
+        return (x-self.target)/t[:, None, None]
+
+
+def spectral_term(estimate, real, t):
+    def loss(spectral):
+        torch.manual_seed(0)
+        return float(flow.flow_loss(EstimateNet(estimate), real, torch.zeros(len(real), LENGTH),
+                                    torch.zeros(len(real), dtype=torch.bool), torch.zeros(len(real), 10),
+                                    t_dist=t, spectral=spectral))
+    return loss(1.)-loss(0.)
+
+
+def test_spectral_loss_reads_stop_band_noise_only_near_t0(monkeypatch):
+    # Real windows pass the data view, so their 12-20 Hz band sits at the log floor.
+    real = torch.tensor(np.stack([ppg(70+20*i, seed=i) for i in range(4)])[:, None], dtype=torch.float32)
+    x0 = flow.standardize(real)
+    rough = x0+1e-2*torch.randn(x0.shape, generator=torch.Generator().manual_seed(1))
+    error = (flow.log_psd(rough)-flow.log_psd(x0)).square().mean(0)
+    freq = np.arange(1, 201)*FS/400
+    stop = (freq < .5) | (freq >= 8)
+    # White noise at -40 dB: on the log scale the stop bands carry the error, not the pulse band.
+    assert float(error[stop].sum()) > .9*float(error.sum())
+    for t, weighted in ((.05, True), (.5, False)):
+        monkeypatch.setattr(flow, "flow_times", lambda n, device, t_dist, t=t: torch.full((n,), t))
+        assert spectral_term(x0, real, "uniform") == pytest.approx(0, abs=1e-6)
+        assert (spectral_term(rough, real, "uniform") > .1) == weighted
+    # The ramp: weight 1 - t/SPECTRAL_T.
+    monkeypatch.setattr(flow, "flow_times", lambda n, device, t_dist: torch.full((n,), flow.SPECTRAL_T/2))
+    half = spectral_term(rough, real, "uniform")
+    monkeypatch.setattr(flow, "flow_times", lambda n, device, t_dist: torch.full((n,), 1e-4))
+    assert half == pytest.approx(.5*spectral_term(rough, real, "uniform"), rel=.01)
+
+
+def test_loop5_go_limits_pick_the_winner_and_can_stop_the_final():
+    from ml.kaggle_multidomain import experiment_flow
+
+    def row(arm, s_arm, wrist, eligible=True):
+        return dict(arm=arm, samplers={f"{arm}_s16_w1": dict(S_arm=s_arm, wrist_Q=wrist, eligible=eligible)})
+    go = experiment_flow.GO_LIMITS
+    assert go == dict(wrist_Q=.601, S_arm=.487)
+    # The lower S_arm fails the wrist limit, so the other arm wins.
+    picked = experiment_flow.select_pilot([row("F7_flow_unif_stop1", .45, .70), row("F8_flow_unif_stop3", .47, .58)], go)
+    assert picked["winner"] == "F8_flow_unif_stop3_s16_w1" and picked["go_final"]
+    stopped = experiment_flow.select_pilot([row("F7_flow_unif_stop1", .49, .55), row("F8_flow_unif_stop3", .45, .62),
+                                            row("F6_flow_flag_deriv_unif", .40, .50, eligible=False)], go)
+    assert stopped["winner"] is None and not stopped["go_final"]
+    # Without limits (loops 1-4) the selection is unchanged and carries no go fields.
+    assert "go_final" not in experiment_flow.select_pilot([row("F7_flow_unif_stop1", .45, .70)])
+
+
+def test_final_runs_at_most_two_seeds_at_a_time():
+    from ml.kaggle_multidomain import experiment_flow
+    assert experiment_flow.final_devices([42, 123, 2026]) == ["cuda:0", "cuda:1"]
+    assert experiment_flow.final_devices([42]) == ["cuda:0"]
+    assert experiment_flow.final_devices([42, 123, 2026], allow_cpu=True) == ["cpu"]
+
+
+def test_loop5_pilot_trains_with_the_spectral_loss_and_gates_the_final(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_flow
+    assert experiment_v3.config("F7_flow_unif_stop1_s16_w1")["spectral"] == 1.
+    assert experiment_v3.config("F8_flow_unif_stop3")["spectral"] == 3. and experiment_v3.config("F8_flow_unif_stop3")["spectral_stop"]
+    assert experiment_v3.config("F6_flow_flag_deriv_unif_s16_w1")["spectral"] == 0.
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    monkeypatch.setattr(experiment_flow, "CONTROL_N", 1)
+    monkeypatch.setitem(experiment_v3.ARMS, "F7_flow_unif_stop1", dict(experiment_v3.ARMS["F7_flow_unif_stop1"], width=.25))
+    monkeypatch.setitem(experiment_v3.ARMS, "F7_flow_unif_stop1_s16_w1",
+                        dict(experiment_v3.ARMS["F7_flow_unif_stop1_s16_w1"], width=.25, sample_steps=2))
+    seen = []
+    real_loss = experiment_flow.flow_loss
+
+    def spy(*args, **kwargs):
+        seen.append((kwargs["spectral"], kwargs["spectral_stop"], kwargs["input_noise"]))
+        return real_loss(*args, **kwargs)
+    monkeypatch.setattr(experiment_flow, "flow_loss", spy)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    common = ["--input-root", str(tmp_path/"input"), "--allow-cpu", "--batch", "4", "--interval", "2",
+              "--eval-samples", "12", "--steps", "2"]
+    experiment_flow.main(common+["--stage", "pilot", "--arms", "F7_flow_unif_stop1", "--samplers",
+                                 "F7_flow_unif_stop1_s16_w1", "--go", "--output", str(tmp_path/"pilot")])
+    assert seen == [(1., True, 0.)]*2
+    selection = json.loads((tmp_path/"pilot"/"PILOT_SELECTION_FLOW.json").read_text())
+    assert selection["go_limits"] == experiment_flow.GO_LIMITS and "wrist_Q" in selection["candidates"][0]
+    # A two-step net is far from the wrist limit: no go, and the gated final refuses to start.
+    assert not selection["go_final"]
+    fake_round9(tmp_path/"r9")
+    with pytest.raises(ValueError, match="go limits"):
+        experiment_flow.main(common+["--stage", "final", "--pilot-root", str(tmp_path/"pilot"), "--incumbent-root",
+                                     str(tmp_path/"r9"), "--seeds", "42", "--go", "--arm", "F7_flow_unif_stop1_s16_w1",
+                                     "--output", str(tmp_path/"final")])
+
+
+class NoiseNet(torch.nn.Module):
+    """Predicts x_t / t: the exact velocity when x0 = 0 and the input is unperturbed."""
+    def forward(self, x, t, scaffold3, condition, cond_flag):
+        return x/t[:, None, None]
+
+
+def test_input_noise_perturbs_the_input_but_not_the_target(monkeypatch):
+    monkeypatch.setattr(flow, "flow_times", lambda n, device, t_dist: torch.full((n,), .5))
+    flat = torch.full((64, 1, LENGTH), .5)              # standardises to x0 = 0, so x_t = t * noise (+ perturbation)
+    args = (flat, torch.zeros(64, LENGTH), torch.zeros(64, dtype=torch.bool), torch.zeros(64, 10))
+    torch.manual_seed(0)
+    assert float(flow.flow_loss(NoiseNet(), *args)) < 1e-10
+    # The target stays noise - x0, so the extra input noise shows up as an irreducible gamma^2 error.
+    torch.manual_seed(0)
+    assert float(flow.flow_loss(NoiseNet(), *args, input_noise=.3)) == pytest.approx(.09, rel=.03)
+
+
+def test_stop_band_loss_ignores_the_pulse_band():
+    real = torch.tensor(np.stack([ppg(70+20*i, seed=i) for i in range(4)])[:, None], dtype=torch.float32)
+    x0 = flow.standardize(real)
+    weight = flow.stop_band_weight().numpy()
+    freq = np.arange(1, 201)*FS/400
+    assert weight[(freq >= 1) & (freq <= 5)].max() < .01 and weight[freq >= 12].min() > .99
+    # A pulse-band change (a 3 Hz tone) moves the full-band error but barely the stop-band one.
+    tone = x0+.3*torch.sin(2*np.pi*3*torch.arange(LENGTH)/FS)
+    full = (flow.log_psd(tone)-flow.log_psd(x0)).square()
+    w = torch.tensor(weight)
+    assert float((full*w).sum(-1).mean()/w.sum()) < .1*float(full.mean())
