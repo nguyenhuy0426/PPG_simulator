@@ -1,0 +1,47 @@
+{
+ "note": "GXU finger test (sealed until round 3; report only). Evaluated on the laptop CPU for seed 42 (the bundled seed); the run stopped before seeds 123 and 2026 (process ended, likely memory).",
+ "seed": 42,
+ "gxu_test": {
+  "Q": 0.12982130916092732,
+  "total_mmd": 0.09100043287226756,
+  "precision": 0.9375,
+  "recall": 0.9536082474226805,
+  "windows": 388,
+  "subjects": 22
+ },
+ "gxu_test_states": {
+  "gxu_rest": {
+   "Q": 0.2113580287585594,
+   "precision": 0.8203125,
+   "recall": 0.9147286821705426,
+   "windows": 129
+  },
+  "gxu_post_exercise_a": {
+   "Q": 0.13786593257633029,
+   "precision": 0.84375,
+   "recall": 0.984375,
+   "windows": 128
+  },
+  "gxu_post_exercise_b": {
+   "Q": 0.15084141209541674,
+   "precision": 0.94921875,
+   "recall": 0.9541984732824428,
+   "windows": 131
+  }
+ },
+ "c2st_raw_auc": 0.656760265876015,
+ "train_replay_floor_Q": 0.07809165711022026,
+ "c2st_real_vs_real_floor": {
+  "mean": 0.4570285606560468,
+  "min": 0.36420397775473656,
+  "max": 0.6889018757658592,
+  "values": [
+   0.36420397775473656,
+   0.3971797530398718,
+   0.4508436233386747,
+   0.6889018757658592,
+   0.38401357338109154
+  ]
+ },
+ "round9_gxu_test_Q_mean": 0.194
+}

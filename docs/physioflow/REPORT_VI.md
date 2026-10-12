@@ -65,6 +65,10 @@ xong trên Kaggle rồi tiến trình chết khi chấm hai seed còn lại (l�
 lỗi). Seed 42 và 2026 được chấm trên CPU laptop bằng đúng `score_arm` (`--resume-from`); bộ đếm ổn định khi train của hai
 seed này mất cùng tiến trình.
 
+GXU test (niêm phong tới vòng 3, chỉ báo cáo; `rules/GXU_TEST_seed42.json`): seed 42 Q 0,130 (độ phủ 95%, độ giống 94%)
+so với PhysioMix vòng 9 trung bình 0,194; sàn dữ liệu thật (train replay) 0,078. Chỉ seed 42 được chấm trên CPU laptop:
+tiến trình dừng trước hai seed còn lại (nhiều khả năng do bộ nhớ khi chạy song song), nên số này là một seed.
+
 ## Giống người thật đến đâu (người chưa dùng để train)
 
 `ml/runs/realism-v1/realism_round10.json` (laptop CPU; số của PhysioMix trùng khớp với lần đo vòng 9). Mỗi ô: độ giống ·
