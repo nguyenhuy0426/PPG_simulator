@@ -314,6 +314,18 @@ def test_final_runs_at_most_two_seeds_at_a_time():
     assert experiment_flow.final_devices([42, 123, 2026], allow_cpu=True) == ["cpu"]
 
 
+def test_loop6_arms_only_lower_the_stop_band_weight():
+    from ml.kaggle_multidomain import experiment_flow
+    loop5 = experiment_v3.config("F7_flow_unif_stop1")
+    for arm, weight in (("F9_flow_unif_stop03", .3), ("F10_flow_unif_stop01", .1)):
+        assert experiment_v3.config(arm) == dict(loop5, spectral=weight)
+        assert experiment_v3.config(f"{arm}_s16_w1") == dict(experiment_v3.config("F7_flow_unif_stop1_s16_w1"), spectral=weight)
+        assert arm in experiment_flow.DESCRIPTION
+    # "F10_..." must not resolve to the F1 base by prefix.
+    assert experiment_flow.base_of("F10_flow_unif_stop01_s16_w1") == "F10_flow_unif_stop01"
+    assert experiment_flow.base_of("F1_flow_s16_w1") == "F1_flow"
+
+
 def test_loop5_pilot_trains_with_the_spectral_loss_and_gates_the_final(tmp_path, monkeypatch):
     from ml.kaggle_multidomain import experiment_flow
     assert experiment_v3.config("F7_flow_unif_stop1_s16_w1")["spectral"] == 1.

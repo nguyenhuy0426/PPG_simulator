@@ -17,7 +17,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None):
         raise RuntimeError("Stage this experiment from its dedicated branch")
     sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py",
                "ml/kaggle_multidomain/bidmc_split.json"]
-    flow = mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_"))
+    flow = mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -111,10 +111,15 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None):
             # judged against the pre-registered go limits for a 3-seed final.
             arms = ("F7_flow_unif_stop1", "F8_flow_unif_stop3")
             args += ["--arms", *arms, "--samplers", *[f"{arm}_s16_w1" for arm in arms], "--go"]
+        if mode == "flow10e_pilot":
+            # Loop 6: the same stop-band loss at weights 0.3 and 0.1 (at 1 it dominated the clipped gradient),
+            # judged against the same go limits.
+            arms = ("F9_flow_unif_stop03", "F10_flow_unif_stop01")
+            args += ["--arms", *arms, "--samplers", *[f"{arm}_s16_w1" for arm in arms], "--go"]
         if stage == "final":
             args += ["--pilot-root", "/kaggle/input", "--incumbent-root", "/kaggle/input", "--seeds", *map(str, seeds)]
             args += ["--arm", arm] if arm else []
-            args += ["--go"] if mode == "flow10d_final" else []
+            args += ["--go"] if mode in ("flow10d_final", "flow10e_final") else []
         entry = f"from ml.kaggle_multidomain.experiment_flow import main\nmain({args!r})"
     if mode == "physio_train":
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
@@ -199,6 +204,13 @@ sys.path.insert(0, str(root))
         metadata.update(id="charlesday2612/ppg-physioflow10d-final-v1", title="PPG PhysioFlow10d Final v1",
                         kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10d-pilot-v1",
                                         "charlesday2612/ppg-physiomix9-motion-dom-v1"])
+    if mode == "flow10e_pilot":
+        metadata.update(id="charlesday2612/ppg-physioflow10e-pilot-v1", title="PPG PhysioFlow10e Pilot v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "flow10e_final":
+        metadata.update(id="charlesday2612/ppg-physioflow10e-final-v1", title="PPG PhysioFlow10e Final v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10e-pilot-v1",
+                                        "charlesday2612/ppg-physiomix9-motion-dom-v1"])
     if mode == "flow10c_resume":
         metadata.update(id="charlesday2612/ppg-physioflow10c-resume-v1", title="PPG PhysioFlow10c Resume v1",
                         kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10c-final-v1"])
@@ -230,7 +242,8 @@ if __name__ == "__main__":
     p.add_argument("--mode", choices=("prepare", "train", "physio_prepare", "physio_train", "physio3_prepare",
                                       "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
-                                      "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final"), required=True)
+                                      "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
+                                      "flow10e_final"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")
@@ -239,5 +252,6 @@ if __name__ == "__main__":
                "physio5": 20000, "physio6": 20000,
                "physio7": 20000, "physio8": 20000, "physio9": 20000, "flow10_pilot": 16000,
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
-               "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000}.get(a.mode, 2000)
+               "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
+               "flow10e_final": 20000}.get(a.mode, 2000)
     print(stage(a.output, a.mode, a.steps or default, a.seeds, a.arm))

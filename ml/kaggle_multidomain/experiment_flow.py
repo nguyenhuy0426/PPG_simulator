@@ -51,10 +51,14 @@ DESCRIPTION = {"F1_flow": "PhysioFlow: constructed peak-phase scaffold + conditi
                "F7_flow_unif_stop1": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
                                      "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 1)",
                "F8_flow_unif_stop3": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
-                                     "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 3)"}
+                                     "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 3)",
+               "F9_flow_unif_stop03": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
+                                      "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.3)",
+               "F10_flow_unif_stop01": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
+                                       "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.1)"}
 # Loop 5 (wrist) go/no-go for a 3-seed final, fixed before its pilot ran: the seed-42 pilot must reach the round-10
 # wrist bound (round-9 mean 0.527 + round-10 pooled SD 0.074) and keep S_arm within one round-10 seed SD (0.015) of
-# round 10's own seed 42 (0.472). Validation only.
+# round 10's own seed 42 (0.472). Validation only. Loop 6 keeps the same limits.
 GO_LIMITS = dict(wrist_Q=.601, S_arm=.487)
 
 

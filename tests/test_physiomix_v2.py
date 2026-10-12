@@ -495,18 +495,24 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
                                   "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
-                                  "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final"])
+                                  "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final",
+                                  "flow10e_pilot", "flow10e_final"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
     manifest = json.loads((out/"source_manifest.json").read_text())
     entry = (out/"run.py").read_text().rsplit("from ml.kaggle_multidomain.", 1)[1].split(" import")[0]
     assert f"ml/kaggle_multidomain/{entry}.py" in manifest["files"]
-    if mode.startswith("flow10d_"):
-        # Loop 5 always applies its pre-registered go limits; the final mounts its own pilot and round 9.
+    if mode.startswith(("flow10d_", "flow10e_")):
+        # Loops 5-6 always apply the pre-registered go limits; a final mounts its own loop's pilot and round 9.
+        loop = mode.split("_")[0]
         assert "'--go'" in (out/"run.py").read_text()
         sources = json.loads((out/"kernel-metadata.json").read_text())["kernel_sources"]
-        assert mode == "flow10d_pilot" or "charlesday2612/ppg-physioflow10d-pilot-v1" in sources
+        assert mode.endswith("_pilot") or (f"charlesday2612/ppg-physio{loop}-pilot-v1" in sources
+                                           and "charlesday2612/ppg-physiomix9-motion-dom-v1" in sources)
+    if mode == "flow10e_pilot":
+        run = (out/"run.py").read_text()
+        assert "'F9_flow_unif_stop03_s16_w1'" in run and "'F10_flow_unif_stop01_s16_w1'" in run
 
 
 def test_motion_component_starts_near_off_and_can_add_a_cadence_line():

@@ -82,7 +82,14 @@ FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
               "F7_flow_unif_stop1": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=1.,
                                          spectral_stop=True),
               "F8_flow_unif_stop3": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=3.,
-                                         spectral_stop=True)}
+                                         spectral_stop=True),
+              # Loop 6: at weight 1 the stop-band term's gradient was ~5x the velocity term's at the round-10 seed-42
+              # checkpoint, so the global clip at 1 bound on 80-92% of loop-5 updates (F6: 20%) and wrist prompts at
+              # 50-70 bpm came out at twice the rate. The same loss at weights where the velocity term still leads.
+              "F9_flow_unif_stop03": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.3,
+                                          spectral_stop=True),
+              "F10_flow_unif_stop01": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.1,
+                                           spectral_stop=True)}
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 # Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
 FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
