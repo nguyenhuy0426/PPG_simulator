@@ -9,7 +9,7 @@ import subprocess
 import zlib
 
 
-def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
+def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None):
     root = Path(__file__).resolve().parents[2]
     branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=root, text=True).strip()
     # Research kernels are staged only from an experiment branch, never from main or a detached HEAD.
@@ -103,6 +103,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
             args += [f"{arm}_s{s}" for arm in arms for s in ("8_w1", "16_w1", "16_w1_f04")]
         if stage == "final":
             args += ["--pilot-root", "/kaggle/input", "--incumbent-root", "/kaggle/input", "--seeds", *map(str, seeds)]
+            args += ["--arm", arm] if arm else []
         entry = f"from ml.kaggle_multidomain.experiment_flow import main\nmain({args!r})"
     if mode == "physio_train":
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
@@ -211,10 +212,11 @@ if __name__ == "__main__":
                                       "flow10c_final"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
+    p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
                "physio7": 20000, "physio8": 20000, "physio9": 20000, "flow10_pilot": 16000,
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
                "flow10c_final": 20000}.get(a.mode, 2000)
-    print(stage(a.output, a.mode, a.steps or default, a.seeds))
+    print(stage(a.output, a.mode, a.steps or default, a.seeds, a.arm))

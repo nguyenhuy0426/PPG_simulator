@@ -208,6 +208,8 @@ def main(argv=None):
     parser.add_argument("--pilot-root", help="Directory holding PILOT_SELECTION_FLOW.json (final)")
     parser.add_argument("--incumbent-root", help="Directory holding the round-9 outputs (final)")
     parser.add_argument("--arms", nargs="+", default=list(FLOW_BASES), choices=list(FLOW_BASES))
+    parser.add_argument("--arm", help="Final: the sampler arm chosen across pilot loops (validation S_arm); "
+                                      "default: the mounted pilot's winner")
     parser.add_argument("--samplers", nargs="+", help="Pilot sampler arms (default: every FLOW_SAMPLERS one)")
     parser.add_argument("--steps", type=int, default=12000)
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
@@ -243,9 +245,12 @@ def main(argv=None):
         print("PILOT COMPLETE", selection["winner"], flush=True)
         return
     pilot = json.loads(next(Path(a.pilot_root).rglob("PILOT_SELECTION_FLOW.json")).read_text())
-    if pilot["criterion_sha256"] != CRITERION_SHA256 or not pilot["winner"]:
+    if pilot["criterion_sha256"] != CRITERION_SHA256 or not (pilot["winner"] or a.arm):
         raise ValueError("Pilot used a different criterion or found no eligible PhysioFlow sampler")
-    arm = pilot["winner"]
+    arm = a.arm or pilot["winner"]
+    if a.arm and a.arm not in {c["sampler"] for c in pilot["candidates"]}:
+        pilot = dict(pilot, note=f"final arm {a.arm} chosen across pilot loops on validation S_arm; this mounted "
+                                 "pilot is the latest loop")
     incumbent = incumbent_scores(a.incumbent_root)
     rule = rule_text(arm, incumbent)
     save_json(output/"FROZEN_ROUND10.json", dict(rule=rule, rule_sha256=hashlib.sha256(rule.encode()).hexdigest(),
