@@ -79,7 +79,8 @@ def build_model(model_class, conditions, checkpoint):
     if cfg.get('flow'):
         from ml.kaggle_multidomain.flow import FlowGenerator
         return FlowGenerator(conditions['size'], conditions['center'], conditions['scale'], cfg['sample_steps'],
-                             cfg['guidance'], cfg.get('width', 1.), cfg.get('flag_scaffold', False)), cfg
+                             cfg['guidance'], cfg.get('width', 1.), cfg.get('flag_scaffold', False),
+                             cfg.get('t_end', 0.), cfg.get('finish_filter', False)), cfg
     if cfg.get('rel'):
         return physio.PhysioMixR(conditions['size'], conditions['center'], conditions['scale'], view='v3',
                                  beat=cfg.get('beat', False), pad=cfg.get('pad', 0),

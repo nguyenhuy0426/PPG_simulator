@@ -72,11 +72,16 @@ FLOW = dict(version="v2", flow=True, lr=3e-4, schedule="cosine", sample_steps=8,
 FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
               # Loop 2: the scaffold follows the rate-known flag (as in training), with the difference loss at 1 and 0.3.
               "F3_flow_flag_deriv": dict(FLOW, deriv=1., flag_scaffold=True),
-              "F4_flow_flag_deriv03": dict(FLOW, deriv=.3, flag_scaffold=True)}
+              "F4_flow_flag_deriv03": dict(FLOW, deriv=.3, flag_scaffold=True),
+              # Loop 3: logit-normal times rarely reach t < 0.05, where the last steps set the fine texture.
+              "F5_flow_flag_deriv_mix": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="mix"),
+              "F6_flow_flag_deriv_unif": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform")}
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
+# Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
+FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
 ARMS.update(FLOW_BASES)
-ARMS.update({f"{arm}_s{s}_w{w:g}": dict(cfg, sample_steps=s, guidance=w)
-             for arm, cfg in FLOW_BASES.items() for s, w in FLOW_SAMPLERS})
+ARMS.update({f"{arm}_s{s}_w{w:g}{f}": dict(cfg, sample_steps=s, guidance=w, **finish)
+             for arm, cfg in FLOW_BASES.items() for s, w in FLOW_SAMPLERS for f, finish in FLOW_FINISHES.items()})
 PILOTS = ("P0_physiomix_no_div_v3", "P1_v2_lab", "P2_v2_osc", "P3_v2_dc", "P4_v2_osc_dc")
 COMPLEXITY = {"P1_v2_lab": 1, "P2_v2_osc": 2, "P3_v2_dc": 2, "P4_v2_osc_dc": 3}
 BASELINES = ("lsm_multi", "hybrid_multi")
@@ -105,7 +110,8 @@ def config(arm, frozen=None):
         arm = frozen["aliases"]["physiomix_v2"]
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
-                   motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, latency_limit_ms=50.), **ARMS[arm]}
+                   motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, t_dist="logit", t_end=0.,
+                   finish_filter=False, latency_limit_ms=50.), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -119,7 +125,7 @@ def build(cfg, conditions):
     size = conditions.bank.shape[1]
     if cfg["flow"]:
         return FlowGenerator(size, conditions.center, conditions.scale, cfg["sample_steps"], cfg["guidance"],
-                             cfg["width"], cfg["flag_scaffold"]), None
+                             cfg["width"], cfg["flag_scaffold"], cfg["t_end"], cfg["finish_filter"]), None
     if cfg["diffusion"]:
         return CleanDenoiser(size), None
     if cfg.get("rel"):

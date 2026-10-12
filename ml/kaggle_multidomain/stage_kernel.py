@@ -17,7 +17,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
         raise RuntimeError("Stage this experiment from its dedicated branch")
     sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py",
                "ml/kaggle_multidomain/bidmc_split.json"]
-    flow = mode.startswith(("flow10_", "flow10b_"))
+    flow = mode.startswith(("flow10_", "flow10b_", "flow10c_"))
     physio = flow or mode.startswith(("physio_", "physio3_", "physio4", "physio5", "physio6", "physio7", "physio8",
                                       "physio9"))
     if mode == "train" or physio:
@@ -96,6 +96,11 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026)):
             # Loop 2 (after pilot 1): flag-gated scaffold arms; guidance 1.5 lost on every pilot-1 arm, so it is dropped.
             args += ["--arms", "F3_flow_flag_deriv", "F4_flow_flag_deriv03", "--samplers"]
             args += [f"{arm}_s{s}_w1" for arm in ("F3_flow_flag_deriv", "F4_flow_flag_deriv03") for s in (8, 16)]
+        if mode == "flow10c_pilot":
+            # Loop 3: flow-time distributions that reach small t, plus the stop-at-0.04 + data-view-filter finish.
+            arms = ("F5_flow_flag_deriv_mix", "F6_flow_flag_deriv_unif")
+            args += ["--arms", *arms, "--samplers"]
+            args += [f"{arm}_s{s}" for arm in arms for s in ("8_w1", "16_w1", "16_w1_f04")]
         if stage == "final":
             args += ["--pilot-root", "/kaggle/input", "--incumbent-root", "/kaggle/input", "--seeds", *map(str, seeds)]
         entry = f"from ml.kaggle_multidomain.experiment_flow import main\nmain({args!r})"
@@ -172,6 +177,13 @@ sys.path.insert(0, str(root))
     if mode == "flow10b_pilot":
         metadata.update(id="charlesday2612/ppg-physioflow10b-pilot-v1", title="PPG PhysioFlow10b Pilot v1",
                         kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "flow10c_pilot":
+        metadata.update(id="charlesday2612/ppg-physioflow10c-pilot-v1", title="PPG PhysioFlow10c Pilot v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1"])
+    if mode == "flow10c_final":
+        metadata.update(id="charlesday2612/ppg-physioflow10c-final-v1", title="PPG PhysioFlow10c Final v1",
+                        kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10c-pilot-v1",
+                                        "charlesday2612/ppg-physiomix9-motion-dom-v1"])
     if mode == "flow10b_final":
         metadata.update(id="charlesday2612/ppg-physioflow10b-final-v1", title="PPG PhysioFlow10b Final v1",
                         kernel_sources=["charlesday2612/ppg-physiomix3-data-v1", "charlesday2612/ppg-physioflow10b-pilot-v1",
@@ -195,12 +207,14 @@ if __name__ == "__main__":
     p.add_argument("--output", required=True)
     p.add_argument("--mode", choices=("prepare", "train", "physio_prepare", "physio_train", "physio3_prepare",
                                       "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
-                                      "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final"), required=True)
+                                      "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
+                                      "flow10c_final"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
                "physio7": 20000, "physio8": 20000, "physio9": 20000, "flow10_pilot": 16000,
-               "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000}.get(a.mode, 2000)
+               "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
+               "flow10c_final": 20000}.get(a.mode, 2000)
     print(stage(a.output, a.mode, a.steps or default, a.seeds))

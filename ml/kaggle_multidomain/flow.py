@@ -22,6 +22,7 @@ from torch.nn import functional as F
 
 from ml.kaggle_lsm.train_lsm import FS, LENGTH
 from ml.kaggle_multidomain.labels import IRR_MAX
+from ml.kaggle_multidomain.physio import view_mask
 
 # Peak search as in labels.beat_stats; repairs below use the window's median interval m.
 PEAK_DISTANCE_S, PEAK_PROMINENCE = .3, .3
@@ -30,6 +31,7 @@ MIN_PEAKS = 5
 RATE_TOLERANCE = (6., .10)               # peak rate vs label: max(6 bpm, 10%)
 HZ_RANGE = (.6, 3.3)                     # same carrier range as PhysioMix on the v3 view
 BEATS = 160                              # constructed peaks per window (>= 30 s at 198 bpm)
+FINISH_PAD = 6*FS                        # reflected samples each side for the optional finishing data-view filter
 
 
 def window_peaks(row, fs=FS):
@@ -215,12 +217,24 @@ def standardize(x):
     return (x-x.mean(-1, keepdim=True))/x.std(-1, keepdim=True).clamp_min(1e-6)
 
 
-def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=.15, deriv=0.):
-    """Rectified-flow velocity MSE, logit-normal times; deriv adds an x0 first-difference term weighted
-    towards low noise (the derivative C2ST probe reads exactly these differences)."""
+def flow_times(n, device, t_dist="logit"):
+    """logit: logit-normal(0, 1), which rarely visits t < 0.05 where the last sampling steps and the fine
+    texture live; uniform: U(0, 1); mix: half of each."""
+    logit = torch.sigmoid(torch.randn(n, device=device))
+    if t_dist == "logit":
+        return logit
+    uniform = torch.rand(n, device=device)
+    if t_dist == "uniform":
+        return uniform
+    return torch.where(torch.rand(n, device=device) < .5, logit, uniform)
+
+
+def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=.15, deriv=0., t_dist="logit"):
+    """Rectified-flow velocity MSE; deriv adds an x0 first-difference term weighted towards low noise (the
+    derivative C2ST probe reads exactly these differences)."""
     x0 = standardize(real)
     n = len(x0)
-    t = torch.sigmoid(torch.randn(n, device=x0.device))
+    t = flow_times(n, x0.device, t_dist)
     noise = torch.randn_like(x0)
     xt = (1-t[:, None, None])*x0+t[:, None, None]*noise
     keep = (torch.rand(n, device=x0.device) >= cond_drop).to(x0.dtype)
@@ -246,11 +260,16 @@ class FlowGenerator(nn.Module):
     flag_scaffold: the scaffold is given only when the condition says the rate is known, as in training,
     where windows with masked rate labels (most wrist exercise, a third of AF) never had one. Otherwise
     every prompt gets a scaffold. export() gives TorchScript with the integration loop kept as a loop."""
-    def __init__(self, size, center, scale, sample_steps=8, guidance=1., width=1., flag_scaffold=False):
+    def __init__(self, size, center, scale, sample_steps=8, guidance=1., width=1., flag_scaffold=False, t_end=0.,
+                 finish_filter=False):
         super().__init__()
         channels = tuple(int(round(c*width/8))*8 for c in (32, 64, 128, 160, 160))
         self.net = UNet1D(size, channels)
         self.sample_steps, self.guidance, self.flag_scaffold = int(sample_steps), float(guidance), bool(flag_scaffold)
+        # t_end > 0 stops integrating with a little white noise left; finish_filter then applies the data view
+        # (0.5-8 Hz) on a reflection-padded window, like sensor noise passing the same filter as the real data.
+        self.t_end, self.finish_filter = float(t_end), bool(finish_filter)
+        self.register_buffer("band", torch.tensor(view_mask("v3", LENGTH+2*FINISH_PAD)), persistent=False)
         self.register_buffer("center", torch.tensor(center, dtype=torch.float32))
         self.register_buffer("scale", torch.tensor(scale, dtype=torch.float32))
         self.register_buffer("time", torch.arange(LENGTH, dtype=torch.float32)/FS)
@@ -274,15 +293,17 @@ class FlowGenerator(nn.Module):
     def forward(self, z, condition):
         s = self.scaffold_of(z, condition)
         x = z[:, None]
-        steps = self.sample_steps
+        steps, span = self.sample_steps, 1-self.t_end
         for i in range(steps):
-            t, t_next = 1-i/steps, 1-(i+1)/steps
+            t, t_next = 1-span*i/steps, 1-span*(i+1)/steps
             v = self.velocity(x, t, s, condition)
             proposal = x+(t_next-t)*v
-            if i < steps-1:
+            if i < steps-1 or self.t_end > 0:
                 x = x+(t_next-t)*.5*(v+self.velocity(proposal, t_next, s, condition))
             else:
                 x = proposal
+        if self.finish_filter:
+            x = finish(x, self.band)
         return (x-x.amin(-1, keepdim=True))/(x.amax(-1, keepdim=True)-x.amin(-1, keepdim=True)).clamp_min(1e-6)
 
     def export(self, z, condition):
@@ -291,20 +312,31 @@ class FlowGenerator(nn.Module):
         net = self.net.eval()
         n = len(z)
         example = (z[:, None], torch.full((n,), .5), self.scaffold_of(z, condition), condition, torch.ones(n))
-        sampler = FlowSampler(torch.jit.trace(net, example), self.center, self.scale, self.time,
-                              self.sample_steps, self.guidance, self.flag_scaffold)
+        sampler = FlowSampler(torch.jit.trace(net, example), self.center, self.scale, self.time, self.band,
+                              self.sample_steps, self.guidance, self.flag_scaffold, self.t_end, self.finish_filter)
         return torch.jit.script(sampler)
+
+
+def finish(x, band, pad: int = FINISH_PAD):
+    """Zero-phase data-view filter of (n, 1, L) windows over a reflection-padded copy, cropped back to L."""
+    length = x.shape[-1]
+    y = torch.cat((x[..., 1:pad+1].flip(-1), x, x[..., length-pad-1:length-1].flip(-1)), -1)
+    y = torch.fft.irfft(torch.fft.rfft(y-y.mean(-1, keepdim=True), dim=-1)*band, n=length+2*pad, dim=-1)
+    return y[..., pad:pad+length]
 
 
 class FlowSampler(nn.Module):
     """Scriptable twin of FlowGenerator.forward around a traced velocity network."""
-    def __init__(self, net, center, scale, time, sample_steps: int, guidance: float, flag_scaffold: bool):
+    def __init__(self, net, center, scale, time, band, sample_steps: int, guidance: float, flag_scaffold: bool,
+                 t_end: float, finish_filter: bool):
         super().__init__()
         self.net = net
         self.register_buffer("center", center.clone())
         self.register_buffer("scale", scale.clone())
         self.register_buffer("time", time.clone())
+        self.register_buffer("band", band.clone())
         self.sample_steps, self.guidance, self.flag_scaffold = sample_steps, guidance, flag_scaffold
+        self.t_end, self.finish_filter, self.pad = t_end, finish_filter, FINISH_PAD
         self.hz_lo, self.hz_hi, self.irr_max, self.beats = HZ_RANGE[0], HZ_RANGE[1], IRR_MAX, BEATS
         self.rate_known = RATE_KNOWN
 
@@ -337,13 +369,15 @@ class FlowSampler(nn.Module):
     def forward(self, z, condition):
         s = self.scaffold_of(z, condition)
         x = z[:, None]
-        steps = self.sample_steps
+        steps, span = self.sample_steps, 1.-self.t_end
         for i in range(steps):
-            t, t_next = 1.-i/steps, 1.-(i+1)/steps
+            t, t_next = 1.-span*i/steps, 1.-span*(i+1)/steps
             v = self.velocity(x, t, s, condition)
             proposal = x+(t_next-t)*v
-            if i < steps-1:
+            if i < steps-1 or self.t_end > 0.:
                 x = x+(t_next-t)*.5*(v+self.velocity(proposal, t_next, s, condition))
             else:
                 x = proposal
+        if self.finish_filter:
+            x = finish(x, self.band, self.pad)
         return (x-x.amin(-1, keepdim=True))/(x.amax(-1, keepdim=True)-x.amin(-1, keepdim=True)).clamp_min(1e-6)

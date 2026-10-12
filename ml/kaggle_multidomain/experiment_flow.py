@@ -42,7 +42,12 @@ DESCRIPTION = {"F1_flow": "PhysioFlow: constructed peak-phase scaffold + conditi
                                      "only when the rate is known (as in training), plus the x0 first-difference loss "
                                      "(weight 1)",
                "F4_flow_flag_deriv03": "PhysioFlow with the flag-gated rhythm scaffold and the x0 first-difference loss "
-                                       "at weight 0.3"}
+                                       "at weight 0.3",
+               "F5_flow_flag_deriv_mix": "PhysioFlow (6.9M-parameter U-Net, rectified flow, flag-gated rhythm scaffold, "
+                                         "x0 first-difference loss 1) trained on a half logit-normal, half uniform "
+                                         "flow-time mixture",
+               "F6_flow_flag_deriv_unif": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1) trained "
+                                          "on uniform flow times"}
 
 
 def sampler_arms(arm):
@@ -90,7 +95,8 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         rows = torch.tensor([rows_of[int(i)] for i in rng.choice(ids, batch, p=weights)], device=device)
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast("cuda", enabled=cuda):
-            loss = flow_loss(g.net, signal[rows], phase[rows], usable[rows], bank[rows], deriv=cfg["deriv"])
+            loss = flow_loss(g.net, signal[rows], phase[rows], usable[rows], bank[rows], deriv=cfg["deriv"],
+                             t_dist=cfg["t_dist"])
         if not torch.isfinite(loss):
             stability["nonfinite_losses"] += 1
             if stability["nonfinite_losses"] > max(10, .01*steps):
@@ -167,8 +173,10 @@ def incumbent_scores(root):
 def rule_text(arm, incumbent):
     base = base_of(arm)
     cfg = config(arm)
+    finish = (f", stopped at t={cfg['t_end']:g} and finished with the data-view filter on a reflection-padded window"
+              if cfg["finish_filter"] else "")
     return (f"PhysioFlow round-10 rule (validation only; locked criterion sha256 {CRITERION_SHA256}).\n"
-            f"Arm {arm} = {DESCRIPTION[base]}; sampler {cfg['sample_steps']} Heun steps, guidance {cfg['guidance']:g}; "
+            f"Arm {arm} = {DESCRIPTION[base]}; sampler {cfg['sample_steps']} Heun steps, guidance {cfg['guidance']:g}{finish}; "
             "chosen by the seed-42 pilot (validation S_arm).\n"
             "Gates: the round-3 gates (finite, no flat output, rho in [0.75, 1.25], TorchScript trace) with the flow "
             f"latency limit: median one-thread CPU time per 30 s window < {cfg['latency_limit_ms']:g} ms (Kaggle host).\n"

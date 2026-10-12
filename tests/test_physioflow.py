@@ -100,6 +100,28 @@ def test_flow_loss_learns_a_scaffolded_pulse_quickly():
     assert np.mean(losses[-10:]) < .6*np.mean(losses[:5])
 
 
+def test_flow_times_reach_small_t_unless_logit_normal():
+    torch.manual_seed(0)
+    small = {d: float((flow.flow_times(20000, "cpu", d) < .05).float().mean()) for d in ("logit", "mix", "uniform")}
+    assert small["logit"] < .005 and small["mix"] == pytest.approx(.025, abs=.006) and small["uniform"] == pytest.approx(.05, abs=.006)
+
+
+def test_stop_and_filter_finish_keeps_the_band_and_exports_the_same():
+    torch.manual_seed(0)
+    g = flow.FlowGenerator(10, CENTER, SCALE, sample_steps=2, width=.25, flag_scaffold=True, t_end=.04,
+                           finish_filter=True).eval()
+    z, c = torch.randn(3, LENGTH), condition_rows(10, 5, 80, .02, 3, CENTER, SCALE)
+    with torch.no_grad():
+        y = g(z, c)
+        torch.testing.assert_close(g.export(z[:2], c[:2])(z, c), y)
+    power = np.abs(np.fft.rfft(y.numpy()[:, 0]-y.numpy()[:, 0].mean(1, keepdims=True)))**2
+    freq = np.fft.rfftfreq(LENGTH, 1/FS)
+    assert power[:, freq > 12].sum() < 1e-3*power.sum()
+    # The finish band is not a checkpoint entry: earlier PhysioFlow checkpoints still load.
+    assert "band" not in g.state_dict()
+    assert experiment_v3.config("F5_flow_flag_deriv_mix_s16_w1_f04")["t_end"] == .04
+
+
 def test_flow_arms_and_samplers_share_one_architecture():
     base = experiment_v3.config("F1_flow")
     variant = experiment_v3.config("F1_flow_s16_w1.5")
