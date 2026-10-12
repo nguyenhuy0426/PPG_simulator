@@ -121,6 +121,12 @@ Giới hạn quan trọng:
 
 ## 6. Giới hạn và hướng tiếp
 
+Vòng 10 thử một họ mô hình mới, PhysioFlow (flow matching + khung nhịp dựng sẵn): xem
+[../physioflow/REPORT_VI.md](../physioflow/REPORT_VI.md). Điểm tổng tốt hơn PhysioMix (S_arm 0,482 so với 0,530) nhưng
+cổ tay kém hơn, nên theo quy tắc khoá trước PhysioMix vòng 9 vẫn là model mặc định; PhysioFlow có trong app như chế độ
+nghiên cứu.
+
+
 - Đây là độ giống phân bố của PPG đã lọc 0,5–8 Hz và độ chính xác điều khiển nhịp; không phải SpO2,
   không có cặp IR/RED, không phải kiểm chứng lâm sàng. Chưa đo trên Pi/DAC/OPT101.
 - Validation đã được dùng qua nhiều round, nên điểm validation hơi lạc quan. GXU test (dùng lại) và đánh giá

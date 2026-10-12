@@ -13,9 +13,11 @@ rồi vào http://127.0.0.1:8765.
 
 ## Cập nhật số liệu
 
-`data.js` được tạo bởi `scripts/build_model_report.py` từ model đang nằm trong `assets/neural`, kết quả đánh giá
-(`ml/runs/realism-v1/realism_round9.json`), lịch sử train của vòng đang dùng và dữ liệu đã xử lý
-(`ml/runs/physio3-data-v1`). Các thư mục `ml/runs` không nằm trong git; cần có chúng trên máy để tạo lại:
+`data.js` được tạo bởi `scripts/build_model_report.py` từ các model đang nằm trong `assets/neural` (PhysioMix và
+PhysioFlow), kết quả đánh giá (`ml/runs/realism-v1/realism_round10.json`: PhysioMix, PhysioFlow, LSM-GAN, Gaussian;
+`realism_lsm_narrow.json`: phép đo công bằng cho LSM-GAN), lịch sử train của vòng đang dùng, các vòng lặp PhysioFlow
+(`ml/runs/physioflow10*-result-v1`, `physioflow10c-resume-local-v1`) và dữ liệu đã xử lý (`ml/runs/physio3-data-v1`).
+Bằng chứng từng vòng PhysioFlow cũng được lưu trong git ở `docs/physioflow/`. Các thư mục `ml/runs` không nằm trong git; cần có chúng trên máy để tạo lại:
 
 ```bash
 .venv/bin/python scripts/build_model_report.py

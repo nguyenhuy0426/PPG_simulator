@@ -126,11 +126,13 @@
   const windows = Object.values(R.datasets).reduce((a, d) => a + d.train.windows + d.validation.windows + d.test.windows, 0);
   $("pm-people").textContent = fmt(trainPeople);
   const hero = $("hero-cards");
-  card(hero, "5", "thành phần tạo / đọc nhịp (2 là AI)");
+  card(hero, R.physioflow ? "6" : "5", `thành phần tạo / đọc nhịp (${R.physioflow ? 3 : 2} là AI)`);
   card(hero, "6", "tập dữ liệu PPG công khai");
   card(hero, fmt(windows), "cửa sổ 30 s đã xử lý");
   card(hero, fmt(trainPeople), "người dùng để train");
   $("pm-variant").textContent = `${pm.variant} · seed ${pm.seed}`;
+  if (R.physioflow) $("pf-variant").textContent = `${R.physioflow.variant} · seed ${R.physioflow.seed}`;
+  if (R.flow_decision) $("pf-tag").textContent = R.flow_decision.ship ? "đang dùng" : "chế độ nghiên cứu";
   const pc = $("pm-cards");
   card(pc, fmt(pm.parameters), "tham số");
   card(pc, fmt(pm.latency_ms, 1) + " ms", "sinh 30 s trên 1 luồng CPU laptop");
@@ -138,10 +140,41 @@
   $("pm-arch").textContent = `LSM-GAN để so sánh: ${fmt(R.lsm.parameters)} tham số, ${fmt(R.lsm.latency_ms, 1)} ms. Thời gian đo trên laptop x86; chưa đo trên Pi.`;
   $("footer-meta").textContent = `Dữ liệu trang: scripts/build_model_report.py · ${R.generated} · commit ${R.commit || "?"} · checksum model ${pm.sha256.slice(0, 12)}…`;
 
+  // ---------- PhysioFlow ----------
+  const pf = R.physioflow;
+  (function physioflow() {
+    const pc = $("pf-cards");
+    if (pf) {
+      const arch = pf.architecture || {};
+      const calls = (2 * arch.sample_steps - 1) * (arch.guidance > 1 ? 2 : 1);
+      card(pc, fmt(pf.parameters), "tham số");
+      card(pc, fmt(pf.latency_ms / 1000, 1) + " s", "sinh 30 s trên 1 luồng CPU laptop");
+      card(pc, String(arch.sample_steps), `bước Heun (${calls} lần gọi U-Net)`);
+      card(pc, `${pf.hr_support[0]}–${pf.hr_support[1]}`, "bpm điều khiển được");
+      $("pf-note").textContent = `Bản đóng gói: ${pf.variant}, seed ${pf.seed}, bước ${fmt(pf.best_step)}. Chậm hơn PhysioMix (${fmt(pm.latency_ms, 1)} ms) vì phải gọi mạng nhiều lần; app chạy nó trong tiến trình riêng nên không chặn DAC. Thời gian đo trên laptop x86; Pi chưa đo (ước chừng chậm hơn vài lần).`;
+    } else {
+      $("pf-note").textContent = "PhysioFlow chưa được đóng gói vào app.";
+    }
+    const body = document.querySelector("#loop-table tbody");
+    (R.loop || []).forEach((it) => {
+      const tr = html("tr", null, body);
+      if (it.reference) tr.style.background = "var(--soft)";
+      html("td", it.name, tr).style.fontWeight = 600;
+      html("td", it.change, tr);
+      [[it.S_arm, it.S_arm_sd], [it.S_real], [it.auc], [it.wrist_Q]].forEach(([v, sd]) =>
+        (html("td", v == null ? "—" : fmt(v, 3) + (sd != null ? " ± " + fmt(sd, 3) : ""), tr).className = "num"));
+      html("td", it.conclusion, tr);
+    });
+    const d = R.flow_decision, box = $("pf-decision");
+    if (!d) { box.textContent = "Vòng 4 (3 seed, so với PhysioMix theo quy tắc khoá trước) chưa có kết quả."; return; }
+    html("b", d.ship ? "PhysioFlow thay PhysioMix trong app. " : "PhysioMix vẫn là model mặc định của app. ", box);
+    box.appendChild(document.createTextNode(`Quy tắc ghi trước khi train (3 seed, chỉ validation): S_arm ${fmt(d.S_arm.mean, 3)} ± ${fmt(d.S_arm.sd, 3)} so với PhysioMix vòng 9 ${fmt(d.incumbent_S_arm.mean, 3)} ± ${fmt(d.incumbent_S_arm.sd, 3)} (chênh ${fmt(d.gap, 3)}, cần > SD gộp ${fmt(d.pooled_sd, 3)}); S_real ${fmt(d.S_real.mean, 3)} so với ${fmt(d.incumbent_S_real.mean, 3)} (+0,05 cho phép); Q cổ tay ${fmt(d.wrist_Q.mean, 3)} so với ${fmt(d.incumbent_wrist_Q.mean, 3)} (cho phép + ${fmt(d.wrist_pooled_sd, 3)}). ${d.note || ""}`));
+  })();
+
   // ---------- compare sources ----------
-  const CMP = { real: ["Thật (BIDMC)", "--real"], classic: ["Classic", "--s4"], gaussian: ["Gaussian đã fit", "--s3"], lsm: ["LSM-GAN", "--s2"], physiomix: ["PhysioMix", "--s1"] };
+  const CMP = { real: ["Thật (BIDMC)", "--real"], classic: ["Classic", "--s4"], gaussian: ["Gaussian đã fit", "--s3"], lsm: ["LSM-GAN", "--s2"], physiomix: ["PhysioMix", "--s1"], physioflow: ["PhysioFlow", "--s5"] };
   function drawCompare(pick) {
-    const keys = pick === "all" ? ["real", "physiomix", "lsm", "gaussian", "classic"] : ["real", pick];
+    const keys = pick === "all" ? ["real", "physiomix", "physioflow", "lsm", "gaussian", "classic"] : ["real", pick];
     const series = keys.map((k) => R.compare.find((c) => c.key === k)).filter((c) => c && c.values.length)
       .map((c) => ({ values: c.values, fs: c.fs, color: css(CMP[c.key][1]), label: CMP[c.key][0] }));
     $("cmp-chart").dataset.h = 60 + 78 * series.length;
@@ -149,31 +182,36 @@
     $("cmp-note").textContent = pick === "all" ? "Tất cả, 10 s" : `${CMP[pick][0]} cạnh dữ liệu thật`;
   }
   let cmpPick = "all";
-  segmented($("cmp-seg"), [["all", "Tất cả"], ["physiomix", "PhysioMix"], ["lsm", "LSM-GAN"], ["gaussian", "Gaussian"], ["classic", "Classic"]], cmpPick, (k) => { cmpPick = k; drawCompare(k); });
+  segmented($("cmp-seg"), [["all", "Tất cả"], ["physiomix", "PhysioMix"]].concat(pf ? [["physioflow", "PhysioFlow"]] : [], [["lsm", "LSM-GAN"], ["gaussian", "Gaussian"], ["classic", "Classic"]]), cmpPick, (k) => { cmpPick = k; drawCompare(k); });
 
   // ---------- HR explorer ----------
   const HR = Object.keys(pm.strips.bidmc).map(Number).sort((a, b) => a - b);
-  let hrDomain = "bidmc";
+  let hrDomain = "bidmc", hrModel = "physiomix";
+  const MODELS = { physiomix: [pm, "--s1", "PhysioMix"], physioflow: [pf, "--s5", "PhysioFlow"] };
   function drawHr() {
+    const [m, color, name] = MODELS[hrModel];
     const hr = HR[Number($("hr-range").value)];
-    const s = pm.strips[hrDomain][String(hr)];
-    waveform($("hr-chart"), [{ values: s.values, fs: 40, color: css("--s1"), label: `${NAMES[hrDomain]} · yêu cầu ${hr} bpm` }], 10);
-    const out = hr < pm.data_support[0] || hr > pm.data_support[1] ? " · ngoài vùng dữ liệu train (ngoại suy)" : "";
+    const s = m.strips[hrDomain][String(hr)];
+    waveform($("hr-chart"), [{ values: s.values, fs: 40, color: css(color), label: `${name} · ${NAMES[hrDomain]} · yêu cầu ${hr} bpm` }], 10);
+    const out = hr < m.data_support[0] || hr > m.data_support[1] ? " · ngoài vùng dữ liệu train (ngoại suy)" : "";
     $("hr-read").textContent = `${hr} bpm → đo lại ${s.measured == null ? "không đo được" : fmt(s.measured) + " bpm"}${out}`;
   }
   $("hr-range").max = HR.length - 1;
   $("hr-range").addEventListener("input", drawHr);
   segmented($("hr-dom"), Object.keys(NAMES).map((k) => [k, NAMES[k]]), hrDomain, (k) => { hrDomain = k; drawHr(); });
+  if (pf) segmented($("hr-model"), [["physiomix", "PhysioMix"], ["physioflow", "PhysioFlow"]], hrModel, (k) => { hrModel = k; drawHr(); drawControl(); });
+  else $("hr-model").remove();
 
   const DOM_COLORS = { gxu_finger: "--s2", perform_large: "--s4", bidmc: "--real", perform_af: "--s3", perform_non_af: "--rule", wrist: "--s1" };
   function drawControl() {
+    const m = MODELS[hrModel][0];
     const svg = $("ctrl-chart"); clear(svg);
     const b = box(svg);
     const { X, Y } = axes(svg, b, 35, 185, 30, 190, HR, [40, 70, 100, 130, 160, 190], (v) => v, (v) => v);
     path(svg, [[X(35), Y(35)], [X(185), Y(185)]], css("--line"), 1.5, { "stroke-dasharray": "5 5" });
-    el("rect", { x: X(pm.data_support[1]), y: b.t, width: X(185) - X(pm.data_support[1]), height: b.b - b.t, fill: css("--soft"), opacity: 0.6 }, svg);
-    el("text", { x: X(pm.data_support[1]) + 6, y: b.t + 14 }, svg).textContent = "ngoài vùng train";
-    Object.entries(pm.control).forEach(([dom, rows]) => {
+    el("rect", { x: X(m.data_support[1]), y: b.t, width: X(185) - X(m.data_support[1]), height: b.b - b.t, fill: css("--soft"), opacity: 0.6 }, svg);
+    el("text", { x: X(m.data_support[1]) + 6, y: b.t + 14 }, svg).textContent = "ngoài vùng train";
+    Object.entries(m.control).forEach(([dom, rows]) => {
       const color = css(DOM_COLORS[dom]);
       const pts = rows.filter((r) => r.measured != null).map((r) => [X(r.requested), Y(r.measured)]);
       path(svg, pts, color, 2);
@@ -246,7 +284,7 @@
   }
 
   // ---------- realism ----------
-  const SOURCES = [["real_other_people", "Thật · người khác (trần)", "--real"], ["app", "PhysioMix (app)", "--s1"], ["round7", "PhysioMix vòng 7 (trước)", "--s4"], ["gaussian_shaper", "Gaussian cũ", "--s3"]];
+  const SOURCES = [["real_other_people", "Thật · người khác (trần)", "--real"], ["app", "PhysioMix (app)", "--s1"], ["physioflow", "PhysioFlow (mới)", "--s5"], ["lsm_gan", "LSM-GAN", "--s2"], ["round7", "PhysioMix vòng 7 (trước)", "--s4"], ["gaussian_shaper", "Gaussian cũ", "--s3"]].filter(([k]) => Object.values(R.realism).some((d) => d[k]));
   function drawBars(metric) {
     const svg = $("real-bars"); clear(svg);
     const b = box(svg);
@@ -270,8 +308,17 @@
   }
   (function tradeoff() {
     const box = $("tradeoff");
-    const doms = Object.keys(NAMES).filter((d) => R.realism[d] && R.realism[d].app && R.realism[d].round7);
-    if (!doms.length) { box.remove(); return; }
+    const doms = Object.keys(NAMES).filter((d) => R.realism[d] && R.realism[d].app && R.realism[d].physioflow);
+    if (doms.length) {
+      html("b", "PhysioFlow so với PhysioMix (người chưa dùng): ", box);
+      box.appendChild(document.createTextNode(doms.map((d) => {
+        const a = R.realism[d].app, f = R.realism[d].physioflow;
+        return `${SHORT[d]} độ phủ ${pct(a.coverage)}→${pct(f.coverage)}, không phân biệt được ${pct(a.indistinguishable)}→${pct(f.indistinguishable)}`;
+      }).join("; ") + "."));
+      return;
+    }
+    if (!Object.keys(NAMES).some((d) => R.realism[d] && R.realism[d].round7)) { box.remove(); return; }
+    doms.push(...Object.keys(NAMES).filter((d) => R.realism[d] && R.realism[d].app && R.realism[d].round7));
     html("b", "Đánh đổi của model hiện tại so với vòng 7 (người chưa dùng): ", box);
     box.appendChild(document.createTextNode(doms.map((d) => {
       const a = R.realism[d].app, o = R.realism[d].round7;
@@ -281,9 +328,35 @@
   let metric = "indistinguishable";
   segmented($("metric-seg"), [["fidelity", "Độ giống"], ["coverage", "Độ phủ"], ["indistinguishable", "Không phân biệt được"]], metric, (k) => { metric = k; drawBars(k); });
 
+  // ---------- copies + LSM fairness view ----------
+  (function drawCopies() {
+    const cols = [["real_unseen", "Thật (người chưa dùng)"], ["app", "PhysioMix"], ["physioflow", "PhysioFlow"], ["lsm_gan", "LSM-GAN"]]
+      .filter(([k]) => Object.values(R.copies || {}).some((d) => d[k]));
+    const table = $("copy-table");
+    if (!cols.length) { table.closest(".tablewrap").remove(); return; }
+    const hr = html("tr", null, table.querySelector("thead"));
+    html("th", "Tập", hr);
+    cols.forEach(([, l]) => (html("th", l, hr).className = "num"));
+    Object.keys(NAMES).filter((d) => R.copies[d]).forEach((d) => {
+      const tr = html("tr", null, table.querySelector("tbody"));
+      html("td", NAMES[d], tr);
+      cols.forEach(([k]) => {
+        const v = R.copies[d][k];
+        html("td", v ? `${fmt(v.median, 2)} · ${pct(v.above_0_99)} > 0,99` : "—", tr).className = "num";
+      });
+    });
+  })();
+  (function lsmNarrow() {
+    const box = $("lsm-narrow"), n = R.lsm_narrow;
+    if (!n || !n.bidmc || !n.bidmc.lsm_gan) { box.remove(); return; }
+    const f = (v) => `${pct(v.fidelity)} · ${pct(v.coverage)} · ${pct(v.indistinguishable)}`;
+    html("b", "LSM-GAN, đo công bằng: ", box);
+    box.appendChild(document.createTextNode(`LSM-GAN chỉ được train trên BIDMC với dải 0,9–5 Hz (hẹp hơn dải 0,5–8 Hz của các model khác), nên trang này chấm lại mọi nguồn trong chính dải của nó. Ở BIDMC: LSM-GAN ${f(n.bidmc.lsm_gan)} (độ giống · độ phủ · không phân biệt được), PhysioMix ${f(n.bidmc.round9)}, dữ liệu thật của người khác ${f(n.bidmc.real_other_people)}. Độ phủ ~2% nghĩa là LSM-GAN gần như luôn sinh một kiểu sóng (mode collapse); nó cũng không nhận điều kiện nào.`));
+  })();
+
   // ---------- states ----------
   (function drawStates() {
-    const cols = [["real_unseen", "Thật (người chưa dùng)"], ["app", "PhysioMix (app)"], ["round7", "Vòng 7 (trước)"], ["gaussian_shaper", "Gaussian cũ"]].filter(([k]) => R.following[k]);
+    const cols = [["real_unseen", "Thật (người chưa dùng)"], ["app", "PhysioMix (app)"], ["physioflow", "PhysioFlow"], ["lsm_gan", "LSM-GAN"], ["round7", "Vòng 7 (trước)"], ["gaussian_shaper", "Gaussian cũ"]].filter(([k]) => R.following[k]);
     const head = document.querySelector("#state-table thead"), body = document.querySelector("#state-table tbody");
     const hr = html("tr", null, head);
     html("th", "Trạng thái yêu cầu", hr);
@@ -300,7 +373,8 @@
     html("td", "Trung bình 7 trạng thái (đoán mò 14%)", tr).style.fontWeight = 600;
     cols.forEach(([k]) => (html("td", pct(R.following[k].balanced), tr).className = "num"));
     const f = R.following.app;
-    $("swap-text").textContent = `Giữ nguyên nhiễu z, chỉ đổi lệnh trạng thái: ${pct(f.swap)} mẫu được CNN gọi đúng trạng thái mới, và mỗi nhiễu cho trung bình ${fmt(f.distinct, 1)}/7 câu trả lời khác nhau. Nếu model bỏ qua lệnh, mỗi nhiễu chỉ cho 1 câu trả lời. Vậy lệnh quyết định kiểu tín hiệu; nhiễu chỉ tạo khác biệt giữa các lần sinh (như người khác nhau).`;
+    const g = R.following.physioflow;
+    $("swap-text").textContent = `Giữ nguyên nhiễu z, chỉ đổi lệnh trạng thái: PhysioMix ${pct(f.swap)} mẫu được CNN gọi đúng trạng thái mới${g ? `, PhysioFlow ${pct(g.swap)}` : ""}; mỗi nhiễu cho trung bình ${fmt(f.distinct, 1)}/7${g ? ` (PhysioFlow ${fmt(g.distinct, 1)}/7)` : ""} câu trả lời khác nhau. Nếu model bỏ qua lệnh, mỗi nhiễu chỉ cho 1 câu trả lời. Vậy lệnh quyết định kiểu tín hiệu; nhiễu chỉ tạo khác biệt giữa các lần sinh (như người khác nhau).`;
   })();
 
   // ---------- RX ----------
