@@ -74,6 +74,15 @@ FLOW_FINALS_AFTER = [
                     'cho phép (0,527 + 0,046 = 0,573) → theo quy tắc, PhysioMix vẫn là model mặc định; PhysioFlow trong '
                     'app vẫn là seed 42 của vòng 4.'),
 ]
+# Pilots run after the loop-6 final; shown after it.
+FLOW_LOOP_AFTER_LOOP6 = [
+    dict(name='Vòng 7 (pilot cổ tay)', pilot='physioflow10f-pilot-result-v1/physioflow10/pilot', go_limits=True,
+         change='Cổ tay chỉ có 11 cửa sổ train có khung nhịp, tất cả ở 101–120 bpm. Thêm 87 bản sao giãn pha tâm trương '
+                '(giữ nguyên phần tâm thu) phủ 40–115 bpm, thay một nửa số hàng cổ tay có khung nhịp mỗi batch; trọng số '
+                'loss dải chặn 0,3 và 0,1. Ngưỡng go chặt hơn: Q cổ tay ≤ 0,546, S_arm ≤ 0,487.',
+         conclusion='Phản tác dụng: cổ tay bám nhịp chậm còn tệ hơn (lệnh 40 bpm ra ~145 bpm, 80 → 160), C 0,22–0,30, '
+                    'S_arm 0,529–0,580 vượt 0,487 → không chạy final 3 seed.'),
+]
 INCUMBENT_ROW = dict(name='PhysioMix vòng 9 (app)', change='Mốc so sánh: 3 seed, model đang dùng trong app.',
                      S_arm=0.530, S_arm_sd=0.029, S_real=0.344, auc=0.827, wrist_Q=0.527, reference=True,
                      conclusion='—')
@@ -357,7 +366,7 @@ def flow_loop(final_dir, conclusion):
                             + ' (tiến trình Kaggle dừng khi đang chấm hai seed; cùng code, chạy lại từ checkpoint).')
     later = [final_row(RUNS/it['final'], it['name'], it['change'], it['conclusion'])[0]
              for it in FLOW_FINALS_AFTER if (RUNS/it['final']/'DECISION_ROUND10.json').exists()]
-    return rows+pilot_rows(FLOW_LOOP_AFTER_FINAL)+later+[INCUMBENT_ROW], decision
+    return rows+pilot_rows(FLOW_LOOP_AFTER_FINAL)+later+pilot_rows(FLOW_LOOP_AFTER_LOOP6)+[INCUMBENT_ROW], decision
 
 
 def main(argv=None):

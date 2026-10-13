@@ -156,6 +156,44 @@ Cả hai nhánh qua ngưỡng go. F10 thắng và được chạy final 3 seed, 
 PhysioMix vòng 9 vẫn là model mặc định; PhysioFlow trong app vẫn là seed 42 của vòng 4. So với vòng 4, Q cổ tay của
 final giảm từ 0,793 xuống 0,597 và S_arm từ 0,482 xuống 0,445, nhưng vẫn chưa đủ để vượt rào cổ tay.
 
+## Vòng 7: dạy cổ tay bám nhịp chậm bằng bản sao giãn
+
+Bằng chứng: `loop/probe_loop7_wrist_slow.json`, `loop/pilot7.json`, `rules/PILOT_SELECTION_LOOP7.json`.
+
+**Ý tưởng:**
+- Cổ tay chỉ có 11 cửa sổ train có khung nhịp (người s6 và s9), tất cả ở 101–120 bpm.
+- Kéo giãn đều cả cửa sổ thì chính tín hiệu thật cũng bị bộ đo nhịp đọc gấp đôi, nên cách này bị loại.
+- Cách dùng: chỉ kéo dài pha tâm trương, giữ nguyên 0,5 s sau đỉnh và 0,1 s trước đỉnh kế. Bản giãn nào không qua luật
+  khung nhịp của dữ liệu thật thì bị bỏ.
+- Kết quả là 87 bản sao phủ 40–115 bpm. Mỗi batch thay một nửa số hàng cổ tay có khung nhịp bằng một bản sao.
+- Hai nhánh: F11 (λ 0,3) và F12 (λ 0,1). Ngưỡng go chặt hơn, khoá trong code trước khi chạy: Q cổ tay ≤ 0,546,
+  S_arm ≤ 0,487. Commit `2cdbea6d`.
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước; chạy trên tài khoản `halovie2412` vì tài khoản cũ hết hạn mức GPU tuần,
+cùng dữ liệu, cùng code):
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay |
+|---|---|---|---|---|---|
+| Vòng 6 pilot, F10 (λ 0,1) | 0,449 | 0,314 | 0,066 | 0,704 | 0,581 |
+| F11 (λ 0,3, bản giãn) | 0,580 | 0,319 | 0,298 | 0,724 | 0,533 |
+| F12 (λ 0,1, bản giãn) | 0,529 | 0,318 | 0,218 | 0,705 | 0,561 |
+
+Nhịp đo được của cổ tay theo lệnh (bpm):
+
+| Lệnh | 40 | 50 | 60 | 70 | 80 | ≥ 90 |
+|---|---|---|---|---|---|---|
+| F10 vòng 6 | 47 | 103 | 60 | 70 | 80 | đúng |
+| F11 | 149 | 70 | 80 | 140 | 160 | đúng |
+| F12 | 143 | 63 | 67 | 87 | 160 | đúng |
+
+**Kết luận: không đạt go, không chạy final.**
+- Bản sao giãn không dạy được cổ tay bám nhịp chậm. Ngược lại, khoá hài lan ra khắp 40–80 bpm, nên C tăng từ 0,066 lên
+  0,22–0,30.
+- F11 có Q cổ tay qua ngưỡng (0,533), nhưng không nhánh nào qua ngưỡng S_arm.
+- PhysioMix vòng 9 vẫn là model mặc định.
+- Validation đã dùng qua 7 vòng nên điểm của các vòng sau ngày càng lạc quan. Đề xuất: dừng vòng lặp PhysioFlow cho cổ
+  tay ở đây.
+
 ## Giống người thật đến đâu (người chưa dùng để train)
 
 `ml/runs/realism-v1/realism_round10.json` (laptop CPU; số của PhysioMix trùng khớp với lần đo vòng 9). Mỗi ô: độ giống ·
