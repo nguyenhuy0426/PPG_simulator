@@ -28,7 +28,8 @@ from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.experiment_v3 import (CONTROL_N, CRITERION_SHA256, FLOW_BASES, FLOW_SAMPLERS, PROTOCOL,
                                                  VIEW, build, check_pack, conditions_for, config, learning_rate, parallel,
                                                  sampler, score_arm, sealed_subjects)
-from ml.kaggle_multidomain.flow import flow_loss, real_scaffolds
+from ml.kaggle_multidomain.flow import FINISH_PAD, flow_loss, real_scaffolds, slow_wrist_bank, swap_slow
+from ml.kaggle_multidomain.physio import view_mask
 from ml.kaggle_multidomain.physio import ema_model, update_ema
 from ml.kaggle_multidomain.report_v3 import fmt, stat, summarize
 
@@ -55,11 +56,19 @@ DESCRIPTION = {"F1_flow": "PhysioFlow: constructed peak-phase scaffold + conditi
                "F9_flow_unif_stop03": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
                                       "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.3)",
                "F10_flow_unif_stop01": "PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow "
-                                       "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.1)"}
+                                       "times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.1)",
+               "F11_flow_stop03_wslow": "PhysioFlow with the stop-band log-PSD loss (weight 0.3) and half of the "
+                                        "scaffolded wrist training windows slowed in time to 40 bpm..their own rate",
+               "F12_flow_stop01_wslow": "PhysioFlow with the stop-band log-PSD loss (weight 0.1) and half of the "
+                                        "scaffolded wrist training windows slowed in time to 40 bpm..their own rate"}
 # Loop 5 (wrist) go/no-go for a 3-seed final, fixed before its pilot ran: the seed-42 pilot must reach the round-10
 # wrist bound (round-9 mean 0.527 + round-10 pooled SD 0.074) and keep S_arm within one round-10 seed SD (0.015) of
 # round 10's own seed 42 (0.472). Validation only. Loop 6 keeps the same limits.
 GO_LIMITS = dict(wrist_Q=.601, S_arm=.487)
+# Loop 7, fixed before its pilot: the loop-6 final missed the wrist guard (bound 0.527 + pooled SD 0.046 = 0.573) after
+# a seed-42 pilot of 0.581, so the pilot must sit one loop-6 seed SD of wrist Q (0.027) under that bound.
+GO_LIMITS_LOOP7 = dict(wrist_Q=.546, S_arm=.487)
+GO = {"loop5": GO_LIMITS, "loop7": GO_LIMITS_LOOP7}
 
 
 def sampler_arms(arm):
@@ -92,10 +101,20 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     phase, usable = real_scaffolds(signal, conditions.raw[:, 0], conditions.known[:, 0] > 0)
     domain_of = pack["domain"][conditions.ids]
     scaffold_share = {d: float(usable[domain_of == d].mean()) for d in conditions.domains}
-    save_json(run_dir/"scaffolds.json", dict(usable_share=scaffold_share, windows=int(len(usable))))
+    band = torch.tensor(view_mask(VIEW, signal.shape[-1]+2*FINISH_PAD))
+    slow = slow_wrist_bank(signal, phase, usable, conditions.raw[:, 0], domain_of == "wrist", band) \
+        if cfg["wrist_slow"] else None
+    slow_info = None if slow is None else dict(copies=int(len(slow[2])), sources=sorted({int(i) for i in slow[3]}),
+                                                 target_bpm=sorted({float(t) for t in slow[2]}))
+    save_json(run_dir/"scaffolds.json", dict(usable_share=scaffold_share, windows=int(len(usable)), wrist_slow=slow_info))
     signal = torch.tensor(signal[:, None], device=device)
     phase, usable = torch.tensor(phase, device=device), torch.tensor(usable, device=device)
     bank = torch.tensor(conditions.bank, device=device)
+    wrist = torch.tensor(domain_of == "wrist", device=device)
+    if slow is not None:
+        rows_of_slow = conditions.bank[slow[3]].copy()
+        rows_of_slow[:, -3] = (slow[2]-conditions.center[0])/conditions.scale[0]
+        slow = tuple(torch.tensor(v, device=device) for v in (slow[0], slow[1], rows_of_slow.astype(np.float32)))
     ids, weights = balanced_pool(pack, "train")
     best, best_step, history = float("inf"), 0, []
     stability = dict(updates=steps, nonfinite_losses=0, max_grad_norm=0., clipped=0)
@@ -106,8 +125,11 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
             group["lr"] = learning_rate(cfg, step-1, steps)*min(1., step/WARMUP)
         rows = torch.tensor([rows_of[int(i)] for i in rng.choice(ids, batch, p=weights)], device=device)
         optimizer.zero_grad(set_to_none=True)
+        x, ph, cond = signal[rows], phase[rows], bank[rows]
+        if slow is not None:
+            x, ph, cond = swap_slow(x, ph, cond, usable[rows] & wrist[rows], cfg["wrist_slow"], *slow)
         with torch.autocast("cuda", enabled=cuda):
-            loss = flow_loss(g.net, signal[rows], phase[rows], usable[rows], bank[rows], deriv=cfg["deriv"],
+            loss = flow_loss(g.net, x, ph, usable[rows], cond, deriv=cfg["deriv"],
                              t_dist=cfg["t_dist"], spectral=cfg["spectral"], spectral_stop=cfg["spectral_stop"],
                              input_noise=cfg["input_noise"])
         if not torch.isfinite(loss):
@@ -283,8 +305,9 @@ def main(argv=None):
     parser.add_argument("--arm", help="Final: the sampler arm chosen across pilot loops (validation S_arm); "
                                       "default: the mounted pilot's winner")
     parser.add_argument("--samplers", nargs="+", help="Pilot sampler arms (default: every FLOW_SAMPLERS one)")
-    parser.add_argument("--go", action="store_true", help="Pilot: apply the loop-5 GO_LIMITS (wrist Q, S_arm) to "
-                                                          "the winner; final: refuse a pilot that did not pass them")
+    parser.add_argument("--go", nargs="?", const="loop5", choices=tuple(GO),
+                        help="Pilot: apply that loop's go limits (wrist Q, S_arm; bare --go = loop 5) to the winner; "
+                             "final: refuse a pilot that did not pass them")
     parser.add_argument("--steps", type=int, default=12000)
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
     parser.add_argument("--batch", type=int, default=128)
@@ -312,7 +335,7 @@ def main(argv=None):
         samplers = a.samplers or [s for arm in a.arms for s in sampler_arms(arm)]
         rows = parallel(jobs, devices, a.input_root, output/"pilot", a.steps, a.batch, a.interval, a.eval_samples,
                         dict(samplers=samplers), 2)
-        selection = select_pilot(rows, GO_LIMITS if a.go else None)
+        selection = select_pilot(rows, GO[a.go] if a.go else None)
         save_json(output/"PILOT_SELECTION_FLOW.json", selection)
         save_json(output/"COMPLETE.json", dict(status="pilot_complete", winner=selection["winner"],
                   data_sha256=manifest["windows_sha256"], wall_seconds=time.monotonic()-started))

@@ -295,6 +295,66 @@ def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=
 
 # v2 condition layout [domain one-hot, rate_known, irregularity_known, rate, irregularity, std]: rate_known is 5th last.
 RATE_KNOWN = -5
+RATE = -3
+# Loop 7 wrist slowing: the only scaffolded wrist windows (11 of 83) beat at 101-120 bpm.
+SLOW_KEEP_S = (.5, .1)                   # absolute time kept after each peak (upstroke, systole, reflected wave), before the next
+SLOW_FROM_BPM, SLOW_STEP_BPM = 40., 5.
+
+
+def slow_beats(row, phase, k, keep=SLOW_KEEP_S, fs=FS):
+    """Slow one window's beats by k >= 1 the way a slower heart does: per beat, the first keep[0] s after the peak
+    and the last keep[1] s before the next keep their absolute timing and only the diastolic run-off between them is
+    stretched. Returns (signal, beat phase); peaks stay at integer phase."""
+    length = len(row)
+    cycles = np.arange(np.ceil(phase[0]), np.floor(phase[-1])+1)
+    peaks = np.interp(cycles, phase, np.arange(length))
+    ibi = np.diff(peaks)
+    after, before = keep[0]*fs, keep[1]*fs
+    new_ibi = k*ibi
+    new_peaks = peaks[0]+np.r_[0, np.cumsum(new_ibi)]
+    t = np.arange(length, dtype=float)
+    beat = np.clip(np.searchsorted(new_peaks, t, side="right")-1, 0, len(ibi)-1)
+    offset, old, new = t-new_peaks[beat], ibi[beat], new_ibi[beat]
+    lo, hi = np.minimum(after, old-before), new-before
+    middle = lo+(offset-lo)*(old-before-lo)/np.maximum(hi-lo, 1e-9)
+    source = np.where(offset < lo, offset, np.where(offset > hi, old-(new-offset), middle))
+    source = np.where(t < new_peaks[0], offset, source)
+    signal = np.interp(np.clip(peaks[beat]+source, 0, length-1), np.arange(length), row)
+    return signal.astype(np.float32), (cycles[0]+beat+offset/new).astype(np.float32)
+
+
+def slow_wrist_bank(signal, phase, usable, rate, wrist, band):
+    """Slowed copies of the scaffolded wrist windows at SLOW_FROM_BPM, +SLOW_STEP_BPM, ... below their own rate, after
+    the data view again (band: finish's |H|^2). A copy is kept only if it passes the real-window scaffold test
+    (window_peaks, >= MIN_PEAKS, peak rate within RATE_TOLERANCE of the target): some wrist windows carry a periodic
+    component that is not the pulse and would read as a faster rhythm once the beats slow. Returns (signals (m, L),
+    phases (m, L), target rates (m,), source rows (m,))."""
+    out = ([], [], [], [])
+    for i in np.flatnonzero(wrist & usable):
+        for target in np.arange(SLOW_FROM_BPM, rate[i]-SLOW_STEP_BPM/2, SLOW_STEP_BPM):
+            y, p = slow_beats(signal[i], phase[i], rate[i]/target)
+            y = finish(torch.tensor(y)[None, None], band)[0, 0].numpy()
+            times = window_peaks(y)
+            if times is None or len(times) < MIN_PEAKS:
+                continue
+            if abs(60*FS/np.median(np.diff(times))-target) > max(RATE_TOLERANCE[0], RATE_TOLERANCE[1]*target):
+                continue
+            for part, value in zip(out, (y, p, target, i)):
+                part.append(value)
+    if not out[0]:
+        return np.zeros((0, signal.shape[1]), np.float32), np.zeros((0, signal.shape[1]), np.float32), np.zeros(0), np.zeros(0, int)
+    return np.stack(out[0]).astype(np.float32), np.stack(out[1]), np.asarray(out[2]), np.asarray(out[3])
+
+
+def swap_slow(signal, phase, condition, eligible, share, bank_signal, bank_phase, bank_condition, generator=None):
+    """Replace a share of the eligible batch rows (scaffolded wrist) by random slowed copies with their own conditions."""
+    pick = eligible & (torch.rand(len(signal), device=signal.device, generator=generator) < share)
+    if not len(bank_signal) or not bool(pick.any()):
+        return signal, phase, condition
+    j = torch.randint(len(bank_signal), (int(pick.sum()),), device=signal.device, generator=generator)
+    signal, phase, condition = signal.clone(), phase.clone(), condition.clone()
+    signal[pick], phase[pick], condition[pick] = bank_signal[j][:, None].to(signal.dtype), bank_phase[j], bank_condition[j]
+    return signal, phase, condition
 
 
 class FlowGenerator(nn.Module):

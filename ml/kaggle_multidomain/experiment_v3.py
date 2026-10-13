@@ -89,7 +89,15 @@ FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
               "F9_flow_unif_stop03": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.3,
                                           spectral_stop=True),
               "F10_flow_unif_stop01": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.1,
-                                           spectral_stop=True)}
+                                           spectral_stop=True),
+              # Loop 7: the round-10 final of F10 missed only the wrist guard (0.597 > 0.573). The weight-0.3 loss gave a
+              # better wrist (pilot 0.501) but wrist prompts below ~90 bpm locked to the 2nd harmonic: the only
+              # scaffolded wrist windows beat at 101-120 bpm. Half of those rows are swapped for copies slowed to
+              # 40 bpm..own rate by stretching only the diastolic run-off (flow.slow_wrist_bank).
+              "F11_flow_stop03_wslow": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.3,
+                                            spectral_stop=True, wrist_slow=.5),
+              "F12_flow_stop01_wslow": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.1,
+                                            spectral_stop=True, wrist_slow=.5)}
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 # Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
 FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
@@ -125,7 +133,7 @@ def config(arm, frozen=None):
     return {**dict(diffusion=False, osc=False, dc=False, guidance=1., sample_steps=32, lr=2e-4, schedule=None,
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
                    motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, t_dist="logit", t_end=0.,
-                   finish_filter=False, spectral=0., spectral_stop=False, input_noise=0.,
+                   finish_filter=False, spectral=0., spectral_stop=False, input_noise=0., wrist_slow=0.,
                    latency_limit_ms=50.), **ARMS[arm]}
 
 

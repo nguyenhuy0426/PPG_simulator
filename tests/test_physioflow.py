@@ -389,3 +389,82 @@ def test_stop_band_loss_ignores_the_pulse_band():
     full = (flow.log_psd(tone)-flow.log_psd(x0)).square()
     w = torch.tensor(weight)
     assert float((full*w).sum(-1).mean()/w.sum()) < .1*float(full.mean())
+
+
+def finish_band():
+    from ml.kaggle_multidomain.physio import view_mask
+    return torch.tensor(view_mask("v3", LENGTH+2*flow.FINISH_PAD))
+
+
+def test_slowed_beats_keep_systole_and_halve_the_rate():
+    row = ppg(100, seed=3)
+    phase, usable = flow.real_scaffolds(row[None], np.array([100.]), np.array([True]))
+    slow, slow_phase = flow.slow_beats(row, phase[0], 2.)
+    times = flow.window_peaks(slow)
+    assert abs(60*FS/np.median(np.diff(times))-50) < 2
+    # Peaks stay at integer phase, and the 0.5 s after the first peak is the original beat, unchanged.
+    first = int(np.ceil(np.interp(np.ceil(phase[0, 0]), phase[0], np.arange(LENGTH))))
+    keep = int(flow.SLOW_KEEP_S[0]*FS)-2
+    np.testing.assert_allclose(slow[first:first+keep], row[first:first+keep], atol=1e-5)
+    assert abs((slow_phase[-1]-slow_phase[0])-(phase[0, -1]-phase[0, 0])/2) < 1
+
+
+def test_wrist_bank_slows_only_scaffolded_wrist_and_drops_non_pulse_rhythms(monkeypatch):
+    clean = ppg(100, seed=4)
+    signal = np.stack([clean, 3*clean, clean]).astype(np.float32)
+    rate = np.array([100., 100., 100.])
+    phase, usable = flow.real_scaffolds(signal, rate, np.ones(3, bool))
+    assert usable.all()
+    # Row 1 stands in for a wrist window with a periodic component that is not the pulse: once its beats slow, the
+    # peak finder reads a rhythm twice as fast, so those copies fail the scaffold test.
+    find = flow.window_peaks
+    monkeypatch.setattr(flow, "window_peaks", lambda row: find(row)/2 if row.std() > 1.5*clean.std() else find(row))
+    wrist = np.array([True, True, False])
+    y, p, target, source = flow.slow_wrist_bank(signal, phase, usable, rate, wrist, finish_band())
+    assert set(source) == {0}
+    assert (target == np.arange(40., 96., 5.)).all()
+    for row, tgt in zip(y, target):
+        times = find(row)
+        assert abs(60*FS/np.median(np.diff(times))-tgt) <= max(6., .1*tgt)
+
+
+def test_swap_slow_replaces_only_eligible_rows():
+    n = 6
+    signal, phase, condition = torch.zeros(n, 1, LENGTH), torch.zeros(n, LENGTH), torch.zeros(n, 10)
+    bank = (torch.ones(3, LENGTH), torch.full((3, LENGTH), 2.), torch.full((3, 10), 3.))
+    eligible = torch.tensor([True, False, True, False, False, True])
+    x, ph, cond = flow.swap_slow(signal, phase, condition, eligible, 1., *bank)
+    assert (x[eligible] == 1).all() and (ph[eligible] == 2).all() and (cond[eligible] == 3).all()
+    assert (x[~eligible] == 0).all() and (cond[~eligible] == 0).all() and (signal == 0).all()
+    assert flow.swap_slow(signal, phase, condition, eligible, 0., *bank)[0] is signal
+
+
+def test_loop7_arms_and_go_limits(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_flow
+    for arm, weight in (("F11_flow_stop03_wslow", .3), ("F12_flow_stop01_wslow", .1)):
+        assert experiment_v3.config(arm) == dict(experiment_v3.config("F7_flow_unif_stop1"), spectral=weight, wrist_slow=.5)
+        assert arm in experiment_flow.DESCRIPTION
+    assert experiment_v3.config("F10_flow_unif_stop01")["wrist_slow"] == 0.
+    assert experiment_flow.GO["loop7"] == dict(wrist_Q=.546, S_arm=.487) and experiment_flow.GO["loop5"] is experiment_flow.GO_LIMITS
+    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
+        monkeypatch.setattr(experiment_v3, name, value)
+    monkeypatch.setattr(experiment_flow, "CONTROL_N", 1)
+    arm = "F11_flow_stop03_wslow"
+    monkeypatch.setitem(experiment_v3.ARMS, arm, dict(experiment_v3.ARMS[arm], width=.25))
+    monkeypatch.setitem(experiment_v3.ARMS, f"{arm}_s16_w1", dict(experiment_v3.ARMS[f"{arm}_s16_w1"], width=.25, sample_steps=2))
+    swaps = []
+    real_swap = experiment_flow.swap_slow
+
+    def spy(*args):
+        swaps.append(int(args[3].sum()))
+        return real_swap(*args)
+    monkeypatch.setattr(experiment_flow, "swap_slow", spy)
+    save_v3(tmp_path/"input"/"pack", v3_pack())
+    experiment_flow.main(["--input-root", str(tmp_path/"input"), "--allow-cpu", "--batch", "8", "--interval", "2",
+                          "--eval-samples", "12", "--steps", "2", "--stage", "pilot", "--arms", arm, "--samplers",
+                          f"{arm}_s16_w1", "--go", "loop7", "--output", str(tmp_path/"pilot")])
+    assert len(swaps) == 2
+    selection = json.loads((tmp_path/"pilot"/"PILOT_SELECTION_FLOW.json").read_text())
+    assert selection["go_limits"] == experiment_flow.GO_LIMITS_LOOP7
+    scaffolds = json.loads((tmp_path/"pilot"/"pilot"/f"{arm}_seed42"/"scaffolds.json").read_text())
+    assert scaffolds["wrist_slow"]["copies"] > 0 and min(scaffolds["wrist_slow"]["target_bpm"]) == flow.SLOW_FROM_BPM
