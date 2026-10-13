@@ -2,7 +2,7 @@
 """Build the data file of the local model report (docs/model-report/data.js).
 
 Every waveform and number shown is produced here from the packaged app models and the saved
-evaluation results, so the page shows what the app actually runs. Open docs/model-report/index.html
+evaluation results, so the page shows what the app actually runs. Open docs/model-report/chi-tiet.html
 in a browser (file:// works) or serve it with: python3 -m http.server --directory docs/model-report 8765
 """
 import argparse

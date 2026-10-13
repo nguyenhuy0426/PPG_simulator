@@ -3,6 +3,8 @@
 Trang tĩnh giải thích các mô hình tạo tín hiệu PPG trong hệ thống: kiến trúc, nguyên lý, đầu vào/đầu ra,
 dữ liệu train, kết quả, kèm sơ đồ và đồ thị tương tác. Không cần Internet, không dùng thư viện ngoài.
 
+`index.html` là bản tóm tắt dễ hiểu (viết tay, số liệu lấy từ `ml/runs/realism-v1/realism_round10.json`); `chi-tiet.html` là báo cáo kỹ thuật đầy đủ, vẽ từ `data.js`.
+
 Mở trực tiếp `index.html` bằng trình duyệt, hoặc chạy:
 
 ```bash

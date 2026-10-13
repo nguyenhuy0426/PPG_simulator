@@ -3,476 +3,171 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Báo cáo mô hình PPG</title>
+<title>Mô hình PPG tóm tắt</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<div class="layout">
-<nav class="toc" aria-label="Mục lục">
-  <div class="brand">PPG Simulator · Mô hình</div>
-  <div class="sub" id="nav-meta">Báo cáo tổng hợp</div>
-  <div class="links">
-    <a href="#overview">1. Hệ thống làm gì</a>
-    <a href="#models">2. Các mô hình</a>
-    <a href="#physiomix">3. PhysioMix hoạt động ra sao</a>
-    <a href="#physioflow">4. PhysioFlow (mô hình mới)</a>
-    <a href="#io">5. Đầu vào · đầu ra</a>
-    <a href="#data">6. Dữ liệu huấn luyện</a>
-    <a href="#training">7. Huấn luyện và chọn model</a>
-    <a href="#results">8. Giống thật đến đâu</a>
-    <a href="#states">9. Vận động hay nghỉ?</a>
-    <a href="#rx">10. Nhịp tim từ OPT101</a>
-    <a href="#limits">11. Giới hạn · thuật ngữ</a>
+<body class="simple">
+<main class="simple-main">
+
+<header class="simple-hero">
+  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 13/10/2026</p>
+  <h1>Máy tạo nhịp tim giả, và AI “vẽ” nhịp tim giỏi đến đâu</h1>
+  <p class="lede">Thiết bị phát ra ánh sáng nhấp nháy giống hệt mạch máu đập dưới đầu ngón tay, để thử các máy đo nhịp tim.
+    Phần AI chỉ làm một việc: <b>vẽ ra dạng sóng nhịp tim (PPG) trông giống của người thật</b>, theo nhịp mình chọn.</p>
+  <div class="flow3" aria-label="Ba bước của hệ thống">
+    <div><span>1</span>Chọn nhịp tim, kiểu người (ngón tay, cổ tay, rung nhĩ…)</div>
+    <div><span>2</span>AI vẽ 30 giây dạng sóng</div>
+    <div><span>3</span>Đèn LED phát sóng đó, cảm biến OPT101 đo lại</div>
   </div>
-  <div class="theme"><button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button></div>
-</nav>
-<main>
-<header class="hero">
-  <h1>Các mô hình tạo tín hiệu PPG trong hệ thống</h1>
-  <p>Trang này giải thích bằng ngôn ngữ dễ hiểu: hệ thống tạo dạng sóng nhịp tim quang học (PPG) như thế nào, mô hình nào làm việc gì, nhận gì và trả ra gì, học từ dữ liệu nào và đạt được đến đâu. Mọi dạng sóng và con số trên trang được tạo lại từ chính model đang nằm trong app.</p>
-  <div class="meta" id="hero-meta"></div>
-  <div class="cards" style="margin-top:16px" id="hero-cards"></div>
 </header>
 
-<section id="overview">
-  <h2>1. Hệ thống làm gì</h2>
-  <p class="lead">Thiết bị là một <b>bộ mô phỏng</b>: nó tạo ra dạng sóng PPG giả lập, phát qua đèn LED như một ngón tay đang có mạch đập, rồi đo lại bằng cảm biến quang OPT101 để kiểm tra vòng quang học. Phần AI chỉ nằm ở bước <b>tạo dạng sóng</b>; mọi bước còn lại là xử lý tín hiệu và phần cứng có quy tắc rõ ràng.</p>
-  <div class="card diagram">
-    <svg viewBox="0 0 1000 300" role="img" aria-label="Sơ đồ khối hệ thống">
-      <defs>
-        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker>
-      </defs>
-      <g font-size="13">
-        <rect x="10" y="20" width="170" height="110" rx="12" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="95" y="46" text-anchor="middle" font-weight="700" fill="var(--ink)">Màn hình cảm ứng</text>
-        <text x="95" y="68" text-anchor="middle" fill="var(--muted)">chọn nguồn dạng sóng,</text>
-        <text x="95" y="86" text-anchor="middle" fill="var(--muted)">nhịp tim, tập dữ liệu,</text>
-        <text x="95" y="104" text-anchor="middle" fill="var(--muted)">DC / AC (mV)</text>
-
-        <rect x="215" y="4" width="230" height="142" rx="12" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="330" y="26" text-anchor="middle" font-weight="700" fill="var(--ai)">Nguồn dạng sóng</text>
-        <text x="232" y="48" fill="var(--ink)">• Classic (công thức tham số)</text>
-        <text x="232" y="68" fill="var(--ink)">• Gaussian đã fit</text>
-        <text x="232" y="88" fill="var(--ink)">• LSM-GAN (AI, không điều khiển)</text>
-        <text x="232" y="108" fill="var(--ink)">• PhysioMix (AI, GAN có điều khiển)</text>
-        <text x="232" y="128" fill="var(--ink)">• PhysioFlow (AI, flow matching)</text>
-
-        <rect x="480" y="20" width="200" height="110" rx="12" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="580" y="46" text-anchor="middle" font-weight="700" fill="var(--rule)">SignalEngine</text>
-        <text x="580" y="68" text-anchor="middle" fill="var(--ink)">mẫu 100 Hz → nội suy</text>
-        <text x="580" y="88" text-anchor="middle" fill="var(--ink)">→ DAC 1 kHz (laptop)</text>
-        <text x="580" y="108" text-anchor="middle" fill="var(--ink)">/ 500 Hz (Pi, mặc định)</text>
-
-        <rect x="715" y="20" width="270" height="110" rx="12" fill="var(--hw-soft)" stroke="var(--hw)"/>
-        <text x="850" y="46" text-anchor="middle" font-weight="700" fill="var(--ink)">Phát (TX)</text>
-        <text x="850" y="68" text-anchor="middle" fill="var(--ink)">2 × MCP4725 DAC 12-bit</text>
-        <text x="850" y="88" text-anchor="middle" fill="var(--ink)">0x60 = IR · 0x61 = RED</text>
-        <text x="850" y="108" text-anchor="middle" fill="var(--ink)">→ mạch lái LED → LED</text>
-
-        <rect x="715" y="175" width="270" height="110" rx="12" fill="var(--hw-soft)" stroke="var(--hw)"/>
-        <text x="850" y="201" text-anchor="middle" font-weight="700" fill="var(--ink)">Thu (RX)</text>
-        <text x="850" y="223" text-anchor="middle" fill="var(--ink)">OPT101 (photodiode + khuếch đại)</text>
-        <text x="850" y="243" text-anchor="middle" fill="var(--ink)">Grove ADC 0x08 · A0 · 12-bit</text>
-        <text x="850" y="263" text-anchor="middle" fill="var(--ink)">100 mẫu/giây</text>
-
-        <rect x="400" y="175" width="280" height="110" rx="12" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="540" y="201" text-anchor="middle" font-weight="700" fill="var(--rule)">Biểu đồ RX + Nhịp RX</text>
-        <text x="540" y="223" text-anchor="middle" fill="var(--ink)">vẽ mẫu ADC thật (mV)</text>
-        <text x="540" y="243" text-anchor="middle" fill="var(--ink)">ước lượng nhịp từ sóng thu được</text>
-        <text x="540" y="263" text-anchor="middle" fill="var(--ink)">(xử lý tín hiệu, không phải AI)</text>
-
-        <text x="70" y="190" fill="var(--muted)">Chú giải:</text>
-        <rect x="70" y="202" width="14" height="14" rx="3" fill="var(--ai-soft)" stroke="var(--ai)"/><text x="92" y="214" fill="var(--ink)">tạo dạng sóng (có AI)</text>
-        <rect x="70" y="226" width="14" height="14" rx="3" fill="var(--rule-soft)" stroke="var(--rule)"/><text x="92" y="238" fill="var(--ink)">phần mềm có quy tắc</text>
-        <rect x="70" y="250" width="14" height="14" rx="3" fill="var(--hw-soft)" stroke="var(--hw)"/><text x="92" y="262" fill="var(--ink)">phần cứng</text>
-      </g>
-      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ar)">
-        <path d="M180,75 H212"/><path d="M445,75 H477"/><path d="M680,75 H712"/>
-        <path d="M850,130 V172" stroke-dasharray="5 4"/><path d="M715,230 H683"/>
-      </g>
-      <text x="860" y="157" font-size="12" fill="var(--muted)">ánh sáng qua mô phỏng ngón tay</text>
-    </svg>
+<section>
+  <h2>Ba câu trả lời nhanh</h2>
+  <div class="answers">
+    <article class="answer now">
+      <p class="k">Model đang chạy trong app</p>
+      <p class="v">PhysioMix (vòng 9)</p>
+      <p>Ổn định, bám nhịp tốt, sóng cổ tay tốt nhất. Là “mốc” mọi model mới phải thắng.</p>
+    </article>
+    <article class="answer best">
+      <p class="k">Giống người thật nhất trong bài kiểm tra</p>
+      <p class="v">PhysioFlow (vòng 4)</p>
+      <p>Thắng ở 4/6 nhóm dữ liệu, nhưng sóng <b>cổ tay</b> chưa bằng PhysioMix nên theo luật chưa được thay.</p>
+    </article>
+    <article class="answer old">
+      <p class="k">Model cũ</p>
+      <p class="v">LSM-GAN</p>
+      <p>Chỉ học một bộ dữ liệu bệnh viện, không chỉnh được nhịp, máy kiểm tra nhận ra là giả gần như 100%.</p>
+    </article>
   </div>
-  <div class="callout info">Model AI chạy trên CPU (TorchScript, 1 luồng) ngay trên laptop hoặc Pi, chỉ khi người dùng bấm “Sinh đoạn mới”. Nó tạo trước một đoạn 30 s; việc phát ra DAC chạy ở luồng riêng, nên AI không làm trễ nhịp phát.</div>
 </section>
 
-<section id="models">
-  <h2>2. Các mô hình trong hệ thống</h2>
-  <p class="lead">Có sáu thành phần “tạo hoặc đọc nhịp”. Ba cái là mạng nơ-ron; ba cái còn lại là công thức hoặc xử lý tín hiệu cổ điển. Đó là chủ ý: chỗ nào quy tắc đủ tốt thì không dùng AI.</p>
+<section>
+  <h2>Ba model AI khác nhau thế nào</h2>
+  <div class="models3">
+    <article>
+      <h3>PhysioMix <span class="tag ai">GAN</span></h3>
+      <p>Hai mạng nơ-ron thi với nhau: <b>một “hoạ sĩ”</b> vẽ sóng, <b>một “giám khảo”</b> (mạng CNN) đoán sóng thật hay giả.
+        Hoạ sĩ học cách qua mặt giám khảo. Vẽ một lần là xong, nên rất nhanh.</p>
+    </article>
+    <article>
+      <h3>PhysioFlow <span class="tag ai">flow matching</span></h3>
+      <p>Không có giám khảo. Bắt đầu từ <b>một nắm nhiễu ngẫu nhiên</b> rồi sửa dần qua 16 bước cho tới khi thành sóng nhịp tim.
+        Giống phác thảo rồi tô dần. Chậm hơn nhưng đa dạng hơn.</p>
+    </article>
+    <article>
+      <h3>LSM-GAN <span class="tag ai">GAN đời đầu</span></h3>
+      <p>Bản GAN đầu tiên của dự án. Chỉ học 32 bệnh nhân của một bệnh viện (BIDMC) và chỉ vẽ trong dải tần hẹp; không có nút chỉnh nhịp.</p>
+    </article>
+  </div>
+</section>
+
+<section>
+  <h2>“Giống thật” được đo thế nào</h2>
+  <p class="lede">Lấy sóng của <b>những người model chưa từng thấy</b>, trộn với sóng do AI vẽ, rồi cho một mạng CNN tập phân biệt.
+    Nếu CNN đoán đúng không hơn tung đồng xu thì sóng AI <b>khó phân biệt</b> với thật.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt trung bình trên 6 nhóm dữ liệu">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:82%" class="ref"></i></span><b>82%</b></div>
+    <div class="bar"><span class="name">PhysioFlow vòng 4</span><span class="track"><i style="width:64%" class="flow"></i></span><b>64%</b></div>
+    <div class="bar"><span class="name">PhysioMix vòng 9 (app)</span><span class="track"><i style="width:38%" class="mix"></i></span><b>38%</b></div>
+    <div class="bar"><span class="name">LSM-GAN</span><span class="track"><i style="width:0.5%" class="lsm"></i></span><b>~0%</b></div>
+  </div>
+  <p class="note">100% là không thể phân biệt, 0% là lộ hoàn toàn. Trung bình trên 6 nhóm: ngón tay GXU, MIMIC, BIDMC, rung nhĩ, không rung nhĩ, cổ tay.
+    Ngay cả sóng của người thật khác cũng chỉ đạt 82%, vì mỗi nhóm người có đặc điểm riêng.</p>
+  <details class="more">
+    <summary>Xem từng nhóm dữ liệu</summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Nhóm</th><th>Người thật khác</th><th>PhysioFlow</th><th>PhysioMix</th><th>LSM-GAN</th></tr></thead>
+      <tbody>
+        <tr><td>Ngón tay (GXU)</td><td>94%</td><td><b>50%</b></td><td>9%</td><td>0%</td></tr>
+        <tr><td>Bệnh viện lớn (MIMIC)</td><td>97%</td><td><b>91%</b></td><td>37%</td><td>0%</td></tr>
+        <tr><td>Bệnh viện BIDMC</td><td>96%</td><td><b>67%</b></td><td>45%</td><td>0%</td></tr>
+        <tr><td>Rung nhĩ</td><td>56%</td><td><b>82%</b></td><td>7%</td><td>0%</td></tr>
+        <tr><td>Không rung nhĩ</td><td>59%</td><td>39%</td><td><b>80%</b></td><td>0%</td></tr>
+        <tr><td>Cổ tay khi tập</td><td>92%</td><td>52%</td><td>53%</td><td>0%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Nguồn: <code>ml/runs/realism-v1/realism_round10.json</code>. Dữ liệu này đã được dùng nhiều lần để chọn model, nên các con số hơi lạc quan.
+      Đây là đánh giá tín hiệu, không phải kiểm định lâm sàng.</p>
+  </details>
+</section>
+
+<section>
+  <h2>Vì sao chưa thay PhysioMix</h2>
+  <p class="lede">Trước mỗi lần thử, luật chấm được <b>khoá lại</b> để không “chấm theo ý thích”. Model mới phải:</p>
+  <ul class="checks">
+    <li>tốt hơn PhysioMix rõ ràng trên điểm tổng (kết hợp giống thật và bám nhịp), qua cả 3 lần train;</li>
+    <li>không tệ hơn ở sóng cổ tay.</li>
+  </ul>
+  <p>PhysioFlow luôn thắng điểm tổng nhưng <b>trượt điều kiện cổ tay</b>. Nguyên nhân gốc: cổ tay chỉ có <b>83 đoạn 30 giây</b> để học,
+    và tất cả ở nhịp nhanh (101–120 nhịp/phút). Model không có ví dụ nào về cổ tay khi nhịp chậm.</p>
+  <ol class="timeline">
+    <li><b>Vòng 1–3</b> · thử nhiều cách lấy mẫu và cách train → PhysioFlow vượt PhysioMix về điểm tổng.</li>
+    <li><b>Vòng 4</b> · chấm 3 lần train, luật khoá trước → trượt vì cổ tay.</li>
+    <li><b>Vòng 5</b> · sửa nhiễu tần số cao ở cổ tay → cổ tay đẹp, nhưng hết bám nhịp chậm.</li>
+    <li><b>Vòng 6</b> · cân lại → gần qua (cổ tay hụt 0,024).</li>
+    <li><b>Vòng 7</b> · “kéo giãn” sóng cổ tay để dạy nhịp chậm → phản tác dụng.</li>
+  </ol>
+  <p class="callout">Kết luận: <b>thiếu dữ liệu cổ tay</b> mới là nút thắt, không phải do model. Sửa tiếp bằng mẹo train sẽ không đi xa hơn.</p>
+</section>
+
+<section>
+  <h2>Thế giới có model nào tốt hơn không?</h2>
+  <p class="lede">Đã tìm trên arXiv, PubMed, Nature, Kaggle (tháng 10/2026). Chưa có model nào vừa <b>vẽ được PPG</b>, vừa <b>chỉnh được nhịp</b>,
+    vừa <b>công bố trọng số</b> để dùng ngay. Cũng chưa có bài kiểm tra chung để so các model với nhau.</p>
   <div class="tablewrap"><table>
-    <thead><tr><th>Thành phần</th><th>Loại</th><th>Nhận vào</th><th>Trả ra</th><th>Học từ</th><th>Điều khiển</th></tr></thead>
+    <thead><tr><th>Model (năm)</th><th>Làm gì</th><th>Dùng được cho dự án?</th></tr></thead>
     <tbody>
-      <tr><td><b>Classic</b><br><span class="small muted">models/ppg_model.py</span></td><td><span class="tag rule">công thức</span></td><td>HR, PI, SpO₂, nhịp thở, nhiễu, điều kiện sinh lý</td><td>2 kênh IR/RED, 100 Hz, liên tục</td><td>Không học; tham số từ tài liệu</td><td>Đầy đủ (HR, hô hấp, SpO₂ theo công thức tỉ số R)</td></tr>
-      <tr><td><b>Gaussian đã fit</b><br><span class="small muted">models/waveform.py</span></td><td><span class="tag rule">công thức</span></td><td>HR, kiểu “có/không notch”</td><td>Một xung lặp lại, 100 Hz</td><td>Fit 25 684 xung của 32 người BIDMC</td><td>HR; hình dáng cố định</td></tr>
-      <tr><td><b>LSM-GAN v2</b><br><span class="small muted">lsm_generator.ts</span></td><td><span class="tag ai">AI · GAN</span></td><td>1 200 số ngẫu nhiên</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>BIDMC: 32 người ICU</td><td>Không (chỉ đổi “seed”)</td></tr>
-      <tr><td><b>PhysioMix</b> <span class="tag ai">đang dùng</span><br><span class="small muted" id="pm-variant">physiomix_generator.ts</span></td><td><span class="tag ai">AI · GAN có điều kiện</span></td><td>1 200 số ngẫu nhiên + điều kiện (tập dữ liệu, HR, độ bất thường, độ lớn)</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, <span id="pm-people">…</span> người train</td><td>HR 40–180, độ bất thường, tập dữ liệu/trạng thái</td></tr>
-      <tr><td><b>PhysioFlow</b> <span class="tag ai" id="pf-tag">mới</span><br><span class="small muted" id="pf-variant">physioflow_generator.ts</span></td><td><span class="tag ai">AI · flow matching có điều kiện</span></td><td>1 200 số ngẫu nhiên + cùng điều kiện như PhysioMix</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, cùng người train như PhysioMix</td><td>HR 40–180 (khung nhịp dựng sẵn), độ bất thường, tập dữ liệu/trạng thái</td></tr>
-      <tr><td><b>Nhịp RX</b><br><span class="small muted">core/rx_heart_rate.py</span></td><td><span class="tag rule">xử lý tín hiệu</span></td><td>Mẫu ADC thật từ OPT101</td><td>Nhịp (bpm) hoặc lý do không đo được</td><td>Không học</td><td>—</td></tr>
+      <tr><td>GPT-PPG (2025)</td><td>Học 200 triệu đoạn PPG bệnh viện; cùng khuôn 30 s, 40 Hz như dự án</td><td>Chưa thấy trọng số công khai</td></tr>
+      <tr><td>UniCardio (2025)</td><td>Chuyển đổi qua lại PPG / ECG / huyết áp</td><td>Không vẽ theo nhịp; chưa có trọng số</td></tr>
+      <tr><td>VAMP-Diff (2026)</td><td>Diffusion vẽ lại PPG, thử trên CapnoBase</td><td>Không chỉnh nhịp; mới là bản thảo</td></tr>
+      <tr><td>PaPaGei, Pulse-PPG (2024–25)</td><td>Model “hiểu” PPG (không vẽ), có trọng số mở</td><td><b>Có</b>: dùng làm giám khảo độc lập</td></tr>
     </tbody>
   </table></div>
-  <p class="small muted">Còn có cWGAN-GP và TCN-FiLM từ các vòng nghiên cứu trước; chúng được giữ để đối chiếu, không chọn được trong app.</p>
-  <h3>Cùng 75 bpm, các nguồn trông thế nào</h3>
-  <div class="controls"><div class="seg" id="cmp-seg"></div><span class="readout" id="cmp-note"></span></div>
-  <div class="card"><svg class="chart" id="cmp-chart" viewBox="0 0 900 220"></svg></div>
-  <p class="small muted">Mỗi đường đã chuẩn hoá về 0–1 và lấy 10 s đầu. “Thật” là một cửa sổ BIDMC đã lọc từ tập train.</p>
 </section>
 
-<section id="physiomix">
-  <h2>3. PhysioMix hoạt động ra sao</h2>
-  <p class="lead">Ý tưởng chính: <b>không để mạng nơ-ron tự quyết nhịp tim</b>. Thời điểm từng nhịp được dựng sẵn bằng công thức từ HR và độ bất thường bạn yêu cầu; mạng chỉ học <b>hình dáng</b> của từng nhịp cho giống người thật trong tập dữ liệu đã chọn. Nhờ vậy yêu cầu 72 bpm thì ra đúng khoảng 72 bpm, còn dáng sóng thì học từ dữ liệu.</p>
-  <div class="card diagram">
-    <svg viewBox="0 0 1000 420" role="img" aria-label="Kiến trúc PhysioMix">
-      <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker></defs>
-      <g font-size="13">
-        <rect x="10" y="20" width="200" height="80" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="110" y="46" text-anchor="middle" font-weight="700" fill="var(--ink)">Nhiễu z</text>
-        <text x="110" y="68" text-anchor="middle" fill="var(--muted)">1 200 số ngẫu nhiên</text>
-        <text x="110" y="86" text-anchor="middle" fill="var(--muted)">(mỗi seed một “người”)</text>
-
-        <rect x="10" y="130" width="200" height="110" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="110" y="156" text-anchor="middle" font-weight="700" fill="var(--ink)">Điều kiện</text>
-        <text x="110" y="178" text-anchor="middle" fill="var(--muted)">tập dữ liệu (6 lựa chọn)</text>
-        <text x="110" y="198" text-anchor="middle" fill="var(--muted)">HR · độ bất thường nhịp</text>
-        <text x="110" y="218" text-anchor="middle" fill="var(--muted)">độ lớn tín hiệu (std)</text>
-
-        <rect x="250" y="20" width="220" height="90" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="360" y="44" text-anchor="middle" font-weight="700" fill="var(--rule)">① Dựng chuỗi nhịp</text>
-        <text x="360" y="66" text-anchor="middle" fill="var(--ink)">khoảng nhịp log-normal theo HR</text>
-        <text x="360" y="86" text-anchor="middle" fill="var(--ink)">tâm thu cố định, tâm trương co giãn</text>
-
-        <rect x="250" y="140" width="220" height="100" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="360" y="164" text-anchor="middle" font-weight="700" fill="var(--ai)">② Mạng “phong cách”</text>
-        <text x="360" y="186" text-anchor="middle" fill="var(--ink)">MLP: z + điều kiện → 48 số</text>
-        <text x="360" y="206" text-anchor="middle" fill="var(--ink)">điều chỉnh mọi tầng (FiLM)</text>
-        <text x="360" y="226" text-anchor="middle" fill="var(--ink)">→ mỗi tập một kiểu dáng</text>
-
-        <rect x="510" y="20" width="230" height="220" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="625" y="44" text-anchor="middle" font-weight="700" fill="var(--ai)">③ Thân mạng tích chập</text>
-        <text x="625" y="68" text-anchor="middle" fill="var(--ink)">3 nhánh Conv1D: kernel 5 / 21 / 61</text>
-        <text x="625" y="88" text-anchor="middle" fill="var(--ink)">(chi tiết · một nhịp · vài nhịp)</text>
-        <text x="625" y="112" text-anchor="middle" fill="var(--ink)">8 khối residual giãn nở</text>
-        <text x="625" y="132" text-anchor="middle" fill="var(--ink)">dilation 1 → 128 (nhìn xa ~10 s)</text>
-        <g fill="var(--ai)" opacity=".75">
-          <rect x="545" y="150" width="12" height="70" rx="3"/><rect x="565" y="160" width="12" height="60" rx="3"/>
-          <rect x="585" y="170" width="12" height="50" rx="3"/><rect x="605" y="178" width="12" height="42" rx="3"/>
-          <rect x="625" y="184" width="12" height="36" rx="3"/><rect x="645" y="190" width="12" height="30" rx="3"/>
-          <rect x="665" y="195" width="12" height="25" rx="3"/><rect x="685" y="200" width="12" height="20" rx="3"/>
-        </g>
-
-        <rect x="780" y="20" width="210" height="110" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="885" y="44" text-anchor="middle" font-weight="700" fill="var(--ai)">④ Đầu ra hài</text>
-        <text x="885" y="66" text-anchor="middle" fill="var(--ink)">6 hài: biên độ + pha</text>
-        <text x="885" y="86" text-anchor="middle" fill="var(--ink)">= dáng mỗi nhịp</text>
-        <text x="885" y="106" text-anchor="middle" fill="var(--ink)">+ độ khuếch đại chậm, nền</text>
-
-        <rect x="780" y="150" width="210" height="90" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="885" y="172" text-anchor="middle" font-weight="700" fill="var(--ink)">⑤ Phần dư + chuyển động</text>
-        <text x="885" y="192" text-anchor="middle" fill="var(--ink)">dư ±0,15 (bị chặn)</text>
-        <text x="885" y="210" text-anchor="middle" fill="var(--ink)">+ dao động 0,5–3,5 Hz</text>
-        <text x="885" y="228" text-anchor="middle" fill="var(--ink)">(học theo tập; cổ tay)</text>
-
-        <rect x="250" y="290" width="740" height="110" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="620" y="316" text-anchor="middle" font-weight="700" fill="var(--rule)">⑥ Hoàn thiện như dữ liệu thật</text>
-        <text x="620" y="340" text-anchor="middle" fill="var(--ink)">sinh dài thêm 6 s mỗi bên → lọc 0,5–8 Hz (giống bộ lọc dữ liệu train) → cắt lấy 30 s giữa</text>
-        <text x="620" y="362" text-anchor="middle" fill="var(--ink)">→ chuẩn hoá 0–1 → <tspan font-weight="700">1 200 mẫu, 40 Hz</tspan> → app đổi sang mV theo DC / AC bạn chọn → DAC</text>
-        <text x="620" y="384" text-anchor="middle" fill="var(--muted)">Cắt giữa để hai đầu cửa sổ không “khớp vòng” — một dấu hiệu giả mà bộ phân biệt dễ bắt.</text>
-      </g>
-      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ar2)">
-        <path d="M210,60 H247"/><path d="M210,185 H247"/><path d="M470,65 H507"/><path d="M470,190 H507"/>
-        <path d="M740,75 H777"/><path d="M740,195 H777"/><path d="M885,240 V287"/>
-      </g>
-    </svg>
+<section>
+  <h2>Kế hoạch tiếp theo</h2>
+  <div class="plan">
+    <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
+      <p>Dùng bộ <b>GalaxyPPG</b> (24 người, đồng hồ đeo tay, giấy phép CC BY 4.0) mà chưa model nào từng thấy. Khoá luật chấm trước,
+        rồi chấm lại PhysioMix, PhysioFlow, LSM-GAN.</p><p class="status doing">Đang tải dữ liệu</p></article>
+    <article><span class="step">B</span><h3>Thêm dữ liệu cổ tay để train</h3>
+      <p>Lấy một nửa số người GalaxyPPG để fine-tune PhysioMix và PhysioFlow (có nhịp chậm, đi bộ, chạy); nửa còn lại chỉ để thi.</p>
+      <p class="status next">Sau bước A</p></article>
+    <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
+      <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
+      <p class="status next">Cùng bước A</p></article>
   </div>
-  <div class="grid2" style="margin-top:14px">
-    <div class="card"><h3 style="margin-top:0">Vì sao thiết kế như vậy</h3>
-      <ul class="small">
-        <li><b>Nhịp dựng sẵn</b>: GAN thuần thường “trôi” nhịp; ở bản v2, yêu cầu 150 bpm đo ra 128–136. Dựng sẵn nhịp làm HR luôn đúng theo lệnh.</li>
-        <li><b>Neo biên độ hài</b>: các hài chỉ quyết định dáng (tổng = 1), nên mạng không thể thu nhỏ nhịp tới mức phần dư lấn át.</li>
-        <li><b>Tâm thu cố định</b>: khi nhịp dài/ngắn hơn, chỉ pha tâm trương co giãn — đúng như tim thật; độ bất thường đo lại khớp lệnh (σ=0,2 → 0,19).</li>
-        <li><b>FiLM theo điều kiện</b>: một mạng chung nhưng mỗi tập dữ liệu (ICU, khỏe mạnh, cổ tay…) có “phong cách” riêng.</li>
-      </ul></div>
-    <div class="card"><h3 style="margin-top:0">Con số của bản trong app</h3>
-      <div class="cards" id="pm-cards"></div>
-      <p class="small muted" id="pm-arch"></p></div>
-  </div>
+  <p class="callout info">Khi nào chốt? Model nào thắng bài thi mới theo luật đã khoá thì vào app. Nếu không model nào thắng rõ, giữ PhysioMix vòng 9.</p>
 </section>
 
-<section id="physioflow">
-  <h2>4. PhysioFlow: mô hình mới (flow matching)</h2>
-  <p class="lead">PhysioMix là GAN: dù điều khiển nhịp tốt, một CNN chuyên tách thật/giả vẫn nhận ra mẫu sinh qua <b>đạo hàm</b> dạng sóng (kết cấu “gợn”), và GAN cần nhiều vòng chỉnh để train ổn định. Các nghiên cứu gần đây về tín hiệu sinh lý chuyển sang họ <b>diffusion / flow matching</b> (ví dụ FlowECG cho ECG, VAMP-Diff cho PPG): mô hình học cách <b>biến nhiễu thành tín hiệu</b> từng bước, không cần mạng đối kháng. PhysioFlow dùng ý tưởng đó nhưng <b>giữ điểm mạnh của PhysioMix</b>: nhịp vẫn được dựng sẵn từ HR bạn chọn.</p>
-  <div class="card diagram">
-    <svg viewBox="0 0 1000 300" role="img" aria-label="PhysioFlow sinh một đoạn 30 giây">
-      <defs><marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker></defs>
-      <g font-size="13">
-        <rect x="10" y="20" width="190" height="80" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="105" y="46" text-anchor="middle" font-weight="700" fill="var(--ink)">Nhiễu z</text>
-        <text x="105" y="68" text-anchor="middle" fill="var(--muted)">1 200 số ngẫu nhiên</text>
-        <text x="105" y="86" text-anchor="middle" fill="var(--muted)">= điểm xuất phát (t = 1)</text>
-        <rect x="10" y="130" width="190" height="100" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="105" y="156" text-anchor="middle" font-weight="700" fill="var(--ink)">Điều kiện</text>
-        <text x="105" y="178" text-anchor="middle" fill="var(--muted)">tập dữ liệu · HR</text>
-        <text x="105" y="198" text-anchor="middle" fill="var(--muted)">độ bất thường · độ lớn</text>
-        <text x="105" y="218" text-anchor="middle" fill="var(--muted)">cờ “đã biết HR”</text>
-        <rect x="240" y="130" width="220" height="100" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="350" y="154" text-anchor="middle" font-weight="700" fill="var(--rule)">① Khung nhịp dựng sẵn</text>
-        <text x="350" y="176" text-anchor="middle" fill="var(--ink)">đỉnh tâm thu từ HR + khoảng</text>
-        <text x="350" y="196" text-anchor="middle" fill="var(--ink)">nhịp log-normal → pha sin/cos</text>
-        <text x="350" y="216" text-anchor="middle" fill="var(--muted)">(bỏ khung khi HR “chưa biết”)</text>
-        <rect x="500" y="20" width="250" height="210" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="625" y="44" text-anchor="middle" font-weight="700" fill="var(--ai)">② U-Net 1D (6,9 triệu tham số)</text>
-        <text x="625" y="66" text-anchor="middle" fill="var(--ink)">vào: sóng hiện tại + khung nhịp</text>
-        <text x="625" y="86" text-anchor="middle" fill="var(--ink)">5 tầng: 1 200 → 600 → 300 → 150 → 75</text>
-        <text x="625" y="106" text-anchor="middle" fill="var(--ink)">attention ở 150 và 75 mẫu</text>
-        <text x="625" y="126" text-anchor="middle" fill="var(--ink)">FiLM theo thời điểm t + điều kiện</text>
-        <text x="625" y="146" text-anchor="middle" fill="var(--ink)">ra: <tspan font-weight="700">vận tốc v</tspan> = hướng đi từ</text>
-        <text x="625" y="166" text-anchor="middle" fill="var(--ink)">nhiễu về tín hiệu thật</text>
-        <g fill="var(--ai)" opacity=".75">
-          <rect x="560" y="182" width="16" height="36" rx="3"/><rect x="582" y="190" width="16" height="28" rx="3"/>
-          <rect x="604" y="198" width="16" height="20" rx="3"/><rect x="626" y="204" width="16" height="14" rx="3"/>
-          <rect x="648" y="198" width="16" height="20" rx="3"/><rect x="670" y="190" width="16" height="28" rx="3"/>
-          <rect x="692" y="182" width="16" height="36" rx="3"/>
-        </g>
-        <rect x="790" y="20" width="200" height="210" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="890" y="44" text-anchor="middle" font-weight="700" fill="var(--rule)">③ Đi từng bước</text>
-        <text x="890" y="68" text-anchor="middle" fill="var(--ink)">x ← x + Δt · v(x, t)</text>
-        <text x="890" y="90" text-anchor="middle" fill="var(--ink)">t: 1 → 0, 8–16 bước Heun</text>
-        <text x="890" y="112" text-anchor="middle" fill="var(--ink)">(mỗi bước gọi U-Net 1–2 lần)</text>
-        <text x="890" y="146" text-anchor="middle" fill="var(--ink)">→ chuẩn hoá 0–1</text>
-        <text x="890" y="168" text-anchor="middle" fill="var(--ink)">→ <tspan font-weight="700">1 200 mẫu, 40 Hz</tspan></text>
-        <text x="890" y="190" text-anchor="middle" fill="var(--muted)">không lọc vòng, không critic</text>
-        <text x="500" y="278" text-anchor="middle" fill="var(--muted)">Nhịp do khung quyết định nên HR theo lệnh kể cả 140–180 bpm; dáng sóng, nền, nhiễu, chuyển động do U-Net học từ dữ liệu thật.</text>
-      </g>
-      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ar5)">
-        <path d="M200,60 H497"/><path d="M200,180 H237"/><path d="M460,180 H497"/><path d="M750,125 H787"/>
-        <path d="M890,230 V250 H625 V233"/>
-      </g>
-      <text x="760" y="262" font-size="12" fill="var(--muted)">lặp lại</text>
-    </svg>
-  </div>
-  <h3>Học như thế nào</h3>
-  <div class="card diagram">
-    <svg viewBox="0 0 1000 190" role="img" aria-label="PhysioFlow học từ dữ liệu thật">
-      <defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker></defs>
-      <g font-size="13">
-        <rect x="10" y="20" width="200" height="70" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="110" y="48" text-anchor="middle" font-weight="700" fill="var(--ink)">Cửa sổ thật x (train)</text>
-        <text x="110" y="70" text-anchor="middle" fill="var(--muted)">+ nhãn HR, độ bất thường</text>
-        <rect x="10" y="110" width="200" height="70" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="110" y="138" text-anchor="middle" font-weight="700" fill="var(--rule)">Tìm đỉnh nhịp của x</text>
-        <text x="110" y="160" text-anchor="middle" fill="var(--ink)">→ khung nhịp của chính nó</text>
-        <rect x="260" y="20" width="230" height="160" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="375" y="46" text-anchor="middle" font-weight="700" fill="var(--ink)">Trộn với nhiễu ε</text>
-        <text x="375" y="72" text-anchor="middle" fill="var(--ink)">chọn t đều trong (0, 1)</text>
-        <text x="375" y="96" text-anchor="middle" fill="var(--ink)">x_t = (1 − t)·x + t·ε</text>
-        <text x="375" y="128" text-anchor="middle" fill="var(--muted)">t gần 1: gần như nhiễu</text>
-        <text x="375" y="148" text-anchor="middle" fill="var(--muted)">t gần 0: gần như thật</text>
-        <rect x="540" y="20" width="200" height="160" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="640" y="46" text-anchor="middle" font-weight="700" fill="var(--ai)">U-Net đoán vận tốc</text>
-        <text x="640" y="72" text-anchor="middle" fill="var(--ink)">v̂ = U-Net(x_t, t,</text>
-        <text x="640" y="92" text-anchor="middle" fill="var(--ink)">khung nhịp, điều kiện)</text>
-        <text x="640" y="124" text-anchor="middle" fill="var(--ink)">đáp án đúng: v = ε − x</text>
-        <rect x="790" y="20" width="200" height="160" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="890" y="46" text-anchor="middle" font-weight="700" fill="var(--rule)">Loss</text>
-        <text x="890" y="72" text-anchor="middle" fill="var(--ink)">(v̂ − v)² trung bình</text>
-        <text x="890" y="96" text-anchor="middle" fill="var(--ink)">+ sai lệch đạo hàm</text>
-        <text x="890" y="116" text-anchor="middle" fill="var(--ink)">của sóng ước lượng</text>
-        <text x="890" y="146" text-anchor="middle" fill="var(--muted)">AdamW, EMA, 20 000 bước</text>
-        <text x="890" y="166" text-anchor="middle" fill="var(--muted)">2 × GPU T4 (Kaggle)</text>
-      </g>
-      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ar6)">
-        <path d="M210,55 H257"/><path d="M210,145 H235 V120 H257"/><path d="M490,100 H537"/><path d="M740,100 H787"/>
-      </g>
-    </svg>
-  </div>
-  <div class="grid2" style="margin-top:14px">
-    <div class="card"><h3 style="margin-top:0">Vì sao thiết kế như vậy</h3>
-      <ul class="small">
-        <li><b>Không có mạng đối kháng</b>: chỉ một loss hồi quy, train ổn định; không cần chỉnh R1, ngưỡng cắt gradient như 9 vòng PhysioMix.</li>
-        <li><b>Khung nhịp dựng sẵn</b>: mô hình khuếch tán thuần trước đây (v2) điều khiển HR sai 4,3 bpm; khung nhịp giữ HR đúng, kể cả ngoài vùng dữ liệu train.</li>
-        <li><b>Khung theo cờ “đã biết HR”</b>: 87% cửa sổ cổ tay thật không đo được nhịp (chuyển động lấn át); khi train chúng không có khung, nên lúc sinh cũng chỉ thêm khung khi HR được chỉ định.</li>
-        <li><b>Loss đạo hàm</b>: CNN tách thật/giả nhìn vào đạo hàm; loss này phạt sai kết cấu nhỏ mà loss thường bỏ qua.</li>
-        <li><b>Chọn thời điểm t đều khi train</b>: kiểu logit-normal phổ biến gần như không train vùng t &lt; 0,05, nơi các bước cuối tạo chi tiết mịn; chọn t đều đưa S_arm từ 0,537 xuống 0,470 (vòng 3).</li>
-        <li><b>Không lọc ở đầu ra</b>: lọc FFT vòng, hay lọc trên cửa sổ đệm phản xạ, đều để lại dấu vết ở mép cửa sổ mà CNN bắt được (vòng 5 PhysioMix; vòng 3 PhysioFlow: AUC 0,99).</li>
-      </ul></div>
-    <div class="card"><h3 style="margin-top:0">Con số</h3>
-      <div class="cards" id="pf-cards"></div>
-      <p class="small muted" id="pf-note"></p></div>
-  </div>
-  <h3>Vòng lặp kỹ thuật: giả thuyết → train → đo → sửa</h3>
-  <p class="small muted">Mỗi vòng train trên Kaggle (2 × T4), chấm trên người validation bằng cùng thước đo với PhysioMix (S_arm, thấp = tốt). Quy tắc thay model trong app được ghi lại trước vòng cuối.</p>
-  <div class="tablewrap"><table id="loop-table"><thead><tr><th>Vòng</th><th>Thay đổi / giả thuyết</th><th class="num">S_arm tốt nhất</th><th class="num">S_real</th><th class="num">AUC đạo hàm</th><th class="num">Q cổ tay</th><th>Kết luận</th></tr></thead><tbody></tbody></table></div>
-  <div class="callout info" id="pf-decision"></div>
-</section>
-
-<section id="io">
-  <h2>5. Đầu vào · đầu ra</h2>
-  <div class="io">
-    <div class="card"><b>Đầu vào (người dùng chọn trên app)</b>
-      <ul class="small">
-        <li><b>Tập dữ liệu / trạng thái</b>: GXU ngón tay (khỏe), PERform Large (ICU), BIDMC (ICU), PERform AF, PERform không AF, Cổ tay khi vận động.</li>
-        <li><b>Nhịp tim mục tiêu</b>: 40–180 bpm (dữ liệu train chủ yếu 40–135; ngoài đó là ngoại suy, app có ghi chú).</li>
-        <li><b>Độ bất thường nhịp</b>: hệ số biến thiên khoảng nhịp 0–0,35; mặc định theo tập (AF ≈ 0,22).</li>
-        <li><b>Seed</b>: chọn nhiễu z; mỗi seed cho một đoạn khác.</li>
-        <li>DC và AC (mV) chỉ dùng <i>sau</i> model để đổi ra điện áp DAC.</li>
-      </ul></div>
-    <div class="arrow">➜</div>
-    <div class="card"><b>Đầu ra</b>
-      <ul class="small">
-        <li>1 200 số trong 0–1 = <b>30 giây ở 40 Hz</b>, dạng sóng PPG đã lọc 0,5–8 Hz.</li>
-        <li>App nội suy lên 100 Hz rồi DAC 1 kHz (Pi: 500 Hz), cộng DC/AC thành mV cho LED IR (RED tắt cho tới khi gắn cảm biến).</li>
-        <li>Kèm “nhịp đo lại” trên chính dạng sóng để bạn thấy model có làm đúng lệnh.</li>
-        <li><b>Không</b> có: SpO₂ đã hiệu chuẩn, cặp IR/RED thật, chẩn đoán.</li>
-      </ul></div>
-  </div>
-  <h3>Thử: chọn tập dữ liệu và nhịp tim</h3>
-  <div class="controls"><div class="seg" id="hr-model"></div><div class="seg" id="hr-dom"></div></div>
-  <div class="controls"><label for="hr-range">Nhịp yêu cầu</label><input type="range" id="hr-range" min="0" max="7" step="1" value="2"><span class="readout" id="hr-read"></span></div>
-  <div class="card"><svg class="chart" id="hr-chart" viewBox="0 0 900 170"></svg></div>
-  <h3>Yêu cầu so với đo lại (trung vị 5 seed)</h3>
-  <div class="card"><svg class="chart" id="ctrl-chart" viewBox="0 0 900 300"></svg><div class="legend" id="ctrl-legend"></div></div>
-  <div class="callout">Ở <b>cổ tay khi vận động</b> và <b>AF</b>, với cả hai model, nhịp đo trên dạng sóng không bám lệnh ở HR cao. Đó là vì ở hai tập này, độ bất thường mặc định lớn và có thành phần chuyển động: chính dữ liệu cổ tay thật cũng chỉ đo được nhịp ở 77% cửa sổ. Chuỗi nhịp bên trong vẫn theo HR yêu cầu; phần đo lại bị lẫn bởi nhiễu chuyển động.</div>
-</section>
-
-<section id="data">
-  <h2>6. Dữ liệu huấn luyện</h2>
-  <p class="lead">Sáu tập PPG công khai, cùng một cách xử lý: lọc 0,5–8 Hz, chia cửa sổ 30 s ở 40 Hz, chuẩn hoá 0–1. Mỗi người chỉ nằm trong <b>một</b> phần (train / validation / test), để model được chấm trên người nó chưa từng thấy.</p>
-  <div class="tablewrap"><table id="data-table">
-    <thead><tr><th>Tập</th><th>Mô tả</th><th class="num">Người train</th><th class="num">Người val</th><th class="num">Người test</th><th class="num">Cửa sổ 30 s</th><th>Nguồn · giấy phép</th></tr></thead>
-    <tbody></tbody>
-  </table></div>
-  <h3>Dữ liệu thật trông thế nào (10 s đầu, 3 người khác nhau)</h3>
-  <div class="controls"><div class="seg" id="real-dom"></div></div>
-  <div class="card"><svg class="chart" id="real-chart" viewBox="0 0 900 290"></svg></div>
-  <div class="callout">Cổ tay chỉ có <b>4 người, 83 cửa sổ</b> để train và AF chỉ 12 người. Đây là giới hạn lớn nhất của các miền này, không phải do mạng thiếu sức.</div>
-</section>
-
-<section id="training">
-  <h2>7. Huấn luyện và chọn model</h2>
-  <p class="lead">PhysioMix là một <b>GAN</b>: hai mạng chơi đối kháng. <b>Generator</b> (phần ở mục 3) tạo dạng sóng; <b>critic</b> nhìn đạo hàm dạng sóng cùng điều kiện và chấm “giống thật” hay “giả”. Generator học để qua mặt critic, critic học để không bị lừa.</p>
-  <div class="card diagram">
-    <svg viewBox="0 0 1000 220" role="img" aria-label="Vòng huấn luyện GAN">
-      <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--muted)"/></marker></defs>
-      <g font-size="13">
-        <rect x="20" y="30" width="200" height="70" rx="10" fill="var(--soft)" stroke="var(--line)"/>
-        <text x="120" y="58" text-anchor="middle" font-weight="700" fill="var(--ink)">Cửa sổ thật (train)</text>
-        <text x="120" y="80" text-anchor="middle" fill="var(--muted)">+ nhãn HR, độ bất thường</text>
-        <rect x="20" y="130" width="200" height="70" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="120" y="158" text-anchor="middle" font-weight="700" fill="var(--ai)">Generator</text>
-        <text x="120" y="180" text-anchor="middle" fill="var(--ink)">nhận nhãn của cửa sổ thật</text>
-        <rect x="320" y="70" width="230" height="90" rx="10" fill="var(--ai-soft)" stroke="var(--ai)"/>
-        <text x="435" y="96" text-anchor="middle" font-weight="700" fill="var(--ai)">Critic (đạo hàm + điều kiện)</text>
-        <text x="435" y="118" text-anchor="middle" fill="var(--ink)">điểm cao = giống thật</text>
-        <text x="435" y="138" text-anchor="middle" fill="var(--ink)">phạt cặp sai điều kiện</text>
-        <rect x="650" y="20" width="330" height="180" rx="10" fill="var(--rule-soft)" stroke="var(--rule)"/>
-        <text x="815" y="46" text-anchor="middle" font-weight="700" fill="var(--rule)">Giữ cho ổn định</text>
-        <text x="668" y="72" fill="var(--ink)">• hinge loss + phạt R1 (trọng số 0,1)</text>
-        <text x="668" y="94" fill="var(--ink)">• loss khớp phổ + ACF, chung và từng tập</text>
-        <text x="668" y="116" fill="var(--ink)">• trung bình trượt EMA của generator</text>
-        <text x="668" y="138" fill="var(--ink)">• Adam 1e-4, giảm cosine, 20 000 bước</text>
-        <text x="668" y="160" fill="var(--ink)">• chấm validation mỗi 500 bước</text>
-        <text x="668" y="182" fill="var(--ink)">• 3 seed · 2 × GPU T4 (Kaggle)</text>
-      </g>
-      <g stroke="var(--muted)" stroke-width="2" fill="none" marker-end="url(#ar3)">
-        <path d="M220,65 H300 L318,100"/><path d="M220,165 H300 L318,130"/><path d="M435,160 V205 H120 V203"/><path d="M550,115 H645"/>
-      </g>
-      <text x="270" y="198" font-size="12" fill="var(--muted)">gradient: “sửa chỗ này cho giống thật hơn”</text>
-    </svg>
-  </div>
-  <div class="grid2" style="margin-top:14px">
-    <div class="card"><h3 style="margin-top:0">Cách chọn model (quy tắc ghi trước khi train)</h3>
-      <ol class="steps small">
-        <li>Mỗi 500 bước, chấm trên <b>người validation</b>: độ giống phân bố của 5 nhóm dữ liệu + độ chính xác điều khiển HR.</li>
-        <li>Giữ checkpoint tốt nhất mỗi seed; chấm lại bằng seed mới, cộng điểm “bị CNN nhận ra là giả” → <b>S_arm</b> (thấp = tốt).</li>
-        <li>Qua mọi cổng an toàn: không NaN, không phẳng, đa dạng đủ, gradient ổn, xuất TorchScript khớp, &lt; 50 ms trên 1 luồng CPU.</li>
-        <li>Chỉ thay model trong app khi trung bình 3 seed tốt hơn hẳn (vượt độ lệch chuẩn giữa các seed). Tập test không dùng để chọn.</li>
-      </ol></div>
-    <div class="card"><h3 style="margin-top:0">S_arm qua các vòng (thấp = tốt)</h3>
-      <svg class="chart" id="rounds-chart" viewBox="0 0 460 260"></svg>
-      <p class="small muted" id="rounds-note"></p></div>
-  </div>
-  <h3>Điểm validation theo bước train (bản trong app, 3 seed)</h3>
-  <div class="card"><svg class="chart" id="train-chart" viewBox="0 0 900 260"></svg><div class="legend" id="train-legend"></div>
-  <p class="small muted">Điểm thấp nhất thường ở bước 3 500–7 000; train thêm không giúp (round 4 đã thử gấp đôi số bước với learning rate thấp hơn). Vì vậy app luôn lấy checkpoint tốt nhất theo validation, không lấy bước cuối.</p></div>
-</section>
-
-<section id="results">
-  <h2>8. Giống người thật đến đâu, trên từng tập</h2>
-  <p class="lead">Chấm trên người <b>chưa từng dùng để train</b>. Mỗi chỉ số đặt cạnh “dữ liệu thật của người khác” — mức trần thực tế, vì người này cũng khác người kia.</p>
-  <div class="cards">
-    <div class="card"><b>Độ giống</b><div class="small muted">% mẫu sinh nằm trong vùng của dữ liệu thật (không sinh ra thứ lạ).</div></div>
-    <div class="card"><b>Độ phủ</b><div class="small muted">% dữ liệu thật mà model sinh được mẫu tương tự (không bỏ sót kiểu nào).</div></div>
-    <div class="card"><b>Không phân biệt được</b><div class="small muted">Một CNN được train riêng để tách thật/giả thất bại bao nhiêu. 100% = đoán mò.</div></div>
-  </div>
-  <div class="controls" style="margin-top:14px"><div class="seg" id="metric-seg"></div></div>
-  <div class="card"><svg class="chart" id="real-bars" viewBox="0 0 900 300"></svg><div class="legend" id="bars-legend"></div></div>
-  <div class="callout" id="tradeoff"></div>
-  <h3>Model có chép lại dữ liệu train không?</h3>
-  <p class="small muted">Với mỗi cửa sổ, tìm cửa sổ train cùng tập giống nó nhất (tương quan Pearson, thử mọi độ dịch). Mô hình chép dữ liệu sẽ cho giá trị ≈ 1. Mốc so sánh là người thật chưa dùng để train: tín hiệu tuần hoàn nên người khác nhau vẫn khá giống nhau.</p>
-  <div class="tablewrap"><table id="copy-table"><thead></thead><tbody></tbody></table></div>
-  <div class="callout info" id="lsm-narrow"></div>
-  <div class="callout info" id="results-note">Không có một con số “% giống thật” duy nhất. Theo thống kê dạng sóng, cả PhysioMix và PhysioFlow đạt gần mức thật ở GXU và PERform Large. CNN chuyên tách thật/giả nhận ra mẫu PhysioMix ở GXU và AF gần như mọi lần, còn với PhysioFlow thì khó hơn hẳn; ngược lại ở cổ tay PhysioFlow có độ giống thấp hơn. LSM-GAN và bộ tạo Gaussian cũ bị nhận ra ở mọi tập. Tập không AF chỉ có 2 người chưa dùng nên số của nó dao động mạnh, đừng đọc là “giống hơn cả thật”.</div>
-</section>
-
-<section id="states">
-  <h2>9. Vận động hay nghỉ? Model có sinh ngẫu nhiên không?</h2>
-  <p class="lead">Kiểm chứng bằng một CNN <b>chỉ học trên dữ liệu thật</b> để gọi tên 7 trạng thái (đoán mò = 14%). Nếu model làm theo lệnh, CNN sẽ gọi đúng tên trạng thái của mẫu sinh.</p>
-  <div class="tablewrap"><table id="state-table"><thead></thead><tbody></tbody></table></div>
-  <p class="small muted">Mỗi ô: <b>% mẫu được CNN gọi đúng trạng thái</b> · <b>xác suất CNN cho là “cổ tay vận động”</b>. Ví dụ ở dòng “Cổ tay vận động”: dữ liệu thật của người chưa dùng được nhận đúng 86%, PhysioMix 77%, PhysioFlow 94%; ở các trạng thái nghỉ, xác suất bị nhận là vận động đều ≤ 6%. Trung bình của PhysioFlow (68%) cao hơn cả dữ liệu thật: mẫu của nó “đúng kiểu” trạng thái hơn người thật, tức đa dạng ít hơn.</p>
-  <div class="grid2" style="margin-top:14px">
-    <div class="card"><h3 style="margin-top:0">Phép thử “cùng nhiễu, đổi lệnh”</h3><p class="small" id="swap-text"></p></div>
-    <div class="card"><h3 style="margin-top:0">Giới hạn</h3><ul class="small">
-      <li>Không có núm “mức vận động” riêng: vận động gắn với tập cổ tay, nên khác biệt còn gồm vị trí cảm biến.</li>
-      <li>PPG cổ tay thật tuần hoàn theo bước chân/đạp xe. Vòng 9 thêm bộ dao động chuyển động và loss khớp phổ theo từng tập; độ phủ cổ tay tăng, nhưng biên độ dao động học được vẫn nhỏ (~3% xung) — phổ cổ tay vẫn trải rộng hơn thật.</li>
-      <li>“Sau gắng sức” của GXU là ngồi nghỉ sau tập, không phải đang chuyển động.</li></ul></div>
-  </div>
-</section>
-
-<section id="rx">
-  <h2>10. Nhịp tim tính từ tín hiệu OPT101 thu được</h2>
-  <p class="lead">Biểu đồ “Tín hiệu thu RX · OPT101” hiển thị <b>Nhịp RX</b> tính trực tiếp từ mẫu ADC thật — để kiểm tra vòng LED → cảm biến có truyền đúng nhịp đã phát hay không. Đây là xử lý tín hiệu có quy tắc, không phải AI, và không phải nhịp tim lâm sàng.</p>
-  <div class="card"><ol class="steps small">
-    <li>Lấy đoạn <b>liên tục mới nhất</b> (ít nhất 5 s; mất mẫu &gt; 0,1 s thì cắt đoạn), từ 8 s đang hiển thị.</li>
-    <li>Từ chối nếu &gt; 2% mẫu chạm trần ADC, hoặc biên độ sau lọc &lt; 6 mã ADC (~5 mV).</li>
-    <li>Nội suy về lưới đều 50 Hz, lọc thông dải bằng trung bình trượt (bỏ trôi nền và DC của LED, giảm nhiễu).</li>
-    <li>Tìm chu kỳ bằng tự tương quan; chu kỳ phải lặp lại ở gấp đôi độ trễ và khớp (±15%) với số xung đếm được.</li>
-    <li>Không đạt thì hiện lý do (“cần ≥ 5 s liên tục”, “tín hiệu yếu”, “chạm trần ADC”, “không rõ nhịp đều”) thay vì đoán. Chế độ mô phỏng (dry-run) không hiện số.</li>
-  </ol></div>
-  <div class="grid2" style="margin-top:14px">
-    <div class="card"><h3 style="margin-top:0">Độ đúng trên tín hiệu RX tổng hợp</h3><svg class="chart" id="rx-chart" viewBox="0 0 460 260"></svg></div>
-    <div class="card"><h3 style="margin-top:0">Khi nào không báo số</h3><div id="rx-cards" class="cards"></div>
-      <p class="small muted">Đo trên luồng RX tổng hợp có trôi nền, nhiễu ADC, lệch thời gian và lượng tử hoá. Chưa đo với Pi, DAC, LED và OPT101 thật.</p></div>
-  </div>
-  <figure>
-    <img src="img/app-rx-rate-synthetic.png" width="1280" height="800" loading="lazy" alt="Trang PPG của app, làn A0 IR hiển thị Nhịp RX 84 bpm">
-    <figcaption>Ảnh chụp app trên laptop: góc phải làn A0 IR hiện “Nhịp RX 84 bpm”. Luồng RX ở đây là tín hiệu tổng hợp 84 bpm đưa vào để kiểm tra hiển thị, không phải mẫu đo từ OPT101.</figcaption>
-  </figure>
-</section>
-
-<section id="limits">
-  <h2>11. Giới hạn · thuật ngữ</h2>
-  <div class="callout">Đây là <b>bộ mô phỏng nghiên cứu</b>. Dạng sóng là PPG đã lọc 0,5–8 Hz và chuẩn hoá; không phải SpO₂ đã hiệu chuẩn, không có cặp IR/RED thật, không dùng để chẩn đoán. Nhãn HR/độ bất thường là nhãn kỹ thuật lấy từ PPG (có ECG khi có), không phải đo lâm sàng. Chưa đo toàn bộ chuỗi trên phần cứng thật.</div>
-  <dl class="glossary card">
-    <dt>PPG</dt><dd>Quang thể tích đồ: ánh sáng qua mô thay đổi theo lượng máu mỗi nhịp tim.</dd>
-    <dt>GAN</dt><dd>Hai mạng đối kháng: một mạng tạo, một mạng chấm thật/giả; mạng tạo giỏi dần để qua mặt mạng chấm.</dd>
-    <dt>Critic</dt><dd>Mạng chấm của GAN; ở đây nhìn đạo hàm dạng sóng cùng điều kiện.</dd>
-    <dt>Điều kiện</dt><dd>Thông tin đưa vào cùng nhiễu để điều khiển đầu ra: tập dữ liệu, HR, độ bất thường, độ lớn.</dd>
-    <dt>FiLM</dt><dd>Cách điều kiện “vặn” từng tầng của mạng bằng phép nhân và cộng.</dd>
-    <dt>Hài</dt><dd>Các sóng sin bội của tần số nhịp; tổng 6 hài tạo nên dáng một nhịp.</dd>
-    <dt>Độ bất thường nhịp</dt><dd>Hệ số biến thiên khoảng giữa các nhịp; AF có giá trị lớn.</dd>
-    <dt>Validation / test</dt><dd>Người không dùng để train; validation để chọn model, test chỉ để báo cáo.</dd>
-    <dt>C2ST</dt><dd>Phép thử hai mẫu: train một bộ phân loại tách thật/giả; AUC 0,5 = không tách được.</dd>
-    <dt>Flow matching</dt><dd>Học một “trường vận tốc” đưa nhiễu ngẫu nhiên dần thành tín hiệu thật; sinh mẫu bằng cách đi theo trường đó vài bước. Cùng họ với mô hình khuếch tán (diffusion).</dd>
-    <dt>U-Net</dt><dd>Mạng tích chập thu nhỏ tín hiệu qua nhiều tầng rồi phóng to lại, có đường tắt giữa các tầng cùng độ phân giải: thấy được cả chi tiết nhỏ lẫn nhịp dài.</dd>
-    <dt>Bước Heun</dt><dd>Một bước tích phân hai lần đánh giá (dự đoán rồi hiệu chỉnh); chính xác hơn bước Euler với cùng số bước.</dd>
-    <dt>Khung nhịp</dt><dd>Pha của từng nhịp tim (sin, cos) dựng từ HR và độ bất thường, đưa vào U-Net để mạng đặt đỉnh tâm thu đúng chỗ.</dd>
-    <dt>TorchScript</dt><dd>Định dạng model PyTorch chạy được trên CPU mà không cần mã Python của model.</dd>
+<section>
+  <h2>Từ điển nhỏ</h2>
+  <dl class="gloss">
+    <dt>PPG</dt><dd>Dạng sóng ánh sáng đi qua mạch máu; mỗi nhịp tim là một “gợn sóng”.</dd>
+    <dt>Train / validation / test</dt><dd>Dữ liệu để học / để chọn model / để thi lần cuối. Test phải là người model chưa từng thấy.</dd>
+    <dt>Seed</dt><dd>Một lần train với khởi đầu ngẫu nhiên khác. Train 3 seed để chắc kết quả không do may mắn.</dd>
+    <dt>Fine-tune</dt><dd>Train tiếp một model đã có trên dữ liệu mới, thay vì train lại từ đầu.</dd>
   </dl>
-  <p class="small muted" id="footer-meta"></p>
 </section>
+
+<footer class="simple-foot">
+  <a class="cta" href="chi-tiet.html">Xem báo cáo kỹ thuật đầy đủ →</a>
+  <button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button>
+  <p class="note">Không có kết quả nào trên trang này là kiểm định lâm sàng hay đo trên phần cứng Pi/DAC/OPT101.</p>
+</footer>
 </main>
-</div>
-<div class="tip" id="tip"></div>
-<script src="data.js"></script>
-<script src="report.js"></script>
+<script>
+(() => {
+  const root = document.documentElement, btn = document.getElementById('theme');
+  try { const t = sessionStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  btn.addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { sessionStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
 </body>
 </html>
