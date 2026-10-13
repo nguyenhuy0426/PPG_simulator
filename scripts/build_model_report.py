@@ -61,6 +61,18 @@ FLOW_LOOP_AFTER_FINAL = [
          conclusion='Cổ tay đạt (Q 0,524, ngang PhysioMix) và S_real tốt hơn, nhưng cổ tay không còn bám nhịp chậm '
                     '(lệnh 40–80 bpm ra 67–131 bpm): C 0,03 → 0,20, S_arm 0,505 vượt ngưỡng khoá trước 0,487 → '
                     'không chạy final 3 seed.'),
+    dict(name='Vòng 6 (pilot cổ tay)', pilot='physioflow10e-pilot-result-v1/physioflow10/pilot', go_limits=True,
+         change='Ở trọng số 1, gradient của loss dải chặn gấp ~5 lần phần vận tốc nên bị clip ở 80–92% số bước và cổ tay '
+                'khoá ở hài bậc 2 khi nhịp chậm. Giữ loss đó nhưng hạ trọng số xuống 0,3 và 0,1.',
+         conclusion='Cả hai qua ngưỡng go; trọng số 0,1 thắng (S_arm 0,449, Q cổ tay 0,581, C 0,066) → chạy final 3 seed.'),
+]
+# 3-seed finals run after loop 4 (same frozen rule and incumbent); shown after the pilots.
+FLOW_FINALS_AFTER = [
+    dict(name='Vòng 6 (3 seed, quy tắc khoá trước)', final='physioflow10e-final-result-v1/physioflow10',
+         change='Trọng số 0,1 của vòng 6, train lại với seed 42, 123, 2026; cùng luật và cùng incumbent như vòng 4.',
+         conclusion='S_arm tốt hơn rõ (0,445 ± 0,004 so với 0,530) và S_real đạt, nhưng Q cổ tay 0,597 ± 0,027 vượt mức '
+                    'cho phép (0,527 + 0,046 = 0,573) → theo quy tắc, PhysioMix vẫn là model mặc định; PhysioFlow trong '
+                    'app vẫn là seed 42 của vòng 4.'),
 ]
 INCUMBENT_ROW = dict(name='PhysioMix vòng 9 (app)', change='Mốc so sánh: 3 seed, model đang dùng trong app.',
                      S_arm=0.530, S_arm_sd=0.029, S_real=0.344, auc=0.827, wrist_Q=0.527, reference=True,
@@ -321,17 +333,21 @@ def flow_loop(final_dir, conclusion):
                              sampler=best.get('sampler'), S_arm=best.get('S_arm'), S_real=best.get('S_real'),
                              auc=best.get('auc'), wrist_Q=best.get('Q', {}).get('wrist')))
         return rows
-    rows = pilot_rows(FLOW_LOOP)
-    decision = None
-    if final_dir and (Path(final_dir)/'DECISION_ROUND10.json').exists():
+    def final_row(final_dir, name, change, conclusion):
         decision = json.loads((Path(final_dir)/'DECISION_ROUND10.json').read_text())
         runs = [r for r in json.loads((Path(final_dir)/'benchmark'/'training_execution.json').read_text())['runs']
                 if r['arm'] == decision['arm']]
-        rows.append(dict(name='Vòng 4 (3 seed, quy tắc khoá trước)', sampler=decision['arm'],
-                         change='Biến thể thắng ở vòng 3, train lại với seed 42, 123, 2026; quyết định chỉ theo validation.',
-                         S_arm=round(decision['S_arm']['mean'], 3), S_arm_sd=round(decision['S_arm']['sd'], 3),
-                         S_real=round(decision['S_real']['mean'], 3), auc=round(mean([r['c2st_derivative_auc'] for r in runs]), 3),
-                         wrist_Q=round(decision['wrist_Q']['mean'], 3), conclusion=conclusion))
+        return dict(name=name, sampler=decision['arm'], change=change,
+                    S_arm=round(decision['S_arm']['mean'], 3), S_arm_sd=round(decision['S_arm']['sd'], 3),
+                    S_real=round(decision['S_real']['mean'], 3), auc=round(mean([r['c2st_derivative_auc'] for r in runs]), 3),
+                    wrist_Q=round(decision['wrist_Q']['mean'], 3), conclusion=conclusion), decision, runs
+    rows = pilot_rows(FLOW_LOOP)
+    decision = None
+    if final_dir and (Path(final_dir)/'DECISION_ROUND10.json').exists():
+        row, decision, runs = final_row(final_dir, 'Vòng 4 (3 seed, quy tắc khoá trước)',
+                                        'Biến thể thắng ở vòng 3, train lại với seed 42, 123, 2026; quyết định chỉ theo '
+                                        'validation.', conclusion)
+        rows.append(row)
         devices = {r['seed']: r.get('resumed_scoring_device', 'cuda (Kaggle)') for r in runs}
         decision = {k: decision[k] for k in ('ship', 'arm', 'ship_seed', 'gap', 'pooled_sd', 'S_arm', 'S_real',
                                              'incumbent_S_arm', 'incumbent_S_real', 'wrist_Q', 'incumbent_wrist_Q',
@@ -339,7 +355,9 @@ def flow_loop(final_dir, conclusion):
         decision['note'] = ('Chấm điểm: ' + ', '.join(f"seed {k} trên {'CPU laptop' if v == 'cpu' else 'GPU Kaggle'}"
                                                       for k, v in sorted(devices.items()))
                             + ' (tiến trình Kaggle dừng khi đang chấm hai seed; cùng code, chạy lại từ checkpoint).')
-    return rows+pilot_rows(FLOW_LOOP_AFTER_FINAL)+[INCUMBENT_ROW], decision
+    later = [final_row(RUNS/it['final'], it['name'], it['change'], it['conclusion'])[0]
+             for it in FLOW_FINALS_AFTER if (RUNS/it['final']/'DECISION_ROUND10.json').exists()]
+    return rows+pilot_rows(FLOW_LOOP_AFTER_FINAL)+later+[INCUMBENT_ROW], decision
 
 
 def main(argv=None):

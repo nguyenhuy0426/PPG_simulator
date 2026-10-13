@@ -109,6 +109,53 @@ PERform Large. Nhưng ở cổ tay, mạng không còn bám khung nhịp chậm:
 trong app vẫn là seed 42 của vòng 4.** Hướng tiếp theo nếu làm: giữ loss dải chặn và sửa riêng việc bám nhịp chậm của
 cổ tay. Dữ liệu cổ tay khi vận động gần như không có nhịp < 80 bpm, nên việc bám nhịp chậm ở đây là ngoại suy.
 
+## Vòng 6: cổ tay, giữ bám nhịp chậm
+
+Bằng chứng: `loop/probe_loop6_wrist_rate.json`, `loop/pilot6.json`, `rules/PILOT_SELECTION_LOOP6.json`,
+`rules/FROZEN_LOOP6.json`, `rules/DECISION_LOOP6.json`.
+
+**Chẩn đoán** (laptop CPU, validation):
+- Ở pilot vòng 5, cổ tay khoá ở hài bậc 2 khi nhịp chậm: lệnh 50/60/70 bpm cho ra khoảng 102/120/140 bpm. BIDMC cùng
+  checkpoint vẫn đúng, và cổ tay của vòng 4 cũng đúng.
+- Cổ tay có 83 cửa sổ train, chỉ 11 cửa sổ có khung nhịp, tất cả ở 101–120 bpm. Nhịp cổ tay dưới 90 bpm là ngoại suy
+  hoàn toàn từ các tập khác, và đã từng vỡ trước đây (F2, F4, pilot F6 ở 50 bpm).
+- Tại checkpoint seed 42 của vòng 4, gradient của loss dải chặn ở trọng số 1 có trung vị 2,07, gấp khoảng 5 lần
+  gradient của loss vận tốc cộng đạo hàm (0,42). Vì vậy clip chuẩn 1 cắt 80–92% số bước (F6: 20%), và phần vận tốc,
+  tức phần dạy bám khung nhịp, bị thu nhỏ khoảng 5 lần.
+- Giả thuyết "lỗi do dải chặn thấp" bị loại: phổ log thật ở 0,3–0,5 Hz không phụ thuộc nhịp, và bỏ dải thấp thì
+  gradient gần như không đổi (2,15).
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước): cùng loss dải chặn nhưng trọng số 0,3 (F9) và 0,1 (F10). Ngưỡng go
+giữ như vòng 5 (commit `76c3a457`).
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay | clip |
+|---|---|---|---|---|---|---|
+| Vòng 4, seed 42 (F6) | 0,472 | 0,370 | 0,027 | 0,678 | 0,857 | ~20% |
+| Vòng 5, F7 (λ 1) | 0,505 | 0,297 | 0,199 | 0,718 | 0,524 | 80% |
+| F9 (λ 0,3) | 0,457 | 0,298 | 0,147 | 0,672 | 0,501 | 58% |
+| **F10 (λ 0,1)** | **0,449** | 0,314 | 0,066 | 0,704 | 0,581 | 38% |
+
+Cả hai nhánh qua ngưỡng go. F10 thắng và được chạy final 3 seed, với cùng luật và cùng incumbent như vòng 4.
+
+**Final 3 seed** (`F10_flow_unif_stop01_s16_w1`; seed 42, 123, 2026; tối đa 2 seed cùng lúc):
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay |
+|---|---|---|---|---|---|
+| F10, 3 seed | **0,445 ± 0,004** | 0,321 ± 0,010 | 0,039 ± 0,024 | 0,709 ± 0,015 | 0,597 ± 0,027 |
+| PhysioMix vòng 9 (app) | 0,530 ± 0,029 | 0,344 ± 0,014 | | 0,827 | 0,527 ± 0,060 |
+| Vòng 4 (F6, 3 seed) | 0,482 ± 0,015 | 0,368 | | 0,703 | 0,793 |
+
+- Từng seed: S_arm 0,444 / 0,441 / 0,450; Q cổ tay 0,582 / 0,628 / 0,579.
+- Seed 123 và 2026 bám nhịp cổ tay đúng ở 40–80 bpm. Seed 42 vẫn khoá ở hài bậc 2 khi lệnh 50 bpm (ra 109 bpm).
+- GXU test Q 0,122 ± 0,014 (test đã mở từ vòng 3, chỉ để báo cáo).
+
+**Quyết định theo luật khoá trước: không thay model trong app.**
+- Đạt: S_arm tốt hơn PhysioMix 0,085, lớn hơn SD gộp 0,021; S_real đạt; mọi seed qua gate.
+- Không đạt: Q cổ tay trung bình 0,597 vượt mức cho phép 0,527 + 0,046 = 0,573, hụt 0,024.
+
+PhysioMix vòng 9 vẫn là model mặc định; PhysioFlow trong app vẫn là seed 42 của vòng 4. So với vòng 4, Q cổ tay của
+final giảm từ 0,793 xuống 0,597 và S_arm từ 0,482 xuống 0,445, nhưng vẫn chưa đủ để vượt rào cổ tay.
+
 ## Giống người thật đến đâu (người chưa dùng để train)
 
 `ml/runs/realism-v1/realism_round10.json` (laptop CPU; số của PhysioMix trùng khớp với lần đo vòng 9). Mỗi ô: độ giống ·
@@ -140,6 +187,6 @@ cổ tay. Dữ liệu cổ tay khi vận động gần như không có nhịp < 
   thật, không phải kiểm chứng lâm sàng. Validation đã dùng qua nhiều vòng (PhysioMix và PhysioFlow), nên điểm validation
   hơi lạc quan; GXU test đã mở từ vòng 3 và chỉ để báo cáo.
 - Cổ tay chỉ có 4 người, 83 cửa sổ train: PhysioFlow bám sát các cửa sổ train cổ tay hơn mức người thật (kiểm tra chép
-  dữ liệu), và phổ cổ tay vẫn khác thật, chủ yếu do nhiễu sót ở 12–20 Hz (vòng 5).
+  dữ liệu), và phổ cổ tay vẫn khác thật, chủ yếu do nhiễu sót ở 12–20 Hz (vòng 5). Loss dải chặn trọng số 0,1 (vòng 6) giảm phần này (Q cổ tay 3 seed 0,597) nhưng vẫn kém PhysioMix; bám nhịp cổ tay dưới 90 bpm là ngoại suy và đôi khi khoá ở hài bậc 2.
 - Chạy chậm hơn PhysioMix ~100 lần (giây so với mili giây); app chạy nó trong tiến trình riêng, không chặn DAC. Chưa đo
   trên Pi/DAC/OPT101.
