@@ -497,7 +497,7 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
 @pytest.mark.parametrize("mode", ["physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
                                   "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                   "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final",
-                                  "flow10e_pilot", "flow10e_final", "flow10f_pilot", "flow10f_final"])
+                                  "flow10e_pilot", "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
@@ -528,6 +528,18 @@ def test_loop7_kernel_on_another_account_mounts_only_its_own_sources(tmp_path, m
     assert all(s.startswith("other/") for s in sources)
     assert "other/ppg-physio3-data-v1" in sources
     assert mode.endswith("_pilot") or {"other/ppg-physioflow10f-pilot-v1", "other/ppg-physiomix9-incumbent-v1"} <= set(sources)
+
+
+def test_fresh_galaxy_kernel_is_cpu_only_and_mounts_its_own_datasets(tmp_path):
+    from ml.kaggle_multidomain import stage_kernel
+    out = stage_kernel.stage(tmp_path/"fresh", "fresh_galaxy", steps=2, owner="other")
+    meta = json.loads((out/"kernel-metadata.json").read_text())
+    assert meta["enable_gpu"] is False and meta["enable_internet"] is True
+    assert meta["dataset_sources"] == ["other/ppg-physio3-data-v1", "other/ppg-app-models-v1"]
+    # Kaggle derives the kernel slug from the title; they must agree or status/output use another slug.
+    assert meta["id"].split("/")[1] == meta["title"].lower().replace(" ", "-")
+    run = (out/"run.py").read_text()
+    assert "ZIP_MD5" in run and "'--stage'" not in run
 
 
 def test_staged_datasets_hold_one_pack_and_the_round9_decision(tmp_path):

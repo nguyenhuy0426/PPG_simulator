@@ -12,6 +12,8 @@ import zlib
 OWNER = "charlesday2612"
 DATA_PACK = "ml/runs/physio3-data-v1/physio3_data"
 INCUMBENT_RUN = "ml/runs/physiomix9-motion-dom-result-v1/physiomix9"
+GALAXY_URL = "https://zenodo.org/records/14635823/files/GalaxyPPG.zip?download=1"
+APP_MODELS = ("manifest.json", "physiomix_generator.ts", "physioflow_generator.ts", "lsm_generator.ts")
 
 
 def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER):
@@ -22,7 +24,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         raise RuntimeError("Stage this experiment from its dedicated branch")
     sources = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py",
                "ml/kaggle_multidomain/bidmc_split.json"]
-    flow = mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    # The fresh GalaxyPPG test scores the shipped TorchScript models with the flow modules' evaluation code (CPU).
+    fresh = mode == "fresh_galaxy"
+    flow = fresh or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -46,6 +50,8 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_v5.py")
     if flow:
         sources.append("ml/kaggle_multidomain/experiment_flow.py")
+    if fresh:
+        sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/fresh_galaxy.py"]
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -131,6 +137,15 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
             args += ["--go"] if mode in ("flow10d_final", "flow10e_final") else []
             args += ["--go", "loop7"] if mode == "flow10f_final" else []
         entry = f"from ml.kaggle_multidomain.experiment_flow import main\nmain({args!r})"
+    if fresh:
+        entry = ("import pathlib\nfrom ml.kaggle_multidomain.data import download\n"
+                 "from ml.kaggle_multidomain.fresh_galaxy import ZIP_MD5, main\n"
+                 f"archive = download({GALAXY_URL!r}, '/tmp/galaxy/GalaxyPPG.zip', 'md5', ZIP_MD5)\n"
+                 "bundle = next(p.parent for p in pathlib.Path('/kaggle/input').rglob('manifest.json')\n"
+                 "              if (p.parent/'physiomix_generator.ts').exists())\n"
+                 "main(['--zip', str(archive), '--galaxy', '/kaggle/working/galaxy', '--data', "
+                 "'/kaggle/input', '--bundle', str(bundle), '--output', '/kaggle/working/fresh_galaxy.json', "
+                 "'--threads', '4'])")
     if mode == "physio_train":
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
                  f"main(['--input-root','/kaggle/input','--output','/kaggle/working/physiomix','--steps','{steps}','--seeds',"+
@@ -159,7 +174,7 @@ sys.path.insert(0, str(root))
     output.mkdir(parents=True, exist_ok=False)
     (output/"run.py").write_text(script)
     metadata = json.loads(Path(__file__).with_name("kernel-metadata.json").read_text())
-    metadata.update(code_file="run.py", enable_gpu=flow or mode in ("train", "physio_train", "physio3_pilot", "physio3_final",
+    metadata.update(code_file="run.py", enable_gpu=(flow and not fresh) or mode in ("train", "physio_train", "physio3_pilot", "physio3_final",
                                                                     "physio4", "physio5", "physio6", "physio7", "physio8",
                                                                     "physio9"))
     if mode == "prepare":
@@ -247,6 +262,10 @@ sys.path.insert(0, str(root))
     if mode == "physio_train":
         metadata.update(id="charlesday2612/ppg-physiomix-benchmark-v1", title="PPG PhysioMix Benchmark v1",
                         kernel_sources=["charlesday2612/ppg-physiomix-data-v1"])
+    if fresh:
+        # CPU only: no GPU quota. Its own account's private copies of the v3 pack and of the app's model files.
+        metadata.update(id=f"{owner}/ppg-fresh-galaxy-v1", title="PPG Fresh Galaxy v1", kernel_sources=[],
+                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
     if mode.startswith("flow10f_") and owner != OWNER:
         # Another account cannot read this account's private kernels: it mounts its own private copies of the data
         # pack and of round 9's decision (stage_datasets); only its own loop-7 pilot stays a kernel source.
@@ -275,6 +294,17 @@ def stage_datasets(output, owner):
     return data, incumbent
 
 
+def stage_app_models(output, owner):
+    """Private dataset folder with the exact model files the app ships (checked against the manifest on load)."""
+    root, folder = Path(__file__).resolve().parents[2], Path(output)/"ppg-app-models-v1"
+    folder.mkdir(parents=True)
+    for name in APP_MODELS:
+        shutil.copy2(root/"assets"/"neural"/name, folder/name)
+    meta = dict(title="PPG App Models v1", id=f"{owner}/ppg-app-models-v1", licenses=[dict(name="other")])
+    (folder/"dataset-metadata.json").write_text(json.dumps(meta, indent=2)+"\n")
+    return folder
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--output", required=True)
@@ -282,12 +312,13 @@ if __name__ == "__main__":
                                       "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
-                                      "flow10e_final", "flow10f_pilot", "flow10f_final"), required=True)
+                                      "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")
     p.add_argument("--owner", default=OWNER, help="Kaggle account that runs the loop-7 kernels")
     p.add_argument("--datasets", action="store_true", help="Stage that account's private dataset folders instead")
+    p.add_argument("--app-models", action="store_true", help="Stage the app model files as a private dataset folder")
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
@@ -295,5 +326,5 @@ if __name__ == "__main__":
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
                "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000}.get(a.mode, 2000)
-    print(stage_datasets(a.output, a.owner) if a.datasets else
+    print(stage_app_models(a.output, a.owner) if a.app_models else stage_datasets(a.output, a.owner) if a.datasets else
           stage(a.output, a.mode, a.steps or default, a.seeds, a.arm, a.owner))
