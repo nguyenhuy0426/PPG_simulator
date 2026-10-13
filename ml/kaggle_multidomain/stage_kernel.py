@@ -5,11 +5,16 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import zlib
 
+OWNER = "charlesday2612"
+DATA_PACK = "ml/runs/physio3-data-v1/physio3_data"
+INCUMBENT_RUN = "ml/runs/physiomix9-motion-dom-result-v1/physiomix9"
 
-def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None):
+
+def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER):
     root = Path(__file__).resolve().parents[2]
     branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=root, text=True).strip()
     # Research kernels are staged only from an experiment branch, never from main or a detached HEAD.
@@ -242,10 +247,32 @@ sys.path.insert(0, str(root))
     if mode == "physio_train":
         metadata.update(id="charlesday2612/ppg-physiomix-benchmark-v1", title="PPG PhysioMix Benchmark v1",
                         kernel_sources=["charlesday2612/ppg-physiomix-data-v1"])
+    if mode.startswith("flow10f_") and owner != OWNER:
+        # Another account cannot read this account's private kernels: it mounts its own private copies of the data
+        # pack and of round 9's decision (stage_datasets); only its own loop-7 pilot stays a kernel source.
+        metadata.update(id=metadata["id"].replace(OWNER, owner),
+                        kernel_sources=[s.replace(OWNER, owner) for s in metadata["kernel_sources"] if "physioflow10f" in s],
+                        dataset_sources=[f"{owner}/ppg-physio3-data-v1"]+(
+                            [f"{owner}/ppg-physiomix9-incumbent-v1"] if mode == "flow10f_final" else []))
     (output/"kernel-metadata.json").write_text(json.dumps(metadata, indent=2)+"\n")
     (output/"source_manifest.json").write_text(json.dumps(dict(branch=branch, files=hashes), indent=2)+"\n")
     compile(script, str(output/"run.py"), "exec")
     return output
+
+
+def stage_datasets(output, owner):
+    """Private dataset folders for another account: the v3 data pack, and round 9's decision next to the per-seed
+    scores the final reads (DECISION_ROUND5.json beside benchmark/training_execution.json)."""
+    root, output = Path(__file__).resolve().parents[2], Path(output)
+    data, incumbent = output/"ppg-physio3-data-v1", output/"ppg-physiomix9-incumbent-v1"
+    shutil.copytree(root/DATA_PACK, data)
+    (incumbent/"physiomix9"/"benchmark").mkdir(parents=True)
+    for name in ("DECISION_ROUND5.json", "FROZEN_ROUND5.json", "benchmark/training_execution.json"):
+        shutil.copy2(root/INCUMBENT_RUN/name, incumbent/"physiomix9"/name)
+    for folder, title in ((data, "PPG Physio3 Data v1"), (incumbent, "PPG PhysioMix9 Incumbent v1")):
+        meta = dict(title=title, id=f"{owner}/{folder.name}", licenses=[dict(name="other")])
+        (folder/"dataset-metadata.json").write_text(json.dumps(meta, indent=2)+"\n")
+    return data, incumbent
 
 
 if __name__ == "__main__":
@@ -259,6 +286,8 @@ if __name__ == "__main__":
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")
+    p.add_argument("--owner", default=OWNER, help="Kaggle account that runs the loop-7 kernels")
+    p.add_argument("--datasets", action="store_true", help="Stage that account's private dataset folders instead")
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
@@ -266,4 +295,5 @@ if __name__ == "__main__":
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
                "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000}.get(a.mode, 2000)
-    print(stage(a.output, a.mode, a.steps or default, a.seeds, a.arm))
+    print(stage_datasets(a.output, a.owner) if a.datasets else
+          stage(a.output, a.mode, a.steps or default, a.seeds, a.arm, a.owner))

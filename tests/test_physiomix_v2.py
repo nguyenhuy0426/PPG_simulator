@@ -2,6 +2,7 @@
 condition schema, holdout isolation and the full pilot -> frozen benchmark flow on CPU."""
 import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -516,6 +517,28 @@ def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     if mode.startswith("flow10f_"):
         # Loop 7 applies its own, tighter go limits in the pilot and the final.
         assert "'--go', 'loop7'" in (out/"run.py").read_text()
+
+
+@pytest.mark.parametrize("mode", ["flow10f_pilot", "flow10f_final"])
+def test_loop7_kernel_on_another_account_mounts_only_its_own_sources(tmp_path, mode):
+    from ml.kaggle_multidomain import stage_kernel
+    meta = json.loads((stage_kernel.stage(tmp_path/mode, mode, steps=2, owner="other")/"kernel-metadata.json").read_text())
+    sources = meta["kernel_sources"]+meta["dataset_sources"]
+    assert meta["id"] == f"other/ppg-physioflow10f-{mode.split('_')[1]}-v1"
+    assert all(s.startswith("other/") for s in sources)
+    assert "other/ppg-physio3-data-v1" in sources
+    assert mode.endswith("_pilot") or {"other/ppg-physioflow10f-pilot-v1", "other/ppg-physiomix9-incumbent-v1"} <= set(sources)
+
+
+def test_staged_datasets_hold_one_pack_and_the_round9_decision(tmp_path):
+    from ml.kaggle_multidomain import stage_kernel
+    from ml.kaggle_multidomain.experiment_flow import incumbent_scores
+    if not (Path(stage_kernel.__file__).resolve().parents[2]/stage_kernel.INCUMBENT_RUN).exists():
+        pytest.skip("local round-9 output not present")
+    data, incumbent = stage_kernel.stage_datasets(tmp_path, "other")
+    assert len(list(data.rglob("windows.npz"))) == 1
+    assert json.loads((incumbent/"dataset-metadata.json").read_text())["id"] == "other/ppg-physiomix9-incumbent-v1"
+    assert len(incumbent_scores(incumbent)["S_arm"]) == 3
 
 
 def test_motion_component_starts_near_off_and_can_add_a_cadence_line():
