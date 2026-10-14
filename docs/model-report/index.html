@@ -198,6 +198,17 @@
 </section>
 
 <section>
+  <h2>Giám khảo có công bằng không? (bước C, đã xong)</h2>
+  <p class="lede">Cho thêm <b>PaPaGei</b>, một mạng nơ-ron đã học hơn 57.000 giờ PPG thật và chưa từng thấy dự án này, chấm cùng đề thi.</p>
+  <ul class="checks">
+    <li>PaPaGei xếp hạng các model <b>gần như y hệt</b> giám khảo của dự án (tương quan thứ hạng 0,88). Giám khảo của dự án không chấm tuỳ tiện.</li>
+    <li>Trên cổ tay đời thường, PhysioMix lộ chủ yếu ở <b>dải 5–8 Hz</b> (kết cấu rung nhỏ, chỉ 1%). Ở dải nhịp chính nó đạt 56–80%.</li>
+    <li>PhysioFlow train lại ở bước B được cả hai giám khảo chấm cao nhất (CNN 35%, PaPaGei 67%; người thật khác 75% và 91%).</li>
+  </ul>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/judges_c.json</code>. Chi tiết, hình và video: <a href="trinh-bay.html">trang trình bày</a>.</p>
+</section>
+
+<section>
   <h2>Kế hoạch tiếp theo</h2>
   <div class="plan">
     <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
@@ -215,10 +226,10 @@
     <article><span class="step">D</span><h3>Tách hai loại cổ tay</h3>
       <p>Cho model hai nhãn riêng: “cổ tay khi tập” và “cổ tay đời thường”, để học cái mới mà không quên cái cũ.
         Khoá luật mới trước, rồi train lại và chấm cả hai bài thi.</p>
-      <p class="status next">Đề xuất, chờ bạn đồng ý</p></article>
+      <p class="status next" id="plan-d">Đang chạy: train lại trên GPU, luật đã khoá trước</p></article>
     <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
       <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
-      <p class="status next">Sau bước B</p></article>
+      <p class="status done">Xong: hai giám khảo xếp hạng gần như nhau (xem ở trên)</p></article>
   </div>
   <p class="callout info">Khi nào chốt? Model nào thắng bài thi mới theo luật đã khoá thì vào app. Nếu không model nào thắng rõ, giữ PhysioMix vòng 9.</p>
 </section>
@@ -234,6 +245,7 @@
 </section>
 
 <footer class="simple-foot">
+  <a class="cta" href="trinh-bay.html">Trang trình bày (hình, video, cách mạng nơ-ron hoạt động) →</a>
   <a class="cta" href="chi-tiet.html">Xem báo cáo kỹ thuật đầy đủ →</a>
   <button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button>
   <p class="note">Không có kết quả nào trên trang này là kiểm định lâm sàng hay đo trên phần cứng Pi/DAC/OPT101.</p>

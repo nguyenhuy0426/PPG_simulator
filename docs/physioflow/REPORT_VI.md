@@ -294,6 +294,58 @@ ngưỡng 9,1 vì dao động giữa các lần chia lớn). Ngoài luật (ch�
 liệu, tức hình dạng trung bình gần thật hơn; sai nhịp vẫn 10–15 bpm vì LSM-GAN không nhận nhịp. Không arm nào được vào app.
 
 
+## Bước C: giám khảo độc lập (xong, chỉ báo cáo)
+
+Câu hỏi: giám khảo C2ST của dự án (`control.Probe`: 3 Conv1d k7 s2, 16/32/32 kênh, ~11k tham số, học từ đầu 600 bước,
+nhìn ~1,1 s) có “hiểu” PPG thật không, hay chỉ bắt lỗi vặt? `judges.py` (CPU, không dùng để chọn model) chấm cùng bộ
+cửa sổ bằng ba cách:
+
+1. **PaPaGei-S** (Pillai và cs., ICLR 2025): ResNet1D-MoE 18 khối, 5,8 triệu tham số, train trên >57.000 giờ PPG công
+   khai (VitalDB, MIMIC-III, MESA); đông cứng. Mã vendored ở `ml/third_party/papagei` (BSD-3-Clause-Clear), trọng số
+   `papagei_s.pt` Zenodo 13983110, md5 khớp Zenodo, sha256 ghim trong code. 40 Hz → 125 Hz, 3 đoạn 10 s chuẩn hoá z,
+   embedding 512 chiều trung bình; C2ST tuyến tính chia theo người, Fréchet, fidelity/coverage k-NN.
+2. **Chỉ số sinh lý** viết riêng (khuôn nhịp chân–chân): tỉ lệ thời gian lên đỉnh, CV biên độ, độ giống giữa các nhịp,
+   tỉ lệ có khấc mạch đôi và pha khấc, b/a của APG, CV khoảng nhịp. Báo cáo W1 tới thật chia cho W1 thật–thật.
+3. **Dải tần**: cùng C2ST CNN nhưng cả thật và giả bị lọc còn một dải (0,5–1,5 / 1,5–3 / 3–5 / 5–8 Hz).
+
+Kết quả (`loop/judges_c.json`; 12 người thi GalaxyPPG, 3 lần chia, 192 cửa sổ; % khó phân biệt):
+
+| Nguồn | CNN dự án | PaPaGei | Độ giống giữa nhịp (× thật–thật) |
+|---|---|---|---|
+| Người thật khác | 75 ± 23 | 91 ± 6 | 1,0 |
+| PhysioMix app | 1,1 ± 1,4 | 9,7 ± 1,1 | 8,2 |
+| PhysioFlow app | 4,5 ± 2,2 | 2,9 ± 1,1 | 8,9 |
+| physiomix_g (bước B) | 6,2 ± 3,1 | 25,6 ± 4,2 | 2,5 |
+| physioflow_g (bước B) | 35,0 ± 7,2 | 66,9 ± 6,0 | 1,5 |
+| LSM-GAN | 0,1 | 0,1 | 5,4 |
+| Gaussian | 0 | 0 | 6,1 |
+
+- Hai giám khảo xếp hạng gần như nhau: Spearman 0,88 trên 22 cặp (nguồn × tập: GalaxyPPG + 4 tập v3 chưa thấy),
+  0,80–1,00 trong từng tập. Giám khảo của dự án không chấm tuỳ tiện.
+- Theo dải tần, PhysioMix app trên GalaxyPPG: 56 / 80 / 52 / **1**% (thật khác 76 / 82 / 75 / 89%). Phần lộ chủ yếu là
+  dải 5–8 Hz (kết cấu nhỏ của tín hiệu E4), không phải nhịp cơ bản. physioflow_g đạt 81–87% ở mọi dải.
+- Trên 4 tập v3 (1 lần chấm), CNN · PaPaGei: GXU PhysioMix 10 · 18, PhysioFlow 51 · 59; MIMIC 47 · 30 / 85 · 95;
+  BIDMC 53 · 34 / 73 · 72; cổ tay tập 39 · 6 / 48 · 67.
+- Giám khảo trong GAN (critic) cuối train không còn phân biệt được: run PhysioMix bước B, AUC 0,44 trên validation ngón
+  tay (`scripts/build_presentation_media.py`); vì vậy không dùng critic làm thước đo.
+- Hạn chế: PaPaGei học chủ yếu PPG bệnh viện/giấc ngủ, ít cổ tay; tập v3 chỉ chấm 1 lần, không có SD.
+
+## Bước D: tách cổ tay đời thường thành miền riêng (đang chạy)
+
+Pack `ppg_physiomix_v3d` dựng trong bộ nhớ từ pack v3g đã kiểm tra (`fresh_galaxy.daily_wrist`, sha256 nội dung ghim
+`e8e32d64…`): cửa sổ GalaxyPPG thành miền `wrist_daily`; 4 trong 12 người train GalaxyPPG chuyển sang validation (seed
+20261015: P08, P11, P14, P20), 8 người còn lại train (813 cửa sổ), 12 người thi giữ nguyên. Miền `wrist` (tập thể dục,
+83 cửa sổ) như trước. `experiment_daily.py` train lại PhysioMix (công thức vòng 9) và PhysioFlow F10, seed 42, mỗi model
+một T4; checkpoint chọn bằng tiêu chí validation cũ như mọi vòng.
+
+`RULE_D` (khoá trước, chỉ validation): vào final 3 seed nếu (1) validation cũ đạt mọi cổng, S_arm ≤ 0,559, Q cổ tay tập ≤
+0,587; và (2) trên 4 người validation cổ tay đời thường (3 lần chia), nhắc bằng miền `wrist_daily`, “khó phân biệt” hơn
+PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm. Cả hai qua thì chọn bản khó phân biệt hơn.
+`RULE_D_FINAL`: seed 42 (pilot) + 123 + 2026; trung bình seed đạt các điều kiện trên (ngưỡng 2 × max(SD seed, SD app));
+seed giao là seed khó phân biệt nhất trong các seed tự đạt giới hạn validation cũ. 12 người thi chỉ báo cáo, chấm sau khi
+file quyết định đã ghi. Mỗi 500 bước train lưu mẫu cố định (`Snapshots`, RNG tách riêng) cho video trên trang trình bày.
+Chạy thử CPU 4 bước (pilot và final): chạy trọn tới quyết định. Kernel `halovie2412/ppg-galaxy-d-pilot-v1` (2 × T4).
+
 ## Giới hạn
 
 - Đây là độ giống phân bố của PPG đã lọc 0,5–8 Hz và độ chính xác điều khiển nhịp; không phải SpO₂, không có cặp IR/RED
