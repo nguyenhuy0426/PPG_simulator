@@ -269,7 +269,7 @@ Suy luận kỹ thuật (chưa kiểm chứng): miền “wrist” giờ gộp h
 dịch về kiểu E4 và xa 89 cửa sổ validation cổ tay cũ (tập thể dục, thiết bị khác). Hướng tiếp theo hợp lý là tách thành
 hai miền riêng (cổ tay khi tập / cổ tay đời thường E4) và khoá luật mới trước khi train; một seed chưa đủ để kết luận.
 
-## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (đang chạy)
+## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (xong)
 
 LSM-GAN trong app chỉ được train trên BIDMC (dải 0,9–5 Hz, `train_lsm.prepare`). `experiment_lsm_galaxy.py` train lại
 đúng công thức đó (`lsm_repo_corrected`, `train_lsm.train_one`, chọn checkpoint bằng MMD validation) trên pack v3g, dải
@@ -278,6 +278,20 @@ GalaxyPPG), `lsm_v3g_wrist` (chỉ cổ tay). LSM-GAN không có đầu vào đi
 arm nào được vào app. `RULE_LSM` (khoá trước) chỉ trả lời “thêm dữ liệu có giúp không” trên 12 người thi: hơn LSM-GAN app,
 hoặc bản có GalaxyPPG hơn bản không có, quá 2 × SD. Kernel `halovie2412/ppg-lsm-galaxy-v1` (1 GPU). Chạy thử CPU 3 bước:
 chạy trọn tới quyết định.
+
+Kết quả (1 × T4, 0,6 h; `loop/lsm_galaxy.json`, luật `rules/FROZEN_LSM.json`), 12 người thi GalaxyPPG:
+
+| Nguồn | Cửa sổ train | Khó phân biệt | Q | Sai nhịp (bpm) |
+|---|---|---|---|---|
+| LSM-GAN app (BIDMC) | 619 | 0,0% | 1,99 | 16,7 |
+| lsm_v3_all | 6073 | 0,2 ± 0,1% | 0,83 | 15,0 |
+| lsm_v3g_all | 7283 | 1,5 ± 1,0% | 0,95 | 13,4 |
+| lsm_v3g_wrist | 1293 | 7,6 ± 4,5% | 0,76 | 10,6 |
+| PhysioMix app (để so) | | 0,7 ± 1,1% | 0,85 | 1,5 |
+
+Theo `RULE_LSM`: không arm nào “thêm dữ liệu đã giúp” (mọi khoảng cách nằm trong 2 × SD; bản chỉ cổ tay hơn 7,5 điểm nhưng
+ngưỡng 9,1 vì dao động giữa các lần chia lớn). Ngoài luật (chỉ mô tả): Q giảm rõ từ 1,99 xuống 0,76–0,95 khi học nhiều dữ
+liệu, tức hình dạng trung bình gần thật hơn; sai nhịp vẫn 10–15 bpm vì LSM-GAN không nhận nhịp. Không arm nào được vào app.
 
 
 ## Giới hạn

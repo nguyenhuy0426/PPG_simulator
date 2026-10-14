@@ -180,6 +180,24 @@
 </section>
 
 <section>
+  <h2>LSM-GAN học thêm nhiều bộ dữ liệu (bước B2, đã xong)</h2>
+  <p class="lede">Trước đây LSM-GAN chỉ học 1 bộ bệnh viện (BIDMC). Lần này nó học cùng dữ liệu với PhysioMix/PhysioFlow, rồi thi trên cùng 12 người.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>LSM-GAN học gì</th><th>Khó phân biệt</th><th>Sai lệch hình dạng Q</th><th>Sai nhịp</th></tr></thead>
+    <tbody>
+      <tr><td>Chỉ BIDMC (bản trong app)</td><td>0%</td><td>1,99</td><td>16,7</td></tr>
+      <tr><td>Mọi bộ, chưa có GalaxyPPG</td><td>0,2%</td><td>0,83</td><td>15,0</td></tr>
+      <tr><td>Mọi bộ + GalaxyPPG</td><td>1,5%</td><td>0,95</td><td>13,4</td></tr>
+      <tr><td>Chỉ cổ tay + GalaxyPPG</td><td>7,6%</td><td><b>0,76</b></td><td>10,6</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> học nhiều dữ liệu hơn giúp <b>hình dạng sóng</b> của LSM-GAN gần thật hơn rõ (Q giảm từ 1,99 xuống còn khoảng 0,8).
+    Nhưng máy kiểm tra vẫn nhận ra gần hết, và điểm tăng còn nằm trong mức dao động nên theo luật <b>chưa tính là cải thiện</b>.
+    LSM-GAN vẫn <b>sai nhịp 10–17 nhịp/phút</b> vì không có nút chỉnh nhịp (PhysioMix: 1,5). Nên LSM-GAN chỉ để so sánh, không vào app.</p>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/lsm_galaxy.json</code>. Một lần train (seed 42).</p>
+</section>
+
+<section>
   <h2>Kế hoạch tiếp theo</h2>
   <div class="plan">
     <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
@@ -193,7 +211,7 @@
       <p>Trước giờ LSM-GAN chỉ học bộ BIDMC. Lần này cho nó học cùng dữ liệu với PhysioMix/PhysioFlow (có và không có GalaxyPPG,
         và một bản chỉ học cổ tay), rồi thi trên cùng 12 người. LSM-GAN <b>không chỉnh được nhịp</b>, nên dù tốt hơn cũng chỉ để so sánh,
         không vào app. Câu hỏi: chỉ thêm dữ liệu thì một GAN đơn giản có giống thật hơn không?</p>
-      <p class="status doing">Đang chạy trên Kaggle (1 GPU T4)</p></article>
+      <p class="status done">Xong: hình dạng tốt hơn, vẫn không chỉnh được nhịp → chỉ để so sánh</p></article>
     <article><span class="step">D</span><h3>Tách hai loại cổ tay</h3>
       <p>Cho model hai nhãn riêng: “cổ tay khi tập” và “cổ tay đời thường”, để học cái mới mà không quên cái cũ.
         Khoá luật mới trước, rồi train lại và chấm cả hai bài thi.</p>
