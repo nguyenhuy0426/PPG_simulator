@@ -69,11 +69,18 @@ class TouchSlider(ctk.CTkFrame):
         self._refresh()
 
     def _refresh(self):
-        self.readout.configure(text="Auto" if self._auto else f"{self._value:g}")
-        self.slider.set(self._value)
+        # Every CustomTkinter configure redraws the widget; a slider drag calls this per motion
+        # event, so only what changed is pushed to the widgets.
+        shown = "Auto" if self._auto else f"{self._value:g}"
+        if shown != self.readout.cget("text"):
+            self.readout.configure(text=shown)
+        if self.slider.get() != self._value:
+            self.slider.set(self._value)
         state = "disabled" if self._disabled or self._auto else "normal"
-        for widget in (self.slider, self.minus, self.plus):
-            widget.configure(state=state)
+        if state != getattr(self, "_state_shown", None):
+            self._state_shown = state
+            for widget in (self.slider, self.minus, self.plus):
+                widget.configure(state=state)
 
     def get(self):
         return "" if self._auto else f"{self._value:g}"

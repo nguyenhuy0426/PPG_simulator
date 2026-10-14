@@ -77,6 +77,7 @@ class CTkApp(ctk.CTk):
         self.page_host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
+        self.signal_setup_visible = False
         # ── Footer: output health and build ──
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=2, column=1, sticky="ew")
@@ -142,9 +143,20 @@ class CTkApp(ctk.CTk):
         self.open_signal_setup()
 
     def open_signal_setup(self):
-        """Open the former Signal Setup page as a non-modal floating editor."""
+        """Open the former Signal Setup page as a non-modal floating editor.
+
+        The window is built once and then only hidden and shown again: building
+        its three tabs of CustomTkinter widgets is the slowest UI operation
+        (about 0.25 s on the x86 laptop even without the layout flushes).
+        Showing it reloads every field from the engine, as a new window did.
+        """
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
+            if not self.signal_setup_visible:
+                self.signal_setup_panel.on_show()
+                self.signal_setup_panel.status.configure(text=self.signal_setup_panel.idle_status, text_color=T.MUTED)
+                self.signal_setup_visible = True
+                self.signal_setup_bubble.set_active(True)
             window.deiconify()
             window.lift()
             window.focus_set()
@@ -180,6 +192,7 @@ class CTkApp(ctk.CTk):
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
+        self.signal_setup_visible = True
         self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
@@ -252,17 +265,22 @@ class CTkApp(ctk.CTk):
         except OSError:
             log.exception("Could not save UI language")
 
-    def close_signal_setup(self):
+    def close_signal_setup(self, destroy=False):
+        """Hide the editor (kept for the next open); destroy it only on shutdown."""
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
-            window.destroy()
-        self.signal_setup_window = None
-        self.signal_setup_panel = None
+            if destroy:
+                window.destroy()
+            else:
+                window.withdraw()
+        if destroy or window is None or not window.winfo_exists():
+            self.signal_setup_window = None
+            self.signal_setup_panel = None
+        self.signal_setup_visible = False
         self.signal_setup_bubble.set_active(False)
 
     def toggle_signal_setup(self):
-        window = self.signal_setup_window
-        if window is not None and window.winfo_exists():
+        if self.signal_setup_visible:
             self.close_signal_setup()
         else:
             self.open_signal_setup()
@@ -288,7 +306,7 @@ class CTkApp(ctk.CTk):
         for frame in self.frames.values():
             if hasattr(frame, "periodic_update"):
                 frame.periodic_update()
-        if self.signal_setup_panel is not None:
+        if self.signal_setup_visible:
             self.signal_setup_panel.periodic_update()
         stats = self.engine.get_stats()
         self._paint_mode()
@@ -329,7 +347,7 @@ class CTkApp(ctk.CTk):
             self.engine.stop_simulation()
         self.frames["Neural"].shutdown()
         if self.signal_setup_window is not None:
-            self.close_signal_setup()
+            self.close_signal_setup(destroy=True)
         self.destroy()
 
     def request_shutdown(self):

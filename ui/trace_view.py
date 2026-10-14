@@ -32,10 +32,19 @@ class LaneView(tk.Canvas):
         self.window_s = 8.0
         self.end_s = None            # None: follow the newest sample; 0 with relative times
         self.placeholder = ("", "")  # shown once, centred, when no lane has samples
+        self._drawn = None           # what the canvas shows; an identical update is not redrawn
         self.bind("<Configure>", lambda event: self.render())
 
     def update_lanes(self, lanes, end_s=None):
         self.lanes, self.end_s = list(lanes), end_s
+        # Stopped output, an idle receiver or a dry-run status repeat the same picture every tick;
+        # redrawing it costs a full canvas rebuild. Size and theme changes call render() directly.
+        content = (end_s, self.placeholder, [(lane.title, lane.color, lane.detail, lane.badge, lane.message,
+                                              lane.submessage, lane.max_gap_s, list(lane.points))
+                                             for lane in self.lanes])
+        if content == self._drawn:
+            return
+        self._drawn = content
         self.render()
 
     @staticmethod
