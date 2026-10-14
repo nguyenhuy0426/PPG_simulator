@@ -37,6 +37,7 @@ E4_FS = 64.
 # the PPG-vs-Polar rate error at both offsets so a wrong offset is visible.
 POLAR_OFFSET_MS = 9*3600*1000
 MIN_POLAR_SAMPLES = 20
+GALAXY_SPLIT_SEED = 20261014
 GROUPS = {"rest": ("adaptation", "baseline", "meditation-1", "meditation-2", "rest-1", "rest-2", "rest-3", "rest-4",
                    "rest-5", "screen-reading"),
           "cognitive": ("tsst-prep", "tsst-speech", "ssst-prep", "ssst-sing", "keyboard-typing", "mobile-typing",
@@ -119,6 +120,49 @@ def prepare(zip_path, output, md5=ZIP_MD5):
     return pack, manifest
 
 
+def person_split(people, seed=GALAXY_SPLIT_SEED):
+    """Fixed before any GalaxyPPG training: half of the people may train, the other half are only ever tested."""
+    order = np.random.default_rng(seed).permutation(sorted(set(people)))
+    return {p: ("train" if i < len(order)//2 else "external") for i, p in enumerate(order)}
+
+
+def extend_pack(v3_root, galaxy_root, output):
+    """The verified v3 pack plus the GalaxyPPG windows as wrist: training people in 'train', test people in
+    'external' (never trained on, never used for checkpoint selection). Labels: Polar HR as the ECG-gated rate
+    reference, walking / jogging-running mapped to the wrist walk / run activity codes."""
+    from ml.kaggle_multidomain.data import digest, validate_pack
+    from ml.kaggle_multidomain.experiment_v3 import DATA_SHA256_V3
+    pack, base = load_input(v3_root, "ppg_physiomix_v3")
+    if base["windows_sha256"] != DATA_SHA256_V3:
+        raise ValueError("Extend only the verified v3 pack")
+    g = load_galaxy(galaxy_root)
+    split = person_split(g["subject"])
+    n = len(g["signal"])
+    activity = np.select([g["group"] == "walking", g["group"] == "jogging_running"], [0, 1], -1).astype(np.int8)
+    extra = dict(signal=g["signal"].astype(np.float32), subject=g["subject"], domain=np.full(n, "wrist"),
+                 split=np.array([split[s] for s in g["subject"]]), record=np.char.add(np.char.add(g["subject"], ":"),
+                                                                                     g["session"]),
+                 start=np.round(g["start_ms"]).astype(np.int64), activity_label=activity,
+                 rhythm_label=np.full(n, -1, np.int8), reference_hr_bpm=g["polar_hr"].astype(np.float32))
+    merged = {k: np.concatenate([pack[k], extra[k].astype(pack[k].dtype) if k not in ("subject", "record", "split",
+                                                                                         "domain") else extra[k]])
+              for k in pack}
+    validate_pack(merged)
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    np.savez_compressed(output/"windows.npz", **merged)
+    for side in Path(v3_root).rglob("gxu_red_windows.npz"):
+        (output/side.name).write_bytes(side.read_bytes())
+    people = {s: sorted(p for p, v in split.items() if v == s) for s in ("train", "external")}
+    manifest = {**base, "protocol": "ppg_physiomix_v3g", "windows_sha256": digest(output/"windows.npz"),
+                "base_windows_sha256": base["windows_sha256"],
+                "galaxyppg": dict(source=json.loads((Path(galaxy_root)/"manifest.json").read_text()),
+                                  split_seed=GALAXY_SPLIT_SEED, people=people,
+                                  windows={s: int((extra["split"] == s).sum()) for s in ("train", "external")})}
+    save_json(output/"manifest.json", manifest)
+    return merged, manifest
+
+
 def load_galaxy(root):
     with np.load(Path(root)/"galaxyppg_windows.npz", allow_pickle=False) as source:
         return {k: source[k] for k in source.files}
@@ -140,7 +184,8 @@ def wrist_prompts(meta, signal, polar_hr):
 
 
 def app_sources(bundle):
-    """name -> generate(condition rows, prompted rates, seed) for the exact TorchScript files the app ships."""
+    """name -> (generate(condition rows, prompted rates, seed), condition metadata) for the exact TorchScript files
+    the app ships."""
     bundle = Path(bundle)
     manifest = json.loads((bundle/"manifest.json").read_text())
     sources, meta = {}, manifest["physiomix"]
@@ -156,12 +201,28 @@ def app_sources(bundle):
             with torch.inference_mode():
                 parts = [model(a, b) for a, b in zip(z.split(32), torch.from_numpy(rows).split(32))]
             return torch.cat(parts)[:, 0].numpy().astype(np.float32)
-        sources[slot] = generate
+        sources[slot] = (generate, manifest[slot])
     lsm = lsm_source(bundle/manifest["models"]["lsm_generator"]["file"])
-    sources["lsm_gan"] = lambda rows, rates, seed: lsm(np.arange(len(rows)), seed)
-    sources["gaussian_shaper"] = lambda rows, rates, seed: np.asarray(
-        control.gaussian_reference(rates, view_mask("v3"), seed), np.float32)
-    return sources, meta
+    # Unconditioned / rate-only sources still need the shared prompt rates; any app schema gives them.
+    sources["lsm_gan"] = (lambda rows, rates, seed: lsm(np.arange(len(rows)), seed), meta)
+    sources["gaussian_shaper"] = (lambda rows, rates, seed: np.asarray(
+        control.gaussian_reference(rates, view_mask("v3"), seed), np.float32), meta)
+    return sources
+
+
+def checkpoint_source(development, run_dir, arm):
+    """(generate, condition metadata) for a trained checkpoint (best.pt in run_dir), in the app's schema layout."""
+    from ml.kaggle_multidomain.experiment_v3 import conditions_for, config, load_best, sampler
+    cfg = config(arm)
+    conditions = conditions_for(development, cfg["version"])
+    model, cfg = load_best(arm, Path(run_dir), conditions, None, "cpu")
+    run = sampler(model, cfg, "cpu")
+    meta = dict(domains=conditions.domains, center=conditions.center.tolist(), scale=conditions.scale.tolist(),
+                domain_defaults=conditions.defaults, condition_version=cfg["version"], hr_support_bpm=[40., 180.])
+
+    def generate(rows, rates, seed):
+        return run(torch.randn(len(rows), LENGTH, generator=torch.Generator().manual_seed(seed)), rows).astype(np.float32)
+    return generate, meta
 
 
 def balanced(subjects, ids, n, rng):
@@ -177,13 +238,20 @@ def rate_error(x, prompted):
     return np.abs(measured-prompted)
 
 
-def evaluate(galaxy, development, bundle, n=256, halvings=3, folds=4, steps=600, seed=0, groups=tuple(GROUPS)):
+def median_or_none(err):
+    """Median |rate error| over measurable windows; None (JSON null) when no window is measurable."""
+    err = err[np.isfinite(err)]
+    return float(np.median(err)) if len(err) else None
+
+
+def evaluate(galaxy, development, sources, n=256, halvings=3, folds=4, steps=600, seed=0, groups=tuple(GROUPS),
+             people=None):
     """Per halving: target = real windows of half the people; candidates = real windows of the other half and
-    every app model prompted with that other half's labels. Overall C2ST/Q/coverage, then rate error per group."""
-    sources, meta = app_sources(bundle)
+    every source prompted with that other half's labels. Overall C2ST/Q/coverage, then rate error per group.
+    people: restrict to these people (e.g. the GalaxyPPG test people after some were used for training)."""
     evaluator = PromptedEvaluator(development, 16)
-    people = np.unique(galaxy["subject"])
-    usable = np.flatnonzero(galaxy["group"] != "unlabeled")
+    people = np.unique(galaxy["subject"]) if people is None else np.asarray(sorted(people))
+    usable = np.flatnonzero((galaxy["group"] != "unlabeled") & np.isin(galaxy["subject"], people))
     per_halving = []
     for h in range(halvings):
         rng = np.random.default_rng(seed+100*h)
@@ -193,19 +261,22 @@ def evaluate(galaxy, development, bundle, n=256, halvings=3, folds=4, steps=600,
         other = balanced(galaxy["subject"], usable[~in_target[usable]], n, rng)
         real = galaxy["signal"][target]
         reference = evaluator.blocks(real)
-        rows, rates = wrist_prompts(meta, galaxy["signal"][other], galaxy["polar_hr"][other])
-        candidates = dict(real_other_people=(galaxy["signal"][other], galaxy["subject"][other]))
-        candidates.update({name: (generate(rows, rates, seed+100*h+1), None) for name, generate in sources.items()})
+        # Real windows of the other people are scored against the same prompted rates (their own labels).
+        _, rates = wrist_prompts(next(iter(sources.values()))[1], galaxy["signal"][other], galaxy["polar_hr"][other])
+        candidates = dict(real_other_people=(galaxy["signal"][other], galaxy["subject"][other], rates))
+        for name, (generate, meta) in sources.items():
+            rows, prompted = wrist_prompts(meta, galaxy["signal"][other], galaxy["polar_hr"][other])
+            candidates[name] = (generate(rows, prompted, seed+100*h+1), None, prompted)
         entry = {}
-        for name, (x, x_groups) in candidates.items():
+        for name, (x, x_groups, rates) in candidates.items():
             quality, _ = evaluator.pool_quality(x, reference)
             auc, used = grouped_c2st(real, galaxy["subject"][target], x, x_groups, folds, steps, seed+h)
             err = rate_error(x, rates)
             entry[name] = dict(indistinguishable=100*(1-abs(2*auc-1)), c2st_auc=auc, folds=used, Q=quality["Q"],
                                fidelity=quality["precision"], coverage=quality["recall"],
-                               rate_error_median_bpm=float(np.nanmedian(err)),
+                               rate_error_median_bpm=median_or_none(err),
                                rate_within_5bpm=float(np.mean(err <= 5)),
-                               rate_error_by_group={g: float(np.nanmedian(err[galaxy["group"][other] == g]))
+                               rate_error_by_group={g: median_or_none(err[galaxy["group"][other] == g])
                                                     for g in groups if (galaxy["group"][other] == g).any()})
             print("halving", h, name, {k: round(v, 3) for k, v in entry[name].items() if isinstance(v, float)}, flush=True)
         per_halving.append(entry)
@@ -218,9 +289,17 @@ def summarize(per_halving):
     for name in names:
         values = {k: [h[name][k] for h in per_halving] for k in ("indistinguishable", "Q", "fidelity", "coverage",
                                                                "rate_error_median_bpm", "rate_within_5bpm")}
-        out[name] = {k: dict(mean=float(np.mean(v)), sd=float(np.std(v, ddof=1)) if len(v) > 1 else 0.)
+        # An unmeasurable halving (None) makes the summary unmeasurable; the rules count that as a failed check.
+        out[name] = {k: dict(mean=None, sd=None) if None in v else
+                     dict(mean=float(np.mean(v)), sd=float(np.std(v, ddof=1)) if len(v) > 1 else 0.)
                      for k, v in values.items()}
     return out
+
+
+def rate_not_worse(mine, app, bpm=2):
+    """Median |rate error| not worse than the app's by more than bpm; unmeasurable fails."""
+    mine, app = mine["rate_error_median_bpm"]["mean"], app["rate_error_median_bpm"]["mean"]
+    return mine is not None and app is not None and mine <= app+bpm
 
 
 def decide(summary):
@@ -230,7 +309,7 @@ def decide(summary):
     gap = flow["indistinguishable"]["mean"]-mix["indistinguishable"]["mean"]
     checks = dict(realism=gap > margin,
                   q=flow["Q"]["mean"] <= mix["Q"]["mean"]+.05,
-                  rate=flow["rate_error_median_bpm"]["mean"] <= mix["rate_error_median_bpm"]["mean"]+2)
+                  rate=rate_not_worse(flow, mix))
     return dict(rule=RULE, gap=gap, margin=margin, checks=checks,
                 app_model="physioflow" if all(checks.values()) else "physiomix")
 
@@ -254,7 +333,7 @@ def main(argv=None):
         return None
     pack, manifest = load_input(a.data, PROTOCOL)
     development = {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}
-    summary, per_halving = evaluate(load_galaxy(a.galaxy), development, a.bundle, a.samples, a.halvings,
+    summary, per_halving = evaluate(load_galaxy(a.galaxy), development, app_sources(a.bundle), a.samples, a.halvings,
                                     steps=a.c2st_steps)
     result = dict(rule=RULE, decision=decide(summary), summary=summary, per_halving=per_halving,
                   galaxy=json.loads((Path(a.galaxy)/"manifest.json").read_text()), data_sha256=manifest["windows_sha256"],

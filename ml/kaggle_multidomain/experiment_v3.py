@@ -34,8 +34,15 @@ from ml.kaggle_multidomain.physio import (CROP_PAD, CleanDenoiser, ConditionedCr
                                         update_ema, view_mask)
 from ml.kaggle_multidomain.train import train_one
 
-PROTOCOL, VIEW = "ppg_physiomix_v3", "v3"
+VIEW = "v3"
 DATA_SHA256_V3 = "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433"  # ml/runs/physio3-data-v1/VERIFICATION.json
+# The v3 pack plus GalaxyPPG wrist windows of its training people (fresh_galaxy.extend_pack). Chosen by the
+# environment so that spawned training workers load the same pack as their parent.
+PACKS = {"ppg_physiomix_v3": DATA_SHA256_V3,
+         "ppg_physiomix_v3g": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a"}
+PROTOCOL = os.environ.get("PPG_PACK_PROTOCOL", "ppg_physiomix_v3")
+if PROTOCOL not in PACKS:
+    raise ValueError(f"Unknown pack protocol {PROTOCOL}")
 POOLS = {"gxu_finger": ["gxu_finger"], "perform_large": ["perform_large"], "bidmc": ["bidmc"],
          "perform_cohort": ["perform_af", "perform_non_af"], "wrist": ["wrist"]}
 WEIGHTS = {"gxu_finger": .35, "perform_large": .25, "bidmc": .15, "perform_cohort": .15, "wrist": .10}
@@ -518,8 +525,8 @@ def sealed_subjects(pack):
 
 
 def check_pack(pack, manifest, allow_cpu):
-    if not allow_cpu and manifest["windows_sha256"] != DATA_SHA256_V3:
-        raise ValueError("Use the independently verified v3 pack")
+    if not allow_cpu and manifest["windows_sha256"] != PACKS[PROTOCOL]:
+        raise ValueError(f"Use the verified {PROTOCOL} pack")
     if manifest.get("view") != VIEW:
         raise ValueError("Pack view must be v3")
     for split in ("train", "validation", "test"):

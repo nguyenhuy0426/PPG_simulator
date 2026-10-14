@@ -26,7 +26,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
                "ml/kaggle_multidomain/bidmc_split.json"]
     # The fresh GalaxyPPG test scores the shipped TorchScript models with the flow modules' evaluation code (CPU).
     fresh = mode == "fresh_galaxy"
-    flow = fresh or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    # Step B: both app recipes retrained on the v3g pack, then the fresh test on the GalaxyPPG test people (GPU).
+    galaxy_b = mode == "galaxy_b_pilot"
+    flow = fresh or galaxy_b or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -50,8 +52,10 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_v5.py")
     if flow:
         sources.append("ml/kaggle_multidomain/experiment_flow.py")
-    if fresh:
+    if fresh or galaxy_b:
         sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/fresh_galaxy.py"]
+    if galaxy_b:
+        sources.append("ml/kaggle_multidomain/experiment_galaxy.py")
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -146,6 +150,11 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
                  "main(['--zip', str(archive), '--galaxy', '/kaggle/working/galaxy', '--data', "
                  "'/kaggle/input', '--bundle', str(bundle), '--output', '/kaggle/working/fresh_galaxy.json', "
                  "'--threads', '4'])")
+    if galaxy_b:
+        # The pack protocol is read at import, so it is set first; spawned workers inherit the environment.
+        entry = ("import os\nos.environ['PPG_PACK_PROTOCOL'] = 'ppg_physiomix_v3g'\n"
+                 "from ml.kaggle_multidomain.experiment_galaxy import main\n"
+                 "main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/galaxy_b'])")
     if mode == "physio_train":
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
                  f"main(['--input-root','/kaggle/input','--output','/kaggle/working/physiomix','--steps','{steps}','--seeds',"+
@@ -262,6 +271,9 @@ sys.path.insert(0, str(root))
     if mode == "physio_train":
         metadata.update(id="charlesday2612/ppg-physiomix-benchmark-v1", title="PPG PhysioMix Benchmark v1",
                         kernel_sources=["charlesday2612/ppg-physiomix-data-v1"])
+    if galaxy_b:
+        metadata.update(id=f"{owner}/ppg-galaxy-b-pilot-v1", title="PPG Galaxy B Pilot v1", kernel_sources=[],
+                        dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
     if fresh:
         # CPU only: no GPU quota. Its own account's private copies of the v3 pack and of the app's model files.
         metadata.update(id=f"{owner}/ppg-fresh-galaxy-v1", title="PPG Fresh Galaxy v1", kernel_sources=[],
@@ -312,7 +324,8 @@ if __name__ == "__main__":
                                       "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9",
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
-                                      "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy"), required=True)
+                                      "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
+                                      "galaxy_b_pilot"), required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")

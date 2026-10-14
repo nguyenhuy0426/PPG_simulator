@@ -78,3 +78,34 @@ def _summary(flow_ind, flow_q=.6, flow_rate=1., sd=2.):
 ])
 def test_frozen_rule(flow_ind, flow_q, flow_rate, app):
     assert fg.decide(_summary(flow_ind, flow_q, flow_rate))["app_model"] == app
+
+
+def test_person_split_is_fixed_and_disjoint():
+    people = [f"galaxyppg:P{i:02d}" for i in range(1, 25)]
+    split = fg.person_split(people)
+    assert split == fg.person_split(list(reversed(people)))
+    assert sum(v == "train" for v in split.values()) == 12 and set(split.values()) == {"train", "external"}
+
+
+def test_step_b_rule_needs_fresh_gain_and_no_old_validation_regression():
+    from ml.kaggle_multidomain.experiment_galaxy import decide_b
+    entry = lambda ind, q, rate: dict(indistinguishable=dict(mean=ind, sd=1.), Q=dict(mean=q, sd=0),
+                                      rate_error_median_bpm=dict(mean=rate, sd=0))
+    summary = dict(physiomix=entry(1., .8, 1.5), physiomix_g=entry(30., .4, 1.5), physioflow_g=entry(30., .4, 1.5))
+    ok, bad = dict(ok=True), dict(ok=False)
+    decision = decide_b(summary, dict(physiomix_g=ok, physioflow_g=bad))
+    assert decision["go"] == ["physiomix_g"]
+    summary["physiomix_g"] = entry(2.5, .4, 1.5)  # gain 1.5 within 2 x SD
+    assert decide_b(summary, dict(physiomix_g=ok, physioflow_g=ok))["go"] == ["physioflow_g"]
+
+
+def test_unmeasurable_rate_is_saved_as_null_and_fails_the_rule():
+    assert fg.median_or_none(np.array([np.nan, np.nan])) is None
+    assert fg.median_or_none(np.array([np.nan, 2., 4.])) == 3.
+    halving = dict(indistinguishable=1., Q=.5, fidelity=.5, coverage=.5, rate_error_median_bpm=None, rate_within_5bpm=0.)
+    summary = fg.summarize([dict(physioflow=halving), dict(physioflow=dict(halving, rate_error_median_bpm=1.))])
+    assert summary["physioflow"]["rate_error_median_bpm"] == dict(mean=None, sd=None)
+    json.dumps(summary, allow_nan=False)
+    flow_unmeasurable = _summary(60.)
+    flow_unmeasurable["physioflow"]["rate_error_median_bpm"] = dict(mean=None, sd=None)
+    assert fg.decide(flow_unmeasurable)["app_model"] == "physiomix"
