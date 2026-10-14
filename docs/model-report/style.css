@@ -152,7 +152,7 @@ ol.timeline li { position: relative; padding: 4px 0 10px 20px; }
 ol.timeline li::before { content: ""; position: absolute; left: -7px; top: 12px; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); border: 2px solid var(--ai); }
 .plan .step { position: absolute; right: 14px; top: 12px; font-weight: 800; font-size: 22px; color: var(--line); }
 .plan .status { margin-top: 10px; font-size: 12.5px; font-weight: 600; }
-.plan .status.doing { color: var(--warn); } .plan .status.next { color: var(--muted); }
+.plan .status.doing { color: var(--warn); } .plan .status.next { color: var(--muted); } .plan .status.done { color: var(--rule); }
 dl.gloss { display: grid; grid-template-columns: 170px 1fr; gap: 8px 16px; margin: 0; }
 dl.gloss dt { font-weight: 600; } dl.gloss dd { margin: 0; color: var(--muted); }
 .simple-foot { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }

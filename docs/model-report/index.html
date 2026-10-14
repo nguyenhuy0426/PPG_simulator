@@ -10,7 +10,7 @@
 <main class="simple-main">
 
 <header class="simple-hero">
-  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 13/10/2026</p>
+  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 14/10/2026</p>
   <h1>Máy tạo nhịp tim giả, và AI “vẽ” nhịp tim giỏi đến đâu</h1>
   <p class="lede">Thiết bị phát ra ánh sáng nhấp nháy giống hệt mạch máu đập dưới đầu ngón tay, để thử các máy đo nhịp tim.
     Phần AI chỉ làm một việc: <b>vẽ ra dạng sóng nhịp tim (PPG) trông giống của người thật</b>, theo nhịp mình chọn.</p>
@@ -127,17 +127,44 @@
 </section>
 
 <section>
+  <h2>Bài thi mới: cổ tay đời thường (bước A, đã xong)</h2>
+  <p class="lede">Lấy bộ <b>GalaxyPPG</b>: 24 người đeo đồng hồ khi ngồi nghỉ, làm việc trí óc, đi bộ, chạy. <b>Chưa model nào từng thấy</b> bộ này.
+    Nhịp tim “đáp án” lấy từ đai ngực Polar. Luật chấm được khoá trong code trước khi chấm.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt trên GalaxyPPG">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:89%" class="ref"></i></span><b>89%</b></div>
+    <div class="bar"><span class="name">PhysioMix vòng 9 (app)</span><span class="track"><i style="width:0.7%" class="mix"></i></span><b>0,7%</b></div>
+    <div class="bar"><span class="name">PhysioFlow vòng 4</span><span class="track"><i style="width:0.6%" class="flow"></i></span><b>0,6%</b></div>
+    <div class="bar"><span class="name">LSM-GAN</span><span class="track"><i style="width:0.3%" class="lsm"></i></span><b>0%</b></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Khó phân biệt<br>(cao = tốt)</th><th>Sai lệch hình dạng Q<br>(thấp = tốt)</th><th>Sai nhịp<br>(nhịp/phút)</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác</td><td>89%</td><td>0,08</td><td>1,2</td></tr>
+      <tr><td><b>PhysioMix (app)</b></td><td>0,7%</td><td><b>0,84</b></td><td><b>1,5</b></td></tr>
+      <tr><td>PhysioFlow</td><td>0,6%</td><td>1,33</td><td>1,7</td></tr>
+      <tr><td>LSM-GAN</td><td>0%</td><td>2,13</td><td>14,4</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> cả ba model AI đều <b>bị nhận ra gần như 100%</b> trên sóng cổ tay đời thường. Hai model mới vẫn <b>bám nhịp tốt</b>
+    (sai khoảng 1,5 nhịp/phút); LSM-GAN thì không chỉnh được nhịp. PhysioMix giống hình dạng thật hơn PhysioFlow, nên theo luật <b>PhysioMix vẫn ở lại app</b>.</p>
+  <p class="callout">Điều này khớp với nguyên nhân đã đoán: model chỉ được học <b>83 đoạn cổ tay khi tập thể dục</b> từ một loại thiết bị khác.
+    Điểm cao ở bài kiểm tra cũ không chuyển sang được cổ tay đời thường.</p>
+  <p class="note">Nguồn: <code>ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json</code>, 3 lần chia đôi người. Đánh giá dạng sóng 30 giây đã chuẩn hoá, không phải kiểm định lâm sàng.</p>
+</section>
+
+<section>
   <h2>Kế hoạch tiếp theo</h2>
   <div class="plan">
     <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
       <p>Dùng bộ <b>GalaxyPPG</b> (24 người, đồng hồ đeo tay, giấy phép CC BY 4.0) mà chưa model nào từng thấy. Khoá luật chấm trước,
-        rồi chấm lại PhysioMix, PhysioFlow, LSM-GAN.</p><p class="status doing">Đang tải dữ liệu</p></article>
+        rồi chấm lại PhysioMix, PhysioFlow, LSM-GAN.</p><p class="status done">Xong: giữ PhysioMix (xem kết quả ở trên)</p></article>
     <article><span class="step">B</span><h3>Thêm dữ liệu cổ tay để train</h3>
-      <p>Lấy một nửa số người GalaxyPPG để fine-tune PhysioMix và PhysioFlow (có nhịp chậm, đi bộ, chạy); nửa còn lại chỉ để thi.</p>
-      <p class="status next">Sau bước A</p></article>
+      <p>Lấy 12 người GalaxyPPG thêm vào dữ liệu cổ tay (83 → 1293 đoạn 30 giây), train lại PhysioMix và PhysioFlow;
+        12 người còn lại chỉ để thi. Chỉ được vào app nếu thắng PhysioMix hiện tại trên 12 người đó <b>và</b> không tệ đi ở bài kiểm tra cũ.</p>
+      <p class="status doing">Đang chạy trên Kaggle (2 GPU T4)</p></article>
     <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
       <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
-      <p class="status next">Cùng bước A</p></article>
+      <p class="status next">Sau bước B</p></article>
   </div>
   <p class="callout info">Khi nào chốt? Model nào thắng bài thi mới theo luật đã khoá thì vào app. Nếu không model nào thắng rõ, giữ PhysioMix vòng 9.</p>
 </section>

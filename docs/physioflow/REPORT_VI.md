@@ -218,6 +218,36 @@ Nhịp đo được của cổ tay theo lệnh (bpm):
   khi chấm trong chính dải 0,9–5 Hz của nó (`realism_lsm_narrow.json`): gần như luôn sinh một kiểu sóng (mode collapse),
   không nhận điều kiện (bám lệnh 14% = đoán mò).
 
+## Bài thi mới GalaxyPPG (bước A, chưa dùng để chọn model)
+
+Bộ GalaxyPPG (Zenodo 14635823, CC BY 4.0, md5 kiểm tra trong kernel): 24 người, E4 BVP 64 Hz ở cổ tay, nghỉ / trí óc /
+đi bộ / chạy; nhịp tham chiếu từ Polar H10 (đồng hồ điện thoại theo giờ Hàn Quốc, trừ 9 h; lệch nhịp PPG trung vị 1,2 bpm).
+Cắt thành cửa sổ v3 (0,5–8 Hz, 40 Hz, 30 s). Luật (`fresh_galaxy.RULE`) khoá trong code trước khi chấm. Mỗi model được
+nhắc bằng nhịp Polar của người “bên kia”; 3 lần chia đôi người, C2ST nhóm theo người.
+
+| Nguồn (kernel `ppg-fresh-galaxy-v1`, CPU) | Khó phân biệt | Q | Sai nhịp trung vị (bpm) | Trong 5 bpm |
+|---|---|---|---|---|
+| Người thật khác | 89 ± 10% | 0,08 | 1,2 | 72% |
+| **PhysioMix vòng 9 (app)** | 0,7 ± 1,0% | **0,84** | **1,5** | 61% |
+| PhysioFlow vòng 4 (app) | 0,6 ± 0,4% | 1,33 | 1,7 | 70% |
+| LSM-GAN | 0% | 2,13 | 14,4 | 15% |
+| Gaussian shaper (luật, không AI) | 0% | 2,53 | 0,0 | 100% |
+
+Quyết định theo luật: **giữ PhysioMix** (PhysioFlow không hơn về độ giống, Q kém hơn 0,49). Cả hai model đều bị nhận ra
+gần như hoàn toàn trên cổ tay đời thường: điểm validation cổ tay cũ (83 cửa sổ tập thể dục của thiết bị khác) không chuyển
+sang được. Sai nhịp theo nhóm (lần chia 0): PhysioMix nghỉ 0,9 · trí óc 3,4 · đi bộ 7,2 · chạy 14,1; PhysioFlow 1,3 · 2,9 ·
+8,9 · 5,8 bpm. Nguồn: `ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json`.
+
+## Bước B: train lại với 12 người GalaxyPPG (đang chạy)
+
+Pack `ppg_physiomix_v3g` (sha256 `996abac8…`): v3 + cửa sổ GalaxyPPG của 12 người train (chia cố định seed 20261014) làm
+miền cổ tay, cổ tay train 83 → 1293 cửa sổ; 12 người còn lại chỉ dùng để thi. Train lại công thức PhysioMix vòng 9 và
+PhysioFlow F10 (vòng 6), seed 42, mỗi model một T4, chọn checkpoint bằng validation cũ như mọi vòng
+(`experiment_galaxy.py`). Luật `RULE_B` khoá trước khi train: chỉ vào final 3 seed nếu trên 12 người thi, độ khó phân biệt
+hơn PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm, **và** trên validation cũ đạt mọi cổng với
+S_arm ≤ 0,559, Q cổ tay ≤ 0,587 (không lùi quá dao động 3 seed của vòng 9). Kernel `halovie2412/ppg-galaxy-b-pilot-v1`.
+Chạy thử CPU 4 bước: chạy trọn tới quyết định (không model nào qua, như dự kiến).
+
 
 ## Giới hạn
 
