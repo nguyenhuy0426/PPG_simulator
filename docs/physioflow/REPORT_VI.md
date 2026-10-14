@@ -238,7 +238,7 @@ gần như hoàn toàn trên cổ tay đời thường: điểm validation cổ 
 sang được. Sai nhịp theo nhóm (lần chia 0): PhysioMix nghỉ 0,9 · trí óc 3,4 · đi bộ 7,2 · chạy 14,1; PhysioFlow 1,3 · 2,9 ·
 8,9 · 5,8 bpm. Nguồn: `ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json`.
 
-## Bước B: train lại với 12 người GalaxyPPG (đang chạy)
+## Bước B: train lại với 12 người GalaxyPPG (pilot xong: không vào final theo luật)
 
 Pack `ppg_physiomix_v3g` (sha256 `996abac8…`): v3 + cửa sổ GalaxyPPG của 12 người train (chia cố định seed 20261014) làm
 miền cổ tay, cổ tay train 83 → 1293 cửa sổ; 12 người còn lại chỉ dùng để thi. Train lại công thức PhysioMix vòng 9 và
@@ -248,7 +248,28 @@ hơn PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 
 S_arm ≤ 0,559, Q cổ tay ≤ 0,587 (không lùi quá dao động 3 seed của vòng 9). Kernel `halovie2412/ppg-galaxy-b-pilot-v1`.
 Chạy thử CPU 4 bước: chạy trọn tới quyết định (không model nào qua, như dự kiến).
 
-## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (chờ sau bước B)
+Kết quả pilot (seed 42, 2 × T4, 2,5 h; `loop/galaxy_b_pilot.json`, luật `rules/FROZEN_GALAXY_B.json`), 12 người thi:
+
+| Nguồn | Khó phân biệt | Q | Sai nhịp (bpm) | Trong 5 bpm | Validation cũ: S_arm · Q cổ tay |
+|---|---|---|---|---|---|
+| Người thật khác | 71 ± 23% | 0,09 | 1,2 | 76% | |
+| PhysioMix app | 0,7 ± 1,1% | 0,85 | 1,5 | 65% | 0,530 · 0,527 (vòng 9, 3 seed) |
+| PhysioFlow app | 3,2 ± 1,8% | 1,16 | 1,8 | 70% | |
+| physiomix_g | 3,3 ± 2,0% | 0,28 | 1,3 | 89% | 0,465 · **0,794** |
+| **physioflow_g** | **31,8 ± 3,6%** | **0,19** | **1,2** | **89%** | 0,491 · **0,950** |
+
+Sai nhịp theo nhóm (lần chia 0; nghỉ · trí óc · đi bộ · chạy): PhysioMix app 1,1 · 1,8 · 9,6 · 12,1; physiomix_g 1,0 · 1,4 ·
+1,9 · 2,9; physioflow_g 0,9 · 1,7 · 1,5 · 1,9 bpm.
+
+Quyết định theo `RULE_B`: **không model nào vào final** (`go: []`). physioflow_g qua cả ba điều kiện trên GalaxyPPG (hơn
+PhysioMix app 31 điểm, ngưỡng 7,1) nhưng trượt điều kiện không lùi ở validation cũ: Q cổ tay 0,950 > 0,587. physiomix_g
+trượt độ giống (hơn 2,6 điểm, ngưỡng 4,0) và Q cổ tay cũ 0,794. App giữ PhysioMix vòng 9.
+
+Suy luận kỹ thuật (chưa kiểm chứng): miền “wrist” giờ gộp hai thiết bị, 1210/1293 cửa sổ train là E4 đời thường, nên model
+dịch về kiểu E4 và xa 89 cửa sổ validation cổ tay cũ (tập thể dục, thiết bị khác). Hướng tiếp theo hợp lý là tách thành
+hai miền riêng (cổ tay khi tập / cổ tay đời thường E4) và khoá luật mới trước khi train; một seed chưa đủ để kết luận.
+
+## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (đang chạy)
 
 LSM-GAN trong app chỉ được train trên BIDMC (dải 0,9–5 Hz, `train_lsm.prepare`). `experiment_lsm_galaxy.py` train lại
 đúng công thức đó (`lsm_repo_corrected`, `train_lsm.train_one`, chọn checkpoint bằng MMD validation) trên pack v3g, dải

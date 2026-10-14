@@ -153,6 +153,33 @@
 </section>
 
 <section>
+  <h2>Thêm dữ liệu cổ tay rồi train lại (bước B, đã xong)</h2>
+  <p class="lede">Lấy <b>12 người</b> GalaxyPPG cho model học thêm, rồi thi trên <b>12 người còn lại</b> mà model chưa từng thấy.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt sau khi train lại">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:71%" class="ref"></i></span><b>71%</b></div>
+    <div class="bar"><span class="name">PhysioFlow train lại</span><span class="track"><i style="width:32%" class="flow"></i></span><b>32%</b></div>
+    <div class="bar"><span class="name">PhysioMix train lại</span><span class="track"><i style="width:3.3%" class="mix"></i></span><b>3%</b></div>
+    <div class="bar"><span class="name">PhysioMix trong app</span><span class="track"><i style="width:0.7%" class="mix"></i></span><b>0,7%</b></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Sai nhịp khi đi bộ</th><th>Sai nhịp khi chạy</th><th>Bài kiểm tra cũ (cổ tay)</th></tr></thead>
+    <tbody>
+      <tr><td>PhysioMix trong app</td><td>9,6</td><td>12,1</td><td>đạt</td></tr>
+      <tr><td>PhysioMix train lại</td><td>1,9</td><td>2,9</td><td><b>tệ đi</b></td></tr>
+      <tr><td><b>PhysioFlow train lại</b></td><td><b>1,5</b></td><td><b>1,9</b></td><td><b>tệ đi</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Sai nhịp tính bằng nhịp/phút, đo trên một lần chia người.</p>
+  <p><b>Đọc thế nào:</b> thêm dữ liệu cổ tay giúp <b>rất nhiều</b>. PhysioFlow train lại giống thật hơn hơn 40 lần
+    (0,7% → 32%), và khi đi bộ hay chạy thì sai nhịp giảm từ khoảng 10 xuống khoảng 2 nhịp/phút.</p>
+  <p class="callout">Nhưng luật đã khoá trước còn một điều kiện: <b>không được tệ đi ở bài kiểm tra cũ</b>. Cả hai model train lại đều tệ đi ở
+    phần cổ tay của bài cũ (4 người tập thể dục, thiết bị khác). Nên <b>app vẫn giữ PhysioMix</b>; không đổi luật sau khi đã thấy điểm.</p>
+  <p class="note">Lý do có thể (chưa kiểm chứng): hai loại cổ tay rất khác nhau đang dùng chung một nhãn “cổ tay”, và 94% dữ liệu là
+    đồng hồ đời thường, nên model “quên” kiểu cổ tay khi tập. Đây mới là một lần train (seed 42).
+    Nguồn: <code>docs/physioflow/loop/galaxy_b_pilot.json</code>.</p>
+</section>
+
+<section>
   <h2>Kế hoạch tiếp theo</h2>
   <div class="plan">
     <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
@@ -161,12 +188,16 @@
     <article><span class="step">B</span><h3>Thêm dữ liệu cổ tay để train</h3>
       <p>Lấy 12 người GalaxyPPG thêm vào dữ liệu cổ tay (83 → 1293 đoạn 30 giây), train lại PhysioMix và PhysioFlow;
         12 người còn lại chỉ để thi. Chỉ được vào app nếu thắng PhysioMix hiện tại trên 12 người đó <b>và</b> không tệ đi ở bài kiểm tra cũ.</p>
-      <p class="status doing">Đang chạy trên Kaggle (2 GPU T4)</p></article>
+      <p class="status done">Xong: tiến bộ lớn trên dữ liệu mới, nhưng trượt bài cũ → giữ PhysioMix</p></article>
     <article><span class="step">B2</span><h3>LSM-GAN học thêm nhiều bộ dữ liệu</h3>
       <p>Trước giờ LSM-GAN chỉ học bộ BIDMC. Lần này cho nó học cùng dữ liệu với PhysioMix/PhysioFlow (có và không có GalaxyPPG,
         và một bản chỉ học cổ tay), rồi thi trên cùng 12 người. LSM-GAN <b>không chỉnh được nhịp</b>, nên dù tốt hơn cũng chỉ để so sánh,
         không vào app. Câu hỏi: chỉ thêm dữ liệu thì một GAN đơn giản có giống thật hơn không?</p>
-      <p class="status next">Chạy ngay sau bước B (tối đa 2 lượt train cùng lúc)</p></article>
+      <p class="status doing">Đang chạy trên Kaggle (1 GPU T4)</p></article>
+    <article><span class="step">D</span><h3>Tách hai loại cổ tay</h3>
+      <p>Cho model hai nhãn riêng: “cổ tay khi tập” và “cổ tay đời thường”, để học cái mới mà không quên cái cũ.
+        Khoá luật mới trước, rồi train lại và chấm cả hai bài thi.</p>
+      <p class="status next">Đề xuất, chờ bạn đồng ý</p></article>
     <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
       <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
       <p class="status next">Sau bước B</p></article>
