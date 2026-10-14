@@ -38,6 +38,11 @@ E4_FS = 64.
 POLAR_OFFSET_MS = 9*3600*1000
 MIN_POLAR_SAMPLES = 20
 GALAXY_SPLIT_SEED = 20261014
+# Step D: the GalaxyPPG windows become their own domain (everyday E4 wrist), separate from the original wrist
+# exercise windows, and DAILY_VALIDATION_PEOPLE of the 12 GalaxyPPG training people move to validation (fixed seed).
+DAILY_DOMAIN = "wrist_daily"
+DAILY_VALIDATION_PEOPLE = 4
+DAILY_SPLIT_SEED = 20261015
 GROUPS = {"rest": ("adaptation", "baseline", "meditation-1", "meditation-2", "rest-1", "rest-2", "rest-3", "rest-4",
                    "rest-5", "screen-reading"),
           "cognitive": ("tsst-prep", "tsst-speech", "ssst-prep", "ssst-sing", "keyboard-typing", "mobile-typing",
@@ -163,6 +168,31 @@ def extend_pack(v3_root, galaxy_root, output):
     return merged, manifest
 
 
+def daily_wrist(pack, manifest):
+    """The v3g pack (already verified by load_input) with GalaxyPPG as domain DAILY_DOMAIN: training people stay in
+    'train' except DAILY_VALIDATION_PEOPLE moved to 'validation'; test people stay 'external'. Deterministic, so
+    every worker derives the same pack; content_sha256 records the result."""
+    if manifest.get("protocol") != "ppg_physiomix_v3g":
+        raise ValueError("Derive the daily-wrist pack only from the v3g pack")
+    galaxy = np.char.startswith(pack["subject"].astype(str), "galaxyppg:")
+    people = sorted(manifest["galaxyppg"]["people"]["train"])
+    validation = sorted(np.random.default_rng(DAILY_SPLIT_SEED).permutation(people)[:DAILY_VALIDATION_PEOPLE].tolist())
+    out = dict(pack)
+    out["domain"] = np.where(galaxy, DAILY_DOMAIN, pack["domain"].astype(str))
+    out["split"] = np.where(np.isin(pack["subject"], validation), "validation", pack["split"])
+    digest = hashlib.sha256()
+    for key in ("signal", "subject", "domain", "split"):
+        digest.update(np.ascontiguousarray(out[key]).tobytes())
+    split_people = {s: sorted(set(out["subject"][galaxy & (out["split"] == s)].tolist())) for s in ("train", "validation",
+                                                                                                    "external")}
+    derived = {**manifest, "protocol": "ppg_physiomix_v3d", "base_protocol": manifest["protocol"],
+               "content_sha256": digest.hexdigest(),
+               "galaxyppg": {**manifest["galaxyppg"], "domain": DAILY_DOMAIN, "people": split_people,
+                             "daily_split_seed": DAILY_SPLIT_SEED,
+                             "windows": {s: int((galaxy & (out["split"] == s)).sum()) for s in split_people}}}
+    return out, derived
+
+
 def load_galaxy(root):
     with np.load(Path(root)/"galaxyppg_windows.npz", allow_pickle=False) as source:
         return {k: source[k] for k in source.files}
@@ -170,15 +200,17 @@ def load_galaxy(root):
 
 def wrist_prompts(meta, signal, polar_hr):
     """App condition rows (wrist one-hot, both labels known) from real windows: Polar HR where available, otherwise
-    the PPG consensus rate, otherwise the wrist default; robust IBI CV; the window's own std."""
+    the PPG consensus rate, otherwise the wrist default; robust IBI CV; the window's own std. A source whose meta
+    names a prompt_domain (step D models: the everyday-wrist domain) is prompted as that domain."""
+    domain = meta.get("prompt_domain", "wrist")
     rate, irr, _ = robust_labels(signal)
     rate = np.where(np.isfinite(polar_hr), polar_hr, rate)
-    default_irr, _ = meta["domain_defaults"]["wrist"]
+    default_irr, _ = meta["domain_defaults"][domain]
     lo, hi = meta["hr_support_bpm"]
     rate = np.clip(np.where(np.isfinite(rate), rate, np.nanmedian(rate)), lo, hi)
     irr = np.clip(np.where(np.isfinite(irr), irr, default_irr), 0, .35)
     raw = np.c_[rate, irr, signal.std(1)]
-    onehot = np.array([[float(d == "wrist") for d in meta["domains"]]]*len(signal))
+    onehot = np.array([[float(d == domain) for d in meta["domains"]]]*len(signal))
     flags = np.ones((len(signal), 2)) if meta.get("condition_version") == "v2" else np.zeros((len(signal), 0))
     return np.c_[onehot, flags, (raw-meta["center"])/meta["scale"]].astype(np.float32), rate
 
@@ -210,7 +242,7 @@ def app_sources(bundle):
     return sources
 
 
-def checkpoint_source(development, run_dir, arm):
+def checkpoint_source(development, run_dir, arm, prompt_domain="wrist"):
     """(generate, condition metadata) for a trained checkpoint (best.pt in run_dir), in the app's schema layout."""
     from ml.kaggle_multidomain.experiment_v3 import conditions_for, config, load_best, sampler
     cfg = config(arm)
@@ -218,7 +250,8 @@ def checkpoint_source(development, run_dir, arm):
     model, cfg = load_best(arm, Path(run_dir), conditions, None, "cpu")
     run = sampler(model, cfg, "cpu")
     meta = dict(domains=conditions.domains, center=conditions.center.tolist(), scale=conditions.scale.tolist(),
-                domain_defaults=conditions.defaults, condition_version=cfg["version"], hr_support_bpm=[40., 180.])
+                domain_defaults=conditions.defaults, condition_version=cfg["version"], hr_support_bpm=[40., 180.],
+                prompt_domain=prompt_domain)
 
     def generate(rows, rates, seed):
         return run(torch.randn(len(rows), LENGTH, generator=torch.Generator().manual_seed(seed)), rows).astype(np.float32)

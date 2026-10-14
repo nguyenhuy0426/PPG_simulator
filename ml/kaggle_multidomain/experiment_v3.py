@@ -38,8 +38,15 @@ VIEW = "v3"
 DATA_SHA256_V3 = "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433"  # ml/runs/physio3-data-v1/VERIFICATION.json
 # The v3 pack plus GalaxyPPG wrist windows of its training people (fresh_galaxy.extend_pack). Chosen by the
 # environment so that spawned training workers load the same pack as their parent.
+# ppg_physiomix_v3d (step D) is derived in memory from the verified v3g file (data_gxu.load_input), so its file
+# checksum is v3g's; the derived content is pinned by DERIVED_CONTENT_SHA256.
 PACKS = {"ppg_physiomix_v3": DATA_SHA256_V3,
-         "ppg_physiomix_v3g": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a"}
+         "ppg_physiomix_v3g": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+         "ppg_physiomix_v3d": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a"}
+DERIVED_CONTENT_SHA256 = {
+    "ppg_physiomix_v3d": "e8e32d646b9743d54f7883dfc9666b10c1dc38e71932ad9b8dc258e3bd3684ea"}
+# Domains a pack may add beyond TRAIN_DOMAINS (step D's everyday wrist has train and validation people, no test).
+EXTRA_DOMAINS = {"ppg_physiomix_v3d": {"wrist_daily"}}
 PROTOCOL = os.environ.get("PPG_PACK_PROTOCOL", "ppg_physiomix_v3")
 if PROTOCOL not in PACKS:
     raise ValueError(f"Unknown pack protocol {PROTOCOL}")
@@ -276,6 +283,33 @@ def c2st(evaluator, run, conditions, seed, device, derivative=True, width=16):
                             C2ST_STEPS)
 
 
+class Snapshots:
+    """Fixed-noise, fixed-prompt samples of the EMA generator every SNAPSHOT_EVERY steps (report animation only).
+    Runs under a forked RNG, so the training trajectory is the same with or without it."""
+    EVERY, BPM, DOMAINS = 500, 75., ("gxu_finger", "wrist", "wrist_daily")
+
+    def __init__(self, conditions, cfg, device, path):
+        self.domains = [d for d in self.DOMAINS if d in conditions.domains]
+        self.prompts = np.concatenate([conditions.prompt(d, self.BPM, .02, 1) for d in self.domains])
+        self.z = torch.randn(len(self.domains), LENGTH, generator=torch.Generator().manual_seed(777))
+        self.cfg, self.device, self.path = cfg, device, Path(path)
+        self.steps, self.frames = [], []
+
+    def maybe(self, step, steps, model):
+        if step % self.EVERY and step != steps:
+            return
+        cuda = torch.device(self.device).type == "cuda"
+        with torch.random.fork_rng(devices=[torch.device(self.device).index or 0] if cuda else []):
+            was_training = model.training
+            model.eval()
+            frame = sampler(model, self.cfg, self.device)(self.z, self.prompts)
+            model.train(was_training)
+        self.steps.append(step)
+        self.frames.append(frame.astype(np.float16))
+        np.savez_compressed(self.path, steps=np.asarray(self.steps), domains=np.asarray(self.domains),
+                            bpm=self.BPM, signals=np.stack(self.frames))
+
+
 def deployment_gates(model, conditions):
     model = model.cpu().eval()
     z, c = torch.randn(2, LENGTH), torch.tensor(conditions.prompt(conditions.domains[0], 75., .02, 2))
@@ -324,6 +358,7 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
     best, best_step, history = float("inf"), 0, []
     stability = dict(updates=steps, nonfinite_losses=0, g_clipped=0, d_clipped=0, max_g_grad_norm=0.,
                      max_d_grad_norm=0., r1_updates=0)
+    snapshots = Snapshots(conditions, cfg, device, run_dir/"snapshots.npz")
     start = time.monotonic()
     for step in range(1, steps+1):
         g.train()
@@ -383,6 +418,7 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
         stability["g_clipped"] += int(gn > 10)
         optg.step()
         update_ema(ema, g)
+        snapshots.maybe(step, steps, ema)
         if (step >= min(1000, steps) and step % interval == 0) or step == steps:
             ema.eval()
             run = sampler(ema, cfg, device)
@@ -527,10 +563,14 @@ def sealed_subjects(pack):
 def check_pack(pack, manifest, allow_cpu):
     if not allow_cpu and manifest["windows_sha256"] != PACKS[PROTOCOL]:
         raise ValueError(f"Use the verified {PROTOCOL} pack")
+    if not allow_cpu and DERIVED_CONTENT_SHA256.get(PROTOCOL, manifest.get("content_sha256")) != \
+            manifest.get("content_sha256"):
+        raise ValueError(f"Derived {PROTOCOL} pack content mismatch")
     if manifest.get("view") != VIEW:
         raise ValueError("Pack view must be v3")
+    extra = EXTRA_DOMAINS.get(PROTOCOL, set())
     for split in ("train", "validation", "test"):
-        if set(pack["domain"][pack["split"] == split]) != TRAIN_DOMAINS:
+        if set(pack["domain"][pack["split"] == split])-extra != TRAIN_DOMAINS:
             raise ValueError(f"Missing domains in {split}")
 
 

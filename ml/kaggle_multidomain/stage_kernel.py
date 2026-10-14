@@ -30,7 +30,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     galaxy_b = mode == "galaxy_b_pilot"
     # Step B-LSM: the app's LSM-GAN recipe retrained on the v3g pack, then the same fresh test (GPU).
     lsm_galaxy = mode == "lsm_galaxy"
-    flow = fresh or galaxy_b or lsm_galaxy or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    # Step D: everyday wrist as its own domain (v3d pack derived from v3g), pilot then 3-seed final (GPU).
+    galaxy_d = mode in ("galaxy_d_pilot", "galaxy_d_final")
+    flow = fresh or galaxy_b or lsm_galaxy or galaxy_d or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -54,10 +56,12 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_v5.py")
     if flow:
         sources.append("ml/kaggle_multidomain/experiment_flow.py")
-    if fresh or galaxy_b or lsm_galaxy:
+    if fresh or galaxy_b or lsm_galaxy or galaxy_d:
         sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/fresh_galaxy.py"]
-    if galaxy_b:
+    if galaxy_b or galaxy_d:
         sources.append("ml/kaggle_multidomain/experiment_galaxy.py")
+    if galaxy_d:
+        sources.append("ml/kaggle_multidomain/experiment_daily.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
     files = {name: (root/name).read_text() for name in sources}
@@ -159,6 +163,12 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         entry = ("import os\nos.environ['PPG_PACK_PROTOCOL'] = 'ppg_physiomix_v3g'\n"
                  "from ml.kaggle_multidomain.experiment_galaxy import main\n"
                  "main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/galaxy_b'])")
+    if galaxy_d:
+        stage_name = mode.rsplit("_", 1)[1]
+        args = ["--input-root", "/kaggle/input", "--output", "/kaggle/working/daily_d", "--stage", stage_name]
+        args += ["--pilot-root", "/kaggle/input"] if stage_name == "final" else []
+        entry = ("import os\nos.environ['PPG_PACK_PROTOCOL'] = 'ppg_physiomix_v3d'\n"
+                 f"from ml.kaggle_multidomain.experiment_daily import main\nmain({args!r})")
     if lsm_galaxy:
         entry = ("import os\nos.environ['PPG_PACK_PROTOCOL'] = 'ppg_physiomix_v3g'\n"
                  "from ml.kaggle_multidomain.experiment_lsm_galaxy import main\n"
@@ -282,6 +292,12 @@ sys.path.insert(0, str(root))
     if galaxy_b:
         metadata.update(id=f"{owner}/ppg-galaxy-b-pilot-v1", title="PPG Galaxy B Pilot v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
+    if galaxy_d:
+        pilot = f"{owner}/ppg-galaxy-d-pilot-v1"
+        metadata.update(id=pilot if mode == "galaxy_d_pilot" else f"{owner}/ppg-galaxy-d-final-v1",
+                        title="PPG Galaxy D Pilot v1" if mode == "galaxy_d_pilot" else "PPG Galaxy D Final v1",
+                        kernel_sources=[] if mode == "galaxy_d_pilot" else [pilot],
+                        dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
     if lsm_galaxy:
         metadata.update(id=f"{owner}/ppg-lsm-galaxy-v1", title="PPG LSM Galaxy v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
@@ -336,7 +352,8 @@ if __name__ == "__main__":
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                      "galaxy_b_pilot", "lsm_galaxy"), required=True)
+                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final"),
+                   required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
     p.add_argument("--arm", help="Flow final: the sampler arm chosen across pilot loops")

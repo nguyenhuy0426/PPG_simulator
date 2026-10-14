@@ -131,3 +131,72 @@ def test_lsm_rule_is_report_only_and_needs_a_clear_gain():
     assert not decision["more_data_vs_app_lsm"]["lsm_v3_all"]["helped"]
     assert decision["galaxy_vs_no_galaxy"]["lsm_v3g_all"]["helped"] and decision["galaxy_helped"]
     assert not decision["galaxy_vs_no_galaxy"]["lsm_v3g_wrist"]["helped"]
+
+
+def _v3g_like():
+    galaxy = [f"galaxyppg:P{i:02d}" for i in range(1, 9)]
+    subject = np.array(galaxy+["w1", "f1"])
+    split = np.array(["train"]*6+["external"]*2+["train", "validation"])
+    pack = dict(signal=np.zeros((10, 4), np.float32), subject=subject, split=split,
+                domain=np.array(["wrist"]*9+["gxu_finger"]))
+    manifest = dict(protocol="ppg_physiomix_v3g", windows_sha256="x",
+                    galaxyppg=dict(people=dict(train=galaxy[:6], external=galaxy[6:])))
+    return pack, manifest
+
+
+def test_daily_wrist_pack_separates_the_device_and_moves_four_training_people_to_validation():
+    pack, manifest = _v3g_like()
+    out, derived = fg.daily_wrist(pack, manifest)
+    galaxy = np.char.startswith(out["subject"], "galaxyppg:")
+    assert (out["domain"][galaxy] == fg.DAILY_DOMAIN).all() and out["domain"][8] == "wrist"
+    people = derived["galaxyppg"]["people"]
+    assert len(people["validation"]) == fg.DAILY_VALIDATION_PEOPLE and len(people["train"]) == 2
+    assert people["external"] == manifest["galaxyppg"]["people"]["external"]
+    assert set(people["validation"]) <= set(manifest["galaxyppg"]["people"]["train"])
+    assert derived["protocol"] == "ppg_physiomix_v3d" and derived["windows_sha256"] == "x"
+    assert pack["domain"][0] == "wrist"  # the loaded pack is not modified in place
+    again, derived_again = fg.daily_wrist(*_v3g_like())
+    assert derived_again["content_sha256"] == derived["content_sha256"]
+    with pytest.raises(ValueError):
+        fg.daily_wrist(pack, dict(manifest, protocol="ppg_physiomix_v3"))
+
+
+def test_daily_prompts_use_the_named_domain():
+    meta = dict(domains=["gxu_finger", "wrist", "wrist_daily"], center=[80., .05, .2], scale=[15., .05, .05],
+                domain_defaults=dict(wrist=[.05, .2], wrist_daily=[.08, .2]), condition_version="v2",
+                hr_support_bpm=[40., 180.], prompt_domain="wrist_daily")
+    t = np.arange(1200)/40
+    rows, _ = fg.wrist_prompts(meta, (.5+.5*np.sin(2*np.pi*t)).astype(np.float32)[None], np.array([60.]))
+    assert rows[0, :3].tolist() == [0., 0., 1.]
+
+
+def _entry(ind, q=.4, rate=1.5, sd=1.):
+    return dict(indistinguishable=dict(mean=ind, sd=sd), Q=dict(mean=q, sd=0), rate_error_median_bpm=dict(mean=rate, sd=0))
+
+
+def test_step_d_pilot_rule_uses_validation_only_and_picks_the_more_realistic_recipe():
+    from ml.kaggle_multidomain.experiment_daily import decide_pilot
+    summary = dict(physiomix=_entry(1., .8), physiomix_d=_entry(20.), physioflow_d=_entry(30.))
+    ok, bad = dict(ok=True), dict(ok=False)
+    decision = decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=ok))
+    assert decision["go"] == ["physiomix_d", "physioflow_d"] and decision["final_recipe"] == "physioflow_d"
+    decision = decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=bad))
+    assert decision["go"] == ["physiomix_d"] and decision["final_recipe"] == "physiomix_d"
+    summary["physiomix_d"] = _entry(2.5)  # gain 1.5 within 2 x SD
+    summary["physioflow_d"] = _entry(30., q=.9)  # Q not lower than the app's
+    assert decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=ok))["final_recipe"] is None
+
+
+def test_step_d_final_rule_pools_seeds_and_ships_the_best_passing_seed():
+    from ml.kaggle_multidomain.experiment_daily import decide_final
+    seeds = (42, 123, 2026)
+    summary = dict(physiomix=_entry(1., .8), **{f"physioflow_d_seed{s}": _entry(v) for s, v in zip(seeds, (28., 34., 31.))})
+    row = lambda s_arm, wrist, eligible=True: dict(S_arm=s_arm, wrist_Q=wrist, eligible=eligible,
+                                                   ok=bool(eligible and s_arm <= .559 and wrist <= .587))
+    validation = {"physioflow_d_seed42": row(.50, .55), "physioflow_d_seed123": row(.50, .62),
+                  "physioflow_d_seed2026": row(.50, .55)}
+    decision = decide_final(summary, validation, "physioflow_d", seeds)
+    # Seed 123 is the most realistic but misses the wrist-exercise limit on its own; mean wrist Q 0.573 passes.
+    assert decision["ship"] and decision["shipped"] == "physioflow_d_seed2026"
+    validation["physioflow_d_seed42"] = row(.50, .55, eligible=False)
+    assert not decide_final(summary, validation, "physioflow_d", seeds)["ship"]

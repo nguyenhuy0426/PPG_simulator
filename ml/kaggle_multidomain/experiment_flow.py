@@ -27,7 +27,7 @@ from ml.kaggle_multidomain.data import balanced_pool
 from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.experiment_v3 import (CONTROL_N, CRITERION_SHA256, FLOW_BASES, FLOW_SAMPLERS, PROTOCOL,
                                                  VIEW, build, check_pack, conditions_for, config, learning_rate, parallel,
-                                                 sampler, score_arm, sealed_subjects)
+                                                 Snapshots, sampler, score_arm, sealed_subjects)
 from ml.kaggle_multidomain.flow import FINISH_PAD, flow_loss, real_scaffolds, slow_wrist_bank, swap_slow
 from ml.kaggle_multidomain.physio import view_mask
 from ml.kaggle_multidomain.physio import ema_model, update_ema
@@ -118,6 +118,7 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     ids, weights = balanced_pool(pack, "train")
     best, best_step, history = float("inf"), 0, []
     stability = dict(updates=steps, nonfinite_losses=0, max_grad_norm=0., clipped=0)
+    snapshots = Snapshots(conditions, cfg, device, run_dir/"snapshots.npz")
     start = time.monotonic()
     for step in range(1, steps+1):
         g.train()
@@ -145,6 +146,7 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         scaler.step(optimizer)
         scaler.update()
         update_ema(ema, g, min(.999, (1+step)/(10+step)))
+        snapshots.maybe(step, steps, ema)
         if (step >= min(2*interval, steps) and step % interval == 0) or step == steps:
             ema.eval()
             run = sampler(ema, cfg, device)
