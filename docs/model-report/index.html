@@ -162,6 +162,11 @@
       <p>Lấy 12 người GalaxyPPG thêm vào dữ liệu cổ tay (83 → 1293 đoạn 30 giây), train lại PhysioMix và PhysioFlow;
         12 người còn lại chỉ để thi. Chỉ được vào app nếu thắng PhysioMix hiện tại trên 12 người đó <b>và</b> không tệ đi ở bài kiểm tra cũ.</p>
       <p class="status doing">Đang chạy trên Kaggle (2 GPU T4)</p></article>
+    <article><span class="step">B2</span><h3>LSM-GAN học thêm nhiều bộ dữ liệu</h3>
+      <p>Trước giờ LSM-GAN chỉ học bộ BIDMC. Lần này cho nó học cùng dữ liệu với PhysioMix/PhysioFlow (có và không có GalaxyPPG,
+        và một bản chỉ học cổ tay), rồi thi trên cùng 12 người. LSM-GAN <b>không chỉnh được nhịp</b>, nên dù tốt hơn cũng chỉ để so sánh,
+        không vào app. Câu hỏi: chỉ thêm dữ liệu thì một GAN đơn giản có giống thật hơn không?</p>
+      <p class="status next">Chạy ngay sau bước B (tối đa 2 lượt train cùng lúc)</p></article>
     <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
       <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
       <p class="status next">Sau bước B</p></article>

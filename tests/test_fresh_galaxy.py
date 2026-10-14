@@ -109,3 +109,25 @@ def test_unmeasurable_rate_is_saved_as_null_and_fails_the_rule():
     flow_unmeasurable = _summary(60.)
     flow_unmeasurable["physioflow"]["rate_error_median_bpm"] = dict(mean=None, sd=None)
     assert fg.decide(flow_unmeasurable)["app_model"] == "physiomix"
+
+
+def test_lsm_arms_split_rows_by_dataset_and_never_use_external():
+    from ml.kaggle_multidomain.experiment_lsm_galaxy import arm_masks
+    pack = dict(subject=np.array(["galaxyppg:P01", "galaxyppg:P02", "w1", "f1", "f2", "f3"]),
+                domain=np.array(["wrist", "wrist", "wrist", "gxu_finger", "gxu_finger", "gxu_finger"]),
+                split=np.array(["train", "external", "train", "train", "validation", "test"]))
+    rows = lambda arm, split: list(np.flatnonzero(arm_masks(pack, arm)[split]))
+    assert rows("lsm_v3_all", "train") == [2, 3]
+    assert rows("lsm_v3g_all", "train") == [0, 2, 3] and rows("lsm_v3g_all", "validation") == [4]
+    assert rows("lsm_v3g_wrist", "train") == [0, 2] and rows("lsm_v3g_wrist", "test") == []
+
+
+def test_lsm_rule_is_report_only_and_needs_a_clear_gain():
+    from ml.kaggle_multidomain.experiment_lsm_galaxy import decide_lsm
+    entry = lambda ind: dict(indistinguishable=dict(mean=ind, sd=1.))
+    summary = dict(lsm_gan=entry(0.), lsm_v3_all=entry(1.5), lsm_v3g_all=entry(10.), lsm_v3g_wrist=entry(3.))
+    decision = decide_lsm(summary)
+    assert decision["app_eligible"] == []
+    assert not decision["more_data_vs_app_lsm"]["lsm_v3_all"]["helped"]
+    assert decision["galaxy_vs_no_galaxy"]["lsm_v3g_all"]["helped"] and decision["galaxy_helped"]
+    assert not decision["galaxy_vs_no_galaxy"]["lsm_v3g_wrist"]["helped"]

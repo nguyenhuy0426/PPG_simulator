@@ -498,7 +498,7 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
                                   "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                   "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final",
                                   "flow10e_pilot", "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                  "galaxy_b_pilot"])
+                                  "galaxy_b_pilot", "lsm_galaxy"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
@@ -543,15 +543,16 @@ def test_fresh_galaxy_kernel_is_cpu_only_and_mounts_its_own_datasets(tmp_path):
     assert "ZIP_MD5" in run and "'--stage'" not in run
 
 
-def test_galaxy_b_kernel_selects_the_v3g_pack_before_importing_training_code(tmp_path):
+@pytest.mark.parametrize("mode,module", [("galaxy_b_pilot", "experiment_galaxy"), ("lsm_galaxy", "experiment_lsm_galaxy")])
+def test_galaxy_kernels_select_the_v3g_pack_before_importing_training_code(tmp_path, mode, module):
     from ml.kaggle_multidomain import stage_kernel
-    out = stage_kernel.stage(tmp_path/"b", "galaxy_b_pilot", steps=2, owner="other")
+    out = stage_kernel.stage(tmp_path/mode, mode, steps=2, owner="other")
     meta = json.loads((out/"kernel-metadata.json").read_text())
     assert meta["enable_gpu"] is True
     assert meta["dataset_sources"] == ["other/ppg-physio3g-data-v1", "other/ppg-app-models-v1"]
     assert meta["id"].split("/")[1] == meta["title"].lower().replace(" ", "-")
     run = (out/"run.py").read_text()
-    assert run.index("PPG_PACK_PROTOCOL") < run.index("from ml.kaggle_multidomain.experiment_galaxy import main")
+    assert run.index("PPG_PACK_PROTOCOL") < run.index(f"from ml.kaggle_multidomain.{module} import main")
 
 
 def test_staged_datasets_hold_one_pack_and_the_round9_decision(tmp_path):

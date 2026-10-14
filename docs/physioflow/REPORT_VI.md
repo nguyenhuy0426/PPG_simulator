@@ -248,6 +248,16 @@ hơn PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 
 S_arm ≤ 0,559, Q cổ tay ≤ 0,587 (không lùi quá dao động 3 seed của vòng 9). Kernel `halovie2412/ppg-galaxy-b-pilot-v1`.
 Chạy thử CPU 4 bước: chạy trọn tới quyết định (không model nào qua, như dự kiến).
 
+## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (chờ sau bước B)
+
+LSM-GAN trong app chỉ được train trên BIDMC (dải 0,9–5 Hz, `train_lsm.prepare`). `experiment_lsm_galaxy.py` train lại
+đúng công thức đó (`lsm_repo_corrected`, `train_lsm.train_one`, chọn checkpoint bằng MMD validation) trên pack v3g, dải
+chung 0,5–8 Hz, 6000 bước, seed 42: `lsm_v3_all` (mọi tập, bỏ người GalaxyPPG), `lsm_v3g_all` (mọi tập + 12 người
+GalaxyPPG), `lsm_v3g_wrist` (chỉ cổ tay). LSM-GAN không có đầu vào điều kiện nên không bám nhịp, không chọn miền: không
+arm nào được vào app. `RULE_LSM` (khoá trước) chỉ trả lời “thêm dữ liệu có giúp không” trên 12 người thi: hơn LSM-GAN app,
+hoặc bản có GalaxyPPG hơn bản không có, quá 2 × SD. Kernel `halovie2412/ppg-lsm-galaxy-v1` (1 GPU). Chạy thử CPU 3 bước:
+chạy trọn tới quyết định.
+
 
 ## Giới hạn
 
