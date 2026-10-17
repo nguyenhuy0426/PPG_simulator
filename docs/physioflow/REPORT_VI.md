@@ -330,7 +330,7 @@ Kết quả (`loop/judges_c.json`; 12 người thi GalaxyPPG, 3 lần chia, 192 
   tay (`scripts/build_presentation_media.py`); vì vậy không dùng critic làm thước đo.
 - Hạn chế: PaPaGei học chủ yếu PPG bệnh viện/giấc ngủ, ít cổ tay; tập v3 chỉ chấm 1 lần, không có SD.
 
-## Bước D: tách cổ tay đời thường thành miền riêng (đang chạy)
+## Bước D: tách cổ tay đời thường thành miền riêng (pilot xong: không vào final theo luật)
 
 Pack `ppg_physiomix_v3d` dựng trong bộ nhớ từ pack v3g đã kiểm tra (`fresh_galaxy.daily_wrist`, sha256 nội dung ghim
 `e8e32d64…`): cửa sổ GalaxyPPG thành miền `wrist_daily`; 4 trong 12 người train GalaxyPPG chuyển sang validation (seed
@@ -345,6 +345,29 @@ PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm. 
 seed giao là seed khó phân biệt nhất trong các seed tự đạt giới hạn validation cũ. 12 người thi chỉ báo cáo, chấm sau khi
 file quyết định đã ghi. Mỗi 500 bước train lưu mẫu cố định (`Snapshots`, RNG tách riêng) cho video trên trang trình bày.
 Chạy thử CPU 4 bước (pilot và final): chạy trọn tới quyết định. Kernel `halovie2412/ppg-galaxy-d-pilot-v1` (2 × T4).
+
+Kết quả pilot (seed 42, 2 × T4, 2,7 h; `loop/galaxy_d_pilot.json`, luật `rules/FROZEN_D_PILOT.json`):
+
+| | PhysioMix app | physiomix_d | physioflow_d |
+|---|---|---|---|
+| Validation cũ: S_arm (≤ 0,559) | 0,530 (vòng 9) | 0,502 ✓ | 0,439 ✓ |
+| Validation cũ: Q cổ tay tập (≤ 0,587) | 0,527 (vòng 9) | 0,558 ✓ | 0,574 ✓ |
+| 4 người validation đời thường: khó phân biệt | 0,4 ± 0,2% | 7,2 ± 5,7% | 29,2 ± 16,4% |
+| … hơn app / ngưỡng 2 × SD | | 6,7 / 11,4 ✗ | 28,8 / 32,8 ✗ |
+| … Q (thấp hơn app) | 1,05 | 0,79 ✓ | 0,55 ✓ |
+| … sai nhịp trung vị (bpm) | 0,87 | 0,87 ✓ | 0,78 ✓ |
+| 12 người thi (chỉ báo cáo): khó phân biệt | 0,7 ± 1,1% | 2,8 ± 3,0% | 24,3 ± 3,6% |
+| 12 người thi: Q · sai nhịp (bpm) | 0,85 · 1,5 | 0,49 · 1,4 | 0,23 · 1,2 |
+
+Quyết định theo `RULE_D`: `go: []`, **không chạy final, app giữ PhysioMix vòng 9**. Tách miền đã sửa đúng lỗi của bước B:
+cả hai model không còn lùi ở cổ tay tập (physioflow_g bước B: Q cổ tay 0,950; physioflow_d: 0,574). physioflow_d trượt
+duy nhất điều kiện độ khó phân biệt: hơn app 28,8 điểm nhưng ngưỡng 32,8, vì SD giữa 3 lần chia trên 4 người validation
+(2 người mỗi bên) là 16,4. Trên 12 người thi (chỉ báo cáo), physioflow_d đạt 24,3 ± 3,6% so với 0,7% của app, gần
+physioflow_g bước B (31,8%) mà không đánh đổi bài cũ.
+
+Suy luận (chưa kiểm chứng): với 4 người validation, luật quá nhiễu để xác nhận một khác biệt cỡ 25–30 điểm. Một vòng tiếp
+theo nên khoá luật trước với nhiều người validation hơn (ví dụ 6 người, nhiều lần chia hơn) rồi chạy 3 seed physioflow_d
+(ước tính 6–8 GPU-giờ). Chưa chạy, chờ đồng ý.
 
 ## Giới hạn
 

@@ -66,7 +66,36 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 ### Neural waveform models
 
-The current **04 PPG morphology** page keeps the original three-Gaussian
+`assets/neural/manifest.json` ships three generators of a normalized 30 s PPG strip at 40 Hz (no paired IR/RED, no
+calibrated SpO₂):
+
+| Model | Inputs → output | Network | Status |
+|---|---|---|---|
+| **PhysioMix** (round 9) | noise + condition (dataset/site, rate, irregularity, amplitude) → 1,200 samples | Conditional GAN: constructed beat sequence, 6-harmonic pulse head, 8 dilated TCN blocks with FiLM, wrist-motion term; 3-scale spectral-norm critic on the signal and its derivatives | App model, selected on validation only |
+| **PhysioFlow** (round 10) | same | Rectified-flow 1-D U-Net (6.9 M parameters), 16 Heun steps from noise; no critic | More realistic on 4 of 6 old datasets, ~100× slower; not selected (wrist guard) |
+| LSM-GAN | noise only | Unconditioned GAN trained on BIDMC | Comparison only; no rate control |
+
+Realism is judged on people never used for training. Three judges are used:
+
+- A person-grouped C2ST with a small derivative CNN.
+- Since step C, the frozen PaPaGei-S PPG foundation model. It ranks the generators like the CNN (Spearman 0.88).
+- Independent physiology features.
+
+On everyday wrist PPG (GalaxyPPG, Empatica E4), every model is still largely detectable. The main giveaway is the
+5–8 Hz texture.
+
+Step D separated everyday wrist from wrist exercise as its own condition. The retrained PhysioFlow kept the old
+validation and reached 24% "indistinguishable" on 12 unseen GalaxyPPG people, against 0.7% for the app. It did not
+clear the pre-registered validation margin, so the app keeps PhysioMix.
+
+Evidence and rules are in [docs/physioflow/REPORT_VI.md](docs/physioflow/REPORT_VI.md). A plain-language page and a client
+presentation page (stage-by-stage generation, GAN critic, PhysioFlow denoising, training videos) are in
+[docs/model-report](docs/model-report/README.md). These are engineering evaluations of waveform shape and rate
+following, not clinical validation, and they were not measured on the Pi/DAC/OPT101.
+
+#### Earlier models (history)
+
+The **04 PPG morphology** page keeps the original three-Gaussian
 generator and offers the LSM-GAN sequence as an experimental model. The
 cWGAN-GP checkpoint below is retained for research comparison; it is not the
 current sequence source. Both neural models were trained from BIDMC 1.0.0 PPG
