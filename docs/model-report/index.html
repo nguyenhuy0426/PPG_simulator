@@ -10,7 +10,7 @@
 <main class="simple-main">
 
 <header class="simple-hero">
-  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 14/10/2026</p>
+  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 17/10/2026</p>
   <h1>Máy tạo nhịp tim giả, và AI “vẽ” nhịp tim giỏi đến đâu</h1>
   <p class="lede">Thiết bị phát ra ánh sáng nhấp nháy giống hệt mạch máu đập dưới đầu ngón tay, để thử các máy đo nhịp tim.
     Phần AI chỉ làm một việc: <b>vẽ ra dạng sóng nhịp tim (PPG) trông giống của người thật</b>, theo nhịp mình chọn.</p>
@@ -220,6 +220,17 @@
 </section>
 
 <section>
+  <h2>Xác nhận PhysioFlow với 6 người validation (bước E, đã xong)</h2>
+  <p class="lede">Khoá luật mới trước khi train: 6 người GalaxyPPG để chọn model (thay vì 4), chấm 5 lần chia, train 3 seed PhysioFlow bước D.</p>
+  <ul class="checks">
+    <li>Cả 3 seed <b>không tệ đi</b> ở bài kiểm tra cũ (trung bình S_arm 0,440, Q cổ tay khi tập 0,585, giới hạn 0,587).</li>
+    <li>Trên 6 người validation, PhysioFlow hơn app <b>25,6 điểm</b> (app 0,05%), 3 seed gần như bằng nhau, nhưng luật đòi hơn 32,5 vì điểm vẫn dao động mạnh giữa các cách chia người (± 16) → <b>giữ PhysioMix vòng 9</b>.</li>
+    <li>Chỉ để báo cáo, trên 12 người chưa từng thấy: PhysioFlow <b>33%</b> khó phân biệt (app 0,4%), sai lệch hình dạng 0,21 (app 0,88).</li>
+  </ul>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/galaxy_e.json</code>. 3 seed, Kaggle 2 × T4, 6,6 giờ. Không đổi luật sau khi thấy điểm.</p>
+</section>
+
+<section>
   <h2>Kế hoạch tiếp theo</h2>
   <div class="plan">
     <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
@@ -243,9 +254,9 @@
       <p class="status done">Xong: hai giám khảo xếp hạng gần như nhau (xem ở trên)</p></article>
   </div>
   <div class="plan">
-    <article><span class="step">E</span><h3>Xác nhận PhysioFlow bước D (đề xuất)</h3>
-      <p>Khoá luật mới với nhiều người validation hơn (khoảng 6 người, nhiều lần chia hơn) để điểm bớt dao động, rồi train 3 seed PhysioFlow bước D.
-        Khoảng 6–8 giờ GPU.</p><p class="status next">Đề xuất, chờ đồng ý</p></article>
+    <article><span class="step">E</span><h3>Xác nhận PhysioFlow bước D</h3>
+      <p>Khoá luật mới với 6 người validation và 5 lần chia, rồi train 3 seed PhysioFlow bước D (6,6 giờ GPU).</p>
+      <p class="status done" id="plan-e">Xong: giữ được bài cũ, hơn app 25,6 điểm nhưng ngưỡng 32,5 → giữ PhysioMix</p></article>
   </div>
   <p class="callout info">Khi nào chốt? Model nào thắng bài thi mới theo luật đã khoá thì vào app. Nếu không model nào thắng rõ, giữ PhysioMix vòng 9.</p>
 </section>

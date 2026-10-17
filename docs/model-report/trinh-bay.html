@@ -11,14 +11,14 @@
 <main class="simple-main">
 
 <header class="simple-hero pres-hero">
-  <p class="eyebrow">PPG Simulator · bản trình bày cho khách hàng · cập nhật <span id="updated">14/10/2026</span></p>
+  <p class="eyebrow">PPG Simulator · bản trình bày cho khách hàng · cập nhật <span id="updated">17/10/2026</span></p>
   <h1>AI vẽ sóng nhịp tim cho máy giả lập PPG: cách nó hoạt động và được chấm điểm ra sao</h1>
   <p class="lede">Máy giả lập phát ánh sáng nhấp nháy giống mạch máu đập, để thử các thiết bị đo nhịp tim. Mạng nơ-ron trong máy làm một việc:
     <b>vẽ ra 30 giây sóng PPG giống của người thật</b>, theo nhịp tim và kiểu người mình chọn.</p>
   <nav class="pres-nav" aria-label="Mục lục">
     <a href="#dang-lam">Đang làm gì</a><a href="#physiomix">PhysioMix vẽ sóng</a><a href="#gan">Hoạ sĩ & giám khảo</a>
     <a href="#physioflow">PhysioFlow</a><a href="#train">Video train</a><a href="#cham">Chấm điểm</a>
-    <a href="#buoc-c">Bước C</a><a href="#buoc-d">Bước D</a><a href="#ket-luan">Kết luận</a>
+    <a href="#buoc-c">Bước C</a><a href="#buoc-d">Bước D</a><a href="#buoc-e">Bước E</a><a href="#ket-luan">Kết luận</a>
   </nav>
 </header>
 
@@ -39,7 +39,7 @@
       <h3>Cho model học cổ tay đời thường mà không quên cổ tay khi tập</h3>
       <p>Thêm nhãn mới “cổ tay đời thường” (đồng hồ Empatica E4 của bộ GalaxyPPG) bên cạnh “cổ tay khi tập”, train lại PhysioMix và PhysioFlow
         trên GPU. Luật chọn model <b>khoá trong code trước khi train</b> và chỉ dùng dữ liệu validation.</p>
-      <p class="status done" id="d-status">Xong lần thử: tiến bộ rõ, nhưng chưa đủ chắc theo luật → giữ PhysioMix</p>
+      <p class="status done" id="d-status">Xong lần thử: tiến bộ rõ, nhưng chưa đủ chắc theo luật → giữ PhysioMix. Bước E (6 người, 3 seed): vẫn chưa qua luật</p>
     </article>
   </div>
   <ol class="pres-timeline" aria-label="Thời gian biểu">
@@ -48,6 +48,7 @@
     <li><b>B2</b> LSM-GAN học nhiều dữ liệu <span class="ok">xong · chỉ để so</span></li>
     <li><b>C</b> Giám khảo độc lập <span class="ok" id="c-chip">xong</span></li>
     <li><b>D</b> Tách hai loại cổ tay <span class="ok" id="d-chip">xong · chưa qua luật</span></li>
+    <li><b>E</b> Xác nhận với 6 người, 3 seed <span class="ok" id="e-chip">xong · chưa qua luật</span></li>
   </ol>
 </section>
 
@@ -280,6 +281,41 @@
   </div>
 </section>
 
+<section id="buoc-e">
+  <h2>Bước E: xác nhận PhysioFlow với 6 người validation và 3 seed</h2>
+  <div id="e-results">
+  <p class="lede">Luật mới khoá trong code trước khi train: <b>6 người</b> GalaxyPPG để chọn model (3 người mỗi bên khi chia), <b>5 lần chia</b>,
+    train lại PhysioFlow bước D ở <b>3 seed</b> (6 người còn lại để học). 12 người thi vẫn chỉ để báo cáo.</p>
+  <div class="tablewrap"><table class="scoregrid">
+    <thead><tr><th>Điều kiện (chỉ dùng validation)</th><th>PhysioFlow bước E (trung bình 3 seed)</th></tr></thead>
+    <tbody>
+      <tr><td>Mọi seed đạt mọi cổng của bài kiểm tra cũ</td><td class="hi">✓</td></tr>
+      <tr><td>Điểm tổng bài cũ S_arm ≤ 0,559 (thấp = tốt)</td><td class="hi">0,440 ✓</td></tr>
+      <tr><td>Không tệ đi ở cổ tay khi tập (Q ≤ 0,587)</td><td class="hi">0,585 ✓ (seed 123 riêng: 0,684)</td></tr>
+      <tr><td>Khó phân biệt trên 6 người validation: hơn app &gt; 2 × độ dao động</td><td class="lo">25,6% so với 0,05% (cần hơn 32,5) ✗</td></tr>
+      <tr><td>Sai lệch hình dạng Q thấp hơn app (0,89)</td><td class="hi">0,37 ✓</td></tr>
+      <tr><td>Sai nhịp không tệ hơn quá 2 nhịp/phút (app 1,2)</td><td class="hi">1,0 ✓</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> 3 seed cho điểm gần như bằng nhau (24–27%), nên kết quả không do may mắn của một lần train. Nhưng điểm vẫn
+    dao động mạnh tuỳ cách chia người (± 16, gần như bước D), và luật đòi hơn app gấp đôi mức đó. Theo luật đã khoá,
+    <b>app giữ PhysioMix vòng 9</b>. Không đổi luật sau khi đã thấy điểm.</p>
+  <p class="callout info">Trong cả 5 cách chia, PhysioFlow đều hơn app (6 đến 43 điểm). Chính người thật khác cũng chỉ đạt 23–100% tuỳ cách chia:
+    độ dao động đến từ việc chọn ai làm mẫu, chung cho mọi model. Đây là nhận xét sau khi thấy điểm, không dùng để quyết định.</p>
+  <figure class="pres-fig">
+    <figcaption>Chỉ để báo cáo, không dùng để quyết định: 12 người thi GalaxyPPG chưa từng thấy (5 lần chia đôi người)</figcaption>
+    <div class="bars" role="img" aria-label="Điểm khó phân biệt trên 12 người thi, bước E">
+      <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:70%" class="ref"></i></span><b>70%</b></div>
+      <div class="bar"><span class="name">PhysioFlow bước E (3 seed)</span><span class="track"><i style="width:33%" class="flow"></i></span><b>33%</b></div>
+      <div class="bar"><span class="name">PhysioFlow trong app</span><span class="track"><i style="width:2.5%" class="flow"></i></span><b>2,5%</b></div>
+      <div class="bar"><span class="name">PhysioMix trong app</span><span class="track"><i style="width:0.4%" class="mix"></i></span><b>0,4%</b></div>
+    </div>
+    <p class="note">Sai lệch hình dạng Q trên 12 người thi: PhysioFlow bước E 0,21, PhysioMix app 0,88 (thấp = tốt). Sai nhịp: 1,2 / 1,5 nhịp/phút.
+      Nguồn: <code>docs/physioflow/loop/galaxy_e.json</code> (Kaggle 2 × T4, 6,6 giờ).</p>
+  </figure>
+  </div>
+</section>
+
 <section id="ket-luan">
   <h2>Kết luận và bước tiếp theo</h2>
   <div id="conclusion">
@@ -287,10 +323,11 @@
     <li><b>Model trong app không đổi:</b> PhysioMix vòng 9. Không model mới nào qua luật đã khoá trước.</li>
     <li><b>Giám khảo đáng tin:</b> PaPaGei (đã học 57.000 giờ PPG thật) xếp hạng giống giám khảo của dự án (tương quan 0,88).</li>
     <li><b>Lỗi còn lại đã rõ:</b> trên đồng hồ cổ tay đời thường, sóng AI lộ ở dải 5–8 Hz (kết cấu rung nhỏ), không phải ở nhịp chính.</li>
-    <li><b>Hướng đúng đã thấy:</b> tách nhãn “cổ tay đời thường” giữ được bài cũ và đưa PhysioFlow từ 3% lên 24% trên người chưa thấy; còn thiếu bằng chứng đủ chắc theo luật.</li>
+    <li><b>Hướng đúng đã thấy:</b> tách nhãn “cổ tay đời thường” giữ được bài cũ và đưa PhysioFlow từ 3% lên 24% (bước D) rồi 33% (bước E, 3 seed) trên người chưa thấy.</li>
+    <li><b>Vẫn chưa qua luật:</b> ở bước E, 3 seed ổn định nhưng điểm dao động mạnh giữa các cách chia 6 người validation, nên mức hơn 25,6 điểm vẫn dưới ngưỡng 32,5.</li>
   </ol>
-  <p class="callout info"><b>Bước tiếp theo đề xuất:</b> khoá một luật mới với nhiều người validation hơn (ví dụ 6 người và chấm nhiều lần chia hơn) để điểm bớt dao động,
-    rồi train 3 seed PhysioFlow bước D. Chi phí khoảng 6–8 giờ GPU. Cần khách hàng đồng ý trước.</p>
+  <p class="callout info"><b>Nếu muốn đi tiếp</b> (chưa làm, cần khách hàng đồng ý): khoá trước một luật so cặp theo từng cách chia (cùng người, cùng mẫu cho app và model),
+    rồi kiểm tra trên người chưa dùng để chọn model. Không áp luật mới lên kết quả bước E đã thấy.</p>
   </div>
   <p class="note">Tất cả kết quả trên trang là đánh giá kỹ thuật của dạng sóng 30 giây đã chuẩn hoá. Không phải kiểm định lâm sàng, không đo SpO₂,
     chưa đo trên phần cứng Pi/DAC/OPT101.</p>

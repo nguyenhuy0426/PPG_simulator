@@ -367,7 +367,48 @@ physioflow_g bước B (31,8%) mà không đánh đổi bài cũ.
 
 Suy luận (chưa kiểm chứng): với 4 người validation, luật quá nhiễu để xác nhận một khác biệt cỡ 25–30 điểm. Một vòng tiếp
 theo nên khoá luật trước với nhiều người validation hơn (ví dụ 6 người, nhiều lần chia hơn) rồi chạy 3 seed physioflow_d
-(ước tính 6–8 GPU-giờ). Chưa chạy, chờ đồng ý.
+(ước tính 6–8 GPU-giờ). Chưa chạy, chờ đồng ý. (Đã chạy ở bước E bên dưới.)
+
+## Bước E: xác nhận PhysioFlow bước D với 6 người validation (xong: không thay app theo luật)
+
+Pack `ppg_physiomix_v3e` (`fresh_galaxy.DAILY_SPLITS`, dựng trong bộ nhớ từ pack v3g như v3d, sha256 nội dung ghim
+`39b26706…`, có test đối chiếu pack thật): 6 trong 12 người train GalaxyPPG làm validation cổ tay đời thường (seed
+20261017: P04, P08, P15, P20, P21, P22; 619 cửa sổ), 6 người còn lại train (591 cửa sổ), 12 người thi giữ nguyên.
+`experiment_e.py` train công thức physioflow_d (F10_flow_unif_stop01, sampler F10_flow_unif_stop01_s16_w1) ở seed 42, 123,
+2026 (hai seed song song trên 2 × T4, rồi seed thứ ba). Chấm 5 lần chia (3 người mỗi bên, 5 cách chia khác nhau).
+
+`RULE_E` (khoá trong code trước khi train, commit `0e07810a`, file `rules/FROZEN_E.json`, chỉ validation): PhysioFlow thay
+PhysioMix vòng 9 chỉ khi (1) mọi seed đạt mọi cổng validation cũ và trung bình seed S_arm ≤ 0,559, Q cổ tay tập ≤ 0,587;
+(2) trên 6 người validation, “khó phân biệt” trung bình seed hơn PhysioMix app > 2 × max(SD giữa seed, SD giữa các lần
+chia trung bình theo seed, SD lần chia của app); (3) Q thấp hơn app; (4) sai nhịp trung vị không tệ hơn quá 2 bpm. 12 người
+thi chỉ báo cáo, chấm sau khi `DECISION_E.json` đã ghi. Chạy thử CPU (4 bước) chạy trọn tới quyết định. Kernel
+`halovie2412/ppg-galaxy-e-v1` (2 × T4, 6,6 h; mã nguồn trong kernel khớp băm với commit). Bằng chứng: `loop/galaxy_e.json`.
+
+| | PhysioMix app | physioflow_e (3 seed) |
+|---|---|---|
+| Validation cũ: mọi seed đạt cổng | | ✓ |
+| Validation cũ: S_arm trung bình (≤ 0,559) | 0,530 (vòng 9) | 0,440 ✓ (0,425 / 0,448 / 0,446) |
+| Validation cũ: Q cổ tay tập trung bình (≤ 0,587) | 0,527 (vòng 9) | 0,585 ✓ (0,503 / 0,684 / 0,570) |
+| 6 người validation: khó phân biệt | 0,05 ± 0,07% | 25,6% (24,3 / 26,7 / 25,9), SD seed 1,2, SD lần chia 16,3 |
+| … hơn app / ngưỡng 2 × SD lớn nhất | | 25,6 / 32,5 ✗ |
+| … Q (thấp hơn app) | 0,89 | 0,37 ✓ |
+| … sai nhịp trung vị (bpm) | 1,16 | 0,99 ✓ |
+| 12 người thi (chỉ báo cáo): khó phân biệt | 0,4 ± 0,9% | 33,0% (31,9 / 34,4 / 32,8) |
+| 12 người thi: Q · sai nhịp (bpm) | 0,88 · 1,50 | 0,21 · 1,23 |
+
+Người thật khác (mức trần): 75,7 ± 32,2% trên validation, 69,9 ± 20,6% trên 12 người thi. PhysioFlow app (nhắc là
+`wrist`): 0,5% validation, 2,5% thi.
+
+Quyết định theo `RULE_E`: `ship: false`. **App giữ PhysioMix vòng 9**, không sửa `assets/neural`. Trượt duy nhất điều kiện
+(2): 3 seed rất giống nhau (SD 1,2), nhưng SD giữa 5 lần chia vẫn 16,3, gần như bước D (16,4), nên ngưỡng 32,5 vẫn cao hơn
+mức hơn 25,6. Không đổi luật sau khi đã thấy điểm. Q cổ tay tập trung bình 0,585 sát giới hạn 0,587; riêng seed 123 là
+0,684.
+
+Đọc từng lần chia (sự kiện từ `DECISION_E.json`): mức hơn app theo từng lần chia là 6–43 điểm, cả 5 lần đều dương; độ dao
+động chủ yếu do chọn ai làm “người thật”: chính người thật khác cũng chỉ đạt 23–100% tuỳ lần chia. Suy luận (chưa kiểm
+chứng): với 6 người, SD giữa các lần chia đo độ khó của cách chia (chung cho app và model), nên luật “2 × SD lần chia” gần như
+không thể đạt dù model hơn đều đặn; một luật sau này nên so cặp theo từng lần chia (cùng người, cùng mẫu). Chưa làm, cần khoá
+luật mới trước và chạy lại trên dữ liệu chưa dùng để chọn (6 người validation này đã dùng ở bước E).
 
 ## Giới hạn
 
