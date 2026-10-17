@@ -43,6 +43,10 @@ GALAXY_SPLIT_SEED = 20261014
 DAILY_DOMAIN = "wrist_daily"
 DAILY_VALIDATION_PEOPLE = 4
 DAILY_SPLIT_SEED = 20261015
+# Step E: the same derivation with 6 of the 12 training people as everyday-wrist validation (its own fixed seed), so
+# the realism margin rests on 3-vs-3 halvings instead of step D's 2-vs-2. protocol -> (validation people, seed).
+DAILY_SPLITS = {"ppg_physiomix_v3d": (DAILY_VALIDATION_PEOPLE, DAILY_SPLIT_SEED),
+                "ppg_physiomix_v3e": (6, 20261017)}
 GROUPS = {"rest": ("adaptation", "baseline", "meditation-1", "meditation-2", "rest-1", "rest-2", "rest-3", "rest-4",
                    "rest-5", "screen-reading"),
           "cognitive": ("tsst-prep", "tsst-speech", "ssst-prep", "ssst-sing", "keyboard-typing", "mobile-typing",
@@ -168,15 +172,18 @@ def extend_pack(v3_root, galaxy_root, output):
     return merged, manifest
 
 
-def daily_wrist(pack, manifest):
+def daily_wrist(pack, manifest, protocol="ppg_physiomix_v3d"):
     """The v3g pack (already verified by load_input) with GalaxyPPG as domain DAILY_DOMAIN: training people stay in
-    'train' except DAILY_VALIDATION_PEOPLE moved to 'validation'; test people stay 'external'. Deterministic, so
-    every worker derives the same pack; content_sha256 records the result."""
+    'train' except the protocol's DAILY_SPLITS count moved to 'validation'; test people stay 'external'.
+    Deterministic, so every worker derives the same pack; content_sha256 records the result."""
     if manifest.get("protocol") != "ppg_physiomix_v3g":
         raise ValueError("Derive the daily-wrist pack only from the v3g pack")
+    count, seed = DAILY_SPLITS[protocol]
     galaxy = np.char.startswith(pack["subject"].astype(str), "galaxyppg:")
     people = sorted(manifest["galaxyppg"]["people"]["train"])
-    validation = sorted(np.random.default_rng(DAILY_SPLIT_SEED).permutation(people)[:DAILY_VALIDATION_PEOPLE].tolist())
+    if count >= len(people):
+        raise ValueError("The daily-wrist split must leave training people")
+    validation = sorted(np.random.default_rng(seed).permutation(people)[:count].tolist())
     out = dict(pack)
     out["domain"] = np.where(galaxy, DAILY_DOMAIN, pack["domain"].astype(str))
     out["split"] = np.where(np.isin(pack["subject"], validation), "validation", pack["split"])
@@ -185,10 +192,10 @@ def daily_wrist(pack, manifest):
         digest.update(np.ascontiguousarray(out[key]).tobytes())
     split_people = {s: sorted(set(out["subject"][galaxy & (out["split"] == s)].tolist())) for s in ("train", "validation",
                                                                                                     "external")}
-    derived = {**manifest, "protocol": "ppg_physiomix_v3d", "base_protocol": manifest["protocol"],
+    derived = {**manifest, "protocol": protocol, "base_protocol": manifest["protocol"],
                "content_sha256": digest.hexdigest(),
                "galaxyppg": {**manifest["galaxyppg"], "domain": DAILY_DOMAIN, "people": split_people,
-                             "daily_split_seed": DAILY_SPLIT_SEED,
+                             "daily_split_seed": seed,
                              "windows": {s: int((galaxy & (out["split"] == s)).sum()) for s in split_people}}}
     return out, derived
 

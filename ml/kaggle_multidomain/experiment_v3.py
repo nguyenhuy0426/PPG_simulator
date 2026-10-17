@@ -38,15 +38,17 @@ VIEW = "v3"
 DATA_SHA256_V3 = "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433"  # ml/runs/physio3-data-v1/VERIFICATION.json
 # The v3 pack plus GalaxyPPG wrist windows of its training people (fresh_galaxy.extend_pack). Chosen by the
 # environment so that spawned training workers load the same pack as their parent.
-# ppg_physiomix_v3d (step D) is derived in memory from the verified v3g file (data_gxu.load_input), so its file
-# checksum is v3g's; the derived content is pinned by DERIVED_CONTENT_SHA256.
+# ppg_physiomix_v3d (step D) and v3e (step E) are derived in memory from the verified v3g file (data_gxu.load_input),
+# so their file checksum is v3g's; the derived content is pinned by DERIVED_CONTENT_SHA256.
 PACKS = {"ppg_physiomix_v3": DATA_SHA256_V3,
          "ppg_physiomix_v3g": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
-         "ppg_physiomix_v3d": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a"}
+         "ppg_physiomix_v3d": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+         "ppg_physiomix_v3e": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a"}
 DERIVED_CONTENT_SHA256 = {
-    "ppg_physiomix_v3d": "e8e32d646b9743d54f7883dfc9666b10c1dc38e71932ad9b8dc258e3bd3684ea"}
-# Domains a pack may add beyond TRAIN_DOMAINS (step D's everyday wrist has train and validation people, no test).
-EXTRA_DOMAINS = {"ppg_physiomix_v3d": {"wrist_daily"}}
+    "ppg_physiomix_v3d": "e8e32d646b9743d54f7883dfc9666b10c1dc38e71932ad9b8dc258e3bd3684ea",
+    "ppg_physiomix_v3e": "39b26706eaf884ffeaa2fbc96cd7280701cb308139315e3dd71c690c417b9534"}
+# Domains a pack may add beyond TRAIN_DOMAINS (the everyday wrist has train and validation people, no test).
+EXTRA_DOMAINS = {"ppg_physiomix_v3d": {"wrist_daily"}, "ppg_physiomix_v3e": {"wrist_daily"}}
 PROTOCOL = os.environ.get("PPG_PACK_PROTOCOL", "ppg_physiomix_v3")
 if PROTOCOL not in PACKS:
     raise ValueError(f"Unknown pack protocol {PROTOCOL}")

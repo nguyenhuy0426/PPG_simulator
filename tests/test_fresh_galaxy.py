@@ -200,3 +200,84 @@ def test_step_d_final_rule_pools_seeds_and_ships_the_best_passing_seed():
     assert decision["ship"] and decision["shipped"] == "physioflow_d_seed2026"
     validation["physioflow_d_seed42"] = row(.50, .55, eligible=False)
     assert not decide_final(summary, validation, "physioflow_d", seeds)["ship"]
+
+
+def _twelve_train_people():
+    galaxy = [f"galaxyppg:P{i:02d}" for i in range(1, 25)]
+    subject = np.array(galaxy+["w1"])
+    split = np.array(["train"]*12+["external"]*12+["train"])
+    pack = dict(signal=np.arange(25*4, dtype=np.float32).reshape(25, 4), subject=subject, split=split,
+                domain=np.array(["wrist"]*25))
+    manifest = dict(protocol="ppg_physiomix_v3g", windows_sha256="x",
+                    galaxyppg=dict(people=dict(train=galaxy[:12], external=galaxy[12:])))
+    return pack, manifest
+
+
+def test_step_e_pack_moves_six_training_people_and_keeps_the_step_d_pack():
+    pack, manifest = _twelve_train_people()
+    e, e_manifest = fg.daily_wrist(pack, manifest, "ppg_physiomix_v3e")
+    d, d_manifest = fg.daily_wrist(pack, manifest)
+    people = e_manifest["galaxyppg"]["people"]
+    assert e_manifest["protocol"] == "ppg_physiomix_v3e" and e_manifest["galaxyppg"]["daily_split_seed"] == 20261017
+    assert len(people["validation"]) == 6 and len(people["train"]) == 6
+    assert people["external"] == manifest["galaxyppg"]["people"]["external"]
+    assert len(d_manifest["galaxyppg"]["people"]["validation"]) == 4
+    assert e_manifest["content_sha256"] != d_manifest["content_sha256"]
+    assert fg.daily_wrist(*_twelve_train_people(), "ppg_physiomix_v3e")[1]["content_sha256"] == e_manifest["content_sha256"]
+    assert e["split"][-1] == "train" and e["domain"][-1] == "wrist"  # non-GalaxyPPG rows are untouched
+    with pytest.raises(ValueError):
+        fg.daily_wrist(*_v3g_like(), "ppg_physiomix_v3e")  # 6 validation people would leave none to train
+
+
+def test_derived_packs_match_their_pinned_content():
+    from pathlib import Path
+    from ml.kaggle_multidomain.data_gxu import load_input
+    from ml.kaggle_multidomain.experiment_v3 import DERIVED_CONTENT_SHA256, PACKS
+    root = Path(__file__).resolve().parents[1]/"ml"/"runs"/"halovie-datasets-v2"
+    if not (root/"ppg-physio3g-data-v1"/"windows.npz").exists():
+        pytest.skip("local v3g pack not present")
+    for protocol in ("ppg_physiomix_v3d", "ppg_physiomix_v3e"):
+        _, manifest = load_input(root, protocol)
+        assert manifest["windows_sha256"] == PACKS[protocol]
+        assert manifest["content_sha256"] == DERIVED_CONTENT_SHA256[protocol]
+    _, manifest = load_input(root, "ppg_physiomix_v3e")
+    assert manifest["galaxyppg"]["people"]["validation"] == [
+        "galaxyppg:P04", "galaxyppg:P08", "galaxyppg:P15", "galaxyppg:P20", "galaxyppg:P21", "galaxyppg:P22"]
+
+
+def _seed_rows(values, sd=4., q=.4, rate=1.5):
+    from ml.kaggle_multidomain.experiment_e import name
+    return {name(s): _entry(v, q, rate, sd) for s, v in zip((42, 123, 2026), values)}
+
+
+def _old_rows(*wrist, eligible=(True, True, True)):
+    from ml.kaggle_multidomain.experiment_e import name
+    return {name(s): dict(S_arm=.45, wrist_Q=w, eligible=e, ok=bool(e and w <= .587))
+            for s, w, e in zip((42, 123, 2026), wrist, eligible)}
+
+
+def test_step_e_rule_needs_a_gain_beyond_seed_and_halving_noise():
+    from ml.kaggle_multidomain.experiment_e import decide, RULE_E
+    from ml.kaggle_multidomain.experiment_v3 import DERIVED_CONTENT_SHA256
+    assert DERIVED_CONTENT_SHA256["ppg_physiomix_v3e"] in RULE_E and "5 halvings" in RULE_E
+    assert "S_arm <= 0.559" in RULE_E and "Q <= 0.587" in RULE_E and "reported only" in RULE_E
+    app = dict(physiomix=_entry(1., .8, sd=.5))
+    old = _old_rows(.55, .60, .55)
+    decision = decide(dict(app, **_seed_rows((28., 34., 31.))), old)
+    # Seed SD 3, halving SD 4 -> margin 8 < gap 30. Seed 123 is the most realistic but misses wrist Q on its own.
+    assert decision["margin"] == pytest.approx(8.) and decision["gap"] == pytest.approx(30.)
+    assert decision["ship"] and decision["shipped"] == "physioflow_e_seed2026"
+    # The per-seed halving SD alone can block the gain (step D's failure mode).
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), sd=16.)), old)["checks"]["realism"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), q=.9)), old)["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), rate=4.)), old)["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.))), _old_rows(.55, .60, .55, eligible=(1, 0, 1)))["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.))), _old_rows(.60, .60, .60))["ship"]  # mean wrist Q
+
+
+def test_step_e_rule_fails_an_unmeasurable_summary():
+    from ml.kaggle_multidomain.experiment_e import decide
+    rows = _seed_rows((28., 34., 31.))
+    rows["physioflow_e_seed123"]["indistinguishable"] = dict(mean=None, sd=None)
+    decision = decide(dict(physiomix=_entry(1., .8, sd=.5), **rows), _old_rows(.55, .55, .55))
+    assert decision["margin"] is None and not decision["checks"]["realism"] and not decision["ship"]

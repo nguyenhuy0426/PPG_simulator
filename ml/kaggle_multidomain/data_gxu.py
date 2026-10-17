@@ -204,11 +204,11 @@ def _names(archive):
 
 
 def load_input(root, protocol=PROTOCOL):
-    """Load the single verified pack of this protocol below root. ppg_physiomix_v3d is derived in memory from the
-    verified v3g pack (fresh_galaxy.daily_wrist), not stored."""
-    if protocol == "ppg_physiomix_v3d":
+    """Load the single verified pack of this protocol below root. ppg_physiomix_v3d and v3e are derived in memory from
+    the verified v3g pack (fresh_galaxy.daily_wrist), not stored."""
+    if protocol in ("ppg_physiomix_v3d", "ppg_physiomix_v3e"):
         from ml.kaggle_multidomain.fresh_galaxy import daily_wrist
-        return daily_wrist(*load_input(root, "ppg_physiomix_v3g"))
+        return daily_wrist(*load_input(root, "ppg_physiomix_v3g"), protocol)
     paths = [p for p in Path(root).rglob("windows.npz") if (p.parent/"manifest.json").exists()
              and json.loads((p.parent/"manifest.json").read_text()).get("protocol") == protocol]
     if len(paths) != 1:

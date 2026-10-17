@@ -498,7 +498,7 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
                                   "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                   "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final",
                                   "flow10e_pilot", "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                  "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final"])
+                                  "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
@@ -544,7 +544,8 @@ def test_fresh_galaxy_kernel_is_cpu_only_and_mounts_its_own_datasets(tmp_path):
 
 
 @pytest.mark.parametrize("mode,module", [("galaxy_b_pilot", "experiment_galaxy"), ("lsm_galaxy", "experiment_lsm_galaxy"),
-                                         ("galaxy_d_pilot", "experiment_daily"), ("galaxy_d_final", "experiment_daily")])
+                                         ("galaxy_d_pilot", "experiment_daily"), ("galaxy_d_final", "experiment_daily"),
+                                         ("galaxy_e", "experiment_e")])
 def test_galaxy_kernels_select_the_v3g_pack_before_importing_training_code(tmp_path, mode, module):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2, owner="other")
@@ -558,6 +559,9 @@ def test_galaxy_kernels_select_the_v3g_pack_before_importing_training_code(tmp_p
         # The daily-wrist pack is derived from the v3g pack; the final mounts its own pilot's output.
         assert "ppg_physiomix_v3d" in run and f"'--stage', '{mode.split('_')[2]}'" in run
         assert meta["kernel_sources"] == ([] if mode.endswith("pilot") else ["other/ppg-galaxy-d-pilot-v1"])
+    if mode == "galaxy_e":
+        # Step E derives the v3e pack (6 everyday-wrist validation people) and trains all 3 seeds in one kernel.
+        assert "ppg_physiomix_v3e" in run and meta["kernel_sources"] == [] and meta["id"] == "other/ppg-galaxy-e-v1"
 
 
 def test_staged_datasets_hold_one_pack_and_the_round9_decision(tmp_path):
