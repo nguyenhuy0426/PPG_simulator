@@ -4,7 +4,7 @@ led_driver — pure theoretical calculations for the PPG TX LED driver.
 This package contains NO hardware access of any kind. It imports only the
 Python standard library: no GPIO, no I2C, no SMBus, no Blinka, no grove.py.
 Everything here is arithmetic over a *design hypothesis*, so that the numbers
-in docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md are
+in docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md are
 produced by executable code instead of by hand.
 
 Evidence labels used throughout this package follow the project convention:

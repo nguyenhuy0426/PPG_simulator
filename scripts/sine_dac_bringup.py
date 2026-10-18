@@ -1,5 +1,5 @@
 """
-test_sin_dac.py — Output a continuous sine waveform via MCP4725 DAC.
+sine_dac_bringup.py — Output a continuous sine waveform via MCP4725 DAC.
 
 Uses the adafruit-circuitpython-mcp4725 library (same as hw/dac_manager.py).
 The 12-bit DAC outputs 0-4095 counts, mapped to 0-VDD analog voltage.

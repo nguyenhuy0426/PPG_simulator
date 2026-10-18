@@ -13,7 +13,7 @@ current sink.
 | `docs/ds_linhkien/2SC1815L-GR.PDF` | 2SC1815-GR | Datasheet physically present in the repo |
 | `led_driver/params.py` (`TransistorSpec`, `Q_2SC1815`) | 2SC1815 | The values every calculation in `led_driver/` uses |
 | `docs/hardware/PPG_PROTOTYPE_{SCHEMATIC,BOM,WIRING_AND_TEST_POINTS}.md` | 2SC1815 | Electrical documentation |
-| `docs/superpowers/ppg_design_audit/*` | 2SC1815 | The audit the driver values were derived in |
+| `docs/hardware/design-audit/*` | 2SC1815 | The audit the driver values were derived in |
 | `docs/system_3d/README.md`, `docs/system_3d/build_system.py` | 2N4401 | 3D case model labels only — no electrical model behind them |
 | Operator statement (2026-09) + hand-drawn schematic | 2N4401 | The part actually soldered, per the user |
 

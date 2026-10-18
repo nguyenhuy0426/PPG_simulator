@@ -11,7 +11,7 @@
 
 This document freezes the **authoritative, user-confirmed hardware and optical
 facts** for the PPG simulator project, and defines the **evidence labelling
-system** that every later document in `docs/superpowers/ppg_design_audit/` must
+system** that every later document in `docs/hardware/design-audit/` must
 use.
 
 This document is the **single source of truth for hardware facts**. Where any
@@ -37,7 +37,7 @@ finding in the later audit — not silently reconciled.
    **read-only** until the user explicitly approves the final design
    specification.
 3. New artefacts are written only under
-   `docs/superpowers/ppg_design_audit/`.
+   `docs/hardware/design-audit/`.
 4. Every technical claim in later documents carries exactly one evidence label
    from Section 6.
 
@@ -280,7 +280,7 @@ libraries), `**/__pycache__/`, `.codegraph/`, `.vscode/`.
 
 ## 6. Evidence Labels (mandatory in all later documents)
 
-Every technical claim in `docs/superpowers/ppg_design_audit/` must carry exactly
+Every technical claim in `docs/hardware/design-audit/` must carry exactly
 one of these labels. Labels do not compose; if a claim mixes sources, split it
 into separate claims.
 

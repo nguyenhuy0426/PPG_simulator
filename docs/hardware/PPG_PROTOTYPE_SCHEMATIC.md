@@ -4,7 +4,7 @@
 VERIFIED. This is not a final PCB; no Gerbers exist or will be generated at
 this stage.**
 
-Source of every value: `docs/superpowers/ppg_design_audit/04_STAGE1_RECALCULATION_REVIEW.md`
+Source of every value: `docs/hardware/design-audit/04_STAGE1_RECALCULATION_REVIEW.md`
 (the Stage 1 recalculation) and the executable `led_driver` package. Evidence
 labels follow `00_BASE_CONTEXT.md` §6.
 

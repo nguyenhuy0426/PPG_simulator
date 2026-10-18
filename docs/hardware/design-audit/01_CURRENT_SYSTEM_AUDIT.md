@@ -4,7 +4,7 @@
 **Repository:** `/home/huynn/final_project/PPG_simulator_raspi`
 **Branch:** `huynn` — HEAD `7b29689`
 **Date:** 2026-07-29
-**Authority:** `docs/superpowers/ppg_design_audit/00_BASE_CONTEXT.md` (read first; it wins over every
+**Authority:** `docs/hardware/design-audit/00_BASE_CONTEXT.md` (read first; it wins over every
 source file, phase document, completion report and prior Claude-generated document cited below)
 
 ---
@@ -39,7 +39,7 @@ One **non-approved** label was found in the codebase and is reported as a defect
 
 | Area | Items |
 |---|---|
-| Base context | `docs/superpowers/ppg_design_audit/00_BASE_CONTEXT.md` |
+| Base context | `docs/hardware/design-audit/00_BASE_CONTEXT.md` |
 | Entry point | `main.py` |
 | Configuration | `config.py`, `config_store.py`, `requirements.txt` |
 | Calibration SSOT | `calibration.py` |

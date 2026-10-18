@@ -1,5 +1,4 @@
 # Full headless software suite: PPG_DRY_RUN=1 python -m pytest -q
+# Pillow for scripts/smoke_ui.py screenshots already comes from base.txt.
 -r base.txt
 pytest>=9.0,<10
-# Optional screenshot capture for scripts/smoke_ui.py (requires a display).
-pillow>=12.0,<13

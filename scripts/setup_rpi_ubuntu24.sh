@@ -349,7 +349,7 @@ nothing about MCP4725 output voltage, LM358P input common-mode or output
 headroom, LED current through the sense resistors, OPT101 response, or optical
 isolation between the Red and IR compartments. The 5 V driver values in
 led_driver/ remain a DESIGN HYPOTHESIS until measured with a multimeter and an
-oscilloscope. See docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md
+oscilloscope. See docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md
 EOF
 
 exit "${VERIFY_STATUS}"

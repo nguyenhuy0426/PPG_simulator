@@ -347,7 +347,7 @@ Every one of those requires **physical measurement** — a multimeter for DC
 operating points, an oscilloscope for waveform, timing and loop stability. Until
 those measurements exist, the 5 V driver design in
 [led_driver/](../../led_driver/) and
-[docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md](../superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md)
+[docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md](../hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md)
 is a **calculated hypothesis**, and the 261 passing tests are evidence about
 *arithmetic*, not about *hardware*.
 
@@ -411,7 +411,7 @@ Pi. The following remain open and must be measured on the bench:
 | [requirements/base.txt](../../requirements/base.txt) | host-portable runtime deps |
 | [requirements/rpi.txt](../../requirements/rpi.txt) | Pi-only hardware deps, with reasons |
 | [config.py](../../config.py) | addresses, channels, references, `DRY_RUN` |
-| [docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md](../superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md) | the 5 V driver design hypothesis |
+| [docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md](../hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md) | the 5 V driver design hypothesis |
 
 **Never copy `.venv` between the laptop and the Pi.** The wheels are
 architecture-specific and the `bin/` shebangs hardcode absolute paths. Each

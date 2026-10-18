@@ -9,7 +9,7 @@ Sources
                      the two isolated optical compartments.
 [VERIFIED-DATASHEET] LM358 and 2SC1815 limits quoted below come from the
                      datasheets already collected in this repository under
-                     docs/superpowers/ppg_design_audit/.
+                     docs/hardware/design-audit/.
 [ENGINEERING-INFERENCE] The candidate component values (R_sense, divider, R_B).
 
 The candidate values are a HYPOTHESIS. They have not been built, probed or
