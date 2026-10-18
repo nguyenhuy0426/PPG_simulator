@@ -1,3 +1,4 @@
+import gc
 import time
 import tkinter as tk
 import customtkinter as ctk
@@ -39,6 +40,10 @@ class CTkApp(ctk.CTk):
         self.engine = SignalEngine.get_instance()
         self._closing = False
         self._shutdown_requested = False
+        self._tk_gc_pending = False
+        # The "all" tag reaches every Tk window, so each widget destroy (the
+        # Recordings list rebuild, a closed Toplevel) queues one collection.
+        self.bind_all("<Destroy>", self._queue_tk_gc, add="+")
         u = self.layout.ui
         header_pad = u(14)
         # ── Navigation rail (overlays the page when expanded) ──
@@ -108,6 +113,27 @@ class CTkApp(ctk.CTk):
         # window managers and Xvfb.
         self.after_idle(self._maximize_to_work_area)
         self._after_id = self.after(50, self.update_gui)
+
+    def _queue_tk_gc(self, _event=None):
+        """Collect destroyed widgets on the Tk thread, never on an output worker.
+
+        CustomTkinter widgets sit in reference cycles and own objects whose
+        __del__ calls Tcl (CTkFont, tkinter.Variable, PhotoImage). Left for the
+        automatic collector, they are finalized on whichever thread allocates,
+        rarely but possibly SignalDAC or SignalGen. _tkinter then marshals each
+        Tcl call to the Tk thread and waits for it without a timeout: the DAC
+        output stalls while a Tk callback runs, and a Stop pressed at that
+        moment blocks in SignalEngine._stop_thread until its 2 s join fails.
+        Idle time comes after the destroying callback has dropped its references.
+        """
+        if self._closing or self._tk_gc_pending:
+            return
+        self._tk_gc_pending = True
+        self.after_idle(self._collect_tk_garbage)
+
+    def _collect_tk_garbage(self):
+        self._tk_gc_pending = False
+        gc.collect()
 
     def _maximize_to_work_area(self):
         try:
