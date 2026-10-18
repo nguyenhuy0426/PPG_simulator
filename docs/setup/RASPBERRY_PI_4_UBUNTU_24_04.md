@@ -234,9 +234,9 @@ they ever find the pair.
 
 The official `grove/adc.py` declares `def __init__(self, address = 0x04)` — the
 address is a **constructor keyword**, and `0x04` is only its default.
-[hw/opt101_rx.py:161](../../hw/opt101_rx.py#L161) already passes
+[hw/opt101_rx.py:172](../../hw/opt101_rx.py#L172) already passes
 `ADC(address=GROVE_ADC_ADDR)` with `GROVE_ADC_ADDR = 0x08`
-([config.py:60](../../config.py#L60)), and `grove.i2c.Bus(bus=1)` already defaults
+([config.py:63](../../config.py#L63)), and `grove.i2c.Bus(bus=1)` already defaults
 to `/dev/i2c-1`. **No installed file is patched, and none needs to be.** Step 6
 re-checks this by introspecting the actually-installed class rather than trusting
 this paragraph.
