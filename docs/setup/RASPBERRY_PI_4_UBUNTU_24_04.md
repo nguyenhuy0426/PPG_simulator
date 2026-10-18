@@ -217,11 +217,13 @@ already pinned in [requirements/rpi.txt](../../requirements/rpi.txt).
 
 ### GPIO backend: `rpi-lgpio`, not `RPi.GPIO`
 
-[hw/button_handler.py](../../hw/button_handler.py) tries `import RPi.GPIO` first
-and falls back to `import lgpio`. On Ubuntu 24.04 the right way to satisfy the
-first import is the **`rpi-lgpio` shim**, which presents the `RPi.GPIO` API on top
-of the `lgpio` character-device backend that this kernel actually exposes. It
-pulls `lgpio` as a dependency, so the fallback path works too.
+The application imports neither `RPi.GPIO` nor `lgpio` itself, but Adafruit
+Blinka needs `RPi.GPIO` on the Pi 4: in adafruit-blinka 9.2.0, the `import board` in
+[hw/dac_manager.py](../../hw/dac_manager.py) reaches `from RPi import GPIO`, and
+without a provider `DACManager.begin()` returns `False`. On Ubuntu 24.04 the
+right way to satisfy that import is the **`rpi-lgpio` shim**, which presents the
+`RPi.GPIO` API on top of the `lgpio` character-device backend that this kernel
+actually exposes. It pulls `lgpio` as a dependency.
 
 **Never install both `RPi.GPIO` and `rpi-lgpio` in the same environment.**
 `requirements/rpi.txt` installs only `rpi-lgpio`, and both

@@ -205,13 +205,10 @@ PPG_simulator_raspi/
 │   ├── signal_engine.py         # Signal generation thread & DAC output
 │   ├── csv_logger.py            # Dataset recording logic
 │   ├── tx_rx_logger.py          # Paired TX command & RX acquisition logger
-│   ├── rate_scheduler.py        # Drift-free fixed-rate execution ticker
-│   └── state_machine.py         # System operational state machine
+│   └── rate_scheduler.py        # Drift-free fixed-rate execution ticker
 ├── hw/
 │   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A2 channels)
-│   ├── dac_manager.py           # Dual MCP4725 I2C DAC controllers
-│   ├── adc_reader.py            # Low-level ADC reading interface
-│   └── button_handler.py        # Physical push-button interrupt handler
+│   └── dac_manager.py           # Dual MCP4725 I2C DAC controllers
 ├── models/
 │   ├── ppg_model.py             # PPG physiological synthesis model
 │   ├── noise.py                 # Artefact generators (absolute-mV, band-limited)
