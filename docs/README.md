@@ -49,6 +49,12 @@ Figures and metrics for these reports sit in `gaussian-fit/`, `morphology-audit/
 | [rx-monitor-2026-10-01.md](rx-monitor-2026-10-01.md) | Live A0/A2 RX card design notes |
 | [ui/](ui/) | Screenshots referenced by the README and reports |
 
+## Paper
+
+| Document | Contents |
+|---|---|
+| [paper/](paper/README.md) | Journal manuscript (LaTeX source, compiled PDF, figures and the script that builds them from the evaluation records) |
+
 ## Third-party material
 
 [REFERENCES.md](REFERENCES.md) lists the datasheets and manuals kept in the
