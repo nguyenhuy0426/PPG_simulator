@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Figures, LaTeX tables and an evidence extract for docs/paper/main.tex.
 
-Table values are read from the evidence files in SOURCES: Kaggle outputs under ml/runs (kept local,
-see .gitignore) and the decision records committed under docs/. Nothing is typed by hand. Two items
-are new measurements on the machine that runs this script: the single-thread CPU latency of the
-generators shipped in assets/neural and the commanded-versus-measured rate curves of Fig. 5.
+Table values are read from the evidence files in SOURCES: the JSON records of the Kaggle runs,
+committed under docs/paper/evidence/ as copies of their ml/runs originals (ml/runs stays local, see
+.gitignore), the decision records committed under docs/, and the data pack, which only exists under
+ml/runs. Nothing is typed by hand. Two items are new measurements on the machine that runs this
+script: the single-thread CPU latency of the generators shipped in assets/neural and the
+commanded-versus-measured rate curves of Fig. 5.
 
     PPG_DRY_RUN=1 .venv/bin/python docs/paper/make_figures.py            # everything
     PPG_DRY_RUN=1 .venv/bin/python docs/paper/make_figures.py --no-measure  # reuse data/measured.json
@@ -25,25 +27,33 @@ sys.path.insert(0, str(ROOT))
 PAPER = ROOT/"docs"/"paper"
 FIG, TAB, DATA = PAPER/"figures", PAPER/"tables", PAPER/"data"
 RUNS = ROOT/"ml"/"runs"
+EVIDENCE = PAPER/"evidence"
 HW = ROOT/"docs"/"hardware-validation"/"2026-09-30"
+
+
+def run_file(relative):
+    """A Kaggle run record: the committed copy under docs/paper/evidence, else the local ml/runs file."""
+    committed = EVIDENCE/relative
+    return committed if committed.exists() else RUNS/relative
+
 
 SOURCES = {
     "pack": RUNS/"physio3-data-v1/physio3_data/windows.npz",
-    "pack_verification": RUNS/"physio3-data-v1/VERIFICATION.json",
-    "r9_summary": RUNS/"physiomix9-motion-dom-result-v1/physiomix9/summary.json",
+    "pack_verification": run_file("physio3-data-v1/VERIFICATION.json"),
+    "r9_summary": run_file("physiomix9-motion-dom-result-v1/physiomix9/summary.json"),
     "r9_decision": ROOT/"docs/physiomix-v3/rules/DECISION_ROUND9.json",
     "r10_decision": ROOT/"docs/physioflow/rules/DECISION_ROUND10.json",
     "r10_gxu_test": ROOT/"docs/physioflow/rules/GXU_TEST_ROUND10.json",
-    "l6_decision": RUNS/"physioflow10e-final-result-v1/physioflow10/DECISION_ROUND10.json",
-    "realism": RUNS/"realism-v1/realism_round10.json",
-    "realism_lsm_narrow": RUNS/"realism-v1/realism_lsm_narrow.json",
-    "fresh_galaxy": RUNS/"fresh-galaxy-result-v1/fresh_galaxy.json",
-    "judges": RUNS/"judges-c-v1/judges_c.json",
-    "step_b": RUNS/"galaxy-b-pilot-result-v1/galaxy_b/DECISION_GALAXY_B.json",
-    "step_d": RUNS/"galaxy-d-pilot-result-v1/daily_d/DECISION_D_PILOT.json",
-    "step_d_test": RUNS/"galaxy-d-pilot-result-v1/daily_d/TEST_REPORT_D_PILOT.json",
-    "step_e": RUNS/"galaxy-e-result-v1/step_e/DECISION_E.json",
-    "step_e_test": RUNS/"galaxy-e-result-v1/step_e/TEST_REPORT_E.json",
+    "l6_decision": run_file("physioflow10e-final-result-v1/physioflow10/DECISION_ROUND10.json"),
+    "realism": run_file("realism-v1/realism_round10.json"),
+    "realism_lsm_narrow": run_file("realism-v1/realism_lsm_narrow.json"),
+    "fresh_galaxy": run_file("fresh-galaxy-result-v1/fresh_galaxy.json"),
+    "judges": run_file("judges-c-v1/judges_c.json"),
+    "step_b": run_file("galaxy-b-pilot-result-v1/galaxy_b/DECISION_GALAXY_B.json"),
+    "step_d": run_file("galaxy-d-pilot-result-v1/daily_d/DECISION_D_PILOT.json"),
+    "step_d_test": run_file("galaxy-d-pilot-result-v1/daily_d/TEST_REPORT_D_PILOT.json"),
+    "step_e": run_file("galaxy-e-result-v1/step_e/DECISION_E.json"),
+    "step_e_test": run_file("galaxy-e-result-v1/step_e/TEST_REPORT_E.json"),
     "pi_headless_before": HW/"initial/summary.json",
     "pi_headless_after": HW/"timing-fixed/summary.json",
     "pi_gui_1k": HW/"gui-bench-before.json",
@@ -54,8 +64,8 @@ SOURCES = {
     "manifest": ROOT/"assets/neural/manifest.json",
 }
 SEED_METRICS = {
-    "physioflow": RUNS/"physioflow10c-resume-local-v1/physioflow10/benchmark/F6_flow_flag_deriv_unif_s16_w1_seed{}/metrics.json",
-    "physioflow_sb": RUNS/"physioflow10e-final-result-v1/physioflow10/benchmark/F10_flow_unif_stop01_s16_w1_seed{}/metrics.json",
+    "physioflow": "physioflow10c-resume-local-v1/physioflow10/benchmark/F6_flow_flag_deriv_unif_s16_w1_seed{}/metrics.json",
+    "physioflow_sb": "physioflow10e-final-result-v1/physioflow10/benchmark/F10_flow_unif_stop01_s16_w1_seed{}/metrics.json",
 }
 SEEDS = (42, 123, 2026)
 USED = {}
@@ -112,7 +122,7 @@ def pack_counts():
 def seed_metrics(key):
     rows = []
     for seed in SEEDS:
-        m = load(key, str(SEED_METRICS[key]).format(seed))
+        m = load(key, run_file(SEED_METRICS[key].format(seed)))
         rows.append(dict(seed=seed, S_arm=m["S_arm"], S_real=m["S_real_fresh"], C=m["C_fresh"],
                          auc=m["c2st_derivative_auc"], best_step=m["best_step"],
                          params=m["generator_parameters"], train_s=m["training_seconds"],
@@ -380,7 +390,8 @@ def style():
 
 
 def save(fig, name):
-    fig.savefig(FIG/f"{name}.pdf", bbox_inches="tight", pad_inches=.02)
+    # No creation date in the PDF, so rerunning the script on unchanged evidence leaves the files unchanged.
+    fig.savefig(FIG/f"{name}.pdf", bbox_inches="tight", pad_inches=.02, metadata={"CreationDate": None})
     fig.savefig(FIG/f"{name}.png", bbox_inches="tight", pad_inches=.02, dpi=200)
 
 

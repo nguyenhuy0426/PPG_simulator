@@ -12,18 +12,26 @@ changing `\journal{...}` in `main.tex`.
 | `figures/` | Figures 1–7 as PDF (vector, for submission) and PNG (preview), drawn at the 390 pt text width |
 | `tables/` | Table bodies generated from the evaluation records; do not edit by hand |
 | `make_figures.py` | Builds every figure and table from the evidence files |
+| `evidence/` | JSON records of the Kaggle runs the paper uses, copied from `ml/runs/` (which stays local) with the same relative paths |
 | `data/evidence_index.json` | SHA-256 of each evidence file used, plus the numbers quoted in the text |
 | `data/measured.json` | New laptop measurements: generator latency and the rate-control curves of Fig. 5 |
 
 ## Rebuild
 
-Figures and tables (needs the local Kaggle outputs under `ml/runs/`, which are not in Git):
+Figures and tables:
 
 ```bash
 PPG_DRY_RUN=1 .venv/bin/python docs/paper/make_figures.py
 ```
 
 `--no-measure` reuses `data/measured.json` instead of timing the generators again.
+The script reads the run records from `evidence/` and falls back to `ml/runs/` for
+any record not copied there. The 49 MB data pack (`ml/runs/physio3-data-v1/physio3_data/windows.npz`,
+used for Table 2 and Fig. 4) is not in Git: build it with the Kaggle data kernel
+staged by `ml/kaggle_multidomain/stage_kernel.py` and compare its SHA-256 with
+`evidence/physio3-data-v1/VERIFICATION.json`. Rerunning the script on unchanged
+evidence reproduces every table and figure byte for byte. After a new evaluation
+run, copy its JSON record into `evidence/` before rebuilding.
 
 PDF (any LaTeX distribution with `elsarticle`; Overleaf works as well):
 
@@ -35,9 +43,18 @@ cd docs/paper && tectonic main.tex
 
 - Replace the author placeholders, affiliation details, e-mail and ORCID iDs in `main.tex` (search for `TODO(authors)`).
 - Confirm the CRediT roles, the competing-interest statement and the funding sentence.
-- Keep the generative-AI declaration accurate. Elsevier requires it; edit it if the authors' own use of such tools differs.
-- Replace the repository URL in the data-availability statement with a release tag or an archived DOI of the submitted version.
-- Check the current Guide for Authors of the target journal (word limits, figure formats, cover letter) on the journal website.
+- Revise the text yourselves. Elsevier's journal policy (updated June 2026) allows AI-drafted text only
+  with genuine intellectual contribution and review by the authors; complete the oversight sentence of
+  the AI declaration, which must stay immediately before the references, and describe any AI help with
+  the software, the boards or the experiments in the Methods.
+- Merge branch `claude/model-benchmark-physioflow-wrist-e-stopfix` before the release: the code and the
+  frozen rules of steps B–E and of PhysioFlow-SB (Tables 4 and 5) exist only there.
+- Push, tag the submitted version and archive it (for example on Zenodo); cite that tag or DOI in the
+  data-availability statement.
+- Support "low-cost" with a component cost (actual purchase prices), or drop the word from the title,
+  the contributions and the conclusions.
+- Check the current Guide for Authors of the target journal (word limits, figure formats, cover letter) on
+  the journal website. The abstract limit is 250 words; the paper gives six keywords.
 - Consider adding a photograph of the assembled bench setup; the paper currently shows CAD renders and a screenshot.
 
 ## What the paper does and does not claim
