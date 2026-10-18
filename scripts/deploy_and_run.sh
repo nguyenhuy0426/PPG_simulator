@@ -2,7 +2,8 @@
 # Run on the LAPTOP from this repository. One command that:
 #   1. checks the Pi answers over SSH (default alias: ppg-rpi4-ethernet, 10.42.0.2),
 #   2. scans I2C bus 1 on the Pi and reports 0x08 / 0x60 / 0x61,
-#   3. copies this checkout to the Pi (no --delete, no venvs, no .git),
+#   3. copies this checkout to the Pi (no --delete, no venvs, no .git, no local
+#      tool state such as .claude/, whose worktrees exceed 800 MB in the main checkout),
 #   4. makes sure Pillow (button icons) is in the Pi venv,
 #   5. restarts the app on the Pi's own display as a transient user service,
 #   6. starts the same UI on the laptop in --dry-run (no I2C there).
@@ -54,6 +55,7 @@ rsync -a --info=stats1 \
     --exclude='.git/' --exclude='.venv/' --exclude='venv/' --exclude='.venv-ml/' \
     --exclude='.cad_venv/' --exclude='.pio/' --exclude='.pytest_cache/' \
     --exclude='.codegraph/' --exclude='.codebase-memory/' --exclude='__pycache__/' \
+    --exclude='.claude/' --exclude='.kilo/' --exclude='.ruff_cache/' --exclude='.history/' \
     --exclude='*.pyc' --exclude='dataset/' --exclude='ml/runs/' \
     "${ROOT}/" "${PI_HOST}:${PI_DIR}/"
 
