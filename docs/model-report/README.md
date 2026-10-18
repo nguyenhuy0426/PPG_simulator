@@ -5,7 +5,8 @@ dữ liệu train, kết quả, kèm sơ đồ và đồ thị tương tác. Kh�
 
 `index.html` là bản tóm tắt dễ hiểu (viết tay, số liệu lấy từ `ml/runs/realism-v1/realism_round10.json` và
 `docs/physioflow/loop`); `trinh-bay.html` là trang trình bày cho khách hàng (mạng nơ-ron vẽ sóng từng bước, GAN và giám
-khảo, PhysioFlow từ nhiễu ra sóng, video train, bước C và D); `chi-tiet.html` là báo cáo kỹ thuật đầy đủ, vẽ từ `data.js`.
+khảo, PhysioFlow từ nhiễu ra sóng, video train, bước C, D và E); `chi-tiet.html` là báo cáo kỹ thuật đầy đủ, vẽ từ `data.js`
+(riêng mục 9, bài thi GalaxyPPG và các bước A–E, viết tay từ file bằng chứng; xem cuối trang này).
 
 Mở trực tiếp `index.html` bằng trình duyệt, hoặc chạy:
 
@@ -39,5 +40,12 @@ thật (mã băm khớp `assets/neural/manifest.json`) và dữ liệu thật b�
 .venv/bin/python scripts/build_presentation_media.py --snapshots PhysioMix=ml/runs/galaxy-d-pilot-result-v1/daily_d/physiomix_d_seed42 --snapshots PhysioFlow=ml/runs/galaxy-d-pilot-result-v1/daily_d/physioflow_d_seed42
 ```
 
-Cần `ffmpeg` (libx264) và các thư mục `ml/runs` tương ứng. Số liệu bước C/D trên trang viết tay từ
-`docs/physioflow/loop/judges_c.json` và `galaxy_d_pilot.json`.
+Cần `ffmpeg` (libx264) và các thư mục `ml/runs` tương ứng. Số liệu bước C/D/E trên trang viết tay từ
+`docs/physioflow/loop/judges_c.json`, `galaxy_d_pilot.json` và `galaxy_e.json`.
+
+## Mục 9 của `chi-tiet.html` (GalaxyPPG, bước A–E)
+
+Số liệu viết tay, không qua `data.js`: bước A từ `ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json` (không nằm trong git),
+bước B, B-LSM, C, D, E từ `docs/physioflow/loop/galaxy_b_pilot.json`, `lsm_galaxy.json`, `judges_c.json`,
+`galaxy_d_pilot.json`, `galaxy_e.json`; luật ở `docs/physioflow/rules/`. Khi có bước mới, cập nhật mục này cùng
+`index.html`, `trinh-bay.html` và `docs/physioflow/REPORT_VI.md`.

@@ -315,7 +315,7 @@ Kết quả (`loop/judges_c.json`; 12 người thi GalaxyPPG, 3 lần chia, 192 
 | Người thật khác | 75 ± 23 | 91 ± 6 | 1,0 |
 | PhysioMix app | 1,1 ± 1,4 | 9,7 ± 1,1 | 8,2 |
 | PhysioFlow app | 4,5 ± 2,2 | 2,9 ± 1,1 | 8,9 |
-| physiomix_g (bước B) | 6,2 ± 3,1 | 25,6 ± 4,2 | 2,5 |
+| physiomix_g (bước B) | 6,2 ± 3,1 | 25,6 ± 4,2 | 2,4 |
 | physioflow_g (bước B) | 35,0 ± 7,2 | 66,9 ± 6,0 | 1,5 |
 | LSM-GAN | 0,1 | 0,1 | 5,4 |
 | Gaussian | 0 | 0 | 6,1 |
@@ -394,7 +394,7 @@ thi chỉ báo cáo, chấm sau khi `DECISION_E.json` đã ghi. Chạy thử CPU
 | … Q (thấp hơn app) | 0,89 | 0,37 ✓ |
 | … sai nhịp trung vị (bpm) | 1,16 | 0,99 ✓ |
 | 12 người thi (chỉ báo cáo): khó phân biệt | 0,4 ± 0,9% | 33,0% (31,9 / 34,4 / 32,8) |
-| 12 người thi: Q · sai nhịp (bpm) | 0,88 · 1,50 | 0,21 · 1,23 |
+| 12 người thi: Q · sai nhịp (bpm) | 0,88 · 1,50 | 0,21 · 1,24 |
 
 Người thật khác (mức trần): 75,7 ± 32,2% trên validation, 69,9 ± 20,6% trên 12 người thi. PhysioFlow app (nhắc là
 `wrist`): 0,5% validation, 2,5% thi.

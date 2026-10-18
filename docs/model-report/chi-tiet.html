@@ -21,9 +21,10 @@
     <a href="#data">6. Dữ liệu huấn luyện</a>
     <a href="#training">7. Huấn luyện và chọn model</a>
     <a href="#results">8. Giống thật đến đâu</a>
-    <a href="#states">9. Vận động hay nghỉ?</a>
-    <a href="#rx">10. Nhịp tim từ OPT101</a>
-    <a href="#limits">11. Giới hạn · thuật ngữ</a>
+    <a href="#galaxy">9. GalaxyPPG · bước A–E</a>
+    <a href="#states">10. Vận động hay nghỉ?</a>
+    <a href="#rx">11. Nhịp tim từ OPT101</a>
+    <a href="#limits">12. Giới hạn · thuật ngữ</a>
   </div>
   <div class="theme"><button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button></div>
 </nav>
@@ -414,8 +415,104 @@
   <div class="callout info" id="results-note">Không có một con số “% giống thật” duy nhất. Theo thống kê dạng sóng, cả PhysioMix và PhysioFlow đạt gần mức thật ở GXU và PERform Large. CNN chuyên tách thật/giả nhận ra mẫu PhysioMix ở GXU và AF gần như mọi lần, còn với PhysioFlow thì khó hơn hẳn; ngược lại ở cổ tay PhysioFlow có độ giống thấp hơn. LSM-GAN và bộ tạo Gaussian cũ bị nhận ra ở mọi tập. Tập không AF chỉ có 2 người chưa dùng nên số của nó dao động mạnh, đừng đọc là “giống hơn cả thật”.</div>
 </section>
 
+<section id="galaxy">
+  <h2>9. Bài thi mới GalaxyPPG và các bước A–E</h2>
+  <p class="lead">Các điểm ở mục 8 chấm trên người chưa dùng của <b>chính các bộ đã train</b>; phần cổ tay ở đó chỉ có 83 cửa sổ tập thể dục từ một loại thiết bị. Để biết model có giống thật trên <b>cổ tay đời thường</b> không, dự án dùng một bộ mà chưa model nào từng thấy, rồi lần lượt thử các cách cải thiện. Luật quyết định của mỗi bước được khoá trong code <b>trước</b> khi train hoặc chấm; không đổi luật sau khi đã thấy điểm.</p>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">Dữ liệu và cách chia người</h3><ul class="small">
+      <li><b>GalaxyPPG</b> (Zenodo 14635823, CC BY 4.0): 24 người, BVP Empatica E4 64 Hz ở cổ tay, khi nghỉ / làm việc trí óc / đi bộ / chạy. Nhịp tham chiếu từ đai ngực Polar H10.</li>
+      <li>Cắt như mọi dữ liệu khác: lọc 0,5–8 Hz, 40 Hz, cửa sổ 30 s, chuẩn hoá.</li>
+      <li>Từ bước B: <b>12 người thi cố định</b> (P01, P03, P06, P07, P09, P10, P13, P16, P18, P19, P23, P24) chỉ để báo cáo; 12 người còn lại chia giữa train và validation tuỳ bước.</li>
+      <li>Model được nhắc bằng nhịp Polar của người “bên kia”; chấm nhiều lần chia đôi người rồi lấy trung bình ± SD.</li></ul></div>
+    <div class="card"><h3 style="margin-top:0">Ba chỉ số dùng trong luật</h3><ul class="small">
+      <li><b>Khó phân biệt</b> = 100·(1 − |2·AUC − 1|) của C2ST: CNN đạo hàm (3 lớp tích chập 16/32/32 kênh, 11 201 tham số) chia fold theo người. 100% = đoán mò.</li>
+      <li><b>Q</b> (thấp = tốt) = MMD tổng + 0,5·(1 − độ phủ) + 0,25·(1 − độ giống): sai lệch phân bố hình dạng so với người thật.</li>
+      <li><b>Sai nhịp</b> = trung vị |nhịp đo trên sóng sinh − nhịp được nhắc| (nhịp/phút).</li>
+      <li><b>Bài kiểm tra cũ</b>: validation của mục 7–8; từ bước B, model mới phải giữ S_arm ≤ 0,559 và Q cổ tay khi tập ≤ 0,587 (mức vòng 9 cộng dao động 3 seed).</li></ul></div>
+  </div>
+
+  <h3>Bước A · chấm lại các model trong app (chưa dùng để chọn)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Nguồn (24 người, 3 lần chia)</th><th class="num">Khó phân biệt</th><th class="num">Q</th><th class="num">Sai nhịp (bpm)</th><th class="num">Trong 5 bpm</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác (mức trần)</td><td class="num">89 ± 10%</td><td class="num">0,08</td><td class="num">1,2</td><td class="num">72%</td></tr>
+      <tr><td><b>PhysioMix vòng 9 (app)</b></td><td class="num">0,7 ± 1,0%</td><td class="num"><b>0,84</b></td><td class="num"><b>1,5</b></td><td class="num">61%</td></tr>
+      <tr><td>PhysioFlow (app, chế độ nghiên cứu)</td><td class="num">0,6 ± 0,4%</td><td class="num">1,33</td><td class="num">1,7</td><td class="num">70%</td></tr>
+      <tr><td>LSM-GAN</td><td class="num">0%</td><td class="num">2,13</td><td class="num">14,4</td><td class="num">15%</td></tr>
+      <tr><td>Bộ tạo Gaussian (luật, không AI)</td><td class="num">0%</td><td class="num">2,53</td><td class="num">0,0</td><td class="num">100%</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Cả ba model AI bị nhận ra gần như hoàn toàn trên cổ tay đời thường; điểm cổ tay cũ không chuyển sang được. Theo luật bước A, PhysioMix ở lại app. Bộ Gaussian bám nhịp tuyệt đối vì nó dựng nhịp bằng công thức, nhưng hình dạng sai nhất. Sai nhịp theo nhóm (lần chia 0; nghỉ · trí óc · đi bộ · chạy): PhysioMix 0,9 · 3,4 · 7,2 · 14,1; PhysioFlow 1,3 · 2,9 · 8,9 · 5,8 bpm. Nguồn: <code>ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json</code>.</p>
+
+  <h3>Bước B · thêm 12 người GalaxyPPG vào dữ liệu train (1 seed)</h3>
+  <p class="small">Cửa sổ cổ tay để train tăng từ 83 lên 1 293; train lại đúng công thức PhysioMix vòng 9 (<code>physiomix_g</code>) và PhysioFlow F10 (<code>physioflow_g</code>), seed 42. Luật: vào vòng 3 seed nếu trên 12 người thi hơn app quá 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm, <b>và</b> không lùi ở bài kiểm tra cũ.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Nguồn (12 người thi)</th><th class="num">Khó phân biệt</th><th class="num">Q</th><th class="num">Sai nhịp (bpm)</th><th class="num">Bài cũ: S_arm · Q cổ tay</th><th>Luật</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác</td><td class="num">71 ± 23%</td><td class="num">0,09</td><td class="num">1,2</td><td class="num"></td><td></td></tr>
+      <tr><td>PhysioMix app</td><td class="num">0,7 ± 1,1%</td><td class="num">0,85</td><td class="num">1,5</td><td class="num">0,530 · 0,527</td><td>mốc</td></tr>
+      <tr><td>physiomix_g</td><td class="num">3,3 ± 2,0%</td><td class="num">0,28</td><td class="num">1,3</td><td class="num">0,465 · <b>0,794</b></td><td>✗ hơn 2,6 / cần 4,0; lùi bài cũ</td></tr>
+      <tr><td><b>physioflow_g</b></td><td class="num"><b>31,8 ± 3,6%</b></td><td class="num"><b>0,19</b></td><td class="num"><b>1,2</b></td><td class="num">0,491 · <b>0,950</b></td><td>✗ hơn 31,1 / cần 7,1 nhưng lùi bài cũ</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Thêm dữ liệu cổ tay giúp rất nhiều trên người mới (lần chia 0, đi bộ / chạy: PhysioMix app sai 9,6 / 12,1 bpm, physioflow_g 1,5 / 1,9 bpm), nhưng cả hai model lùi ở phần cổ tay khi tập của bài cũ (Q 0,794 và 0,950 &gt; 0,587), nên không vào vòng 3 seed. Suy luận, chưa kiểm chứng: hai loại cổ tay dùng chung một nhãn, 1 210/1 293 cửa sổ là E4 đời thường. Nguồn: <code>docs/physioflow/loop/galaxy_b_pilot.json</code>, luật <code>docs/physioflow/rules/FROZEN_GALAXY_B.json</code>.</p>
+
+  <h3>Bước B-LSM · LSM-GAN học trên nhiều bộ dữ liệu (chỉ báo cáo)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>LSM-GAN học gì (12 người thi)</th><th class="num">Cửa sổ train</th><th class="num">Khó phân biệt</th><th class="num">Q</th><th class="num">Sai nhịp (bpm)</th></tr></thead>
+    <tbody>
+      <tr><td>Chỉ BIDMC (bản trong app)</td><td class="num">619</td><td class="num">0,0%</td><td class="num">1,99</td><td class="num">16,7</td></tr>
+      <tr><td>Mọi bộ, chưa có GalaxyPPG</td><td class="num">6 073</td><td class="num">0,2 ± 0,1%</td><td class="num">0,83</td><td class="num">15,0</td></tr>
+      <tr><td>Mọi bộ + GalaxyPPG</td><td class="num">7 283</td><td class="num">1,5 ± 1,0%</td><td class="num">0,95</td><td class="num">13,4</td></tr>
+      <tr><td>Chỉ cổ tay + GalaxyPPG</td><td class="num">1 293</td><td class="num">7,6 ± 4,5%</td><td class="num">0,76</td><td class="num">10,6</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Cùng công thức LSM-GAN của app, 6 000 bước, seed 42. Hình dạng trung bình gần thật hơn rõ (Q 1,99 → 0,76–0,95), nhưng mọi mức hơn đều nằm trong 2 × SD (bản chỉ cổ tay hơn 7,5, cần 9,1), nên theo luật “thêm dữ liệu chưa giúp”. LSM-GAN không có đầu vào điều kiện nên không bám nhịp và không thể vào app. Nguồn: <code>docs/physioflow/loop/lsm_galaxy.json</code>.</p>
+
+  <h3>Bước C · giám khảo độc lập (chỉ báo cáo)</h3>
+  <p class="small">Câu hỏi: CNN của dự án có thật sự hiểu PPG không? Cùng các cửa sổ được chấm thêm bằng <b>PaPaGei-S</b> (Nokia Bell Labs, ICLR 2025; ResNet1D-MoE 18 khối, 5,8 triệu tham số, học trên hơn 57 000 giờ PPG; đông cứng, chỉ đọc embedding 512 chiều), bằng 7 chỉ số sinh lý viết riêng, và bằng CNN trên từng dải tần.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Nguồn (12 người thi, 3 lần chia)</th><th class="num">CNN dự án</th><th class="num">PaPaGei</th><th class="num">Độ giống giữa nhịp (× thật–thật)</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác</td><td class="num">75 ± 23%</td><td class="num">91 ± 6%</td><td class="num">1,0</td></tr>
+      <tr><td>PhysioMix app</td><td class="num">1,1 ± 1,4%</td><td class="num">9,7 ± 1,1%</td><td class="num">8,2</td></tr>
+      <tr><td>PhysioFlow app</td><td class="num">4,5 ± 2,2%</td><td class="num">2,9 ± 1,1%</td><td class="num">8,9</td></tr>
+      <tr><td>physiomix_g (bước B)</td><td class="num">6,2 ± 3,1%</td><td class="num">25,6 ± 4,2%</td><td class="num">2,4</td></tr>
+      <tr><td><b>physioflow_g (bước B)</b></td><td class="num"><b>35,0 ± 7,2%</b></td><td class="num"><b>66,9 ± 6,0%</b></td><td class="num">1,5</td></tr>
+      <tr><td>LSM-GAN · Gaussian</td><td class="num">0,1% · 0%</td><td class="num">0,1% · 0%</td><td class="num">5,4 · 6,1</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Hai giám khảo xếp hạng gần như nhau (Spearman 0,88 trên 22 cặp nguồn × tập), nên CNN của dự án không chấm tuỳ tiện. Theo dải tần, PhysioMix app trên GalaxyPPG đạt 56 / 80 / 52 / <b>1</b>% ở 0,5–1,5 / 1,5–3 / 3–5 / 5–8 Hz (người thật khác 76 / 82 / 75 / 89%): nó lộ chủ yếu ở kết cấu nhỏ 5–8 Hz, không phải ở nhịp chính. Hạn chế: PaPaGei học chủ yếu PPG bệnh viện và giấc ngủ, ít cổ tay. Nguồn: <code>docs/physioflow/loop/judges_c.json</code>.</p>
+
+  <h3>Bước D · tách “cổ tay đời thường” thành miền riêng (1 seed)</h3>
+  <p class="small">GalaxyPPG thành miền <code>wrist_daily</code>, miền <code>wrist</code> (tập thể dục, 83 cửa sổ) giữ nguyên. 8 người GalaxyPPG train (813 cửa sổ), 4 người validation (P08, P11, P14, P20), 12 người thi như cũ. Luật chỉ dùng validation: không lùi bài cũ, và trên 4 người validation hơn app quá 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th class="num">PhysioMix app</th><th class="num">physiomix_d</th><th class="num">physioflow_d</th></tr></thead>
+    <tbody>
+      <tr><td>Bài cũ: S_arm (≤ 0,559) · Q cổ tay tập (≤ 0,587)</td><td class="num">0,530 · 0,527</td><td class="num">0,502 · 0,558 ✓</td><td class="num">0,439 · 0,574 ✓</td></tr>
+      <tr><td>4 người validation: khó phân biệt</td><td class="num">0,4 ± 0,2%</td><td class="num">7,2 ± 5,7%</td><td class="num">29,2 ± 16,4%</td></tr>
+      <tr><td>… hơn app / cần hơn (2 × SD)</td><td class="num"></td><td class="num">6,7 / 11,4 ✗</td><td class="num">28,8 / 32,8 ✗</td></tr>
+      <tr><td>… Q · sai nhịp (bpm)</td><td class="num">1,05 · 0,87</td><td class="num">0,79 · 0,87 ✓</td><td class="num">0,55 · 0,78 ✓</td></tr>
+      <tr><td>12 người thi (chỉ báo cáo): khó phân biệt</td><td class="num">0,7 ± 1,1%</td><td class="num">2,8 ± 3,0%</td><td class="num">24,3 ± 3,6%</td></tr>
+      <tr><td>12 người thi: Q · sai nhịp (bpm)</td><td class="num">0,85 · 1,5</td><td class="num">0,49 · 1,4</td><td class="num">0,23 · 1,2</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Tách miền sửa đúng lỗi bước B: cả hai model không còn lùi ở cổ tay khi tập. physioflow_d chỉ trượt điều kiện độ khó phân biệt, vì với 4 người validation (2 người mỗi bên) điểm dao động ± 16 giữa các lần chia. Không chạy vòng 3 seed; app giữ PhysioMix vòng 9. Nguồn: <code>docs/physioflow/loop/galaxy_d_pilot.json</code>, luật <code>docs/physioflow/rules/FROZEN_D_PILOT.json</code>.</p>
+
+  <h3>Bước E · xác nhận PhysioFlow bước D với 6 người validation, 3 seed</h3>
+  <p class="small">Luật mới khoá trước khi train (commit <code>0e07810a</code>): 6 người validation đời thường (P04, P08, P15, P20, P21, P22; 619 cửa sổ), 6 người train (591 cửa sổ), 12 người thi như cũ, chấm 5 lần chia. Train công thức physioflow_d ở seed 42, 123, 2026 (Kaggle 2 × T4, 6,6 giờ). Ngưỡng = 2 × max(SD giữa seed, SD giữa các lần chia, SD lần chia của app).</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th class="num">PhysioMix app</th><th class="num">physioflow_e (seed 42 / 123 / 2026)</th></tr></thead>
+    <tbody>
+      <tr><td>Bài cũ: S_arm trung bình (≤ 0,559)</td><td class="num">0,530</td><td class="num">0,440 ✓ (0,425 / 0,448 / 0,446)</td></tr>
+      <tr><td>Bài cũ: Q cổ tay tập trung bình (≤ 0,587)</td><td class="num">0,527</td><td class="num">0,585 ✓ (0,503 / 0,684 / 0,570)</td></tr>
+      <tr><td>6 người validation: khó phân biệt</td><td class="num">0,05 ± 0,07%</td><td class="num">25,6% (24,3 / 26,7 / 25,9)</td></tr>
+      <tr><td>… hơn app / cần hơn</td><td class="num"></td><td class="num">25,6 / 32,5 ✗ (SD seed 1,2; SD lần chia 16,3)</td></tr>
+      <tr><td>… Q · sai nhịp (bpm)</td><td class="num">0,89 · 1,16</td><td class="num">0,37 · 0,99 ✓</td></tr>
+      <tr><td>12 người thi (chỉ báo cáo): khó phân biệt</td><td class="num">0,4 ± 0,9%</td><td class="num">33,0% (31,9 / 34,4 / 32,8)</td></tr>
+      <tr><td>12 người thi: Q · sai nhịp (bpm)</td><td class="num">0,88 · 1,50</td><td class="num">0,21 · 1,24</td></tr>
+    </tbody></table></div>
+  <p class="small muted">Người thật khác (mức trần): 75,7 ± 32,2% trên validation, 69,9 ± 20,6% trên 12 người thi. Quyết định theo luật: <b>không thay model</b>, app giữ PhysioMix vòng 9, <code>assets/neural</code> không đổi. Ba seed rất giống nhau, nhưng điểm vẫn dao động mạnh giữa các cách chia 6 người (cả 5 lần chia đều dương, 6–43 điểm), nên ngưỡng 32,5 cao hơn mức hơn 25,6. Q cổ tay tập trung bình 0,585 sát giới hạn 0,587; riêng seed 123 là 0,684. Nguồn: <code>docs/physioflow/loop/galaxy_e.json</code>, luật <code>docs/physioflow/rules/FROZEN_E.json</code>.</p>
+  <div class="callout info">Tóm lại: trên cổ tay đời thường, PhysioFlow học thêm GalaxyPPG với miền riêng tiến từ 0,6% (bước A) lên 24% (bước D) và 33% (bước E, 3 seed) “khó phân biệt” trên người chưa thấy, không lùi bài cũ và bám nhịp tốt hơn app. Nhưng chưa bước nào qua luật đã khoá, nên app vẫn dùng PhysioMix vòng 9. Đây là đánh giá kỹ thuật trên sóng 30 s đã chuẩn hoá, không phải kiểm định lâm sàng. Các số trong mục này chép tay từ file bằng chứng ghi ở từng bảng, không tạo lại từ <code>data.js</code>.</div>
+</section>
+
 <section id="states">
-  <h2>9. Vận động hay nghỉ? Model có sinh ngẫu nhiên không?</h2>
+  <h2>10. Vận động hay nghỉ? Model có sinh ngẫu nhiên không?</h2>
   <p class="lead">Kiểm chứng bằng một CNN <b>chỉ học trên dữ liệu thật</b> để gọi tên 7 trạng thái (đoán mò = 14%). Nếu model làm theo lệnh, CNN sẽ gọi đúng tên trạng thái của mẫu sinh.</p>
   <div class="tablewrap"><table id="state-table"><thead></thead><tbody></tbody></table></div>
   <p class="small muted">Mỗi ô: <b>% mẫu được CNN gọi đúng trạng thái</b> · <b>xác suất CNN cho là “cổ tay vận động”</b>. Ví dụ ở dòng “Cổ tay vận động”: dữ liệu thật của người chưa dùng được nhận đúng 86%, PhysioMix 77%, PhysioFlow 94%; ở các trạng thái nghỉ, xác suất bị nhận là vận động đều ≤ 6%. Trung bình của PhysioFlow (68%) cao hơn cả dữ liệu thật: mẫu của nó “đúng kiểu” trạng thái hơn người thật, tức đa dạng ít hơn.</p>
@@ -429,7 +526,7 @@
 </section>
 
 <section id="rx">
-  <h2>10. Nhịp tim tính từ tín hiệu OPT101 thu được</h2>
+  <h2>11. Nhịp tim tính từ tín hiệu OPT101 thu được</h2>
   <p class="lead">Biểu đồ “Tín hiệu thu RX · OPT101” hiển thị <b>Nhịp RX</b> tính trực tiếp từ mẫu ADC thật — để kiểm tra vòng LED → cảm biến có truyền đúng nhịp đã phát hay không. Đây là xử lý tín hiệu có quy tắc, không phải AI, và không phải nhịp tim lâm sàng.</p>
   <div class="card"><ol class="steps small">
     <li>Lấy đoạn <b>liên tục mới nhất</b> (ít nhất 5 s; mất mẫu &gt; 0,1 s thì cắt đoạn), từ 8 s đang hiển thị.</li>
@@ -450,7 +547,7 @@
 </section>
 
 <section id="limits">
-  <h2>11. Giới hạn · thuật ngữ</h2>
+  <h2>12. Giới hạn · thuật ngữ</h2>
   <div class="callout">Đây là <b>bộ mô phỏng nghiên cứu</b>. Dạng sóng là PPG đã lọc 0,5–8 Hz và chuẩn hoá; không phải SpO₂ đã hiệu chuẩn, không có cặp IR/RED thật, không dùng để chẩn đoán. Nhãn HR/độ bất thường là nhãn kỹ thuật lấy từ PPG (có ECG khi có), không phải đo lâm sàng. Chưa đo toàn bộ chuỗi trên phần cứng thật.</div>
   <dl class="glossary card">
     <dt>PPG</dt><dd>Quang thể tích đồ: ánh sáng qua mô thay đổi theo lượng máu mỗi nhịp tim.</dd>
