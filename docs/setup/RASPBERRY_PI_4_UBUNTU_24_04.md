@@ -441,11 +441,22 @@ checked on an Ubuntu 24.04.5 GNOME 46 (Wayland) laptop with systemd 255, using
 | Situation | Behaviour |
 |---|---|
 | Desktop session starts | Started. The unit refuses to start outside a desktop session (`Requisite=graphical-session.target`) |
-| Crash: non-zero exit, or killed by a signal | Restarted after 5 s (`Restart=on-failure`, `RestartSec=5`) |
-| Crash loop | At most 5 starts in 5 minutes. After that the unit stays `failed` until `systemctl --user reset-failed ppg-simulator`, or until someone taps the desktop icon |
+| Crash: non-zero exit, or killed by a signal | `scripts/park_dacs.py` parks both DACs at 0 V (see below), then the unit restarts after 5 s (`Restart=on-failure`, `RestartSec=5`) |
+| Crash loop | At most 5 starts in 5 minutes. After that the unit stays `failed` until `systemctl --user reset-failed ppg-simulator`, or until someone taps the desktop icon. The DACs were parked after the last crash, so they stay at 0 V while the unit is failed |
 | Window closed, or `SIGTERM`/`SIGINT` sent to the app | Clean exit with status 0: not restarted |
 | `systemctl --user stop`, logout | `SIGTERM` runs main.py's window-close path. It stops the output and parks both DACs at 0 V first, then stops the Neural worker, BLE and RX and saves the config. Its own timeouts add up to 18 s; `SIGKILL` comes only after 30 s (`TimeoutStopSec=30`) |
 | Reboot, power-off | Ubuntu caps this at 5 s; see the end of this section |
+| After every exit | `ExecStopPost=-…/park_dacs.py` writes code 0 to both DACs (0x60 IR, 0x61 Red) once the app's processes are gone. After a clean stop this repeats main.py's own park |
+
+An MCP4725 holds its last output code until it is written again, so after a crash
+the LEDs would otherwise stay lit until the restarted app re-initialises the DACs,
+or for good once the start limit trips. The park script uses `DACManager` like the
+app. It exits 0 without writing anything when the DACs do not answer (a laptop, an
+unplugged DAC board) or with `PPG_DRY_RUN=1`. It exits 1 when a write fails or the
+park takes over 3 s; the `-` prefix keeps that from failing the unit or blocking a
+restart, and the journal line also names how the app ended (`SERVICE_RESULT`,
+`EXIT_CODE`, `EXIT_STATUS`). If only one of the two DACs answers, `DACManager.begin()`
+fails and **neither** is parked, the same as at app start.
 
 The app's console output goes to the user journal
 (`journalctl --user -u ppg-simulator -f`). The DEBUG log stays in
@@ -508,7 +519,8 @@ Ubuntu's `systemd` package ships
 During a shutdown or reboot, all of your user services together get 5 s before
 `SIGKILL`, whatever the unit's own 30 s says. main.py parks the DACs at the start
 of its shutdown, so the outputs should reach 0 V within that time. BLE and RX
-teardown may be cut short, though. For the full shutdown, stop the app first:
+teardown may be cut short, though, and when the 5 s run out the user manager is
+killed before `park_dacs.py` gets to run. For the full shutdown, stop the app first:
 
 ```bash
 systemctl --user stop ppg-simulator && sudo reboot
@@ -527,6 +539,17 @@ with `systemctl cat user@$(id -u).service`.
   power-off (multimeter on the MCP4725 outputs)
 - How long the `SIGTERM` shutdown takes with BLE running. The laptop dry run
   without BLE took 0.12 s
+- Both DAC outputs measure 0 V after a crash, while the unit waits to restart:
+  start an output, then `systemctl --user kill --signal=SIGKILL ppg-simulator`
+  and measure within the 5 s before the restart. The journal should show
+  `[park_dacs] Both DACs parked … (SERVICE_RESULT=signal EXIT_CODE=killed EXIT_STATUS=KILL)`
+- Both DAC outputs stay at 0 V after the start limit trips: repeat the `SIGKILL`
+  (output running each time) until `systemctl --user status ppg-simulator` shows
+  `failed` with "Start request repeated too quickly", then measure. Afterwards
+  run `systemctl --user reset-failed ppg-simulator`
+- How long `park_dacs.py` takes on the Pi (`journalctl --user -u ppg-simulator -o short-precise`,
+  from the main process exit to the park line). It must stay well under the 5 s
+  cap; the laptop, which has no Blinka, cannot measure the Blinka import
 - A crash on the Pi is restarted, and the start limit stops a crash loop
 
 ---

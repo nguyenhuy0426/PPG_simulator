@@ -31,6 +31,13 @@ RestartSec=5
 # Its thread-join timeouts add up to 18 s; SIGKILL follows only after 30 s.
 KillSignal=SIGTERM
 TimeoutStopSec=30
+# Runs after every exit, once the app's processes are gone: after a crash nothing
+# else parks the DACs, and an MCP4725 holds its last code. Also runs before each
+# auto-restart and before the unit goes failed at the start limit. After a clean
+# stop main.py has parked them already; writing 0 again is harmless. The script
+# gives up after 3 s and exits 0 without I2C hardware. '-': a failed park is
+# logged but never marks the unit failed or blocks a restart.
+ExecStopPost=-@PROJECT_ROOT@/.venv/bin/python @PROJECT_ROOT@/scripts/park_dacs.py
 
 [Install]
 WantedBy=graphical-session.target
