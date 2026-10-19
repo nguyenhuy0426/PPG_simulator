@@ -911,6 +911,8 @@
   "docs/hardware-validation/2026-09-30/initial/summary.json": "5c1af9a6bc4d708b9ac3f7be0b13f9c4a8d57f6199e9ad5e5dc60a63063b23c8",
   "docs/hardware-validation/2026-09-30/timing-fixed/correlation.json": "a0fe675730601c930727940b3853aea05488dd167377fdeb859ceb8f0cb6cefa",
   "docs/hardware-validation/2026-09-30/timing-fixed/summary.json": "71d070cb054d356c34c711defdeeba487bb2a5c7cc73d307768331887a0ab095",
+  "docs/paper/data/downstream.json": "c1515c49a2cc2dc8d4db5433ba74ef2eae048bd6d65ad6b8c5357bb890aa3f1e",
+  "docs/paper/data/realism_ci.json": "95527ff09af0617ac62e3157957c64a7e55107a99869418f6166ce8e6aa2c210",
   "docs/paper/evidence/fresh-galaxy-result-v1/fresh_galaxy.json": "75af13979a0bf916aa073ad4f730474de87313ed93847f7126831c4fc774b2e9",
   "docs/paper/evidence/galaxy-b-pilot-result-v1/galaxy_b/DECISION_GALAXY_B.json": "14a601ccd9d6f29303be348c835184110bda142a89fce51d9ebe3345008f67b9",
   "docs/paper/evidence/galaxy-d-pilot-result-v1/daily_d/DECISION_D_PILOT.json": "f6aea91665a7b28df4f580b27d250665c05308c2e3f11289f44aa89b59cd8372",

@@ -62,6 +62,9 @@ SOURCES = {
     "pi_arm": HW/"arm-inference.json",
     "pi_loopback": HW/"timing-fixed/correlation.json",
     "manifest": ROOT/"assets/neural/manifest.json",
+    # New laptop analyses (docs/paper/analysis/*.py)
+    "realism_ci": DATA/"realism_ci.json",
+    "downstream": DATA/"downstream.json",
 }
 SEED_METRICS = {
     "physioflow": "physioflow10c-resume-local-v1/physioflow10/benchmark/F6_flow_flag_deriv_unif_s16_w1_seed{}/metrics.json",
@@ -158,6 +161,7 @@ def evidence():
     E["pi"] = {k: load(k) for k in ("pi_headless_before", "pi_headless_after", "pi_gui_1k", "pi_gui_1k_light",
                                     "pi_gui_500", "pi_arm", "pi_loopback")}
     E["manifest"] = load("manifest")
+    E["realism_ci"], E["downstream"] = load("realism_ci"), load("downstream")
     return E
 
 
@@ -281,6 +285,36 @@ def tables(E, M):
             cells.append(f"{100*v['fidelity']:.0f} / {100*v['coverage']:.0f} / {100*v['indistinguishable']:.0f}")
         rows.append(f"{NAME[d]} & {r['people']} & " + " & ".join(cells) + " \\\\")
     write("realism.tex", "\n".join(rows))
+    CI = E["realism_ci"]["datasets"]
+    rows = []
+    for d in DOMAINS:
+        cells = []
+        for key, _ in order:
+            v = CI[d][key]
+            lo, hi = v["ci95"]["indistinguishable"]
+            cells.append(f"{v['indistinguishable']:.0f} [{lo:.0f}, {hi:.0f}]")
+        rows.append(f"{NAME[d]} & {CI[d]['people']} & " + " & ".join(cells) + " \\\\")
+    write("realism_ci.tex", "\n".join(rows))
+
+    # Table: published beat detectors on real and generated strips (within 5 bpm of the reference, %).
+    DS = E["downstream"]
+    rows = []
+    for context, entry in DS["contexts"].items():
+        for i, det in enumerate(("Elgendi", "MSPTD", "MSPTDfast")):
+            cells = []
+            for src in ("Real", "PhysioMix", "PhysioFlow", "Gaussian"):
+                v = entry["sources"][src][det]
+                lo, hi = v["within_5bpm_ci95"]
+                cells.append(f"{100*v['within_5bpm']:.0f} [{100*lo:.0f}, {100*hi:.0f}]")
+            head = (f"\\multirow{{3}}{{*}}{{\\shortstack[l]{{{context}\\\\ {entry['people']} / {entry['windows']}}}}}"
+                    if i == 0 else "")
+            rows.append(f"{head} & {det} & " + " & ".join(cells) + " \\\\")
+        rows.append("\\addlinespace")
+    rows.append("\\midrule")
+    agree = DS["agreement"]
+    rows.append("\\multicolumn{3}{l}{Mean $|$generated $-$ real$|$ (points)} & " + " & ".join(
+        f"{agree[s]['mean_abs_gap_pp']:.1f}" for s in ("PhysioMix", "PhysioFlow", "Gaussian")) + " \\\\")
+    write("detectors.tex", "\n".join(rows))
 
     # Table: condition following and memorisation screening.
     cf = E["realism"]["condition_following"]
@@ -338,7 +372,7 @@ def tables(E, M):
         f"$\\le$ {r9['incumbent']['S_arm']['mean']:.3f} + {r9['decision']['pooled_sd']:.3f} & Deployed (seed {r9['ship_seed']}) \\\\",
         f"R10 & PhysioFlow vs.\\ PhysioMix R9 & Validation & $S_\\mathrm{{arm}}$ gap {r10['gap']:.3f} $>$ {r10['pooled_sd']:.3f}; wrist $Q$ "
         f"{r10['wrist_Q']['mean']:.3f} $>$ {r10['incumbent_wrist_Q']['mean']:.3f} + {r10['wrist_pooled_sd']:.3f} & Not deployed; research mode \\\\",
-        f"L6 & PhysioFlow-SB vs.\\ PhysioMix R9 & Validation & $S_\\mathrm{{arm}}$ gap {l6['gap']:.3f} $>$ {l6['pooled_sd']:.3f}; wrist $Q$ "
+        f"R10-SB & PhysioFlow-SB vs.\\ PhysioMix R9 & Validation & $S_\\mathrm{{arm}}$ gap {l6['gap']:.3f} $>$ {l6['pooled_sd']:.3f}; wrist $Q$ "
         f"{l6['wrist_Q']['mean']:.3f} $>$ {l6['incumbent_wrist_Q']['mean']+l6['wrist_pooled_sd']:.3f} & Not deployed \\\\",
         f"A & PhysioFlow vs.\\ PhysioMix & GalaxyPPG, 24 subjects & indistinguishable gap ${fd['gap']:.2f}$ $<$ {fd['margin']:.2f}; "
         f"$Q$ worse by more than 0.05 & PhysioMix kept \\\\",
@@ -497,7 +531,7 @@ def fig_architecture(plt):
     box(ax, (.08, .885), (.84, .1), "Inputs: noise $z \\in \\mathbb{R}^{1200}$; condition $c$ = dataset one-hot (6),\n"
         "label-known flags (2), standardised rate, inter-beat-interval CV, signal SD", fc="#FFFFFF")
     box(ax, (.08, .755), (.84, .1), "Rhythm scaffold (both models): log-normal inter-beat intervals, mean 60/rate\n"
-        "and CV from $c$, drawn from $z$ → beat phase $\\phi(t)$ over 30 s", fc=shared)
+        "and log-scale SD $\\sigma_\\tau$ from $c$, drawn from $z$ → beat phase $\\phi(t)$ over 30 s", fc=shared)
     arrow(ax, (.5, .885), (.5, .855))
     arrow(ax, (.3, .755), (.255, .712))
     arrow(ax, (.7, .755), (.745, .712))
@@ -508,15 +542,15 @@ def fig_architecture(plt):
     texts_a = ("Trunk: parallel Conv1d (k = 5, 21, 61) on $z$\nand [sin $\\phi$, cos $\\phi$, sin 2$\\phi$, sin 3$\\phi$];\n"
                "8 dilated residual blocks (d = 1 ... 128),\nFiLM from MLP($z_{1:8}$, $c$)",
                "Pulse head at 1 s knots: 6 harmonic weights\nand phases, baseline, gain; systole fixed,\n"
-               "diastole absorbs IBI changes; beat gain\n$\\propto$ (preceding IBI)$^{\\beta}$; 0.15 tanh residual; motion",
+               "diastole absorbs IBI changes; beat gain\n$(\\tau_{k-1}f)^{\\beta}$; residual $0.15\\tanh\\zeta$; motion $m(t)$",
                "0.5–8 Hz band limit on a padded window,\ncentre crop, min–max → 1200 samples",
                "Critic: 3 scales, spectral norm, input\n$[x, 10\\Delta x, 20\\Delta^2 x]$, projection on $c$; hinge\n"
-               "loss, lazy R1 ($\\gamma$ = 0.1), spectral/ACF loss, EMA")
+               "loss, lazy R1 (weight 0.1), spectral/ACF loss, EMA")
     texts_b = ("1-D U-Net, 5 levels (1200 → 75 samples),\nattention at 150 and 75 samples, FiLM\n"
-               "from time and condition embeddings;\ninput $[x_t$, sin $\\phi$, cos $\\phi$, flag$]$",
-               "Training: $x_t=(1-t)\\,x+t\\,\\varepsilon$, $t\\sim U(0,1)$,\ntarget $v=\\varepsilon-x$; MSE plus\n"
-               "$(1-t)^2$-weighted first-difference loss;\n10% condition, 15% scaffold dropout",
-               "16 Heun steps from $t$ = 1 to 0 (31 network\ncalls), min–max → 1200 samples",
+               "from flow-time and condition embeddings;\ninput $[x_s$, sin $\\phi$, cos $\\phi$, flag$]$",
+               "Training: $x_s=(1-s)\\,x_0+s\\,\\varepsilon$, $s\\sim U(0,1)$,\ntarget $\\varepsilon-x_0$; MSE plus\n"
+               "$(1-s)^2$-weighted first-difference loss;\n10% condition, 15% scaffold dropout",
+               "16 Heun steps from $s$ = 1 to 0 (31 network\ncalls), min–max → 1200 samples",
                "No critic and no output filter; scaffold\nsupplied only when the condition marks\nthe rate as known")
     heights, ys = (.15, .15, .085, .125), (.515, .34, .23, .045)
     for (x, fc), texts in zip(((.02, gan), (.51, flow)), (texts_a, texts_b)):
@@ -613,11 +647,17 @@ def fig_realism(plt, E):
     fig, axes = plt.subplots(1, 3, figsize=(W, 2.7), sharey=True)
     x = np.arange(len(DOMAINS))
     w = .16
-    for ax, metric, title in zip(axes, ("fidelity", "coverage", "indistinguishable"),
-                                 ("(a) Fidelity", "(b) Coverage", "(c) Indistinguishable")):
+    CI = E["realism_ci"]["datasets"]
+    for ax, metric, ci_key, title in zip(axes, ("fidelity", "coverage", "indistinguishable"),
+                                         ("precision", "recall", "indistinguishable"),
+                                         ("(a) Precision", "(b) Recall", "(c) Indistinguishable")):
         for k, (key, label) in enumerate(srcs):
-            vals = [100*R[d][key][metric] for d in DOMAINS]
-            ax.bar(x+(k-2)*w, vals, w, color=COLOR[label], label=label, lw=0)
+            vals = np.array([100*R[d][key][metric] for d in DOMAINS])
+            lo = np.array([CI[d][key]["ci95"][ci_key][0] for d in DOMAINS])
+            hi = np.array([CI[d][key]["ci95"][ci_key][1] for d in DOMAINS])
+            ax.bar(x+(k-2)*w, vals, w, color=COLOR[label], label=label, lw=0,
+                   yerr=[np.clip(vals-lo, 0, None), np.clip(hi-vals, 0, None)],
+                   error_kw=dict(lw=.45, capsize=0, ecolor="#444444"))
         ax.set_xticks(x)
         ax.set_xticklabels([NAME[d] for d in DOMAINS], rotation=40, ha="right")
         ax.set_title(title)

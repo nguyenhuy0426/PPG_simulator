@@ -1,4 +1,4 @@
-# Manuscript: rate-controllable PPG synthesis for a low-cost simulator
+# Manuscript: rate-controllable PPG synthesis with a constructed rhythm
 
 Elsevier `elsarticle` manuscript prepared for *Biomedical Signal Processing and
 Control*. The same source can be retargeted to another Elsevier journal by
@@ -7,16 +7,27 @@ changing `\journal{...}` in `main.tex`.
 | File | Contents |
 |---|---|
 | `main.tex`, `main.pdf` | Manuscript source and compiled review PDF |
+| `main.docx` | Word copy for editing, built from the PDF build by `build_docx.py`; the LaTeX source stays the reference |
 | `refs.bib` | Bibliography; every entry was checked against the publisher, PubMed Central, arXiv, Zenodo, PhysioNet or Mendeley record |
 | `highlights.txt` | Five highlights, each under 85 characters (upload as a separate file) |
-| `figures/` | Figures 1–7 as PDF (vector, for submission) and PNG (preview), drawn at the 390 pt text width |
+| `figures/` | Figures 1–7 as PDF (vector, for submission) and PNG (preview), drawn at the 390 pt text width; Fig. 2 is in Appendix A |
 | `tables/` | Table bodies generated from the evaluation records; do not edit by hand |
 | `make_figures.py` | Builds every figure and table from the evidence files |
 | `evidence/` | JSON records of the Kaggle runs the paper uses, copied from `ml/runs/` (which stays local) with the same relative paths |
 | `data/evidence_index.json` | SHA-256 of each evidence file used, plus the numbers quoted in the text |
 | `data/measured.json` | New laptop measurements: generator latency and the rate-control curves of Fig. 5 |
+| `analysis/realism_ci.py`, `data/realism_ci.json` | Subject-bootstrap 95% intervals for the realism table (Tables 5 and 6); reruns the realism evaluation with the same seeds and stops unless it reproduces `evidence/realism-v1/realism_round10.json` |
+| `analysis/downstream_detectors.py`, `data/downstream.json` | Beat-detector test (Table 8): NeuroKit2 detectors on real windows with an ECG/Polar reference and on generated strips at the same rates |
 
 ## Rebuild
+
+Laptop analyses (run before the figures; both need the data packs under `ml/runs/`, and the detector
+test needs NeuroKit2 0.2.10, which the app's environment does not include):
+
+```bash
+PPG_DRY_RUN=1 .venv/bin/python docs/paper/analysis/realism_ci.py --threads 8
+PPG_DRY_RUN=1 .venv/bin/python docs/paper/analysis/downstream_detectors.py --pylib <directory holding neurokit2>
+```
 
 Figures and tables:
 
@@ -33,11 +44,15 @@ staged by `ml/kaggle_multidomain/stage_kernel.py` and compare its SHA-256 with
 evidence reproduces every table and figure byte for byte. After a new evaluation
 run, copy its JSON record into `evidence/` before rebuilding.
 
-PDF (any LaTeX distribution with `elsarticle`; Overleaf works as well):
+PDF (any LaTeX distribution with `elsarticle`; Overleaf works as well), then the Word copy:
 
 ```bash
-cd docs/paper && tectonic main.tex
+cd docs/paper && tectonic --keep-intermediates main.tex   # leaves main.bbl next to main.tex
+python3 build_docx.py --pandoc <path to pandoc>
 ```
+
+Edit `main.tex`, not `main.docx`: the Word file is for reading and commenting, and changes made there have to be
+carried back into the LaTeX source by hand.
 
 ## Before submission
 
@@ -51,11 +66,14 @@ cd docs/paper && tectonic main.tex
   frozen rules of steps B–E and of PhysioFlow-SB (Tables 4 and 5) exist only there.
 - Push, tag the submitted version and archive it (for example on Zenodo); cite that tag or DOI in the
   data-availability statement.
-- Support "low-cost" with a component cost (actual purchase prices), or drop the word from the title,
-  the contributions and the conclusions.
+- "Low-cost" was dropped from the title and the text. If you want it back, support it with a component cost
+  (actual purchase prices).
 - Time the deployed generators on the Pi with `scripts/verify_generators_on_pi.py` (same protocol as
   Table 1; see `docs/hardware-validation/README.md`) and replace the statements that they were not
-  timed on the Pi (Sections 4.8, 5.1, 5.7 and 6.2, the limitations and the conclusions).
+  timed on the Pi (Sections 5.7 and 6.2, the limitations and Appendix A).
+- The paper is now centred on the generators; the simulator hardware, its timing counters and the failed
+  optical loopback are in Appendix A. Once the optical path is validated, extend Appendix A (or move it back
+  into the main text) with the measured waveform.
 - Check the current Guide for Authors of the target journal (word limits, figure formats, cover letter) on
   the journal website. The abstract limit is 250 words; the paper gives six keywords.
 - Consider adding a photograph of the assembled bench setup; the paper currently shows CAD renders and a screenshot.
