@@ -7,6 +7,7 @@ Usage:
     python3 main.py --dry-run              # Dry-run + BLE (no hardware, simulated I/O)
     python3 main.py --no-ble               # Diagnostic GUI mode without BLE
     python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
+    python3 main.py --ble-secure           # BLE commands only from a paired phone
 """
 
 import sys
@@ -24,6 +25,11 @@ parser.add_argument("--no-ble", action="store_true",
                     help="Disable the BLE GATT server (diagnostics only)")
 parser.add_argument("--ble-only", action="store_true",
                     help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
+# None keeps comm.ble_server.SECURE_WRITES_DEFAULT (currently off).
+parser.add_argument("--ble-secure", action=argparse.BooleanOptionalAction, default=None,
+                    help="Accept BLE command writes only over an encrypted link, i.e. from "
+                         "a phone that has paired with the Pi (docs/ble_protocol.md); "
+                         "--no-ble-secure accepts them from any central (current default)")
 parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
                     default="Pathology", help="Initial GUI page; output stays off")
 args = parser.parse_args()
@@ -39,14 +45,17 @@ from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
 
 
-def start_ble(engine):
-    """Start the BLE GATT server; returns the BleServer or None on failure."""
+def start_ble(engine, secure_writes=None):
+    """Start the BLE GATT server; returns the BleServer or None on failure.
+
+    secure_writes=None keeps comm.ble_server.SECURE_WRITES_DEFAULT.
+    """
     try:
         from comm.ble_server import BleServer
     except ImportError as exc:
         log.error(f"BLE unavailable ({exc}) — install with: pip install -r requirements/ble.txt")
         return None
-    ble = BleServer(engine)
+    ble = BleServer(engine, secure_writes=secure_writes)
     try:
         ble.start()
     except RuntimeError as exc:
@@ -97,7 +106,7 @@ def main():
     # harmless compatibility flag for existing launchers.
     ble_server = None
     if not args.no_ble or args.ble_only:
-        ble_server = start_ble(engine)
+        ble_server = start_ble(engine, secure_writes=args.ble_secure)
 
     # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
     if args.ble_only:

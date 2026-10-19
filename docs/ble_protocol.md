@@ -11,6 +11,9 @@ PI-while-locked translation, and the grace-window echo rule. The
 implicit "first command auto-starts the simulation" behavior is REMOVED —
 press RUN.
 
+Optional write security: with `--ble-secure` the Pi accepts commands only from
+a phone that has paired with it (off by default; see [Security](#security)).
+
 ## GATT layout
 
 | Role | UUID | Properties | Direction | Cadence |
@@ -27,6 +30,141 @@ MTU 256; a status JSON measures ~200–207 bytes in normal operation and has a
 14 characters (`PB_FILE_MAX_CHARS`). Notifications cap at MTU−3, so the
 client's negotiated MTU must be **≥ 250** (the Android app requests 256).
 The waveform payload (≤ 8 bytes) is truncated-safe at default MTU 23.
+
+The table is the same in both security modes. With `--ble-secure` the Command
+characteristic additionally requires an encrypted link (see [Security](#security)).
+
+## Security
+
+The Command characteristic is the only way a phone changes the simulator, so
+it is the one that can be locked. Waveform and Status stay readable and
+subscribable without pairing in both modes: they carry setpoints and the
+synthetic waveform (no personal data), and reading them changes nothing.
+
+| Mode | Pi flag | Who can write commands |
+|---|---|---|
+| Open (default) | none, or `--no-ble-secure` | any BLE central in range |
+| Secure | `--ble-secure` | only a central on an encrypted link, i.e. a phone that has paired (bonded) with the Pi |
+
+At startup open mode logs the warning `[BLE] Command writes are accepted from
+any BLE central without pairing …`; secure mode logs `[BLE] Command writes
+require an encrypted link (paired phones only)`.
+
+**Why open is still the default.** Secure mode changes this contract: the
+Android app must bond and send write requests (below; the current app does
+neither) and the Pi needs a pairing step. Neither has been tested on the Pi with the phone yet. Make
+secure the default (`SECURE_WRITES_DEFAULT` in `comm/ble_server.py`, or add
+`--ble-secure` to the launcher) once the [validation checklist](#validation-checklist-pi--phone)
+passes.
+
+### What secure mode enforces
+
+- `bless` 0.3.0, the only release `requirements/ble.txt` allows, has one
+  write-security permission, `GATTAttributePermissions.write_encryption_required`.
+  Its BlueZ backend registers it as the characteristic flag `encrypt-write`.
+- BlueZ (checked in the 5.72 and 5.85 sources) turns `encrypt-write` into an
+  encrypted-write permission on the Command value and checks it for Write
+  Request, Write Command (write-without-response) and Prepare Write. On a link
+  that is not encrypted, a Write Request fails with ATT error `0x0F`
+  (Insufficient Encryption) and a Write Command is dropped silently: ATT has no
+  reply for commands. The app never sees either write and logs nothing.
+- The GATT table does not change: same UUIDs, same Command properties (write,
+  write-without-response), no extra descriptor.
+- On a bonded phone's encrypted link all traffic is encrypted, waveform and
+  status notifications included.
+
+### What it does not do
+
+- **No MITM protection.** bless 0.3.0 has no permission for BlueZ's
+  `encrypt-authenticated-write`, so an unauthenticated ("Just Works") pairing
+  is enough to write. Keep pairing windows short: anyone in radio range who
+  pairs during one can write.
+- **No per-phone allow-list.** Every bonded device can write; bless does not
+  pass the writer's identity to the app.
+- **Local inputs are not covered.** The Pi GUI and the `PPG_BLE_CMD_FILE`
+  test hook (active only when that variable is set) change parameters
+  without Bluetooth.
+- **Who may pair is decided by BlueZ, not by this app.** BlueZ accepts a new
+  pairing only while a pairing agent is registered. With the stock
+  `/etc/bluetooth/main.conf` (`AlwaysPairable = false`) it makes the adapter
+  non-bondable when no agent is registered and rejects the Just Works
+  confirmation ("No agent available"). The app registers no agent; if a
+  desktop Bluetooth applet on the Pi registers one, the adapter stays pairable
+  and the applet decides. Check `Pairable:` as shown below.
+
+### Pairing a phone (on the Pi, once per phone)
+
+BlueZ stores the bond in `/var/lib/bluetooth`; it survives app restarts and
+reboots. Keep the simulator running, so the phone can find and connect to the
+Pi, and open a second terminal on the Pi:
+
+```bash
+bluetoothctl
+```
+
+```text
+[bluetooth]# default-agent
+# Start bonding from the phone app (next section). bluetoothctl then asks, for example:
+#   Confirm passkey 123456 (yes/no):   answer yes only if the phone shows the same number
+#   Accept pairing (yes/no):           Just Works, no number to compare
+[bluetooth]# devices Paired
+[bluetooth]# quit
+```
+
+The interactive session registers a pairing agent and `default-agent` makes
+BlueZ ask it. The phone must appear under `devices Paired`. After `quit`
+bluetoothctl's agent is gone and, unless another agent is registered (see
+above), BlueZ stops accepting new pairings:
+
+```bash
+bluetoothctl show | grep Pairable    # expect: Pairable: no
+```
+
+To revoke a phone: `bluetoothctl remove <address from 'devices Paired'>`. If
+the phone loses its bond (unpaired, app data cleared), remove it on the Pi as
+well and pair again: with BlueZ's default `JustWorksRepairing = never` the Pi
+refuses a Just Works re-pairing from a device it still holds keys for.
+
+### What the Android app must do (secure mode)
+
+`RpiBleManager.java` is not in this repository. Its source as of
+MedicalSimulator commit 62ccd45 (read, not run) does **not** meet items 1
+and 2 yet: it sends commands with `WRITE_TYPE_NO_RESPONSE` and never calls
+`createBond()`. Started with `--ble-secure`, the Pi would drop every command
+from that app silently, and nothing would make the phone pair. Change the app
+first.
+
+1. **Bond before the first command.** If `BluetoothDevice.getBondState()` is
+   not `BOND_BONDED`, call `createBond()` (Nordic BLE library 2.2.1+:
+   `createBondInsecure()`) while the Pi is in a pairing window, and wait for
+   `BOND_BONDED`.
+2. **Send commands as write requests** (`WRITE_TYPE_DEFAULT`), not
+   `WRITE_TYPE_NO_RESPONSE`. Over a link that is not encrypted yet, the Pi
+   drops write-without-response silently: the phone gets no error, and the
+   next status frame (origin `rpi`) moves its sliders back to the Pi's
+   unchanged values. A write request fails with status 15
+   (`GATT_INSUFFICIENT_ENCRYPTION`) instead; AOSP's `BluetoothGatt` then
+   retries it with an authentication requirement, asking the stack to encrypt
+   the link first, and reports the failure to the app only if the retries fail
+   too.
+3. **Do not re-bond on every connection.** The Nordic library's `ensureBond()`
+   deletes an existing bond and pairs again; outside a pairing window the Pi
+   rejects that and the phone is left with no bond.
+4. Treat a write that still fails with status 5 or 15 as "not paired" and tell
+   the user to pair while the Pi is in a pairing window.
+
+### Validation checklist (Pi + phone)
+
+Not run yet. Each step needs the Pi with the Android app:
+
+1. Pi with `--ble-secure`, phone not bonded: a command does not apply (no
+   `[BLE] Command applied` line in `/tmp/ppg_simulator.log`) and the status
+   frame keeps the old values.
+2. Pairing window, bond from the app: the same command applies.
+3. Restart the app, then reboot the Pi: commands apply without pairing again.
+4. A second, unpaired central (for example nRF Connect): waveform and status
+   readable, writes rejected.
+5. Pi without `--ble-secure`: behaviour unchanged.
 
 ## Command (WRITE, app → Pi)
 
@@ -179,6 +317,9 @@ PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble
 
 # Headless (no GUI) — for automated/CI testing:
 PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble-only
+
+# Commands only from a paired phone (see Security):
+.venv/bin/python main.py --ble-secure
 ```
 
 `--ble-only` auto-starts the simulation and runs until Ctrl+C; config is saved
@@ -194,6 +335,12 @@ sink and pumps model ticks at 4 Hz without any Tk involvement).
   advertising, `ActiveInstances` must be ≥ 1.
 - **Connects but no waveform** — the simulation is stopped by design; press
   Run in the GUI or send `{"run":true}` from the phone.
+- **`--ble-secure`: waveform arrives but commands do nothing** — the phone is
+  not bonded or its link is not encrypted. Pair it ([Security](#security)) and
+  make sure the app sends write requests, not write-without-response.
+- **Pairing fails at once** — no pairing agent on the Pi (run the
+  `bluetoothctl` steps), or the Pi still holds an old bond for that phone
+  (`bluetoothctl remove <address>`, then pair again).
 - **Single-adapter laptops cannot scan their own advertisement** — use the
   phone (or a second adapter) as the central.
 - **Permission errors on D-Bus** — no root required; ensure the user session

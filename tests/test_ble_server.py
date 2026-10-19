@@ -1,19 +1,29 @@
-"""BLE server logic tests (no BlueZ required — handler + status builder only).
+"""BLE server logic tests (no BlueZ required — handler, status builder and the
+GATT table registered with bless; the write-security tests skip without bless).
 
 Run: PPG_DRY_RUN=1 python3 -m pytest tests/test_ble_server.py -q
 """
 
+import asyncio
 import json
 import time
+from types import SimpleNamespace
 
 import pytest
 
 from comm.ble_server import (
     ANDROID_GRACE_S,
+    NOTIFY_UUID,
     PB_FILE_MAX_CHARS,
+    SECURE_WRITES_DEFAULT,
+    SERVICE_UUID,
+    STATUS_UUID,
+    WRITE_UUID,
     BLECommandHandler,
     BleServer,
+    _SimulatorBlessServer,
     build_status_json,
+    command_write_permissions,
     origin_for_tick,
 )
 from models.limits import AC_LEVEL_MV, DC_LEVEL_MV, HEART_RATE
@@ -404,3 +414,96 @@ def test_ble_server_start_reports_false_backend_result(real_engine, monkeypatch)
 
     with pytest.raises(RuntimeError, match="advertising failed"):
         server.start(timeout=1.0)
+
+
+# ─── Command-write security (--ble-secure) ──────────────────────────────────
+
+
+def test_command_write_permissions_add_encryption_only_when_secure():
+    perms = pytest.importorskip("bless.backends.attribute").GATTAttributePermissions
+    assert command_write_permissions(False) == perms.readable | perms.writeable
+    assert command_write_permissions(True) == (
+        perms.readable | perms.writeable | perms.write_encryption_required)
+
+
+def _bluez_flags(char_uuid, properties, permissions):
+    """Flags bless's BlueZ backend hands to bluetoothd, captured without D-Bus."""
+    from bless.backends.bluezdbus.characteristic import BlessGATTCharacteristicBlueZDBus
+
+    captured = []
+
+    class FakeGattService:
+        async def add_characteristic(self, uuid, flags, value):
+            captured.append([flag.value for flag in flags])
+            return SimpleNamespace(path="/test/service0001/char0001")
+
+    char = BlessGATTCharacteristicBlueZDBus(char_uuid, properties, permissions, None)
+    asyncio.run(char.init(SimpleNamespace(uuid=SERVICE_UUID, gatt=FakeGattService())))
+    return captured[0]
+
+
+def test_bless_registers_secure_command_writes_as_bluez_encrypt_write():
+    """Pins the bless 0.3.0 half of the security chain.
+
+    BlueZ's parse_chrc_flags (read in the 5.72 and 5.85 sources, not run
+    here) turns "encrypt-write" into an encrypted-write permission on the
+    attribute; its gatt-server checks that permission for Write Request,
+    Write Command and Prepare Write. "write-without-response" passes through
+    unchanged, so the phone discovers the same properties in both modes.
+    """
+    pytest.importorskip("bless.backends.bluezdbus.characteristic")
+    from bless.backends.characteristic import GATTCharacteristicProperties as Props
+
+    command = Props.write | Props.write_without_response
+    assert _bluez_flags(WRITE_UUID, command, command_write_permissions(False)) == [
+        "write-without-response", "write"]
+    assert _bluez_flags(WRITE_UUID, command, command_write_permissions(True)) == [
+        "write-without-response", "encrypt-write"]
+
+
+class RecordingBlessServer:
+    """Stands in for the bless server: records the GATT table, never starts."""
+
+    def __init__(self):
+        self.characteristics = {}
+
+    async def add_new_service(self, uuid):
+        self.service = uuid
+
+    async def add_new_characteristic(self, service_uuid, char_uuid, properties, value,
+                                     permissions):
+        self.characteristics[char_uuid] = (properties, permissions)
+
+    async def start(self):
+        return False
+
+
+@pytest.mark.parametrize("secure_writes", [False, True, None])
+def test_ble_server_registers_command_write_permissions(monkeypatch, secure_writes):
+    """_run() registers the encryption requirement on the command
+    characteristic only; waveform and status stay plain readable."""
+    # _run() also imports bless.backends.characteristic, which needs bleak.
+    pytest.importorskip("bless.backends.characteristic")
+    perms = pytest.importorskip("bless.backends.attribute").GATTAttributePermissions
+    recorder = RecordingBlessServer()
+    monkeypatch.setattr(_SimulatorBlessServer, "build",
+                        staticmethod(lambda owner, name, loop: recorder))
+
+    server = BleServer(FakeEngine(), secure_writes=secure_writes)
+    with pytest.raises(RuntimeError, match="advertising failed"):
+        asyncio.run(server._run())
+
+    expect_secure = SECURE_WRITES_DEFAULT if secure_writes is None else secure_writes
+    assert server.secure_writes is expect_secure
+    _, write_perms = recorder.characteristics[WRITE_UUID]
+    assert (perms.write_encryption_required in write_perms) is expect_secure
+    assert recorder.characteristics[NOTIFY_UUID][1] == perms.readable
+    assert recorder.characteristics[STATUS_UUID][1] == perms.readable
+
+
+def test_secure_writes_default_is_off():
+    """Changing the default changes the frozen contract for the Android app:
+    flip it together with docs/ble_protocol.md and the main.py --ble-secure
+    help text once pairing has been verified on the Pi with the phone."""
+    assert SECURE_WRITES_DEFAULT is False
+    assert BleServer(FakeEngine()).secure_writes is False

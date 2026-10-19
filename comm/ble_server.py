@@ -21,6 +21,11 @@ Echo/sync rule (must stay in lockstep with the Android side):
                        truth, so after the grace window the phone always
                        re-syncs sliders + cards against actual Pi state.
 
+Write security: with secure_writes (main.py --ble-secure) the command
+characteristic accepts writes only over an encrypted link, i.e. from a phone
+that has paired with the Pi; BlueZ enforces it before write() is called.
+Waveform and status stay open. See docs/ble_protocol.md "Security".
+
 Threading: bless runs in a daemon thread with its own asyncio loop. Tk owns
 the main thread. BLE callbacks never touch Tk — they only call thread-safe
 SignalEngine methods (playback commands are queued for the Tk loop).
@@ -77,6 +82,26 @@ CMD_FILE_PATH = os.environ.get("PPG_BLE_CMD_FILE")
 EXTERNAL_ADVERTISING = os.environ.get("PPG_BLE_EXTERNAL_ADV", "").strip().lower() in (
     "1", "true", "yes", "on",
 )
+
+# Command-write security. bless 0.3.0 has one write-security permission,
+# write_encryption_required (none for MITM-authenticated or authorized writes).
+# Its BlueZ backend registers it as the flag "encrypt-write", and BlueZ then
+# rejects any ATT write to the command value over an unencrypted link before
+# write() runs: a Write Request gets "Insufficient Encryption", a Write Command
+# is dropped. Encryption needs pairing; who may pair is up to BlueZ's pairing
+# agent. Off by default until the Android app (it must bond and send write
+# requests) has been tested against it on the Pi. See docs/ble_protocol.md.
+SECURE_WRITES_DEFAULT = False
+
+
+def command_write_permissions(secure_writes):
+    """bless permissions for the command (WRITE_UUID) characteristic."""
+    from bless.backends.attribute import GATTAttributePermissions
+
+    permissions = GATTAttributePermissions.readable | GATTAttributePermissions.writeable
+    if secure_writes:
+        permissions |= GATTAttributePermissions.write_encryption_required
+    return permissions
 
 
 def _to_float(value, default):
@@ -414,8 +439,11 @@ class _SimulatorBlessServer:
 class BleServer:
     """Thread-safe wrapper: start()/stop() from the Tk thread, bless inside."""
 
-    def __init__(self, engine):
+    def __init__(self, engine, secure_writes=None):
+        """secure_writes: True requires an encrypted (paired) link for command
+        writes; None keeps SECURE_WRITES_DEFAULT."""
         self.engine = engine
+        self.secure_writes = SECURE_WRITES_DEFAULT if secure_writes is None else bool(secure_writes)
         self.handler = BLECommandHandler(engine)
         self._thread = None
         self._loop = None
@@ -488,11 +516,14 @@ class BleServer:
 
         server = _SimulatorBlessServer.build(self, ADVERTISED_NAME, loop)
         await server.add_new_service(SERVICE_UUID)
+        # Same properties in both modes: bless swaps the "write" flag for
+        # "encrypt-write", which BlueZ still advertises as write, and leaves
+        # write-without-response alone; only the attribute permission changes.
         await server.add_new_characteristic(
             SERVICE_UUID, WRITE_UUID,
             GATTCharacteristicProperties.write | GATTCharacteristicProperties.write_without_response,
             None,
-            GATTAttributePermissions.readable | GATTAttributePermissions.writeable,
+            command_write_permissions(self.secure_writes),
         )
         await server.add_new_characteristic(
             SERVICE_UUID, NOTIFY_UUID,
@@ -541,6 +572,11 @@ class BleServer:
                 f"waveform {WAVEFORM_RATE_HZ:g} Hz, status {STATUS_RATE_HZ:g} Hz)",
                 ADVERTISED_NAME, SERVICE_UUID,
             )
+        if self.secure_writes:
+            log.info("[BLE] Command writes require an encrypted link (paired phones only)")
+        else:
+            log.warning("[BLE] Command writes are accepted from any BLE central without "
+                        "pairing; start with --ble-secure to require a paired phone")
 
         wave_task = asyncio.create_task(self._waveform_loop())
         status_task = asyncio.create_task(self._status_loop())
