@@ -286,9 +286,11 @@ place a trusted shortcut on the desktop:
 ./scripts/install_desktop_launcher.sh
 ```
 
-The launcher uses this checkout's `.venv`, starts the normal GUI with BLE,
-prevents duplicate instances and writes startup logs to
-`~/.local/state/ppg-simulator/launcher.log`.
+The launcher uses this checkout's `.venv`, starts the normal GUI with BLE
+and writes startup logs to `~/.local/state/ppg-simulator/launcher.log`.
+`main.py` itself allows one instance per user, however it was started: a
+second copy, including `--dry-run` and `--ble-only`, exits with status 75 and
+names the process that holds `~/.local/state/ppg-simulator/app.lock`.
 
 For a standalone bench, install the systemd user service. It starts the
 simulator with the Pi's desktop session and restarts it after a crash; once it

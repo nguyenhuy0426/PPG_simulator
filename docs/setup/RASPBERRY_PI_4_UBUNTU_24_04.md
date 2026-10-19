@@ -444,6 +444,7 @@ checked on an Ubuntu 24.04.5 GNOME 46 (Wayland) laptop with systemd 255, using
 | Crash: non-zero exit, or killed by a signal | Restarted after 5 s (`Restart=on-failure`, `RestartSec=5`) |
 | Crash loop | At most 5 starts in 5 minutes. After that the unit stays `failed` until `systemctl --user reset-failed ppg-simulator`, or until someone taps the desktop icon |
 | Window closed, or `SIGTERM`/`SIGINT` sent to the app | Clean exit with status 0: not restarted |
+| Another copy already runs (desktop icon, or started by hand) | main.py exits with status 75 and names that copy's PID. Not restarted (`RestartPreventExitStatus=75`): the unit stays `failed` |
 | `systemctl --user stop`, logout | `SIGTERM` runs main.py's window-close path. It stops the output and parks both DACs at 0 V first, then stops the Neural worker, BLE and RX and saves the config. Its own timeouts add up to 18 s; `SIGKILL` comes only after 30 s (`TimeoutStopSec=30`) |
 | Reboot, power-off | Ubuntu caps this at 5 s; see the end of this section |
 
@@ -478,6 +479,38 @@ Optional, to keep the panel readable:
 gsettings set org.gnome.desktop.session idle-delay 0               # never blank the screen
 gsettings set org.gnome.desktop.screensaver lock-enabled false     # no lock screen asking for your password
 ```
+
+### One instance per user
+
+Two copies would fight over the MCP4725 DACs on I2C and over the BLE GATT
+server. main.py therefore takes an exclusive `flock` on
+`~/.local/state/ppg-simulator/app.lock` (`$XDG_STATE_HOME` if set) before it
+loads any hardware, BLE or config module. This holds in every mode, including
+`--dry-run` and `--ble-only`, and whichever way the copy was started: the
+service, the desktop icon, `scripts/deploy_and_run.sh`, or
+`.venv/bin/python main.py` typed in a terminal. A second copy prints
+
+```text
+ERROR: Another PPG simulator instance is already running (process 1234 holds /home/<user>/.local/state/ppg-simulator/app.lock). ...
+```
+
+and exits with status 75. The kernel drops the lock when the holder exits,
+crashes or is killed, so there is no stale lock to delete. The PID in the file
+is only a hint for that message.
+
+- The desktop launcher locks the same file first and hands its locked
+  descriptor to Python (`PPG_APP_LOCK_FD=9`). A `flock` belongs to an open
+  file description, so Python must lock that descriptor rather than open the
+  file again; a second `open()` would conflict with the launcher's own lock.
+  Before the launcher starts the installed service it closes the descriptor,
+  so the service can take the lock.
+- `scripts/deploy_and_run.sh` sends `SIGTERM` to copies whose command line is
+  a python executable followed by the Pi checkout's absolute `main.py` path,
+  the pattern `install_user_service.sh --now` uses, and waits up to 30 s for
+  them to exit. An editor or `tail -f` on `main.py` is left alone. A copy
+  started with a relative path (`cd ...; .venv/bin/python main.py`) does not
+  match: the deploy then reports the new instance's status 75 with that
+  copy's PID in the journal. Close it and deploy again.
 
 ### Everyday commands
 
@@ -528,6 +561,10 @@ with `systemctl cat user@$(id -u).service`.
 - How long the `SIGTERM` shutdown takes with BLE running. The laptop dry run
   without BLE took 0.12 s
 - A crash on the Pi is restarted, and the start limit stops a crash loop
+- With the service running, a copy started by hand and a tap on the desktop
+  icon are both refused, and a copy started by hand before login leaves the
+  service `failed` with status 75 and no restart. These were checked only on the
+  laptop, with `--dry-run`
 
 ---
 
@@ -545,6 +582,7 @@ with `systemctl cat user@$(id -u).service`.
 | `i2cdetect` shows nothing | power and ground before software. Check the HAT seating and the 3.28 V rail |
 | `ppg-simulator.service` is `failed` with "Start request repeated too quickly" | five crashes in five minutes. Read `journalctl --user -u ppg-simulator -b`, fix the cause, then run `systemctl --user reset-failed ppg-simulator` and start it, or tap the desktop icon (§11) |
 | The service log shows `Permission denied` on `/dev/i2c-1`, but a terminal does not | the systemd user manager started before you joined `i2c`; it survives a logout while an SSH session stays open. `systemd-run --user --wait --pipe id -nG` shows the groups a service gets. Reboot to fix it |
+| `ppg-simulator.service` is `failed` with `status=75`, or a terminal run prints "already running" | another copy holds the single-instance lock (§11). The message names its PID: `ps -fp <pid>`. Close it, then `systemctl --user restart ppg-simulator` |
 | "A dependency job for ppg-simulator.service failed" | no desktop session is running for this user. The service runs only inside one: log in on the Pi screen, or enable automatic login (§11) |
 | The app does not come back after a reboot | automatic login is off (§11), or the unit is not enabled: `systemctl --user is-enabled ppg-simulator` |
 

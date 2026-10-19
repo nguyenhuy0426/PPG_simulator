@@ -26,6 +26,9 @@ SyslogIdentifier=ppg-simulator
 # A clean exit (window closed, SIGTERM, SIGINT) is not restarted.
 Restart=on-failure
 RestartSec=5
+# Status 75: another copy (desktop icon, or started by hand) holds main.py's
+# single-instance lock. Retrying cannot help, so the unit stays failed at once.
+RestartPreventExitStatus=75
 # main.py turns SIGTERM into the window-close path: stop the output and park both
 # DACs at 0 V first, then stop the Neural worker, BLE and RX and save the config.
 # Its thread-join timeouts add up to 18 s; SIGKILL follows only after 30 s.

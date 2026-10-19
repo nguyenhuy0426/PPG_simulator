@@ -81,10 +81,21 @@ fi
 unit_state=\$(systemctl --user show --property=UnitFileState --value ${UNIT}.service 2>/dev/null || true)
 systemctl --user stop ${UNIT}.service 2>/dev/null || true
 systemctl --user reset-failed ${UNIT}.service 2>/dev/null || true
-# An instance started from the desktop icon would fight over I2C and BLE.
+# An instance started from the desktop icon or by hand would fight over I2C and
+# BLE, and holds the lock that makes the new instance exit with status 75.
 # SIGTERM takes the app's own shutdown path, which parks both DACs at 0 V.
-if pkill -TERM -f "\$PWD/.venv/bin/python.* main.py|\$PWD/main.py" 2>/dev/null; then
-    echo "  stopped a running instance"; sleep 3
+# Anchored on a python executable, so an editor open on main.py is left alone.
+pattern="^[^ ]*python[0-9.]* \$PWD/main\\.py( |\$)"
+if pkill -TERM -u "\$(id -u)" -f "\$pattern" 2>/dev/null; then
+    echo "  stopping a running instance"
+    for _ in \$(seq 30); do
+        pgrep -u "\$(id -u)" -f "\$pattern" >/dev/null || break
+        sleep 1
+    done
+    if pgrep -u "\$(id -u)" -f "\$pattern" >/dev/null; then
+        echo "  an instance outside systemd did not exit within 30 s; close it on the Pi and re-run"
+        exit 4
+    fi
 fi
 case "\${unit_state}" in
     ""|transient)

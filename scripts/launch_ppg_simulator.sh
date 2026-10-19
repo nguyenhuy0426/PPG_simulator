@@ -27,9 +27,13 @@ if [ ! -x "${VENV_PY}" ]; then
     exit 1
 fi
 
-# Keep one GUI/BLE server per user. The lock descriptor survives exec and is
-# released automatically when Python exits, including after a crash.
-exec 9>"${LOCK_FILE}"
+# Keep one GUI/BLE server per user. main.py takes the same lock itself (see
+# instance_lock.py), so this also catches a copy started by hand. The descriptor
+# survives exec and Python locks it again through PPG_APP_LOCK_FD: a second
+# open() of the file would be a separate lock and would conflict with this one.
+# The kernel releases it when Python exits, including after a crash. <> opens
+# without truncating, which keeps the running instance's PID in the file.
+exec 9<>"${LOCK_FILE}"
 if command -v flock >/dev/null 2>&1 && ! flock -n 9; then
     notify_error "The simulator is already running."
     exit 0
@@ -52,6 +56,9 @@ if command -v systemctl >/dev/null 2>&1; then
     unit_state="$(systemctl --user show --property=UnitFileState --value "${UNIT}" 2>/dev/null)"
     if [ "$#" -eq 0 ] && [ -n "${unit_state}" ] && [ "${unit_state}" != transient ]; then
         printf '\n[%s] Starting %s\n' "$(date --iso-8601=seconds)" "${UNIT}" >>"${LOG_FILE}"
+        # The service's main.py takes this lock; release it first, or the
+        # service could start while this shell still holds it and exit 75.
+        exec 9>&-
         systemctl --user reset-failed "${UNIT}" >/dev/null 2>&1
         if ! systemctl --user start "${UNIT}" >>"${LOG_FILE}" 2>&1; then
             notify_error "Could not start ${UNIT}. See: journalctl --user -u ${UNIT}"
@@ -64,5 +71,6 @@ fi
 cd "${PROJECT_ROOT}" || exit 1
 export PYTHONNOUSERSITE=1
 export PYTHONUNBUFFERED=1
+export PPG_APP_LOCK_FD=9
 printf '\n[%s] Launching PPG Simulator\n' "$(date --iso-8601=seconds)" >>"${LOG_FILE}"
 exec "${VENV_PY}" "${PROJECT_ROOT}/main.py" "$@" >>"${LOG_FILE}" 2>&1
