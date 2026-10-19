@@ -53,6 +53,9 @@ cd docs/paper && tectonic main.tex
   data-availability statement.
 - Support "low-cost" with a component cost (actual purchase prices), or drop the word from the title,
   the contributions and the conclusions.
+- Time the deployed generators on the Pi with `scripts/verify_generators_on_pi.py` (same protocol as
+  Table 1; see `docs/hardware-validation/README.md`) and replace the statements that they were not
+  timed on the Pi (Sections 4.8, 5.1, 5.7 and 6.2, the limitations and the conclusions).
 - Check the current Guide for Authors of the target journal (word limits, figure formats, cover letter) on
   the journal website. The abstract limit is 250 words; the paper gives six keywords.
 - Consider adding a photograph of the assembled bench setup; the paper currently shows CAD renders and a screenshot.

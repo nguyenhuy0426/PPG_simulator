@@ -13,6 +13,7 @@ import customtkinter as ctk
 
 from core.neural_preview import (export_preview, gaussian_preview, physiomix_metadata, physiomix_reference_preview,
                                  reference_preview, sequence_reference_preview, Preview)
+from core.sequence_worker import WORKER_TIMEOUT_S
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from hw.opt101_rx import OPT101Receiver
@@ -399,10 +400,10 @@ class NeuralFrame(ctk.CTkFrame):
                 self._stderr.seek(0)
                 error=self._stderr.read().decode(errors='replace')[-1200:] if result else None
                 self._finish_inference(error)
-            elif time.monotonic()-self._started>120:
+            elif time.monotonic()-self._started>WORKER_TIMEOUT_S:
                 self._process.kill()
                 self._process.wait(timeout=2)
-                self._finish_inference('GAN inference timed out after 120 s')
+                self._finish_inference(f'GAN inference timed out after {WORKER_TIMEOUT_S} s')
         self.rx_panel.periodic_update()
         playing=self.engine.is_waveform_playing
         if playing:
