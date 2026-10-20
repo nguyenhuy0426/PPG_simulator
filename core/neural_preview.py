@@ -332,6 +332,7 @@ class PhysioMixGenerator:
         if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
             raise ValueError(f'{self.name} generator checksum mismatch')
         self.meta, self.sha256 = self.manifest[slot], entry['sha256']
+        self.slot = slot
         self.model = torch.jit.load(str(path), map_location='cpu').eval()
 
     def condition(self, domain, heart_rate, irregularity=None):
@@ -351,14 +352,28 @@ class PhysioMixGenerator:
         flags = [1., 1.] if meta.get('condition_version') == 'v2' else []
         return onehot+flags+[(v-c)/s for v, c, s in zip(raw, meta['center'], meta['scale'])]
 
-    def generate(self, seed, heart_rate=75., domain='bidmc', irregularity=None):
+    def generate(self, seed, heart_rate=75., domain='bidmc', irregularity=None, hr_range=None):
+        """hr_range=(low, high) bpm replaces heart_rate and irregularity: the rate drifts inside the range with the
+        dataset's R1c rhythm model (core.rhythm_range), the mean is the range centre."""
         if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**32:
             raise ValueError('Seed must be an integer from 0 to 4294967295')
         torch = self.torch
-        condition = self.condition(domain, float(heart_rate), irregularity)
         rng = torch.Generator(device='cpu').manual_seed(seed)
+        z = torch.randn(1, 1200, generator=rng)
+        rhythm = None
+        if hr_range is not None:
+            import numpy as np
+            from core.rhythm_range import encode, interval_noise
+            low, high = (float(v) for v in hr_range)
+            lo, hi = self.meta['hr_support_bpm']
+            if not (lo <= low <= high <= hi):
+                raise ValueError(f'{self.name} HR range must lie within {lo}–{hi} bpm with low <= high')
+            u, irregularity, heart_rate, model = interval_noise(domain, low, high, np.random.default_rng(seed))
+            z = torch.tensor(encode(z[0].numpy(), u, self.slot)[None])
+            rhythm = dict(hr_range_bpm=[low, high], rhythm_model=model, irregularity=float(irregularity))
+        condition = self.condition(domain, float(heart_rate), irregularity)
         with torch.inference_mode():
-            wave = self.model(torch.randn(1, 1200, generator=rng), torch.tensor([condition]))
+            wave = self.model(z, torch.tensor([condition]))
         if tuple(wave.shape) != (1, 1, 1200) or not torch.isfinite(wave).all():
             raise ValueError(f'Invalid {self.name} output')
         if wave.min() < -1e-6 or wave.max() > 1.000001 or wave.max()-wave.min() < 1e-6:
@@ -369,6 +384,7 @@ class PhysioMixGenerator:
                        tuple(condition), self.meta['variant'],
                        dict(domain=domain, measured_rate_bpm=estimate_rate_bpm(values, 40),
                             requested_rate_bpm=float(heart_rate), exploratory=True, paired_ir_red=False,
+                            **(rhythm or {}),
                             extrapolated_morphology=not (self.meta.get('data_support_bpm', self.meta['hr_support_bpm'])[0]
                                                          <= heart_rate <= self.meta.get('data_support_bpm', self.meta['hr_support_bpm'])[1]),
                             conditioning=self.meta.get('label_type', 'PPG-derived proxy labels; not ECG HR or diagnosis'),

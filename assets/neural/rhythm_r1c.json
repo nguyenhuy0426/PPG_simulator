@@ -1,0 +1,126 @@
+{
+  "model": "R1c: per-dataset AR(p) on standardised log inter-beat intervals, re-centred over the window's beats",
+  "rule": "Rhythm rule 2, fixed before it was run. R1c = R1 with the log-interval deviations re-centred over the beats that fall inside the 30 s window (DURATION + one mean interval), so the in-window mean rate equals the command. Real windows: test split of the six original datasets and the three PTT contexts, otherwise as RULE_RHYTHM (same features, score and seed). R1c replaces R0 if its overall score is lower than R0's by more than 20% and its mean absolute error of the mean rate is <= 1 bpm. Guard, relative: for each deployed generator (PhysioMix, PhysioFlow), on up to 24 test windows per original dataset, the mean absolute error between the strip's detected rate (flow.window_peaks) and the command with R1c encoded into z must not exceed the same error with R0 encoded by more than 0.5 bpm.",
+  "outcome": {
+    "overall": {
+      "R0": 0.5546987869078047,
+      "R1": 0.3678567738810078
+    },
+    "mean_rate_abs_error_bpm": {
+      "R0": 0.7697328166710578,
+      "R1": 0.00881043907727656
+    },
+    "guard": {
+      "physiomix": {
+        "windows": 144,
+        "mean_rate_abs_error_bpm": {
+          "R0": 2.0829166454587664,
+          "R1": 1.408819405100079
+        },
+        "ok": true
+      },
+      "physioflow": {
+        "windows": 144,
+        "mean_rate_abs_error_bpm": {
+          "R0": 1.406068814886798,
+          "R1": 0.9507198119010093
+        },
+        "ok": true
+      }
+    }
+  },
+  "pack_windows_sha256": "90c33a02b714db672551be2903dbc1280d4a76f26d361c7989668669dc4e0c4a",
+  "beats": 160,
+  "duration_s": 30.0,
+  "p_max": 4,
+  "z95": 1.6448536269514722,
+  "sigma_range": [
+    0.005,
+    0.35
+  ],
+  "domains": {
+    "bidmc": {
+      "coef": [
+        0.04069300761198995,
+        0.07826612117381188,
+        0.08379646292408768,
+        0.0962959556366428
+      ],
+      "innovation_sd": 0.9828616015181088,
+      "training_windows": 619
+    },
+    "gxu_finger": {
+      "coef": [
+        0.3802571463974217,
+        0.07188583362194423,
+        6.376418071367622e-05,
+        0.08918685586952733
+      ],
+      "innovation_sd": 0.8806693605348549,
+      "training_windows": 1759
+    },
+    "perform_af": {
+      "coef": [
+        0.0686713656052472,
+        -0.03270170287419567
+      ],
+      "innovation_sd": 0.9950227250821061,
+      "training_windows": 469
+    },
+    "perform_large": {
+      "coef": [
+        -0.015718166183675296,
+        0.057574129770481146,
+        0.0789583500612955,
+        0.09733181066314935
+      ],
+      "innovation_sd": 0.9804287473428329,
+      "training_windows": 2705
+    },
+    "perform_non_af": {
+      "coef": [
+        -0.09784294660141192,
+        -0.006297327057580839,
+        0.12967407256889327,
+        0.15613081423937655
+      ],
+      "innovation_sd": 0.9681818565470123,
+      "training_windows": 437
+    },
+    "ptt_run": {
+      "coef": [
+        0.060632042469215684,
+        0.16981712540761915,
+        0.08657434531903169
+      ],
+      "innovation_sd": 0.9758334426830217,
+      "training_windows": 252
+    },
+    "ptt_sit": {
+      "coef": [
+        0.38688750591343135,
+        0.1732236445102562
+      ],
+      "innovation_sd": 0.8647524275110898,
+      "training_windows": 254
+    },
+    "ptt_walk": {
+      "coef": [
+        0.08065390435634964,
+        0.11775554735222037
+      ],
+      "innovation_sd": 0.9845997206735002,
+      "training_windows": 251
+    },
+    "wrist": {
+      "coef": [
+        -0.08542875525297183,
+        0.020248008316142957,
+        -0.05845259422440765
+      ],
+      "innovation_sd": 0.9915655514799705,
+      "training_windows": 83
+    }
+  },
+  "scope": "Engineering model of rate variability from PPG peak intervals; not a clinical HRV or arrhythmia model"
+}

@@ -14,7 +14,7 @@ from ml.kaggle_lsm.train_lsm import FS, save_json
 from ml.kaggle_multidomain.data_dual import load_dual
 from ml.kaggle_multidomain.experiment_v3 import TRAIN_DOMAINS
 from ml.kaggle_multidomain.flow import window_peaks
-from ml.kaggle_multidomain.rhythm import (BEATS, RULE_RHYTHM, RhythmModel, encode, features, fit_models, range_sigma,
+from ml.kaggle_multidomain.rhythm import (BEATS, RULE_RHYTHM, RULE_RHYTHM_2, RhythmModel, encode, features, fit_models, range_sigma,
                                           window_times)
 
 DOMAINS = sorted(TRAIN_DOMAINS)+["ptt_sit", "ptt_walk", "ptt_run"]
@@ -46,14 +46,16 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--rule", type=int, choices=(1, 2), default=1)
     a = parser.parse_args(argv)
+    split, centre, rule = ("validation", False, RULE_RHYTHM) if a.rule == 1 else ("test", True, RULE_RHYTHM_2)
     pack, manifest = load_dual(a.pack)
     train = real_sequences(pack, "train")
     r1 = fit_models([pack["signal"][i] for d in train for i, _ in train[d]],
                     [d for d in train for _ in train[d]], window_peaks)
-    valid = real_sequences(pack, "validation")
+    valid = real_sequences(pack, split)
     rng = np.random.default_rng(SEED)
-    result = dict(rule=RULE_RHYTHM, pack_windows_sha256=manifest["windows_sha256"], datasets={},
+    result = dict(rule=rule, split=split, pack_windows_sha256=manifest["windows_sha256"], datasets={},
                   ar={d: dict(order=len(m.coef), coef=m.coef.tolist(), innovation_sd=m.innovation_sd) for d, m in r1.items()})
     totals = {"R0": [], "R1": []}
     mean_err = {"R0": [], "R1": []}
@@ -66,7 +68,8 @@ def main(argv=None):
             n = len(times)-1
             commands.setdefault(d, []).append((i, f["range_lo"], f["range_hi"], f["mean_bpm"]))
             for kind, model in (("R0", RhythmModel("R0")), ("R1", r1[d])):
-                ibi, _, _ = model.intervals(f["range_lo"], f["range_hi"], n, rng, f["mean_bpm"])
+                ibi, _, _ = model.intervals(f["range_lo"], f["range_hi"], n, rng, f["mean_bpm"],
+                                            centre_window=centre and kind == "R1")
                 g = features(np.r_[0., np.cumsum(ibi)])
                 gen_f[kind].append(g)
                 mean_err[kind].append(abs(g["mean_bpm"]-f["mean_bpm"]))
@@ -91,28 +94,34 @@ def main(argv=None):
     import torch
     torch.set_num_threads(8)
     guard = {}
-    for name, slot in (("physiomix", "physiomix"), ("physioflow", "physioflow")):
-        g = PhysioMixGenerator(slot=slot)
-        errors = []
+
+    def strip_errors(g, name, kinds):
+        errors = {k: [] for k in kinds}
         for d in sorted(TRAIN_DOMAINS):
             for i, lo, hi, mean in commands.get(d, [])[:GUARD_PER_DOMAIN]:
-                model = RhythmModel("R0") if chosen == "R0" else r1[d]
                 mean = float(np.clip(mean, 40, 180))
-                _, sigma, u = model.intervals(lo, hi, BEATS, rng, mean)
-                z = encode(rng.standard_normal(1200), u, name)
-                c = torch.tensor([g.condition(d, mean, sigma)])
-                with torch.no_grad():
-                    y = g.model(torch.tensor(z[None]), c)[0, 0].numpy()
-                times = window_peaks(y)
-                if times is None or len(times) < 3:
-                    errors.append(20.)
-                    continue
-                errors.append(abs(60*FS/np.mean(np.diff(times))-mean))
-        guard[name] = dict(windows=len(errors), mean_rate_abs_error_bpm=float(np.mean(errors)),
-                           median=float(np.median(errors)), ok=bool(np.mean(errors) <= 1.))
+                base = rng.standard_normal(1200)
+                for kind in kinds:
+                    model = RhythmModel("R0") if kind == "R0" else r1[d]
+                    _, sigma, u = model.intervals(lo, hi, BEATS, rng, mean, centre_window=centre and kind == "R1")
+                    z = encode(base, u, name)
+                    with torch.no_grad():
+                        y = g.model(torch.tensor(z[None]), torch.tensor([g.condition(d, mean, sigma)]))[0, 0].numpy()
+                    times = window_peaks(y)
+                    errors[kind].append(20. if times is None or len(times) < 3 else abs(60*FS/np.mean(np.diff(times))-mean))
+        return {k: float(np.mean(v)) for k, v in errors.items()}, len(errors[kinds[0]])
+
+    for name, slot in (("physiomix", "physiomix"), ("physioflow", "physioflow")):
+        g = PhysioMixGenerator(slot=slot)
+        if a.rule == 1:
+            err, n = strip_errors(g, name, [chosen])
+            guard[name] = dict(windows=n, mean_rate_abs_error_bpm=err[chosen], ok=bool(err[chosen] <= 1.))
+        else:
+            err, n = strip_errors(g, name, ["R0", "R1"])
+            guard[name] = dict(windows=n, mean_rate_abs_error_bpm=err, ok=bool(err["R1"] <= err["R0"]+.5))
         print("guard", name, guard[name], flush=True)
     result["guard"] = guard
-    result["decision"] = chosen if all(v["ok"] for v in guard.values()) else ("R0" if chosen == "R1" else "R0 (guard failed)")
+    result["decision"] = chosen if all(v["ok"] for v in guard.values()) else "R0 (guard failed)"
     Path(a.output).parent.mkdir(parents=True, exist_ok=True)
     save_json(Path(a.output), result)
     print(json.dumps(dict(overall=overall, mae=mae, chosen=chosen, decision=result["decision"]), indent=1))
