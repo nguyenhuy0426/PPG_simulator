@@ -34,7 +34,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     galaxy_d = mode in ("galaxy_d_pilot", "galaxy_d_final")
     # Step E: the step-D PhysioFlow recipe at 3 seeds on the v3e pack (6 everyday-wrist validation people), GPU.
     galaxy_e = mode == "galaxy_e"
-    flow = fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    # Round 11: PhysioFlow-2, the paired infrared/red generator, pilot and final in one kernel (GPU).
+    dual = mode == "dual"
+    flow = dual or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -68,6 +70,8 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_e.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
+    if dual:
+        sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_dual", "flow2", "experiment_dual")]
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -118,7 +122,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         args = ["--input-root", "/kaggle/input", "--round4-root", "/kaggle/input", "--output", "/kaggle/working/physiomix6",
                 "--steps", str(steps), "--seeds", *map(str, seeds), "--variant", "crop_r1"]
         entry = f"from ml.kaggle_multidomain.experiment_v5 import main\nmain({args!r})"
-    if flow:
+    if flow and not dual:
         stage = mode.split("_")[1]
         args = ["--input-root", "/kaggle/input", "--output", "/kaggle/working/physioflow10", "--stage", stage,
                 "--steps", str(steps), "--interval", "2000"]
@@ -185,6 +189,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         entry = ("from ml.kaggle_multidomain.experiment import main\n"+
                  f"main(['--input-root','/kaggle/input','--output','/kaggle/working/physiomix','--steps','{steps}','--seeds',"+
                  ",".join(repr(str(s)) for s in seeds)+"])")
+    if dual:
+        entry = ("from ml.kaggle_multidomain.experiment_dual import main\n"
+                 f"main({['--input-root', '/kaggle/input', '--output', '/kaggle/working/physioflow2', '--steps', str(steps)]!r})")
     # The entry point's own module must travel in the payload (a missing one fails only on Kaggle).
     for module in re.findall(r"from (ml\.[\w.]+) import", entry):
         if module.replace(".", "/")+".py" not in files:
@@ -309,6 +316,9 @@ sys.path.insert(0, str(root))
     if galaxy_e:
         metadata.update(id=f"{owner}/ppg-galaxy-e-v1", title="PPG Galaxy E v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
+    if dual:
+        metadata.update(id=f"{owner}/ppg-physioflow2-dual-v1", title="PPG PhysioFlow2 Dual v1", kernel_sources=[],
+                        dataset_sources=[f"{owner}/ppg-physioflow2-data-v4"])
     if lsm_galaxy:
         metadata.update(id=f"{owner}/ppg-lsm-galaxy-v1", title="PPG LSM Galaxy v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
@@ -363,7 +373,7 @@ if __name__ == "__main__":
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e"),
+                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual"),
                    required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
@@ -377,6 +387,6 @@ if __name__ == "__main__":
                "physio7": 20000, "physio8": 20000, "physio9": 20000, "flow10_pilot": 16000,
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
-               "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000}.get(a.mode, 2000)
+               "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000, "dual": 20000}.get(a.mode, 2000)
     print(stage_app_models(a.output, a.owner) if a.app_models else stage_datasets(a.output, a.owner) if a.datasets else
           stage(a.output, a.mode, a.steps or default, a.seeds, a.arm, a.owner))
