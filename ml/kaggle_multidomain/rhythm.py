@@ -38,6 +38,22 @@ RULE_RHYTHM = (
     "a mean rate error <= 1 bpm against the command on the same windows.")
 
 
+# Second rule, written after RULE_RHYTHM's outcome (R1 better rhythm statistics, guard failed: R0 kept) and before
+# anything below was run. Diagnosis on the RULE_RHYTHM validation windows: an AR sequence centred over 160 beats has an
+# in-window mean that drifts from the command (0.25-2.2 bpm by dataset), and the peak detector misreads wrist strips
+# (about 4.6 bpm) whatever the rhythm. It is judged on the test split, which no rhythm decision has used.
+RULE_RHYTHM_2 = (
+    "Rhythm rule 2, fixed before it was run. R1c = R1 with the log-interval deviations re-centred over the beats that "
+    "fall inside the 30 s window (DURATION + one mean interval), so the in-window mean rate equals the command. Real "
+    "windows: test split of the six original datasets and the three PTT contexts, otherwise as RULE_RHYTHM (same "
+    "features, score and seed). R1c replaces R0 if its overall score is lower than R0's by more than 20% and its mean "
+    "absolute error of the mean rate is <= 1 bpm. Guard, relative: for each deployed generator (PhysioMix, PhysioFlow), "
+    "on up to 24 test windows per original dataset, the mean absolute error between the strip's detected rate "
+    "(flow.window_peaks) and the command with R1c encoded into z must not exceed the same error with R0 encoded by more "
+    "than 0.5 bpm.")
+DURATION = 30.
+
+
 def range_sigma(lo, hi):
     return float(np.clip(math.log(hi/lo)/(2*Z95), *SIGMA_RANGE))
 
@@ -89,10 +105,17 @@ class RhythmModel:
             raise ValueError(kind)
         self.kind, self.coef, self.innovation_sd = kind, coef, innovation_sd
 
-    def intervals(self, lo, hi, n, rng, mean_bpm=None):
+    def intervals(self, lo, hi, n, rng, mean_bpm=None, centre_window=False):
+        """centre_window (R1c): re-centre u over the beats inside DURATION + one mean interval (two passes)."""
         f = (mean_bpm if mean_bpm is not None else (lo+hi)/2)/60
         sigma = range_sigma(lo, hi)
         u = rng.standard_normal(n) if self.kind == "R0" else ar_simulate(self.coef, self.innovation_sd, n, rng)
+        if centre_window:
+            for _ in range(2):
+                ibi = np.exp(sigma*u-.5*sigma**2)/f
+                k = int(np.searchsorted(np.cumsum(ibi), DURATION+1/f))+1
+                u = u.copy()
+                u[:k] -= u[:k].mean()
         return np.exp(sigma*u-.5*sigma**2)/f, sigma, u
 
 
