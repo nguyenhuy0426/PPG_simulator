@@ -74,6 +74,8 @@ carried back into the LaTeX source by hand.
 - The paper is now centred on the generators; the simulator hardware, its timing counters and the failed
   optical loopback are in Appendix A. Once the optical path is validated, extend Appendix A (or move it back
   into the main text) with the measured waveform.
+- `main.pdf` is a reading copy without line numbers. If the journal asks for line-numbered review
+  manuscripts, set `\reviewtrue` near the top of `main.tex` and rebuild.
 - Check the current Guide for Authors of the target journal (word limits, figure formats, cover letter) on
   the journal website. The abstract limit is 250 words; the paper gives six keywords.
 - Consider adding a photograph of the assembled bench setup; the paper currently shows CAD renders and a screenshot.

@@ -26,6 +26,10 @@
 
 \journal{Biomedical Signal Processing and Control}
 
+% Review copy with line numbers: \reviewtrue. Reading copy: \reviewfalse.
+\newif\ifreview
+\reviewfalse
+
 \begin{document}
 
 \begin{frontmatter}
@@ -52,9 +56,10 @@ Photoplethysmography \sep Synthetic physiological signals \sep Generative advers
 
 \end{frontmatter}
 
-% Line numbers for review start after the title page: on it, lineno pushes the
-% corresponding-author footnote into the preprint footer.
-\linenumbers
+% Line numbers are for a review copy only (some journals ask for them so that reviewers can cite
+% lines). Change \reviewfalse to \reviewtrue to number the lines; they start after the title page,
+% where lineno would push the corresponding-author footnote into the preprint footer.
+\ifreview\linenumbers\fi
 
 %% ================================================================================================
 \section{Introduction}

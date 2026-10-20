@@ -63,7 +63,8 @@ def main():
     tex = re.sub(r"\\end\{sidewaystable\}", r"\\end{table}", tex)
     tex = re.sub(r"\\resizebox\{\\textwidth\}\{!\}\{%\n", "", tex)
     tex = tex.replace("\\end{tabular}}", "\\end{tabular}")
-    tex = tex.replace("\\linenumbers", "")
+    tex = tex.replace("\\ifreview\\linenumbers\\fi", "").replace("\\newif\\ifreview", "").replace("\\reviewfalse", "")
+    tex = tex.replace("\\reviewtrue", "").replace("\\linenumbers", "")
     # pandoc's math reader rejects some size commands before delimiters; Word sizes delimiters itself.
     for size in ("\\Bigl", "\\Bigr", "\\bigl", "\\bigr", "\\big"):
         tex = tex.replace(size+"\\|", "\\|").replace(size+"[", "[").replace(size+"]", "]") \
