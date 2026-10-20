@@ -25,7 +25,7 @@ from ui.trace_view import Lane, LaneView
 
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
-               hr='Nhịp tim Gaussian / bpm', dc='DC / mV', ac='AC IR / mV',
+               hr='Nhịp tim Gaussian / bpm', dc='DC / mV', ac='AC IR / mV', spread='Dao động HR ± / bpm',
                fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
@@ -47,7 +47,7 @@ COPY = {
                domains=dict(bidmc='ICU · BIDMC', perform_large='ICU · MIMIC PERform', perform_af='Nhóm rung nhĩ (AF)',
                             perform_non_af='Nhóm không AF', wrist='Cổ tay · vận động', gxu_finger='Ngón tay · người khỏe')),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
-               hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
+               hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV', spread='HR range ± / bpm',
                fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
@@ -97,7 +97,7 @@ class NeuralFrame(ctk.CTkFrame):
 
         source, self.source_title, tools = K.section(self, span=3)
         source.grid(row=1, column=0, sticky='ew', pady=(0, u(8)))
-        source.grid_columnconfigure((0, 1, 2), weight=1, uniform='touch')
+        source.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform='touch')
         menu = dict(height=u(34), font=T.font(u(13)), dropdown_font=T.font(u(14)), icon_size=u(14), pad=u(10))
         self.mode_menu = SelectButton(tools, [''], command=self.change_mode, width=u(190), **menu)
         self.mode_menu.pack(side='left', padx=(0, u(6)))
@@ -106,7 +106,9 @@ class NeuralFrame(ctk.CTkFrame):
         self.generate_btn = K.secondary_button(tools, command=self.generate, width=126)
         self.generate_btn.pack(side='left')
         self.control_labels = {}
-        for col,(key,lo,hi,step,value) in enumerate((('hr',40,180,1,75),('dc',0,1500,1,1500),('ac',0,1500,1,45))):
+        # spread: a rate range [HR - spread, HR + spread] for the conditioned generators (0 keeps one target rate).
+        for col,(key,lo,hi,step,value) in enumerate((('hr',40,180,1,75),('dc',0,1500,1,1500),('ac',0,1500,1,45),
+                                                    ('spread',0,15,1,0))):
             label=T.label(source,'',u(12),text_color=T.MUTED,anchor='w')
             label.grid(row=1,column=col,sticky='ew',padx=u(12))
             self.control_labels[key]=label
@@ -231,6 +233,7 @@ class NeuralFrame(ctk.CTkFrame):
         self.info.configure(text=self._info_text())
         self._load_reference()
         self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
+        self.spread_slider.configure(state='normal' if self.mode in CONDITIONED_MODES else 'disabled')
         self._sync_profile_menu()
         self.render()
         if self.mode not in self.previews:
@@ -288,6 +291,9 @@ class NeuralFrame(ctk.CTkFrame):
             if used!=requested:
                 self._pm_note=COPY[self.language]['pm_clamped'].format(req=requested,lo=lo,hi=hi,used=used)
             command+=['--model',MODE_KEYS[self.mode],'--hr',f'{used:g}','--domain',self.domain]
+            spread=float(self.spread_slider.get())
+            if spread>0:
+                command+=['--hr-range',f'{max(lo,used-spread):g}',f'{min(hi,used+spread):g}']
         try:
             self._process = subprocess.Popen(
                 command,
