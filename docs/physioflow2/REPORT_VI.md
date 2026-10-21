@@ -97,6 +97,24 @@ thì **dừng tinh chỉnh trên tập validation này**; mọi thay đổi ti�
 
 **Theo `RULE_12`:** vì D1 không đạt, **dừng tinh chỉnh PhysioFlow-2 trên tập validation này**. Ứng dụng giữ nguyên PhysioMix R9 (mặc định) và PhysioFlow F6 (chế độ nghiên cứu). Mọi thay đổi tiếp theo, ví dụ loss riêng cho kênh đỏ hay thêm dữ liệu đỏ, cần người validation mới.
 
+### Chẩn đoán kênh đỏ sau vòng 12 (laptop, U2 seed 42, 256 cửa sổ validation có kênh đỏ; chỉ để định hướng)
+
+- **C2ST 2 kênh đo chủ yếu IR.** AUC khi chỉ nhìn IR (đỏ = R·IR ở cả thật lẫn giả) là 0,856; với model là 0,877;
+  với copy IR là 0,874. Đối chứng thật–thật là 0,50. Kênh đỏ chỉ đóng góp khoảng 0,02 AUC, nên điều kiện "đỏ hơn
+  copy IR > 8,5 điểm" của D1 gần như không thể đạt bằng cách cải thiện kênh đỏ.
+- **Trên view v3, đỏ thật ≈ R·IR + phần dư nhỏ:** phần dư bằng 3–6% độ lệch chuẩn của IR (1 − r² chỉ 0,005–0,026),
+  phần lớn nằm ở dải nhịp tim. Probe chỉ nhìn phần dư phân biệt được model vòng 12 với thật hoàn toàn (AUC 1,0).
+  - Phần dư dưới 0,5 Hz của model lớn gấp 2–8 lần thật.
+  - Ở `ptt_run`, model thiếu thành phần 4–8 Hz.
+  - Ở `ptt_walk`, phần dư của model quá nhỏ (0,029 so với 0,063).
+- **Khối đỏ thử nghiệm** (`ml/kaggle_multidomain/red_head.py`, 2,8 M tham số, 6.000 bước, 69 phút trên CPU laptop).
+  Khối này giữ nguyên IR, chỉ sinh phần dư từ (IR, R, dataset), và ptp(đỏ) = R chính xác.
+  - Điểm phần dư (độ lớn và công suất 4 dải; 0 là khớp thật): khối đỏ 0,141; nhiễu màu 0,165; copy IR 9,09.
+  - Probe nhìn cả (IR, phần dư), AUC: khối đỏ 0,73 (3 seed probe 0,65 / 0,82 / 0,73); nhiễu màu 1,00.
+  - Điểm yếu nhất vẫn là `ptt_walk`.
+  - Người validation này đã dùng ở vòng 11–12, nên đây chỉ là khám phá. Vòng 13 cần người validation mới
+    (OpenOximetry, chỉ lưu trên laptop theo thỏa thuận dữ liệu PhysioNet).
+
 ## 3. Nhịp theo khoảng nhịp tim (RULE_RHYTHM, RULE_RHYTHM_2)
 
 - **R0:** IBI log-normal độc lập (scaffold hiện tại). σ chọn sao cho 5–95% nhịp tức thời nằm trong [lo, hi].
