@@ -42,7 +42,30 @@ Mọi luật quyết định được ghi trong code và commit **trước khi**
 - **Kaggle:** kernel `halovie2412/ppg-physioflow2-dual-v1` (private, 2×T4), dataset
   `halovie2412/ppg-physioflow2-data-v4` (private).
 
-Kết quả: *đang chạy; sẽ cập nhật khi kernel xong.*
+### Kết quả vòng 11 (Kaggle 2×T4, 4,85 giờ; `docs/physioflow2/rules/`, `docs/physioflow2/round11/`)
+
+| | S_arm | S_real | Wrist Q | Sai số R (trung vị) | C2ST 2 kênh: model / copy IR (%) |
+|---|---|---|---|---|---|
+| Pilot U2 (seed 42) | 0,531 | 0,390 | 0,80 | 0,028 | 24,2 / 19,6 |
+| Pilot T2 – DiT (seed 42) | 1,032 | 0,763 | 1,99 | 0,024 | 47,7 / 35,2 |
+| Final U2 (3 seed) | 0,564 ± 0,078 | 0,418 | 0,83 | khoảng 0,025 | 26,9 / 22,1 |
+| *Đối chiếu: PhysioFlow F6* | *0,482* | *0,368* | *0,79* | — | — |
+| *Đối chiếu: PhysioMix R9* | *0,530* | *0,344* | *0,53* | — | — |
+
+**Quyết định:** D1 = không, D2 = không, nên không triển khai gì.
+
+- **Lý do D1 không đạt:**
+  - S_arm kém hơn F6 quá biên cho phép.
+  - Wrist Q 0,83 lớn hơn ngưỡng 0,587.
+  - Kênh đỏ hơn baseline "copy IR" 4,9 điểm, chưa đủ biên 8,4 điểm.
+- **Điểm mạnh:** R được điều khiển rất chính xác (Spearman 0,91, sai số khoảng 0,025).
+- **Chẩn đoán:** ở cả 4 lần chạy, checkpoint tốt nhất là bước cuối (20.000) và điểm vẫn đang giảm, tức là model
+  chưa hội tụ. DiT học chậm hơn hẳn.
+
+Vòng 12 (`RULE_12`, viết trước khi train): U2 train 32.000 bước, 3 seed, giữ nguyên D1/D2. Nếu D1 vẫn không đạt
+thì **dừng tinh chỉnh trên tập validation này**; mọi thay đổi tiếp theo cần người validation mới.
+
+Kết quả vòng 12: *đang chạy.*
 
 ## 3. Nhịp theo khoảng nhịp tim (RULE_RHYTHM, RULE_RHYTHM_2)
 
