@@ -65,7 +65,37 @@ Mọi luật quyết định được ghi trong code và commit **trước khi**
 Vòng 12 (`RULE_12`, viết trước khi train): U2 train 32.000 bước, 3 seed, giữ nguyên D1/D2. Nếu D1 vẫn không đạt
 thì **dừng tinh chỉnh trên tập validation này**; mọi thay đổi tiếp theo cần người validation mới.
 
-Kết quả vòng 12: *đang chạy.*
+### Kết quả vòng 12 (Kaggle 2×T4, 7,14 giờ; `docs/physioflow2/rules/DECISION_12.json`, `docs/physioflow2/round12/`)
+
+| | S_arm | S_real | Wrist Q | Sai số R (trung vị) | R Spearman | C2ST 2 kênh: model / copy IR (%) |
+|---|---|---|---|---|---|---|
+| U2 seed 42 | 0,462 | 0,349 | 0,71 | 0,027 | 0,94 | 27,1 / 21,9 |
+| U2 seed 123 | 0,519 | 0,404 | 0,85 | 0,024 | 0,93 | 30,6 / 28,5 |
+| U2 seed 2026 | 0,490 | 0,355 | 0,59 | 0,020 | 0,89 | 24,4 / 20,6 |
+| **Final U2 (3 seed)** | **0,491 ± 0,028** | 0,369 | 0,71 | khoảng 0,024 | — | 27,4 / 23,7 |
+| *Vòng 11 U2 (20.000 bước)* | *0,564 ± 0,078* | *0,418* | *0,83* | *khoảng 0,025* | *0,91* | *26,9 / 22,1* |
+| *Đối chiếu: PhysioFlow F6* | *0,482* | *0,368* | *0,79* | — | — | — |
+| *Đối chiếu: PhysioMix R9* | *0,530* | *0,344* | *0,53* | — | — | — |
+
+**Quyết định:** D1 = không, D2 = không, nên không triển khai gì.
+
+- **Đạt:**
+  - Mọi seed qua gate (finite, trace, latency).
+  - Sai số R ≤ 0,05.
+  - S_arm 0,491 nằm trong biên so với F6 (0,482 + 0,023).
+  - Ba kiểm tra riêng của D2 cũng đạt. D2 vẫn là "không" vì D2 cần D1.
+- **Không đạt:**
+  - Wrist Q trung bình 0,71 lớn hơn ngưỡng 0,587. Seed 2026 đạt 0,587, nhưng luật tính trên trung bình 3 seed.
+  - Kênh đỏ chỉ hơn baseline copy IR 3,7 điểm, cần hơn 8,5 điểm.
+- **Train dài hơn có giúp không:**
+  - S_arm giảm từ 0,564 xuống 0,491 và độ lệch giữa các seed giảm từ 0,078 xuống 0,028.
+  - Hai seed có checkpoint tốt nhất ở bước 32.000 (seed 2026 ở bước 30.000). Điểm checkpoint gần như đã chững lại (seed 42: 0,378 ở bước 28k, 0,361 ở bước 32k).
+  - Kênh đỏ không cải thiện so với baseline copy IR. Phần còn thiếu nằm ở kênh đỏ, không phải do model chưa hội tụ.
+- **GPU:**
+  - Seed 42 và 2026 chạy nối tiếp trên `cuda:0` (12.559 s + 12.515 s).
+  - Seed 123 chạy trên `cuda:1` (13.138 s), nên `cuda:1` rảnh khoảng 3,4 giờ.
+
+**Theo `RULE_12`:** vì D1 không đạt, **dừng tinh chỉnh PhysioFlow-2 trên tập validation này**. Ứng dụng giữ nguyên PhysioMix R9 (mặc định) và PhysioFlow F6 (chế độ nghiên cứu). Mọi thay đổi tiếp theo, ví dụ loss riêng cho kênh đỏ hay thêm dữ liệu đỏ, cần người validation mới.
 
 ## 3. Nhịp theo khoảng nhịp tim (RULE_RHYTHM, RULE_RHYTHM_2)
 
