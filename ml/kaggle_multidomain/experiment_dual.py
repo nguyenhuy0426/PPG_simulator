@@ -79,6 +79,18 @@ class CriterionDomains:
         self.prompt = conditions.prompt
 
 
+# Round 12, fixed after round 11's decision (D1 and D2 not met) and before training. Round 11's evidence: the pilot
+# chose U2 (S_arm 0.531 vs T2 1.032); in all four runs the best checkpoint was the last one (20000) with the checkpoint
+# score still falling (seed 42: 0.477, 0.430, 0.405 at 16k, 18k, 20k), so the cosine schedule ended before
+# convergence. Round 12 changes only the length.
+ROUND12 = dict(arm="U2", steps=32000, seeds=(42, 123, 2026))
+RULE_12 = (
+    "Round 12 (PhysioFlow-2 U2, longer training), fixed after round 11 and before training. Same pack, recipe, gates, "
+    "checkpointing and scoring as round 11 except 32000 steps (the cosine schedule spans the 32000 steps). U2 at seeds "
+    "42, 123 and 2026. Decisions D1 and D2 exactly as RULE_11's final rule. If D1 is not met, no further round is run "
+    "on this validation set; a further change needs fresh validation people.")
+
+
 def run_ir(model, device):
     """(z, condition rows) -> (n, LENGTH) numpy infrared, chunked, as experiment_v3.sampler."""
     view = InfraredView(model)
@@ -389,6 +401,7 @@ def main(argv=None):
     parser.add_argument("--steps", type=int, default=RECIPE["steps"])
     parser.add_argument("--eval-samples", type=int, default=256)
     parser.add_argument("--allow-cpu", action="store_true", help="Smoke run only: CPU, few steps, no decision value")
+    parser.add_argument("--round", type=int, choices=(11, 12), default=11)
     a = parser.parse_args(argv)
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     if not a.allow_cpu and (len(names) != 2 or any("T4" not in n for n in names)):
@@ -402,6 +415,20 @@ def main(argv=None):
                                           windows_sha256=manifest["windows_sha256"],
                                           content_sha256=manifest["content_sha256"]), domain_slots=DOMAIN_SLOTS))
     start = time.monotonic()
+    if a.round == 12:
+        steps = a.steps if a.allow_cpu else ROUND12["steps"]
+        save_json(output/"RULE_12.json", dict(rule=RULE_12, round=ROUND12, recipe=dict(RECIPE, steps=steps)))
+        rows = run_jobs([(ROUND12["arm"], s) for s in ROUND12["seeds"]], devices, a.input_root, output/"round12", steps,
+                        a.eval_samples)
+        decision = final_rule(rows)
+        save_json(output/"DECISION_12.json", dict(decision, winner=ROUND12["arm"], rule=RULE_12,
+                                                   wall_seconds=time.monotonic()-start,
+                                                   rows=[{k: r[k] for k in ("arm", "seed", "S_arm", "S_real_fresh", "C_fresh",
+                                                                             "c2st_derivative_auc", "wrist_Q", "red", "gates",
+                                                                             "eligible", "latency", "best_step")}
+                                                         for r in rows]))
+        print("DECISION", json.dumps({k: decision[k] for k in ("D1", "D2", "ship_seed")}), flush=True)
+        return decision
     pilot = run_jobs([("U2", PILOT_SEED), ("T2", PILOT_SEED)], devices, a.input_root, output/"pilot", a.steps,
                      a.eval_samples)
     selection = pilot_rule(pilot)
