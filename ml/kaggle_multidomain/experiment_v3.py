@@ -21,7 +21,7 @@ from scipy.stats import wasserstein_distance
 import torch
 from torch.nn import functional as F
 
-from ml.kaggle_lsm.train_lsm import LENGTH, mmd2, prepare_discriminator_for_generator, save_json
+from ml.kaggle_lsm.train_lsm import LENGTH, mmd2, prepare_discriminator_for_generator, save_json, spectral_loss
 from ml.kaggle_multidomain import control
 from ml.kaggle_multidomain.benchmark import MORPH_NAMES, cpu_latency, sample
 from ml.kaggle_multidomain.data import balanced_indices, balanced_pool
@@ -114,6 +114,27 @@ FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
                                             spectral_stop=True, wrist_slow=.5),
               "F12_flow_stop01_wslow": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.1,
                                             spectral_stop=True, wrist_slow=.5)}
+# Strict round (experiment_strict): the shipped round-9 recipe with the critic replaced by the strict judge's three views
+# (strict_judge.StrictCritic, spectral-normalised, ~0.87 M parameters vs ~0.23 M) with random 25.6 s crops of real and
+# generated alike. Its parameter-gradient norm runs ~3x the round-9 critic's in the tail (CPU, first 640 steps: p99 12.8
+# vs 4.8; 3% of steps above 10), so its clip limit is 30 (x16 on lazy-R1 steps) and the round-3 gate (clipped on at
+# most 1% of steps) is kept at that limit. The quiet arm adds physio.PhysioMixR's quiet trunk noise and sensor term.
+STRICT_CRITIC = dict(critic="strict", d_clip=30.)
+ARMS.update({"L3_rel_beat_lr_crop_r1w_motion_dom_strict": dict(ARMS["L3_rel_beat_lr_crop_r1w_motion_dom"],
+                                                                **STRICT_CRITIC),
+             "L3_rel_beat_lr_crop_r1w_motion_dom_strict_quiet": dict(ARMS["L3_rel_beat_lr_crop_r1w_motion_dom"],
+                                                                      **STRICT_CRITIC, quiet=True, sensor=True)})
+# Flow-GAN round (experiment_flowgan): the app's PhysioFlow U-Net as a 4-step GAN generator against the strict critic
+# (flow_gan.FlowGAN). Fine-tuning a pretrained generator: its learning rate is a tenth of the critic's, constant.
+# distill: weight of the MSE anchor to the frozen 16-step PhysioFlow. The LSM arm trains on BIDMC windows only with the
+# LSM-GAN log-spectral matching loss, and its checkpoints are chosen on the BIDMC pool alone.
+# The 4-step student starts at MSE ~4e-4 from the teacher (CPU, 8 windows), so weight 100 starts the anchor at ~0.04
+# against a hinge term ~1; the teacher's 16 Heun steps (32 U-Net passes) run every distill_every steps (lazy, weight
+# scaled by the interval) to keep a step near the cost of the student's own 7 passes forward and backward.
+FLOWGAN = dict(version="v2", flowgan=True, critic="strict", d_clip=30., lr=2e-4, g_lr=2e-5, distill=100.,
+               distill_every=4, flowgan_sensor=True, student_steps=4, latency_limit_ms=5000.)
+ARMS.update({"G1_flowgan": FLOWGAN,
+             "G2_flowgan_lsm_bidmc": dict(FLOWGAN, lsm_loss=True, train_domains=("bidmc",))})
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 # Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
 FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
@@ -139,6 +160,9 @@ CRITERION_SHA256 = hashlib.sha256(CRITERION.encode()).hexdigest()
 # Budget knobs fixed by the criterion; tests shrink them for CPU smoke runs only.
 CONTROL_N, C2ST_TRAIN, C2ST_VALID, C2ST_STEPS = 8, 2048, 512, 1000
 _CONDITIONS = {}
+# Where flow-GAN arms find the app's PhysioFlow weights (set by worker to its input root).
+TEACHER_ROOTS = []
+POOL_OF = {d: pool for pool, members in POOLS.items() for d in members}
 
 
 def config(arm, frozen=None):
@@ -150,7 +174,7 @@ def config(arm, frozen=None):
                    rel=False, beat=False, domloss=False, pad=0, r1_scaled_clip=False, r1_weight=1.,
                    motion=False, flow=False, deriv=0., width=1., flag_scaffold=False, t_dist="logit", t_end=0.,
                    finish_filter=False, spectral=0., spectral_stop=False, input_noise=0., wrist_slow=0.,
-                   latency_limit_ms=50.), **ARMS[arm]}
+                   latency_limit_ms=50., critic="multiscale"), **ARMS[arm]}
 
 
 def conditions_for(pack, version):
@@ -162,6 +186,11 @@ def conditions_for(pack, version):
 
 def build(cfg, conditions):
     size = conditions.bank.shape[1]
+    if cfg.get("flowgan"):
+        from ml.kaggle_multidomain.flow_gan import FlowGAN
+        from ml.kaggle_multidomain.strict_judge import StrictCritic
+        return FlowGAN(size, conditions.center, conditions.scale, len(conditions.domains), cfg["student_steps"],
+                       cfg["flowgan_sensor"]), StrictCritic(size)
     if cfg["flow"]:
         return FlowGenerator(size, conditions.center, conditions.scale, cfg["sample_steps"], cfg["guidance"],
                              cfg["width"], cfg["flag_scaffold"], cfg["t_end"], cfg["finish_filter"]), None
@@ -169,9 +198,13 @@ def build(cfg, conditions):
         return CleanDenoiser(size), None
     if cfg.get("rel"):
         generator = PhysioMixR(size, conditions.center, conditions.scale, view=VIEW, beat=cfg.get("beat", False),
-                               pad=cfg.get("pad", 0), motion=cfg.get("motion", False))
+                               pad=cfg.get("pad", 0), motion=cfg.get("motion", False), quiet=cfg.get("quiet", False),
+                               sensor=cfg.get("sensor", False))
     else:
         generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
+    if cfg["critic"] == "strict":
+        from ml.kaggle_multidomain.strict_judge import StrictCritic
+        return generator, StrictCritic(size)
     return generator, (DerivCritic if cfg["dc"] else ConditionedCritic)(size)
 
 
@@ -335,7 +368,9 @@ def deployment_gates(model, conditions):
                         cpu_threads=1, hardware_scope="Kaggle host CPU; Pi not measured")
 
 
-def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval, device, frozen):
+def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval, device, frozen, deadline=None):
+    """deadline: optional epoch time (s); training stops before the first step past it (the best checkpoint so far
+    is kept and scored; stability records the stop step)."""
     cfg = config(arm, frozen)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -344,16 +379,22 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
         torch.cuda.reset_peak_memory_stats(device)
     conditions = conditions_for(pack, cfg["version"])
     g, d = build(cfg, conditions)
+    teacher = None
+    if cfg.get("flowgan"):
+        from ml.kaggle_multidomain.flow_gan import teacher_state
+        g.load_teacher(teacher_state(TEACHER_ROOTS))
+        teacher = g.teacher().to(device)
     g.to(device)
     if d is not None:
         d.to(device)
     ema, diffusion = ema_model(g), cfg["diffusion"]
-    optg = torch.optim.Adam(g.parameters(), lr=cfg["lr"], betas=(0., .99))
+    g_ratio = cfg.get("g_lr", cfg["lr"])/cfg["lr"]
+    optg = torch.optim.Adam(g.parameters(), lr=cfg["lr"]*g_ratio, betas=(0., .99))
     optd = torch.optim.Adam(d.parameters(), lr=cfg["lr"], betas=(0., .99)) if d is not None else None
     run_dir = Path(output)/f"{arm}_seed{seed}"
     run_dir.mkdir()
     save_json(run_dir/"conditions.json", conditions.metadata())
-    ids, weights = balanced_pool(pack, "train")
+    ids, weights = balanced_pool(pack, "train", cfg.get("train_domains"))
     domains = len(conditions.domains)
     center = torch.tensor(conditions.center, device=device)
     scale = torch.tensor(conditions.scale, device=device)
@@ -363,10 +404,13 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
     snapshots = Snapshots(conditions, cfg, device, run_dir/"snapshots.npz")
     start = time.monotonic()
     for step in range(1, steps+1):
+        if deadline is not None and time.time() > deadline:
+            stability["stopped_at_step"] = step-1
+            break
         g.train()
-        for optimizer in (optg, optd):
+        for optimizer, ratio in ((optg, g_ratio), (optd, 1.)):
             for group in getattr(optimizer, "param_groups", ()):
-                group["lr"] = learning_rate(cfg, step-1, steps)
+                group["lr"] = learning_rate(cfg, step-1, steps)*ratio
         chosen = rng.choice(ids, batch, p=weights)
         real = torch.tensor(pack["signal"][chosen, None], device=device)
         c = torch.tensor(conditions.for_ids(chosen), device=device)
@@ -376,7 +420,8 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             lg = clean_diffusion_loss(g, real, c, True, VIEW)
         else:
             d.train().requires_grad_(True)
-            fake = g(torch.randn(batch, LENGTH, device=device), c)
+            z = torch.randn(batch, LENGTH, device=device)
+            fake, clean = g.parts(z, c) if teacher is not None else (g(z, c), None)
             optd.zero_grad(set_to_none=True)
             regularize = step % 16 == 0
             real.requires_grad_(regularize)
@@ -401,7 +446,7 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
                 stability["r1_updates"] += 1
             ld.backward()
             # Lazy R1 multiplies its gradient by the 16-step interval; r1_scaled_clip scales the limit to match.
-            limit = 10*(16 if regularize and cfg.get("r1_scaled_clip") else 1)
+            limit = cfg.get("d_clip", 10)*(16 if regularize and cfg.get("r1_scaled_clip") else 1)
             dn = torch.nn.utils.clip_grad_norm_(d.parameters(), limit, error_if_nonfinite=True)
             stability["max_d_grad_norm"] = max(stability["max_d_grad_norm"], float(dn))
             stability["d_clipped"] += int(dn > limit)
@@ -412,6 +457,13 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             lg = -d(fake, c).mean()+.5*distribution_loss(fake, real)
             if cfg.get("domloss"):
                 lg = lg+.5*domain_distribution_loss(fake, real, c[:, :domains].argmax(1))
+            if teacher is not None and step % cfg["distill_every"] == 0:
+                with torch.no_grad():
+                    target = teacher(z, c)
+                lg = lg+cfg["distill_every"]*cfg["distill"]*F.mse_loss(clean, target)
+            if cfg.get("lsm_loss"):
+                matching, consistency = spectral_loss(fake, real, pairing="all_pairs")
+                lg = lg+matching+consistency
         if not torch.isfinite(lg+ld):
             raise RuntimeError(f"Nonfinite objective: {arm}/{seed}/{step}")
         lg.backward()
@@ -427,6 +479,9 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             real_score = evaluator.s_real(run, conditions, seed+10000)
             ctrl = control.controllability(run, conditions, CONTROL_N)
             value = real_score["S_real"]+(0 if diffusion else .5*ctrl["C"])
+            if cfg.get("train_domains"):
+                # A one-domain arm is chosen on that domain's pool alone (the LSM-GAN setting: no rate control).
+                value = float(np.mean([real_score["pools"][POOL_OF[d]]["Q"] for d in cfg["train_domains"]]))
             row = dict(step=step, loss_g=float(lg.detach()), loss_d=float(ld.detach()), r1=float(r1.detach()),
                        critic_margin=float(margin), g_grad_norm=float(gn), checkpoint_score=value,
                        S_real=real_score["S_real"], rho=real_score["rho"], C=ctrl["C"],
@@ -441,8 +496,9 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
                                 config=cfg), run_dir/"best.pt")
             save_json(run_dir/"history.json", history)
             print(arm, seed, json.dumps({k: row[k] for k in ("step", "checkpoint_score", "S_real", "C", "rho")}), flush=True)
+    stability["updates"] = stability.get("stopped_at_step", steps)
     torch.save(dict(generator=g.state_dict(), ema=ema.state_dict(), discriminator=d.state_dict() if d else None,
-                    arm=arm, seed=seed, step=steps), run_dir/"last_training_state.pt")
+                    arm=arm, seed=seed, step=stability["updates"]), run_dir/"last_training_state.pt")
     result = dict(arm=arm, seed=seed, best_step=best_step, checkpoint_score=best, config=cfg,
                   training_seconds=time.monotonic()-start, generator_parameters=sum(p.numel() for p in g.parameters()),
                   training_device=str(device), worker_pid=os.getpid(), stability=stability,
@@ -473,7 +529,8 @@ def score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
     probe = run(torch.randn(len(prompts), LENGTH, generator=torch.Generator().manual_seed(seed+32000)), prompts)
     gates = dict(finite=bool(np.isfinite(probe).all()), flat=bool((np.ptp(probe, axis=1) < 1e-6).any()),
                  rho_ok=.75 <= real_score["rho"] <= 1.25,
-                 d_clipped_ok=(stats[-1].get("d_clipped", 0) <= .01*steps))
+                 # Share of the steps trained up to the last evaluation (all of them unless a deadline stopped training).
+                 d_clipped_ok=(stats[-1].get("d_clipped", 0) <= .01*stats[-1].get("step", steps)))
     latency = None
     if not cfg["diffusion"]:
         try:
@@ -491,8 +548,9 @@ def score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
                 gates=gates, eligible=bool(eligible), latency=latency)
 
 
-def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2):
+def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2, deadline=None):
     torch.set_num_threads(threads)
+    TEACHER_ROOTS[:] = [input_root]
     if device.startswith("cuda"):
         torch.cuda.set_device(device)
     pack, _ = load_input(input_root, PROTOCOL)
@@ -507,7 +565,8 @@ def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, 
             from ml.kaggle_multidomain.experiment_flow import train_flow
             row = train_flow(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen)
         else:
-            row = train_conditional(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen)
+            row = train_conditional(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen,
+                                    deadline)
         rows.append(row)
     return rows
 

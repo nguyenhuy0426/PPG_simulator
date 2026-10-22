@@ -34,6 +34,11 @@ CROP_PAD = 6*FS
 # concentrated spectrum (median spectral entropy 0.72, ACF peak 0.52) that beat-to-beat irregularity
 # alone cannot produce (round 7: 0.82, 0.24). The starting amplitude logit leaves other domains near unchanged.
 MOTION_HZ, MOTION_HARMONICS, MOTION_MAX, MOTION_INIT = (.5, 3.5), 3, 1.5, -3.
+# Strict round, quiet arm: the trunk's noise channel is a 9-sample moving average (first null 4.4 Hz, gain 3 keeps unit
+# variance), because the strict judge read the free residual's white-noise texture (zeroing the residual of the shipped
+# model alone moved its AUC from 0.9995 to 0.948); measurement noise is instead an explicit white term before the
+# data-view filter, level SENSOR_MAX*sigmoid(.) per condition (initial ~0.02 of a +-1 pulse).
+QUIET_KERNEL, SENSOR_MAX, SENSOR_INIT = 9, .1, -1.4
 
 
 def view_mask(view, n=LENGTH):
@@ -286,9 +291,20 @@ class PhysioMixR(PhysioMixH):
     (0..MOTION_MAX of the pulse) are set per condition and noise; it models wrist motion artifact as a
     waveform, not as a measured accelerometer signal.
     """
-    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False, pad=0, motion=False):
+    def __init__(self, size, center, scale, view="v3", harmonics=6, beats=160, beat=False, pad=0, motion=False,
+                 quiet=False, sensor=False):
         super().__init__(size, center, scale, view, harmonics, beats)
-        self.beat, self.pad, self.with_motion = beat, pad, motion
+        self.beat, self.pad, self.with_motion, self.quiet, self.with_sensor = beat, pad, motion, quiet, sensor
+        if sensor:
+            self.sensor = nn.Linear(48, 1)
+            nn.init.zeros_(self.sensor.weight)
+            nn.init.constant_(self.sensor.bias, SENSOR_INIT)
+            # The measurement noise reuses z in a fixed shuffled order, so the app's (z, condition) interface holds; the
+            # padding takes other shuffled z entries (a mirrored pad repeats each edge sample's neighbours and raised the
+            # filtered noise variance ~1.8x at the window's first and last samples).
+            g = torch.Generator().manual_seed(0)
+            window, padding = torch.randperm(LENGTH, generator=g), torch.randperm(LENGTH, generator=g)[:2*pad]
+            self.register_buffer("sensor_order", torch.cat((padding[:pad], window, padding[pad:])))
         if pad:
             # Generate pad extra samples on both sides, band-limit the long signal, keep the middle window.
             self.register_buffer("time", (torch.arange(LENGTH+2*pad, dtype=torch.float32)-pad)/FS)
@@ -346,6 +362,8 @@ class PhysioMixR(PhysioMixH):
         style = self.style(torch.cat((z[:, :8], condition), 1))
         # The trunk's noise channel is reflected into the padding; the IBIs and style use z as before.
         noise = torch.cat((z[:, :self.pad].flip(1), z, z[:, LENGTH-self.pad:].flip(1)), 1) if self.pad else z
+        if self.quiet:
+            noise = 3*F.avg_pool1d(noise[:, None], QUIET_KERNEL, 1, QUIET_KERNEL//2, count_include_pad=False)[:, 0]
         h = torch.cat([branch(torch.cat((noise[:, None], carrier), 1)) for branch in self.branches], 1)
         for block, film in zip(self.blocks, self.film):
             gain, bias = film(style).chunk(2, 1)
@@ -364,6 +382,8 @@ class PhysioMixR(PhysioMixH):
         y = gain*pulse+knots[:, 2*self.k:2*self.k+1]+.15*torch.tanh(self.out(h))
         if self.with_motion:
             y = y+self.motion_component(style, z)
+        if self.with_sensor:
+            y = y+SENSOR_MAX*torch.sigmoid(self.sensor(style))[:, :, None]*z[:, None, self.sensor_order]
         if not self.pad:
             return bandlimit(y, self.view, self.band)
         y = torch.fft.irfft(torch.fft.rfft(y, dim=-1)*self.band_long, n=y.shape[-1], dim=-1)[..., self.pad:self.pad+LENGTH]

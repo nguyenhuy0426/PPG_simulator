@@ -396,6 +396,22 @@
   card(rc, pct(R.rx.irregular_rated["0.2"]), "nhịp không đều (CV≈0,2) có số; còn lại báo “không rõ”");
   card(rc, pct(R.rx.irregular_rated["0.3"]), "nhịp rất không đều (CV≈0,3) có số");
 
+  // ---------- architecture switcher ----------
+  const archSeg = $("arch-model-seg");
+  if (archSeg) {
+    const archBtns = archSeg.querySelectorAll("button");
+    archBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        archBtns.forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        const targetId = btn.getAttribute("data-target");
+        document.querySelectorAll(".arch-panel").forEach((p) => {
+          p.classList.toggle("active", p.id === targetId);
+        });
+      });
+    });
+  }
+
   // ---------- nav + theme ----------
   const links = [...document.querySelectorAll("nav.toc a")];
   const observer = new IntersectionObserver((entries) => {

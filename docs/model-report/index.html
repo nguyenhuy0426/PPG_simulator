@@ -60,6 +60,266 @@
       <p>Bản GAN đầu tiên của dự án. Chỉ học 32 bệnh nhân của một bệnh viện (BIDMC) và chỉ vẽ trong dải tần hẹp; không có nút chỉnh nhịp.</p>
     </article>
   </div>
+
+  <div class="card arch-card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0">Sơ đồ khối kiến trúc đa tỉ lệ (Fig. 4 Multi-Scale Blocks)</h3>
+      <a href="chi-tiet.html#architectures" style="font-size:13px;font-weight:600">Xem phân tích kỹ thuật chi tiết →</a>
+    </div>
+    <p class="small muted" style="margin:0 0 12px">Kiến trúc dạng khối chuẩn của Generator: tách nhiễu ngẫu nhiên qua 3 nhánh tích chập đa tỉ lệ (Short scale: k=5, Middle scale: k=21, Longscale: k=61) rồi ghép kênh và hợp nhất để vẽ nên dạng sóng PPG.</p>
+    
+    <div class="controls" style="margin-bottom:10px">
+      <div class="seg" id="index-arch-seg">
+        <button type="button" class="on" data-target="idx-lsm">LSM-GAN (Hình Fig. 4 gốc)</button>
+        <button type="button" data-target="idx-physiomix">PhysioMix (Mô hình App)</button>
+      </div>
+    </div>
+
+    <div class="arch-legend" style="margin:8px 0 12px">
+      <span class="arch-legend-chip chip-conv">Convolution</span>
+      <span class="arch-legend-chip chip-norm">Batch Norm</span>
+      <span class="arch-legend-chip chip-act">ReLU / SiLU</span>
+      <span class="arch-legend-chip chip-concat">Concatenation</span>
+    </div>
+
+    <div class="arch-panel active" id="idx-lsm">
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 980 430" role="img" aria-label="Kiến trúc LSM-GAN Generator (Fig. 4)">
+          <defs>
+            <marker id="ar-idx-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#7c3aed"/>
+            </marker>
+          </defs>
+          <style>
+            .b-conv { fill: #d4edd4; stroke: #4caf50; stroke-width: 1.3px; }
+            .b-norm { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.3px; }
+            .b-act  { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.3px; }
+            .b-cat  { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1.4px; }
+            .b-io   { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+            .t-bold { font-family: inherit; font-size: 13px; font-weight: 700; fill: var(--ink); }
+            .t-sub  { font-family: inherit; font-size: 11px; fill: var(--muted); }
+            .t-lyr  { font-family: inherit; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+            .t-cconv { fill: #14532d; }
+            .t-cnorm { fill: #334155; }
+            .t-cact  { fill: #78350f; }
+            .l-arrow { stroke: #7c3aed; stroke-width: 2.2px; fill: none; }
+            :root[data-theme="dark"] .b-conv { fill: #14331d; stroke: #22c55e; }
+            :root[data-theme="dark"] .t-cconv { fill: #86efac; }
+            :root[data-theme="dark"] .b-norm { fill: #1e293b; stroke: #475569; }
+            :root[data-theme="dark"] .t-cnorm { fill: #e2e8f0; }
+            :root[data-theme="dark"] .b-act  { fill: #3c2410; stroke: #b45309; }
+            :root[data-theme="dark"] .t-cact  { fill: #fde68a; }
+            :root[data-theme="dark"] .b-cat  { fill: #172554; stroke: #3b82f6; }
+          </style>
+
+          <rect class="b-io" x="15" y="165" width="180" height="70" rx="10"/>
+          <text class="t-bold" x="105" y="196" text-anchor="middle">Random noise (1200)</text>
+          <text class="t-sub" x="105" y="216" text-anchor="middle">z ~ N(0, 1) · [B, 1, 1200]</text>
+
+          <text class="t-bold" x="340" y="26" text-anchor="middle">Short scale: kernel size = 5</text>
+          <g transform="translate(255, 34)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→80)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (80)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="138" text-anchor="middle">k=5, p=2 · bắt sóng phản xạ &amp; notch</text>
+
+          <text class="t-bold" x="340" y="160" text-anchor="middle">Middle scale: kernel size = 21</text>
+          <g transform="translate(255, 168)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→40)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (40)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="272" text-anchor="middle">k=21, p=10 · bắt trọn 1 chu kỳ tâm thu</text>
+
+          <text class="t-bold" x="340" y="294" text-anchor="middle">Longscale: kernel size = 61</text>
+          <g transform="translate(255, 302)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→20)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (20)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="406" text-anchor="middle">k=61, p=30 · bắt liên nhịp &amp; đường nền</text>
+
+          <path class="l-arrow" d="M195,185 L225,79 L255,79" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M195,200 L255,213" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M195,215 L225,347 L255,347" marker-end="url(#ar-idx-p)"/>
+
+          <text class="t-bold" x="525" y="86" text-anchor="middle">Concatenation</text>
+          <text class="t-sub" x="525" y="102" text-anchor="middle">140 kênh</text>
+          <g transform="translate(495, 108)">
+            <rect class="b-cat" x="0" y="0" width="60" height="210" rx="8" ry="8"/>
+            <line x1="0" y1="90" x2="60" y2="90" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="155" x2="60" y2="155" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="30" y="45" fill="#1e40af" font-size="11">80 k</text>
+            <text class="t-lyr" x="30" y="122" fill="#1e40af" font-size="11">40 k</text>
+            <text class="t-lyr" x="30" y="182" fill="#1e40af" font-size="11">20 k</text>
+          </g>
+
+          <path class="l-arrow" d="M425,79 L465,79 L495,148" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M425,213 L495,213" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M425,347 L465,347 L495,278" marker-end="url(#ar-idx-p)"/>
+
+          <path class="l-arrow" d="M555,213 L605,213" marker-end="url(#ar-idx-p)"/>
+
+          <g transform="translate(605, 168)">
+            <rect class="b-conv" x="0" y="0" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="75" y="15">Convolution (140→50)</text>
+            <rect class="b-norm" x="0" y="30" width="150" height="30"/>
+            <text class="t-lyr t-cnorm" x="75" y="45">Batch Norm (50)</text>
+            <rect class="b-act" x="0" y="60" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="75" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="680" y="272" text-anchor="middle">k=15, p=7 · hợp nhất 3 thang đo</text>
+
+          <path class="l-arrow" d="M755,213 L795,213" marker-end="url(#ar-idx-p)"/>
+
+          <g transform="translate(795, 183)">
+            <rect class="b-conv" x="0" y="0" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="15">Convolution (50→50)</text>
+            <rect class="b-conv" x="0" y="30" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="45">Convolution (50→1)</text>
+          </g>
+          <text class="t-sub" x="872" y="258" text-anchor="middle">k=4 (Tanh) → k=2 (Tanh)</text>
+
+          <path class="l-arrow" d="M872,243 L872,315" marker-end="url(#ar-idx-p)"/>
+
+          <rect class="b-io" x="765" y="315" width="210" height="65" rx="10"/>
+          <text class="t-bold" x="870" y="342" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="870" y="362" text-anchor="middle">1 200 mẫu · 30 s @ 40 Hz (0–1)</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="arch-panel" id="idx-physiomix">
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 1020 450" role="img" aria-label="Kiến trúc PhysioMix Generator">
+          <defs>
+            <marker id="ar-idx-pm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#1f7a5a"/>
+            </marker>
+          </defs>
+          <style>
+            .b-pm-conv { fill: #d4edd4; stroke: #1f7a5a; stroke-width: 1.3px; }
+            .b-pm-res  { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.3px; }
+            .b-pm-film { fill: #fef3c7; stroke: #d97706; stroke-width: 1.3px; }
+            .l-arrow-pm { stroke: #1f7a5a; stroke-width: 2.2px; fill: none; }
+          </style>
+
+          <g transform="translate(15, 30)">
+            <rect class="b-io" x="0" y="0" width="180" height="60" rx="8"/>
+            <text class="t-bold" x="90" y="26" text-anchor="middle">Nhiễu z (1200)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">1 200 số ngẫu nhiên · seed</text>
+
+            <rect class="b-io" x="0" y="75" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="98" text-anchor="middle">Sóng mang nhịp (4 kênh)</text>
+            <text class="t-sub" x="90" y="118" text-anchor="middle">sin(θ), cos(θ), sin(2θ), sin(3θ)</text>
+            <text class="t-sub" x="90" y="136" text-anchor="middle">khung nhịp dựng sẵn từ HR</text>
+
+            <rect class="b-io" x="0" y="165" width="180" height="65" rx="8"/>
+            <text class="t-bold" x="90" y="190" text-anchor="middle">Điều kiện c</text>
+            <text class="t-sub" x="90" y="210" text-anchor="middle">Tập dữ liệu, HR, HRV, Std</text>
+          </g>
+
+          <g transform="translate(15, 290)">
+            <rect class="b-pm-film" x="0" y="0" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="24" text-anchor="middle">Style MLP (Phong cách)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">Linear(8+c→48) → SiLU</text>
+            <text class="t-sub" x="90" y="62" text-anchor="middle">→ Linear(48→48) Style Vector</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M195,95 L225,55 L250,55" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,115 L250,150" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,135 L225,245 L250,245" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M105,230 L105,290" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(250, 25)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Short scale (k=5)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=5, p=2)</text>
+          </g>
+
+          <g transform="translate(250, 120)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Middle scale (k=21)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=21, p=10)</text>
+          </g>
+
+          <g transform="translate(250, 215)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Longscale (k=61)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=61, p=30)</text>
+          </g>
+
+          <g transform="translate(460, 65)">
+            <text class="t-bold" x="25" y="-12" text-anchor="middle">Concat</text>
+            <rect class="b-cat" x="0" y="0" width="50" height="180" rx="8"/>
+            <line x1="0" y1="60" x2="50" y2="60" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="120" x2="50" y2="120" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="25" y="30" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="90" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="150" fill="#1e40af" font-size="11">16</text>
+            <text class="t-sub" x="25" y="196" text-anchor="middle">48 k</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M420,65 L460,100" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M420,160 L460,160" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M420,255 L460,220" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(545, 45)">
+            <rect class="b-pm-res" x="0" y="0" width="220" height="235" rx="10"/>
+            <text class="t-bold" x="110" y="24" text-anchor="middle" fill="#5b21b6">8 Khối Residual Giãn Nở (FiLM)</text>
+            <text class="t-sub" x="110" y="44" text-anchor="middle">Dilation: 1, 2, 4, 8, 16, 32, 64, 128</text>
+
+            <rect x="15" y="58" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="73" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <rect x="15" y="94" width="190" height="30" rx="5" fill="#fef3c7" stroke="#d97706"/>
+            <text class="t-lyr t-cact" x="110" y="109" font-size="11">FiLM: h × (1 + 0.1·gain) + 0.1·bias</text>
+
+            <rect x="15" y="130" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="145" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <text class="t-sub" x="110" y="180" text-anchor="middle">Trường tiếp nhận tích lũy: ~10 giây</text>
+            <text class="t-sub" x="110" y="200" text-anchor="middle">FiLM điều biến phong cách theo từng tập</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M510,155 L545,155" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,330 L655,330 L655,280" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(805, 55)">
+            <rect class="b-pm-conv" x="0" y="0" width="195" height="40" rx="6"/>
+            <text class="t-lyr t-cconv" x="97" y="20">Conv1D Head (48→1, k=5)</text>
+
+            <rect class="b-io" x="0" y="55" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="72" fill="var(--ink)" font-size="11.5">+ Sóng mang (hài 1 + 0.3·hài 3)</text>
+            <text class="t-sub" x="97" y="88" text-anchor="middle">Neo biên độ và chu kỳ nhịp</text>
+
+            <rect class="b-io" x="0" y="112" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="129" fill="var(--ink)" font-size="11.5">Lọc thông dải FIR (0.5–8.0 Hz)</text>
+            <text class="t-sub" x="97" y="145" text-anchor="middle">Cắt bỏ gợn vi mô không sinh lý</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M765,155 L805,75" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,40 L902,55" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,97 L902,112" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,154 L902,280" marker-end="url(#ar-idx-pm)"/>
+
+          <rect class="b-io" x="785" y="280" width="225" height="65" rx="10"/>
+          <text class="t-bold" x="897" y="306" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="897" y="326" text-anchor="middle">1 200 mẫu · HR đúng lệnh · chuẩn hóa 0–1</text>
+        </svg>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section>
@@ -287,6 +547,21 @@
     root.dataset.theme = dark ? 'light' : 'dark';
     try { sessionStorage.setItem('theme', root.dataset.theme); } catch (e) {}
   });
+
+  const archSeg = document.getElementById('index-arch-seg');
+  if (archSeg) {
+    const archBtns = archSeg.querySelectorAll('button');
+    archBtns.forEach((b) => {
+      b.addEventListener('click', () => {
+        archBtns.forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        const targetId = b.getAttribute('data-target');
+        document.querySelectorAll('#idx-lsm, #idx-physiomix').forEach((p) => {
+          p.classList.toggle('active', p.id === targetId);
+        });
+      });
+    });
+  }
 })();
 </script>
 </body>
