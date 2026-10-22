@@ -1,13 +1,15 @@
-"""Round 13: the red head (red_head.py) judged on fresh validation people from OpenOximetry. Laptop CPU only.
+"""Round 13: the red head (red_head.py) judged on fresh validation people from OpenOximetry.
 
 RULE_12 stopped PhysioFlow-2 tuning on the v4 validation people. Round 13 changes the question: the infrared generator
 stays as shipped (PhysioMix R9, PhysioFlow F6) and only the red channel is generated, as R x (infrared + residual).
 Training uses the v4 training windows with red (FINGER, PTT) and the OpenOximetry training people; the decision reads
 the OpenOximetry validation people only (never seen in any round); the OpenOximetry test people are not opened.
-OpenOximetry stays on this machine (PhysioNet Restricted Health Data Use Agreement 1.5.0).
+It runs in one private Kaggle kernel (physionet.org serves the laptop at about 4 KB/s): OpenOximetry is downloaded
+with the user's PhysioNet credentials (Kaggle Secrets) into /tmp, the pack is built in /tmp, and only metrics and
+model weights reach the kernel outputs (PhysioNet Restricted Health Data Use Agreement 1.5.0).
 
-    PPG_DRY_RUN=1 .venv/bin/python -m ml.kaggle_multidomain.experiment_red13 --pack ml/runs/physioflow2-data-v4 \
-        --openox ml/runs/openox-red-v1 --output ml/runs/red13-v1
+    Kaggle:  experiment_red13 --pack /kaggle/input --download /tmp/openox --output /kaggle/working/red13
+    Laptop:  experiment_red13 --pack ml/runs/physioflow2-data-v4 --openox ml/runs/openox-red-v1 --output ml/runs/red13
 """
 import argparse
 import json
@@ -19,7 +21,7 @@ import torch
 
 from ml.kaggle_lsm.train_lsm import LENGTH, save_json
 from ml.kaggle_multidomain.data_dual import load_dual
-from ml.kaggle_multidomain.data_openox import DOMAIN as OPENOX, load_openox
+from ml.kaggle_multidomain.data_openox import DOMAIN as OPENOX, build as build_openox, load_openox
 from ml.kaggle_multidomain.experiment_dual import pair_c2st
 from ml.kaggle_multidomain.red_head import HEAD_DOMAINS, residual_score, residual_target
 from ml.kaggle_multidomain.red_head_train import RECIPE, candidates, red_rows, train_head
@@ -27,6 +29,7 @@ from ml.kaggle_multidomain.red_head_train import RECIPE, candidates, red_rows, t
 DOMAINS = HEAD_DOMAINS+(OPENOX,)
 ROUND13 = dict(steps=6000, seeds=(42, 123, 2026), probe_seeds=(0, 1, 2), probe_train_n=512)
 LIMITS13 = dict(score_ratio=.8, ptp_error=1e-3, latency_ms=1000.)
+OPENOX_DIR = "physionet.org/files/openox-repo/1.1.1"
 RULE_13 = (
     "Round 13 (red head), fixed before any OpenOximetry validation window is scored. Infrared generators unchanged. "
     "Red head: residual flow (red_head.py, 2.8 M parameters, 8 Heun steps) trained with RECIPE for 6000 steps at seeds "
@@ -36,9 +39,11 @@ RULE_13 = (
     "probe C2ST on (standardised infrared, residual) trained on training-people windows (3 probe seeds). Baselines: "
     "coloured residual with the OpenOximetry training spectrum, and the infrared copy (the app today). D3 (the red head "
     "replaces the infrared copy as the app's red channel): every seed finite with |ptp(red) - R| <= 1e-3, TorchScript "
-    "agreement and single-thread laptop latency < 1000 ms; seed-mean residual score <= 0.8 x the coloured baseline's; "
+    "agreement and single-thread CPU latency < 1000 ms; seed-mean residual score <= 0.8 x the coloured baseline's; "
     "seed-mean probe AUC + 2 x seed SD < the coloured baseline's probe AUC. Shipped seed: lowest residual score. "
-    "OpenOximetry test people are not used. Laptop CPU; the Raspberry Pi is not measured.")
+    "OpenOximetry test people are not used. Runs in a private Kaggle kernel (GPU training; latency on the Kaggle host "
+    "CPU); OpenOximetry is downloaded to /tmp inside the kernel and never written to its outputs. The Raspberry Pi is "
+    "not measured.")
 
 
 def combined(v4, openox):
@@ -51,7 +56,7 @@ def combined(v4, openox):
     return out
 
 
-def probe_auc(pack, ids_train, red_train, ids_valid, red_valid, seed):
+def probe_auc(pack, ids_train, red_train, ids_valid, red_valid, seed, device="cpu"):
     """C2ST on (standardised infrared, residual y): real windows against the candidate's, on held-out people."""
     def stack(ids, red):
         ir = pack["signal"][ids].astype(np.float64)
@@ -59,7 +64,7 @@ def probe_auc(pack, ids_train, red_train, ids_valid, red_valid, seed):
         x = (ir-ir.mean(-1, keepdims=True))/ir.std(-1, keepdims=True)
         return np.stack((x, y), 1)[valid].astype(np.float32)
     real_t, real_v = stack(ids_train, pack["red"][ids_train]), stack(ids_valid, pack["red"][ids_valid])
-    return float(pair_c2st(real_t, stack(ids_train, red_train), real_v, stack(ids_valid, red_valid), "cpu", seed=seed))
+    return float(pair_c2st(real_t, stack(ids_train, red_train), real_v, stack(ids_valid, red_valid), device, seed=seed))
 
 
 def export_check(head, conditions, pack, ids):
@@ -108,7 +113,10 @@ def decide(rows):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--pack", required=True)
-    parser.add_argument("--openox", required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--openox", help="A built ppg_openox_red_v1 pack")
+    source.add_argument("--download", help="Download OpenOximetry here and build the pack next to it (Kaggle)")
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--output", required=True)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--steps", type=int, default=ROUND13["steps"])
@@ -118,7 +126,14 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=False)
     save_json(out/"RULE_13.json", dict(rule=RULE_13, recipe=RECIPE, round=ROUND13, limits=LIMITS13))
     v4, v4_manifest = load_dual(a.pack)
-    ox, ox_manifest = load_openox(a.openox)
+    download = None
+    if a.download:
+        from ml.kaggle_multidomain.openox_download import download_openox
+        root, download = download_openox(Path(a.download)/OPENOX_DIR, log=lambda m: print(m, flush=True))
+        build_openox(root, Path(a.download)/"pack")
+        save_json(out/"openox_download.json", download)
+    ox, ox_manifest = load_openox(Path(a.download)/"pack" if a.download else a.openox)
+    save_json(out/"openox_manifest.json", ox_manifest)
     pack = combined(v4, ox)
     train_ids, train_y = red_rows(pack, "train", DOMAINS)
     valid_ids, valid_y = red_rows(pack, "validation", (OPENOX,))
@@ -131,7 +146,7 @@ def main(argv=None):
         run.mkdir()
         start = time.monotonic()
         head, conditions, history = train_head(pack, train_ids, train_y, seed, steps, a.threads,
-                                               log=lambda m, s=seed: print(s, m, flush=True))
+                                               log=lambda m, s=seed: print(s, m, flush=True), device=a.device)
         torch.save(dict(head=head.state_dict(), conditions=conditions.metadata(), recipe=RECIPE, steps=steps,
                         seed=seed), run/"red_head.pt")
         held = candidates(head, conditions, pack, valid_ids, seed+1, (OPENOX,))
@@ -143,10 +158,10 @@ def main(argv=None):
             total, per = residual_score(y[valid], valid_y, pack["domain"][valid_ids][valid], pack["domain"][valid_ids])
             row[name] = dict(score=total, datasets=per,
                              ptp_error_max=float(np.max(np.abs(np.ptp(red, -1)-pack["ratio_r"][valid_ids]))),
-                             probe_auc=[probe_auc(pack, probe_train, fitted[name], valid_ids, red, s)
+                             probe_auc=[probe_auc(pack, probe_train, fitted[name], valid_ids, red, s, a.device)
                                         for s in ROUND13["probe_seeds"]])
         try:
-            traced, latency = export_check(head, conditions, pack, valid_ids)
+            traced, latency = export_check(head.cpu(), conditions, pack, valid_ids)
             traced.save(str(run/"red_head_cpu.ts"))
             trace_ok = True
         except (RuntimeError, AssertionError) as error:
@@ -163,8 +178,9 @@ def main(argv=None):
     decision = dict(rule=RULE_13, smoke=a.smoke, v4_windows_sha256=v4_manifest["windows_sha256"],
                     openox_windows_sha256=ox_manifest["windows_sha256"], training_windows=int(len(train_ids)),
                     validation_windows=int(len(valid_ids)),
-                    validation_people=int(len(set(pack["subject"][valid_ids]))), rows=rows,
-                    scope="Laptop CPU; OpenOximetry validation people; test people not opened; Pi not measured")
+                    validation_people=int(len(set(pack["subject"][valid_ids]))), rows=rows, download=download,
+                    device=a.device,
+                    scope="OpenOximetry validation people; test people not opened; Raspberry Pi not measured")
     if not a.smoke and len(rows) > 1:
         decision.update(decide(rows))
     save_json(out/"DECISION_13.json", decision)

@@ -36,7 +36,8 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     galaxy_e = mode == "galaxy_e"
     # Round 11: PhysioFlow-2, the paired infrared/red generator, pilot and final in one kernel (GPU).
     dual = mode in ("dual", "dual12")
-    flow = dual or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    red13 = mode == "red13"
+    flow = dual or red13 or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -70,8 +71,11 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_e.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
-    if dual:
+    if dual or red13:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_dual", "flow2", "experiment_dual")]
+    if red13:
+        sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_openox", "openox_download", "red_head",
+                                                                     "red_head_train", "experiment_red13")]
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -122,7 +126,7 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         args = ["--input-root", "/kaggle/input", "--round4-root", "/kaggle/input", "--output", "/kaggle/working/physiomix6",
                 "--steps", str(steps), "--seeds", *map(str, seeds), "--variant", "crop_r1"]
         entry = f"from ml.kaggle_multidomain.experiment_v5 import main\nmain({args!r})"
-    if flow and not dual:
+    if flow and not (dual or red13):
         stage = mode.split("_")[1]
         args = ["--input-root", "/kaggle/input", "--output", "/kaggle/working/physioflow10", "--stage", stage,
                 "--steps", str(steps), "--interval", "2000"]
@@ -192,6 +196,11 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     if dual:
         entry = ("from ml.kaggle_multidomain.experiment_dual import main\n"
                  f"main({['--input-root', '/kaggle/input', '--output', '/kaggle/working/physioflow2', '--steps', str(steps)]+(['--round', '12'] if mode == 'dual12' else [])!r})")
+    if red13:
+        # OpenOximetry is downloaded inside the kernel into /tmp with the user's Kaggle Secrets and never written to
+        # /kaggle/working (PhysioNet Restricted Health Data Use Agreement 1.5.0).
+        entry = ("from ml.kaggle_multidomain.experiment_red13 import main\n"
+                 "main(['--pack', '/kaggle/input', '--download', '/tmp/openox', '--output', '/kaggle/working/red13'])")
     # The entry point's own module must travel in the payload (a missing one fails only on Kaggle).
     for module in re.findall(r"from (ml\.[\w.]+) import", entry):
         if module.replace(".", "/")+".py" not in files:
@@ -207,7 +216,7 @@ for name, text in FILES.items():
     path.write_text(text)
 sys.path.insert(0, str(root))
 """.replace("PAYLOAD", repr(payload))
-    if mode in ("prepare", "physio_prepare", "physio3_prepare"):
+    if mode in ("prepare", "physio_prepare", "physio3_prepare", "red13"):
         script += "subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'wfdb==4.3.1', 'h5py>=3.10,<4'], check=True)\n"
     script += f"pathlib.Path('/kaggle/working/source_manifest.json').write_text({json.dumps(dict(branch=branch, files=hashes))!r})\n"+entry+"\n"
     if flow or mode in ("train", "physio_train", "physio3_pilot", "physio3_final", "physio4", "physio5", "physio6", "physio7", "physio8", "physio9"):
@@ -320,6 +329,9 @@ sys.path.insert(0, str(root))
         metadata.update(id=f"{owner}/ppg-physioflow2-dual{'12' if mode == 'dual12' else ''}-v1",
                         title=f"PPG PhysioFlow2 Dual{'12' if mode == 'dual12' else ''} v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physioflow2-data-v4"])
+    if red13:
+        metadata.update(id=f"{owner}/ppg-red13-v1", title="PPG Red13 v1", kernel_sources=[], enable_gpu=True,
+                        dataset_sources=[f"{owner}/ppg-physioflow2-data-v4"])
     if lsm_galaxy:
         metadata.update(id=f"{owner}/ppg-lsm-galaxy-v1", title="PPG LSM Galaxy v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
@@ -374,7 +386,7 @@ if __name__ == "__main__":
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12"),
+                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13"),
                    required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])

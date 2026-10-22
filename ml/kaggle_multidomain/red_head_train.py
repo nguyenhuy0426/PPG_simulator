@@ -33,14 +33,16 @@ def red_rows(pack, split, domains=HEAD_DOMAINS):
 
 
 def head_red(head, conditions, pack, ids, seed):
-    """Red windows (n, L) from the head with the real infrared of the given windows."""
+    """Red windows (n, L) from the head with the real infrared of the given windows (on the head's device; the noise
+    is drawn on the CPU so a seed gives the same draws on any device)."""
+    device = next(head.parameters()).device
     domains, ratio = pack["domain"][ids], pack["ratio_r"][ids].astype(np.float32)
     ir = torch.tensor(pack["signal"][ids].astype(np.float32))
     z = torch.randn(len(ids), LENGTH, generator=torch.Generator().manual_seed(seed))
     cond = torch.tensor(conditions.rows(domains, ratio))
     with torch.no_grad():
-        return torch.cat([head(a, b, c, d) for a, b, c, d in zip(z.split(64), ir.split(64), cond.split(64),
-                                                                 torch.tensor(ratio).split(64))]).numpy()
+        return torch.cat([head(a.to(device), b.to(device), c.to(device), d.to(device)).cpu()
+                          for a, b, c, d in zip(z.split(64), ir.split(64), cond.split(64), torch.tensor(ratio).split(64))]).numpy()
 
 
 def candidates(head, conditions, pack, ids, seed, train_domains=HEAD_DOMAINS):
@@ -68,7 +70,7 @@ def evaluate(head, conditions, pack, ids, y_real, seed, threads, train_domains=H
     return out
 
 
-def train_head(pack, ids, y, seed, steps, threads, log=print):
+def train_head(pack, ids, y, seed, steps, threads, log=print, device="cpu"):
     """Train one red head on the given red windows (ids into pack, residual targets y); returns (EMA head, conditions,
     history). Batches are balanced over datasets and people as in every earlier round."""
     torch.manual_seed(seed)
@@ -80,8 +82,9 @@ def train_head(pack, ids, y, seed, steps, threads, log=print):
     row_of = {int(i): k for k, i in enumerate(ids)}
     conditions = HeadConditions(pack["domain"][ids], pack["ratio_r"][ids])
     cond_all = torch.tensor(conditions.rows(pack["domain"][ids], pack["ratio_r"][ids]))
-    ir_all, y_all = torch.tensor(pack["signal"][ids].astype(np.float32)), torch.tensor(y)
-    head = RedHead(conditions.size, RECIPE["sample_steps"])
+    cond_all = cond_all.to(device)
+    ir_all, y_all = torch.tensor(pack["signal"][ids].astype(np.float32), device=device), torch.tensor(y, device=device)
+    head = RedHead(conditions.size, RECIPE["sample_steps"]).to(device)
     ema = ema_model(head)
     optimizer = torch.optim.AdamW(head.net.parameters(), lr=RECIPE["lr"], betas=(.9, .99), weight_decay=.01)
     history, start = [], time.monotonic()
@@ -89,7 +92,7 @@ def train_head(pack, ids, y, seed, steps, threads, log=print):
         head.train()
         for group in optimizer.param_groups:
             group["lr"] = learning_rate(RECIPE, step-1, steps)*min(1., step/RECIPE["warmup"])
-        rows = torch.tensor([row_of[int(i)] for i in rng.choice(pool, RECIPE["batch"], p=weights)])
+        rows = torch.tensor([row_of[int(i)] for i in rng.choice(pool, RECIPE["batch"], p=weights)], device=device)
         loss = head_loss(head.net, y_all[rows], ir_all[rows], cond_all[rows], RECIPE["deriv"], RECIPE["spectral"],
                          RECIPE["amplitude"])
         optimizer.zero_grad(set_to_none=True)
