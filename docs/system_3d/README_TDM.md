@@ -8,7 +8,7 @@ Nguồn tham số: [build_tdm_chamber.py](build_tdm_chamber.py). Script dùng ch
 tham số với [build_system.py](build_system.py) của hộp v4.
 **Không thiết kế lại PCB, không in lại thân hộp.**
 
-![Carrier 2 LED trong hộp v4](out_tdm/tdm_layout.png)
+![Carrier 2 LED trong hộp v4](out/tdm/tdm_layout.png)
 
 ## Bố trí
 
@@ -33,7 +33,7 @@ tham số với [build_system.py](build_system.py) của hộp v4.
 
 ## Lỗ LED: kích thước theo datasheet
 
-![Lỗ LED và mẫu thử](out_tdm/carrier_bores.png)
+![Lỗ LED và mẫu thử](out/tdm/carrier_bores.png)
 
 | | LED Đỏ YSL‑R341R3D‑D2 ([DS](../ds_linhkien/red_led_3.3mm_datasheet.pdf) tr. 2) | LED IR Everlight SIR234 ([DS](../ds_linhkien/IR_led_3.3mm_datasheet.pdf) tr. 5) |
 |---|---|---|
@@ -151,7 +151,7 @@ sáng hơn LED Đỏ hàng chục lần ở cùng d. Có ba cách cân lại, n�
 
 ## File in (bàn 180 mm, đơn vị mm, tỷ lệ 100 %)
 
-**In mới:** [out_tdm/print_bambu_180/](out_tdm/print_bambu_180/)
+**In mới:** [out/tdm/print_bambu_180/](out/tdm/print_bambu_180/)
 
 | File | SL | Kích thước in X × Y × Z (mm) |
 |---|---:|---|
@@ -175,8 +175,8 @@ sáng hơn LED Đỏ hàng chục lần ở cùng d. Có ba cách cân lại, n�
 | `14_ga_chu_U_OPT101_70x20.stl` | 1 | gá H của board thu |
 
 Carrier v4, ray, thanh đẩy và núm của làn Đỏ không cần dùng.
-[manifest.json](out_tdm/print_bambu_180/manifest.json) ghi kích thước, SHA-256
-và góc lệch trục. `out_tdm/stl/` là hệ lắp ráp, chỉ để kiểm tra.
+[manifest.json](out/tdm/print_bambu_180/manifest.json) ghi kích thước, SHA-256
+và góc lệch trục. `out/tdm/stl/` là hệ lắp ráp, chỉ để kiểm tra.
 
 ## Lắp
 
@@ -197,7 +197,7 @@ và góc lệch trục. `out_tdm/stl/` là hệ lắp ráp, chỉ để kiểm t
 ## Đã kiểm tra (hình học CAD danh nghĩa)
 
 Chạy `build_tdm_chamber.py`: **47/47 PASS**, xem
-[out_tdm/fit_report.json](out_tdm/fit_report.json). Ngưỡng giao nhau 10⁻⁴ mm³,
+[out/tdm/fit_report.json](out/tdm/fit_report.json). Ngưỡng giao nhau 10⁻⁴ mm³,
 riêng các phép quét LED dùng 10⁻³ mm³ vì mặt cầu được chia lưới.
 
 **Lỗ LED và khả năng in trên A1**

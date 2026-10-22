@@ -46,7 +46,7 @@ import trimesh
 from trimesh.transformations import rotation_matrix, translation_matrix
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "out_tdm")
+OUT = os.path.join(HERE, "out", "tdm")
 V4_PRINT = os.path.join(HERE, "out", "print_bambu_180")
 sys.path.insert(0, HERE)
 import build_system as bs  # noqa: E402  (nguồn tham số hộp v4)
@@ -657,7 +657,7 @@ def export(carrier, masks, assembly, checks):
     for fname, qty, desc in REUSED:
         src = os.path.join(V4_PRINT, fname)
         manifest["reused_parts"].append(dict(
-            file=f"../../out/print_bambu_180/{fname}", quantity=qty, description=desc,
+            file=f"../../print_bambu_180/{fname}", quantity=qty, description=desc,
             sha256=sha256(src) if os.path.exists(src) else None))
     with open(os.path.join(print_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
