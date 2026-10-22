@@ -340,6 +340,34 @@ plotting an 8-second rolling window for A0 (IR) and A2 (Red). Sensor readings di
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 
+**Single-sensor TDM mode (Setup → RX sensor → 1 × OPT101, or `--rx-mode tdm`):**
+when only one OPT101 is available, put both LEDs in one chamber in front of the A0
+sensor. [docs/system_3d/README_TDM.md](docs/system_3d/README_TDM.md) adds a
+dual-LED carrier (RED + IR, toed in to meet at the sensor, with swappable IR
+masks) for the IR lane of the existing rectangular v4 box; the 70 × 20 mm
+receiver PCB is used with only socket U2 (A0) populated. The Setup switch is locked while output runs, is
+saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
+The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
+IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
+first, so the two LEDs are never commanded on together. A0 is read once per slot,
+`PPG_TDM_READ_DELAY_MS` after the switch (default 8 ms of a 10 ms
+`PPG_TDM_SLOT_MS`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
+The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
+next to them. Nothing is subtracted. TDM reads the sensor only while output
+runs, and the LEDs pulse instead of glowing steadily.
+The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
+(τ = 1 ms) needs about 7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
+slow for 10 ms slots. Measure it with the app stopped:
+
+```bash
+.venv/bin/python scripts/measure_tdm_settling.py --output docs/hardware-validation/tdm-settling
+```
+
+`suggested_read_delay_ms` in its summary is the slowest observed edge plus 25 %.
+If it does not fit, lengthen `PPG_TDM_SLOT_MS` (lower per-channel rate) or reduce
+the RC. These checks establish timing only, not SpO₂ calibration: both channels
+now share one photodiode's responsivity, so the R ratio differs from dual mode.
+
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
 between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN
 continuous pulse sequence. Clips automatically stop at 30 seconds or upon navigating away.

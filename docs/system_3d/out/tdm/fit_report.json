@@ -1,0 +1,248 @@
+{
+  "passed": 47,
+  "total": 47,
+  "tolerance_mm3": 0.0001,
+  "checks": [
+    {
+      "label": "carrier_2led: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 11393.24
+    },
+    {
+      "label": "mau_thu_30: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 3721.12
+    },
+    {
+      "label": "mask_mo: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 102.58
+    },
+    {
+      "label": "mask_ir2: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 105.68
+    },
+    {
+      "label": "mask_ir1_5: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 106.25
+    },
+    {
+      "label": "mask_ir1: watertight, một khối",
+      "pass_": true,
+      "volume_mm3": 106.43
+    },
+    {
+      "label": "vách nhựa giữa hai lỗ LED ở đoạn vành Ø4.5 ≥ 0.8 mm",
+      "pass_": true,
+      "wall_mm": 1.19
+    },
+    {
+      "label": "vách nhựa giữa hai lỗ LED ở đoạn thân Ø3.7 ≥ 0.8 mm",
+      "pass_": true,
+      "wall_mm": 1.0
+    },
+    {
+      "label": "A1: khe hở bán kính thân sau in (Ø3.7 − 0.2 − Ø3.2)/2 ≥ 0.1 mm",
+      "pass_": true,
+      "clearance_mm": 0.15
+    },
+    {
+      "label": "A1: khe hở bán kính vành Đỏ sau in (Ø4.5 − 0.2 − Ø4)/2 ≥ 0.1 mm",
+      "pass_": true,
+      "clearance_mm": 0.15
+    },
+    {
+      "label": "A1: LED red lớn nhất vẫn luồn được khi lỗ đứng in hụt Ø 0.4 mm [giả định xấu nhất]",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "A1: LED ir lớn nhất vẫn luồn được khi lỗ đứng in hụt Ø 0.4 mm [giả định xấu nhất]",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "A1: LED danh định Ø3 không lỏng quá 0.3 mm/bên khi lỗ hụt 0.2 mm [giả định thường gặp]",
+      "pass_": true,
+      "radial_play_mm": 0.25
+    },
+    {
+      "label": "A1 in dựng đứng: mặt treo trong lỗ LED ≤ 45° (không support, không gờ phẳng treo)",
+      "pass_": true,
+      "max_overhang_deg": 42.8
+    },
+    {
+      "label": "A1 in dựng đứng: các mặt ngang của khe tấm che rơi đúng bội lớp 0.2 mm",
+      "pass_": true,
+      "layer_offset": {
+        "đáy khe tấm che": 0.0,
+        "trần khe tấm che": 0.0,
+        "mặt trước carrier": 0.0,
+        "mũi": 0.0
+      }
+    },
+    {
+      "label": "A1 in dựng đứng: mặt sau áp bàn, cao ≤ 30 mm, diện tích bám bàn ≥ 300 mm²",
+      "pass_": true,
+      "print_height_mm": 26.0,
+      "bed_contact_mm2": 451.4
+    },
+    {
+      "label": "LED red (LED danh định): luồn từ mặt sau tới chặn, không cấn ở bất kỳ vị trí nào",
+      "pass_": true,
+      "worst_mm3": 4.967116156327431e-06
+    },
+    {
+      "label": "LED red (LED danh định): gờ trước chặn chóp (tiến thêm 0.15 mm thì chạm)",
+      "pass_": true,
+      "intersection_mm3": 0.07439506623393055
+    },
+    {
+      "label": "LED red (LED lớn nhất theo dung sai): luồn từ mặt sau tới chặn, không cấn ở bất kỳ vị trí nào",
+      "pass_": true,
+      "worst_mm3": 3.890804105459798e-06
+    },
+    {
+      "label": "LED red (LED lớn nhất theo dung sai): gờ trước chặn chóp (tiến thêm 0.15 mm thì chạm)",
+      "pass_": true,
+      "intersection_mm3": 0.14078568940981465
+    },
+    {
+      "label": "LED ir (LED danh định): luồn từ mặt sau tới chặn, không cấn ở bất kỳ vị trí nào",
+      "pass_": true,
+      "worst_mm3": 4.967113622573987e-06
+    },
+    {
+      "label": "LED ir (LED danh định): gờ trước chặn chóp (tiến thêm 0.15 mm thì chạm)",
+      "pass_": true,
+      "intersection_mm3": 0.07439505771601335
+    },
+    {
+      "label": "LED ir (LED lớn nhất theo dung sai): luồn từ mặt sau tới chặn, không cấn ở bất kỳ vị trí nào",
+      "pass_": true,
+      "worst_mm3": 3.890757319966748e-06
+    },
+    {
+      "label": "LED ir (LED lớn nhất theo dung sai): gờ trước chặn chóp (tiến thêm 0.15 mm thì chạm)",
+      "pass_": true,
+      "intersection_mm3": 0.14078571655240094
+    },
+    {
+      "label": "chóp hai LED cùng mặt phẳng (cùng gờ chặn, sai lệch < 0.1 mm)",
+      "pass_": true,
+      "tip_nominal_x": 1.0,
+      "tip_worst_x": 0.916
+    },
+    {
+      "label": "tấm che mo trượt vào khe không cấn",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che mo không chạm chóp LED",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir2 trượt vào khe không cấn",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir2 không chạm chóp LED",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1_5 trượt vào khe không cấn",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1_5 không chạm chóp LED",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1 trượt vào khe không cấn",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1 không chạm chóp LED",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "carrier 2 LED / thanh đẩy / núm không chạm thân, nắp, ray, khẩu độ v4 (d v4 15..90, bước 1)",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "tấm che lắp sẵn không chạm thân/nắp/khẩu độ trên cả hành trình",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "carrier ở d nhỏ nhất ∩ receiver_support = 0",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "carrier ở d nhỏ nhất ∩ receiver_pcb = 0",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "carrier ở d nhỏ nhất ∩ socket_envelope_red = 0",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "carrier ở d nhỏ nhất ∩ socket_envelope_ir = 0",
+      "pass_": true,
+      "intersection_mm3": 0.0
+    },
+    {
+      "label": "khẩu độ d16 + tấm che 'mo': tia 2 LED → tâm + 4 góc vùng nhạy, cửa sổ X 126.5..132.0, d thật [24.2, 50.0, 99.2]",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "khẩu độ d5 + tấm che 'mo': tia 2 LED → tâm + 4 góc vùng nhạy, cửa sổ X 126.5..132.0, d thật [24.2, 50.0, 99.2]",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "khẩu độ Ø2 chắn một phần tia lệch tâm → không dùng Ø2 với carrier 2 LED",
+      "pass_": true
+    },
+    {
+      "label": "tấm che mo: tia chính hai LED → tâm OPT101 không bị chắn",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir2: tia chính hai LED → tâm OPT101 không bị chắn",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1_5: tia chính hai LED → tâm OPT101 không bị chắn",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "tấm che ir1: tia chính hai LED → tâm OPT101 không bị chắn",
+      "pass_": true,
+      "worst_mm3": 0.0
+    },
+    {
+      "label": "khẩu độ 'blank' chắn tia của cả hai LED",
+      "pass_": true
+    }
+  ],
+  "scope": "Hình học danh nghĩa trên CAD. Chưa in thử, chưa đo co ngót, rò sáng, giản đồ phát LED hay công suất quang."
+}

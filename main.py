@@ -7,6 +7,7 @@ Usage:
     python3 main.py --dry-run              # Dry-run + BLE (no hardware, simulated I/O)
     python3 main.py --no-ble               # Diagnostic GUI mode without BLE
     python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
+    python3 main.py --rx-mode tdm          # RED+IR in one chamber, one OPT101 (A0)
 """
 
 import sys
@@ -26,12 +27,19 @@ parser.add_argument("--ble-only", action="store_true",
                     help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
 parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
                     default="Pathology", help="Initial GUI page; output stays off")
+parser.add_argument("--rx-mode", choices=("dual", "tdm"),
+                    help="dual: one OPT101 per LED; tdm: RED and IR share one chamber "
+                         "and one OPT101 on A0, time-multiplexed (overrides PPG_RX_MODE "
+                         "and the mode saved from Settings)")
 args = parser.parse_args()
 
 if args.dry_run:
     os.environ["PPG_DRY_RUN"] = "1"
+if args.rx_mode:
+    os.environ["PPG_RX_MODE"] = args.rx_mode
 
-from config import DEVICE_NAME, FIRMWARE_VERSION, FIRMWARE_DATE, DRY_RUN
+from config import (DEVICE_NAME, FIRMWARE_VERSION, FIRMWARE_DATE, DRY_RUN,
+                    RX_TDM_SLOTS, RX_TDM_SLOT_S, RX_TDM_READ_DELAY_S)
 from comm.logger import log
 from config_store import load_config, save_config, config_from_ppg_params, apply_config_to_params
 from core.signal_engine import SignalEngine
@@ -55,11 +63,22 @@ def start_ble(engine):
     return ble
 
 
+def resolve_rx_mode(saved_config):
+    """--rx-mode or PPG_RX_MODE win; otherwise the mode chosen in Settings."""
+    explicit = os.environ.get("PPG_RX_MODE")
+    if explicit:
+        return explicit
+    return saved_config.get("rx_mode", "dual")
+
+
 def save_current_config(engine, language="en", theme="light"):
     try:
         p = engine.get_ppg_params()
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
+        # Keep the mode chosen in Settings (written there immediately), not
+        # engine.rx_mode: that may be a one-run --rx-mode / PPG_RX_MODE override.
+        cfg["rx_mode"] = load_config().get("rx_mode", "dual")
         from ui.i18n import normalise_language
         cfg["language"] = normalise_language(language)
         cfg["theme"] = theme if theme in ("light", "dark") else "light"
@@ -73,21 +92,27 @@ def main():
     log.info(f"  {DEVICE_NAME} v{FIRMWARE_VERSION}")
     log.info(f"  {FIRMWARE_DATE}")
     log.info(f"  Mode: {'DRY-RUN' if DRY_RUN else 'HARDWARE'}")
+    config = load_config()
+    rx_mode = resolve_rx_mode(config)
+    if rx_mode == "tdm":
+        log.info(f"  RX: TDM on one OPT101 — slots {'/'.join(RX_TDM_SLOTS)}, "
+                 f"{RX_TDM_SLOT_S * 1000:g} ms each, read {RX_TDM_READ_DELAY_S * 1000:g} ms after switching")
+    else:
+        log.info("  RX: dual (one OPT101 per LED)")
     log.info("=" * 50)
 
     engine = SignalEngine.get_instance()
     engine.begin()
 
     # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, IR=A0 / Red=A2).
-    # RX failure must not block TX/UI — the app degrades to TX-only.
+    # RX failure must not block TX/UI — the app degrades to TX-only; in TDM
+    # the LEDs are still multiplexed, the receiver simply returns no samples.
     rx = OPT101Receiver.get_instance()
+    engine.set_rx_mode(rx_mode, rx)
     if rx.begin():
         rx.start()
     else:
         log.error("RX unavailable — continuing TX-only (no OPT101 acquisition)")
-
-    # Load config
-    config = load_config()
     p = engine.get_ppg_params()
     apply_config_to_params(config, p)
     engine.load_parameters(p)

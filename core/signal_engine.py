@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
     SIGNAL_BUFFER_SIZE, DAC_CENTER_VALUE, DAC_IDLE_VALUE, FS_TIMER_HZ,
+    RX_MODE, RX_TDM_SLOTS, RX_TDM_SLOT_S, RX_TDM_READ_DELAY_S,
 )
 from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES
 from hw.dac_manager import DACManager
@@ -29,6 +30,9 @@ from comm.logger import log
 # deadline is never missed by more than half a period, long enough that the
 # two loops do not spin the CPU.
 LOOP_YIELD_S = 0.0005
+
+# TDM pacing sleep cap: stop() latency stays a few ms inside a 10 ms slot.
+TDM_SLEEP_QUANTUM_S = 0.002
 
 # Signal states
 SIG_STOPPED = 0
@@ -131,6 +135,13 @@ class SignalEngine:
         self._underrun_count = 0
         self._dropped_samples = 0
 
+        # TDM (config.RX_MODE == "tdm"): the output thread multiplexes RED/IR
+        # onto one OPT101 and drives the receiver's reads (set_tdm_receiver).
+        self.rx_mode = RX_MODE
+        self._tdm_receiver = None
+        self._tdm_slot_count = 0
+        self._tdm_late_slots = 0
+
     def begin(self) -> bool:
         """Initialize the signal engine and DAC hardware."""
         dac_ok = self.dac_manager.begin()
@@ -194,7 +205,8 @@ class SignalEngine:
         self._running = True
         self._thread = threading.Thread(target=self._generation_loop, daemon=True, name="SignalGen")
         self._thread.start()
-        self._dac_thread = threading.Thread(target=self._dac_loop, daemon=True, name="SignalDAC")
+        output_loop = self._tdm_loop if self.rx_mode == "tdm" else self._dac_loop
+        self._dac_thread = threading.Thread(target=output_loop, daemon=True, name="SignalDAC")
         self._dac_thread.start()
         log.info(f"[SignalEngine] PPG running: {self.ppg_model.get_condition_name()}")
         return True
@@ -287,12 +299,16 @@ class SignalEngine:
             "dropped_samples": self._dropped_samples,
             "samples_generated": self._sample_count,
             "buffer_fill": (self._write_idx - self._read_idx) % SIGNAL_BUFFER_SIZE,
+            "tdm_slots": self._tdm_slot_count,
+            "tdm_late_slots": self._tdm_late_slots,
         }
 
     def reset_stats(self) -> None:
         self._overrun_count = 0
         self._underrun_count = 0
         self._dropped_samples = 0
+        self._tdm_slot_count = 0
+        self._tdm_late_slots = 0
 
     # ─── Generation Loop (background thread) ───
     def _generate_one_tick(self) -> None:
@@ -392,6 +408,89 @@ class SignalEngine:
             # Two I2C writes already consume much of a 1 ms tick on Pi 4.
             # A fixed extra 0.5 ms sleep here caused sustained buffer growth.
             time.sleep(ticker.wait_seconds(time.perf_counter(), LOOP_YIELD_S))
+
+        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+
+    # ─── TDM output (RED/IR share one chamber and one OPT101) ───
+    def set_rx_mode(self, mode, receiver=None) -> None:
+        """Switch dual/TDM while output is stopped. Holding the start lock
+        makes the check and the switch atomic against a GUI or BLE start, so
+        a running writer can never change pattern mid-stream."""
+        if mode not in ("dual", "tdm"):
+            raise ValueError(f"RX mode must be 'dual' or 'tdm', got {mode!r}")
+        with self._lock:
+            if self._running or self.state != SIG_STOPPED:
+                raise RuntimeError("Stop output before changing the RX mode")
+            if receiver is not None:
+                receiver.set_mode(mode)
+            self.rx_mode = mode
+            self._tdm_receiver = receiver if mode == "tdm" else None
+        log.info(f"[SignalEngine] RX mode → {mode}")
+
+    def set_tdm_receiver(self, receiver) -> None:
+        """Receiver whose acquire_tdm_slot() is called after each settled
+        slot. None keeps the LED multiplexing but takes no readings."""
+        self._tdm_receiver = receiver
+
+    def _take_latest_dac_sample(self):
+        """Newest (ir, red) pair, consuming everything older, or None if no
+        new sample arrived. A TDM slot holds one level for its whole length,
+        so the interpolated in-between samples are never written."""
+        with self._buf_lock:
+            if self._read_idx == self._write_idx:
+                return None
+            last = (self._write_idx - 1) % SIGNAL_BUFFER_SIZE
+            self._read_idx = self._write_idx
+            return self._buf_ir[last], self._buf_red[last]
+
+    @staticmethod
+    def _tdm_slot_codes(slot, ir, red):
+        """(ir_code, red_code, red_first) for one slot. The LED leaving its
+        slot is written first so the two LEDs are never on together."""
+        if slot == "red":
+            return DAC_IDLE_VALUE, red, False
+        if slot == "ir":
+            return ir, DAC_IDLE_VALUE, True
+        return DAC_IDLE_VALUE, DAC_IDLE_VALUE, False
+
+    def _tdm_sleep_until(self, deadline):
+        while self._running:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                return
+            time.sleep(min(remaining, TDM_SLEEP_QUANTUM_S))
+
+    def _tdm_loop(self):
+        """Slot master: per slot, switch the LEDs, wait RX_TDM_READ_DELAY_S
+        from the end of the writes, read the shared sensor, then wait for the
+        slot boundary. While paused the last levels keep being multiplexed,
+        the TDM equivalent of the continuous writer holding its output."""
+        receiver = self._tdm_receiver
+        latest = (DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+        slot_index = 0
+        slot_start = time.perf_counter()
+        while self._running:
+            slot = RX_TDM_SLOTS[slot_index]
+            sample = self._take_latest_dac_sample()
+            if sample is not None:
+                latest = sample
+            ir, red, red_first = self._tdm_slot_codes(slot, *latest)
+            self.dac_manager.set_values(ir, red, red_first=red_first)
+            self._tdm_sleep_until(time.perf_counter() + RX_TDM_READ_DELAY_S)
+            if not self._running:
+                break
+            if receiver is not None:
+                receiver.acquire_tdm_slot(slot)
+            self._tdm_slot_count += 1
+            slot_index = (slot_index + 1) % len(RX_TDM_SLOTS)
+            slot_start += RX_TDM_SLOT_S
+            now = time.perf_counter()
+            if now > slot_start:
+                # I/O or scheduling overran the slot: re-base instead of
+                # bursting, and make the shortfall visible.
+                self._tdm_late_slots += 1
+                slot_start = now
+            self._tdm_sleep_until(slot_start)
 
         self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
 
