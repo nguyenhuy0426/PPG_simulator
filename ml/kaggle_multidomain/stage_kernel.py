@@ -76,6 +76,10 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     if red13:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_openox", "openox_download", "red_head",
                                                                      "red_head_train", "experiment_red13")]
+    # LSM-GAN author topology on BIDMC and MIMIC PERform AF/non-AF, with the cross-set and AF-detection benchmark (GPU).
+    lsm_multi = mode == "lsm_multi"
+    if lsm_multi:
+        sources.append("ml/kaggle_lsm/lsm_multiset.py")
     files = {name: (root/name).read_text() for name in sources}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
@@ -201,6 +205,9 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         # /kaggle/working (PhysioNet Restricted Health Data Use Agreement 1.5.0).
         entry = ("from ml.kaggle_multidomain.experiment_red13 import main\n"
                  "main(['--pack', '/kaggle/input', '--download', '/tmp/openox', '--output', '/kaggle/working/red13'])")
+    if lsm_multi:
+        entry = ("from ml.kaggle_lsm.lsm_multiset import main\n"
+                 "main(['run', '--pack', '/kaggle/input', '--output', '/kaggle/working/lsm_multi'])")
     # The entry point's own module must travel in the payload (a missing one fails only on Kaggle).
     for module in re.findall(r"from (ml\.[\w.]+) import", entry):
         if module.replace(".", "/")+".py" not in files:
@@ -332,6 +339,9 @@ sys.path.insert(0, str(root))
     if red13:
         metadata.update(id=f"{owner}/ppg-red13-v1", title="PPG Red13 v1", kernel_sources=[], enable_gpu=True,
                         dataset_sources=[f"{owner}/ppg-physioflow2-data-v4"])
+    if lsm_multi:
+        metadata.update(id=f"{owner}/ppg-lsm-multiset-v1", title="PPG LSM Multiset v1", kernel_sources=[],
+                        enable_gpu=True, dataset_sources=[f"{owner}/ppg-lsm-multiset-data-v1"])
     if lsm_galaxy:
         metadata.update(id=f"{owner}/ppg-lsm-galaxy-v1", title="PPG LSM Galaxy v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
@@ -386,7 +396,7 @@ if __name__ == "__main__":
                                       "flow10_pilot", "flow10_final", "flow10b_pilot", "flow10b_final", "flow10c_pilot",
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
-                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13"),
+                                      "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13", "lsm_multi"),
                    required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
