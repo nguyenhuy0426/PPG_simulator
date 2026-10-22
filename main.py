@@ -76,7 +76,9 @@ def save_current_config(engine, language="en", theme="light"):
         p = engine.get_ppg_params()
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
-        cfg["rx_mode"] = engine.rx_mode
+        # Keep the mode chosen in Settings (written there immediately), not
+        # engine.rx_mode: that may be a one-run --rx-mode / PPG_RX_MODE override.
+        cfg["rx_mode"] = load_config().get("rx_mode", "dual")
         from ui.i18n import normalise_language
         cfg["language"] = normalise_language(language)
         cfg["theme"] = theme if theme in ("light", "dark") else "light"

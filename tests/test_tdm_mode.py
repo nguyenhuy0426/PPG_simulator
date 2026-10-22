@@ -266,6 +266,49 @@ def test_saved_rx_mode_is_normalised(monkeypatch, tmp_path):
     assert config_store.load_config()["rx_mode"] == "dual"
 
 
+def _import_main(monkeypatch, argv):
+    """main.py parses sys.argv and exports --rx-mode into the environment at
+    import time; monkeypatch.setenv first so both are restored afterwards."""
+    import importlib
+    import sys
+    monkeypatch.setenv("PPG_DRY_RUN", "1")
+    monkeypatch.setenv("PPG_RX_MODE", "")
+    monkeypatch.setattr(sys, "argv", ["main.py"] + argv)
+    monkeypatch.delitem(sys.modules, "main", raising=False)
+    return importlib.import_module("main")
+
+
+@pytest.mark.parametrize("saved", ["dual", "tdm"])
+def test_exit_save_keeps_settings_rx_mode_not_cli_override(monkeypatch, tmp_path, saved):
+    """`main.py --rx-mode X` is a one-run override: saving on exit must keep
+    the mode chosen in Settings, or the next run without the flag stays in X."""
+    import config_store
+    path = tmp_path / "config.json"
+    monkeypatch.setattr(config_store, "CONFIG_JSON_PATH", str(path))
+    path.write_text(json.dumps({"rx_mode": saved}))
+    override = "dual" if saved == "tdm" else "tdm"
+    main = _import_main(monkeypatch, ["--dry-run", "--rx-mode", override])
+    assert main.resolve_rx_mode(config_store.load_config()) == override
+    engine = SignalEngine()
+    engine.set_rx_mode(override, Mock())
+    main.save_current_config(engine)
+    assert json.loads(path.read_text())["rx_mode"] == saved
+
+
+def test_exit_save_keeps_rx_mode_changed_in_settings(monkeypatch, tmp_path):
+    """Settings writes rx_mode immediately; the exit save must not undo it."""
+    import config_store
+    path = tmp_path / "config.json"
+    monkeypatch.setattr(config_store, "CONFIG_JSON_PATH", str(path))
+    path.write_text(json.dumps({"rx_mode": "dual"}))
+    main = _import_main(monkeypatch, ["--dry-run"])
+    engine = SignalEngine()
+    engine.set_rx_mode("tdm", Mock())
+    config_store.save_config({**config_store.load_config(), "rx_mode": "tdm"})  # Settings
+    main.save_current_config(engine)
+    assert json.loads(path.read_text())["rx_mode"] == "tdm"
+
+
 HAS_DISPLAY = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
