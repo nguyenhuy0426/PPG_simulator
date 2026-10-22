@@ -128,7 +128,7 @@ class RedHead(nn.Module):
     def residual(self, z, ir, condition):
         features = ir_features(ir)
         x = z[:, None]
-        ones = torch.ones(len(z), device=z.device)
+        ones = torch.ones_like(z[:, 0])         # not len(z): a traced length would freeze the batch size
         steps = self.sample_steps
         for i in range(steps):
             t, t_next = 1-i/steps, 1-(i+1)/steps

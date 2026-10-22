@@ -74,3 +74,15 @@ def test_head_samples_red_with_the_commanded_ratio():
         red = head(torch.randn(2, LENGTH), torch.tensor(ir, dtype=torch.float32), torch.tensor(c.rows(["a"]*2, ratio)),
                    torch.tensor(ratio, dtype=torch.float32)).numpy()
     assert np.isfinite(red).all() and np.allclose(np.ptp(red, -1), ratio, rtol=1e-4)
+
+
+def test_traced_head_accepts_any_batch_size():
+    c = rh.HeadConditions(["a"], [.5])
+    head = rh.RedHead(c.size, sample_steps=2).eval()
+    example = lambda n: (torch.randn(n, LENGTH), torch.rand(n, LENGTH), torch.tensor(c.rows(["a"]*n, [.6]*n)),
+                         torch.full((n,), .6))
+    traced = torch.jit.trace(head, example(2), check_trace=False)
+    for n in (1, 3):
+        args = example(n)
+        with torch.no_grad():
+            torch.testing.assert_close(traced(*args), head(*args))
