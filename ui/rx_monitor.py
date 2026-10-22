@@ -7,6 +7,7 @@ from ui.trace_view import Lane, LaneView
 
 RX_CHANNELS = ((0, "IR", T.IR), (2, "RED", T.RED))
 REFRESH_S = 0.1
+DEFAULT_MAX_GAP_S = 0.05
 
 # Short lane-header state plus the centred explanation shown in an empty lane.
 _PANEL = {
@@ -19,6 +20,7 @@ _PANEL = {
         "invalid": ("Lỗi", "Mẫu ADC không hợp lệ", ""),
         "disconnected": ("Mất kết nối", "Mất kết nối ADC", "Kiểm tra Grove Base Hat 0x08 và cáp"),
         "ok": ("Trực tiếp", "", ""), "saturated": ("Chạm trần ADC", "", ""),
+        "tdm_idle": "TDM chỉ đọc cảm biến khi đang phát TX",
     },
     "en": {
         "disabled": ("Off", "No sensor installed", "Channel stays off until the {name} sensor is fitted"),
@@ -29,6 +31,7 @@ _PANEL = {
         "invalid": ("Error", "Invalid ADC sample", ""),
         "disconnected": ("Disconnected", "ADC disconnected", "Check the Grove Base Hat 0x08 and cable"),
         "ok": ("Live", "", ""), "saturated": ("ADC full scale", "", ""),
+        "tdm_idle": "TDM reads the sensor only while output runs",
     },
 }
 
@@ -68,15 +71,26 @@ class RXPanel(LaneView):
             return
         self._last_update = now
         copy = _PANEL["vi" if self.language == "vi" else "en"]
+        # TDM: both lanes come from one sensor, one sample per slot frame.
+        tdm = getattr(self.receiver, "mode", "dual") == "tdm"
+        period = getattr(self.receiver, "sample_period_s", 0.0)
+        max_gap = max(DEFAULT_MAX_GAP_S, 1.5 * period)
+        dark = self.receiver.get_dark_samples(1) if tdm else ()
         lanes = []
         for channel, name, color in self.channels:
             status, samples = channel_view(self.receiver, channel, now, self.window_s)
             state, message, sub = copy.get(status, (status, status, ""))
+            if tdm and status in ("init", "stale"):
+                sub = copy["tdm_idle"]
             detail = state
             if samples and status in ("ok", "saturated"):
                 detail = f"{state}   {raw_to_millivolts(samples[-1].raw):.0f} mV"
-            lanes.append(Lane(f"A{channel}  {name}", color, detail,
+                if dark:
+                    detail += f"   dark {raw_to_millivolts(dark[-1].raw):.0f} mV"
+            title = (f"A{self.receiver.physical_channel(channel)} TDM  {name}" if tdm
+                     else f"A{channel}  {name}")
+            lanes.append(Lane(title, color, detail,
                               [(s.timestamp - now, raw_to_millivolts(s.raw)) for s in samples],
                               message if not samples else "", sub.format(name=name) if not samples else "",
-                              max_gap_s=0.05))
+                              max_gap_s=max_gap))
         self.update_lanes(lanes, end_s=0.0)
