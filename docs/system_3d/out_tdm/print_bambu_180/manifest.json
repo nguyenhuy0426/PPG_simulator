@@ -1,0 +1,170 @@
+{
+  "bed_mm": 180.0,
+  "printer": "Bambu Lab A1, nozzle 0.4, layer 0.2",
+  "hole_shrink_assumed_mm": {
+    "nominal": 0.2,
+    "max": 0.4
+  },
+  "socket_h_mm_assumed": 8.3,
+  "led_pitch_mm": 5.0,
+  "bore_d_mm": 3.7,
+  "flange_bore_d_mm": 4.5,
+  "lip_d_mm": 2.6,
+  "led_tip_x_local_mm": 1.0,
+  "toe_in_deg_each": 2.86,
+  "converge_d_real_mm": 50.0,
+  "d_real_range_mm": [
+    24.2,
+    99.2
+  ],
+  "off_axis_deg": {
+    "24.2": {
+      "red": 3.04,
+      "ir": 3.04
+    },
+    "50.0": {
+      "red": 0.0,
+      "ir": 0.0
+    },
+    "99.2": {
+      "red": 1.42,
+      "ir": 1.42
+    }
+  },
+  "new_parts": [
+    {
+      "file": "25_carrier_2LED_TDM.stl",
+      "quantity": 1,
+      "description": "carrier Đỏ + IR, lỗ nghiêng; in dựng đứng, mặt sau áp bàn",
+      "extents_xyz_mm": [
+        18.0,
+        35.0,
+        26.0
+      ],
+      "sha256": "0be58d4f4c70ec72716c46718bcb865de0c84b94e48eeb3d9767cf47f3ee0115",
+      "fits_bed": true
+    },
+    {
+      "file": "26_tam_che_mo.stl",
+      "quantity": 1,
+      "description": "tấm che: Đỏ Ø3, IR Ø3 (không giảm); 0 khía trên tai",
+      "extents_xyz_mm": [
+        10.8,
+        10.8,
+        1.0
+      ],
+      "sha256": "7b094484c02c011b900d54d82e2afd3c36d42dd6a3ba4da90e53735535b4c17e",
+      "fits_bed": true
+    },
+    {
+      "file": "27_tam_che_ir2.stl",
+      "quantity": 1,
+      "description": "tấm che: Đỏ Ø3, IR Ø2; 1 khía trên tai",
+      "extents_xyz_mm": [
+        10.8,
+        10.8,
+        1.0
+      ],
+      "sha256": "4067bd902f7cf8ceebbd1db01a437d2b5bb574db562b2e026b58b0cc9ae607da",
+      "fits_bed": true
+    },
+    {
+      "file": "28_tam_che_ir1_5.stl",
+      "quantity": 1,
+      "description": "tấm che: Đỏ Ø3, IR Ø1.5; 2 khía trên tai",
+      "extents_xyz_mm": [
+        10.8,
+        10.8,
+        1.0
+      ],
+      "sha256": "f0d8888928efc00c1c9496d6d028f96748d00a51db6d44d868f8fd09416ca33f",
+      "fits_bed": true
+    },
+    {
+      "file": "29_tam_che_ir1.stl",
+      "quantity": 1,
+      "description": "tấm che: Đỏ Ø3, IR Ø1; 3 khía trên tai",
+      "extents_xyz_mm": [
+        10.8,
+        10.8,
+        1.0
+      ],
+      "sha256": "2c49ad9652dd52c7e1ec298632a4638efd53dcc3e4a66da5f601c09c406647fd",
+      "fits_bed": true
+    },
+    {
+      "file": "30_mau_thu_lo_LED.stl",
+      "quantity": 1,
+      "description": "mẫu thử lỗ đứng: thân Ø3.5–3.9, vành Ø4.3–4.7, gờ chặn",
+      "extents_xyz_mm": [
+        46.0,
+        16.0,
+        6.0
+      ],
+      "sha256": "fd0b5fa49e6e0b124535e4ee2d1e050ee903ab682d48308f6256115600c48310",
+      "fits_bed": true
+    }
+  ],
+  "reused_parts": [
+    {
+      "file": "../../out/print_bambu_180/01_than_hop_toi.stl",
+      "quantity": 1,
+      "description": "thân hộp chữ nhật v4 — dùng làn IR (+Z)",
+      "sha256": "683a8cd8b9ab744efda8cc3441d997e49a06ac9064d544cff627ace64dbb205d"
+    },
+    {
+      "file": "../../out/print_bambu_180/02_nap_labyrinth.stl",
+      "quantity": 1,
+      "description": "nắp v4",
+      "sha256": "7848de75d7f31a7334db2a98a84699719b81183df622323b06dcffa9e7bea62a"
+    },
+    {
+      "file": "../../out/print_bambu_180/03_truc_truot_D.stl",
+      "quantity": 1,
+      "description": "ray D cho làn IR",
+      "sha256": "39363814c2d5a13ac5fd9c49e456a9dd52340fe08a035f1ac77223ec1fb83606"
+    },
+    {
+      "file": "../../out/print_bambu_180/12_truc_day_tron_D5x130.stl",
+      "quantity": 1,
+      "description": "thanh đẩy làn IR",
+      "sha256": "ec7903ce1c3b6628504114dfc9b6f5647d3a83d1419a5b031a1ff969f29aa00f"
+    },
+    {
+      "file": "../../out/print_bambu_180/05_num_thanh_truot.stl",
+      "quantity": 1,
+      "description": "núm làn IR",
+      "sha256": "49c24a9b470306e4207d393c8cf9dbca7f1b446453ec6a59698c2de7a6724981"
+    },
+    {
+      "file": "../../out/print_bambu_180/08_khau_do_biet.stl",
+      "quantity": 1,
+      "description": "bịt làn Đỏ đang bỏ trống (thêm 1 tấm nếu muốn đo nền tối làn IR)",
+      "sha256": "5cf0631fad41346cd854edcee27e7ba967acf07c00b89a9a0505f45db7baa33a"
+    },
+    {
+      "file": "../../out/print_bambu_180/11_khau_do_lo16mm.stl",
+      "quantity": 1,
+      "description": "khẩu độ làn IR (hoặc 10_khau_do_lo5mm; KHÔNG dùng Ø2)",
+      "sha256": "3b10772ae030a1c2623e2093653758af5105af8732f74743484739056a683e3b"
+    },
+    {
+      "file": "../../out/print_bambu_180/06_chup_luon_day_trai.stl",
+      "quantity": 2,
+      "description": "chụp cửa cáp vách −X, cả hai làn (giữ kín sáng)",
+      "sha256": "7d829e6467124fe252f4e3868840448ee432d36050657472920cc36aa04e308c"
+    },
+    {
+      "file": "../../out/print_bambu_180/07_chup_luon_day_phai.stl",
+      "quantity": 2,
+      "description": "chụp cửa cáp vách +X, cả hai làn",
+      "sha256": "455c41a8b2c559291e1bca084365261e731c03a815882d82838a787a9fc65004"
+    },
+    {
+      "file": "../../out/print_bambu_180/14_ga_chu_U_OPT101_70x20.stl",
+      "quantity": 1,
+      "description": "gá H board thu 70 × 20, chỉ cắm OPT101 ở U2/A0",
+      "sha256": "d315c5bd6f7ae6f222b75e5a170abe493d467a64ec49965bf7be28834860eb5d"
+    }
+  ]
+}
