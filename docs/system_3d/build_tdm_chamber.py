@@ -112,10 +112,12 @@ STEP_MARGIN = 0.7                      # vành Đỏ còn cách bậc Ø vành�
 
 FRONT_L = 4.0                          # khối mũi thay loa che sáng v4
 FRONT_HY, FRONT_HZ = 4.5, 6.5          # nửa cao / nửa rộng khối mũi
-MASK_T = 1.0                           # bề dày tấm che
+MASK_T = 0.8                           # bề dày tấm che = 4 lớp 0.2 (khe 1.4 -> hở 0.3 mỗi mặt)
 MASK_SLOT_X0, MASK_SLOT_X1 = 1.6, 3.0  # khe 1.4 = 7 lớp cho tấm 1.0; trần khe là cầu in (võng)
 MASK_SLOT_FLOOR = Y_S - 3.5            # đáy khe (còn 1 mm sàn khối mũi)
-MASK_HZ = 5.4                          # nửa rộng tấm (khe ±5.5)
+MASK_SLOT_HZ = 5.5                     # nửa rộng khe (nửa rộng CAD)
+MASK_HZ = 4.8                          # nửa rộng tấm 9.6: lỗ Ø3 ở z=±2.5 còn vành 0.8; khe in hụt 0.4 vẫn hở 0.5/bên
+MASK_BOTTOM_GAP = 0.6                  # đáy tấm cách đáy khe (đáy khe in hụt vẫn không kẹt)
 MASK_TOP = bs.CAR_Y1 - 0.5             # tai cầm nhô trên khối mũi, thấp hơn nóc carrier
 MASK_KINDS = {"mo": 1.5, "ir2": 1.0, "ir1_5": 0.75, "ir1": 0.5}   # bán kính lỗ IR
 MASK_RED_R = 1.5                       # lỗ Đỏ luôn Ø3
@@ -186,7 +188,7 @@ def build_dual_carrier(shrink=0.0):
         box(-bs.CAR_L - 0.5, -bs.CAR_L + 5.0, bs.CAR_Y0 + 1.0, bs.CAR_Y0 + 5.0, -3.0, 3.0),
         # khe tấm che: mở từ nóc khối mũi xuống
         box(MASK_SLOT_X0, MASK_SLOT_X1, MASK_SLOT_FLOOR, Y_S + FRONT_HY + 0.5,
-            -MASK_HZ - 0.1, MASK_HZ + 0.1),
+            -MASK_SLOT_HZ, MASK_SLOT_HZ),
     ]
     for ch in ("red", "ir"):
         cuts.append(led_bore_tools(LED_Z[ch], ch, shrink))
@@ -239,7 +241,7 @@ def build_mask(kind):
     """Tấm che cắm khe mũi carrier (hệ carrier, đã ở vị trí lắp). Lỗ nằm
     trên trục LED nghiêng; số khía trên tai cầm = thứ tự biến thể."""
     x0 = (MASK_SLOT_X0 + MASK_SLOT_X1 - MASK_T) / 2
-    m = box(x0, x0 + MASK_T, MASK_SLOT_FLOOR + 0.2, MASK_TOP, -MASK_HZ, MASK_HZ)
+    m = box(x0, x0 + MASK_T, MASK_SLOT_FLOOR + MASK_BOTTOM_GAP, MASK_TOP, -MASK_HZ, MASK_HZ)
     holes = [_along_led(ch, cyl_x(x0 - 0.5, x0 + MASK_T + 0.5, Y_S, LED_Z[ch], r, 32))
              for ch, r in (("red", MASK_RED_R), ("ir", MASK_KINDS[kind]))]
     n = list(MASK_KINDS).index(kind)
@@ -532,6 +534,21 @@ def run_checks(carrier, masks, v4):
         check(f"tấm che {k} trượt vào khe không cấn", v < FIT_TOL_MM3, intersection_mm3=v)
         lv = max(overlap(m, led_models(ch)) for ch in ("red", "ir"))
         check(f"tấm che {k} không chạm chóp LED", lv < FIT_TOL_MM3, intersection_mm3=lv)
+
+    # tấm che vào khe khi khe in hụt (A1): hụt tính vào cả hai thành, mặt trần/đáy theo lớp
+    slot_w = MASK_SLOT_X1 - MASK_SLOT_X0
+    wall_gap = (MASK_SLOT_HZ - A1_HOLE_SHRINK_MAX / 2) - MASK_HZ
+    bottom_gap = MASK_BOTTOM_GAP - A1_HOLE_SHRINK_MAX / 2
+    check(f"A1: tấm che dày {MASK_T:g} vào khe {slot_w:g} mm, hở ≥ 0.2 mm mỗi mặt",
+          (slot_w - MASK_T) / 2 >= 0.2 - 1e-9, gap_per_face_mm=round((slot_w - MASK_T) / 2, 3))
+    check(f"A1: tấm che rộng {2 * MASK_HZ:g} mm vào khe rộng {2 * MASK_SLOT_HZ:g} mm in hụt "
+          f"{A1_HOLE_SHRINK_MAX:g} mm, hở ≥ 0.3 mm mỗi bên", wall_gap >= 0.3 - 1e-9,
+          gap_per_side_mm=round(wall_gap, 3))
+    check("A1: đáy tấm cách đáy khe in hụt ≥ 0.3 mm", bottom_gap >= 0.3 - 1e-9,
+          gap_mm=round(bottom_gap, 3))
+    check("tấm che: vành quanh lỗ Đỏ Ø3 ở mép ≥ 0.6 mm (đủ cứng, không rách)",
+          MASK_HZ - LED_PITCH / 2 - MASK_RED_R >= 0.6 - 1e-9,
+          rim_mm=round(MASK_HZ - LED_PITCH / 2 - MASK_RED_R, 3))
 
     # quét hành trình trong làn IR của thân v4
     worst, worst_mask = 0.0, 0.0

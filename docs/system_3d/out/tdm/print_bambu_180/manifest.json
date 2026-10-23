@@ -49,11 +49,11 @@
       "quantity": 1,
       "description": "tấm che: Đỏ Ø3, IR Ø3 (không giảm); 0 khía trên tai",
       "extents_xyz_mm": [
-        10.8,
-        10.8,
-        1.0
+        10.4,
+        9.6,
+        0.8
       ],
-      "sha256": "7b094484c02c011b900d54d82e2afd3c36d42dd6a3ba4da90e53735535b4c17e",
+      "sha256": "f22a6eb85c97b38c3e096c46d2073b274b94a696de2962919a68799b51886643",
       "fits_bed": true
     },
     {
@@ -61,11 +61,11 @@
       "quantity": 1,
       "description": "tấm che: Đỏ Ø3, IR Ø2; 1 khía trên tai",
       "extents_xyz_mm": [
-        10.8,
-        10.8,
-        1.0
+        10.4,
+        9.6,
+        0.8
       ],
-      "sha256": "4067bd902f7cf8ceebbd1db01a437d2b5bb574db562b2e026b58b0cc9ae607da",
+      "sha256": "6fff2d5e09c00a7022a53f677297de084e0b76f9a07931ab8dc185b873b89afe",
       "fits_bed": true
     },
     {
@@ -73,11 +73,11 @@
       "quantity": 1,
       "description": "tấm che: Đỏ Ø3, IR Ø1.5; 2 khía trên tai",
       "extents_xyz_mm": [
-        10.8,
-        10.8,
-        1.0
+        10.4,
+        9.6,
+        0.8
       ],
-      "sha256": "f0d8888928efc00c1c9496d6d028f96748d00a51db6d44d868f8fd09416ca33f",
+      "sha256": "eda468f54ab1ecd1364f51903d4e35c6a4a73e611a3517c80e819d4008d5109a",
       "fits_bed": true
     },
     {
@@ -85,11 +85,11 @@
       "quantity": 1,
       "description": "tấm che: Đỏ Ø3, IR Ø1; 3 khía trên tai",
       "extents_xyz_mm": [
-        10.8,
-        10.8,
-        1.0
+        10.4,
+        9.6,
+        0.8
       ],
-      "sha256": "2c49ad9652dd52c7e1ec298632a4638efd53dcc3e4a66da5f601c09c406647fd",
+      "sha256": "6604fbc2dd6e31a8c980edef3c1d796fa852989efff606f88c5b972fecb8b58a",
       "fits_bed": true
     },
     {

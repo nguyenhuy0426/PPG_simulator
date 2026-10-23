@@ -84,6 +84,11 @@ Thay đổi so với bản trước:
 - **Vát 45° × 0,5 mm ở miệng lỗ D và lỗ thanh đẩy trên mặt áp bàn**, để lớp đầu
   bị ép loe (chân voi) không bóp nhỏ miệng lỗ. Miệng hai lỗ LED nằm ở trần khoang
   chân và có phễu dẫn hướng.
+- **Tấm che mỏng và nhỏ hơn để lọt khe:** dày 0,8 mm (bản trước 1,0), rộng 9,6 mm
+  (10,8), cao 10,4 mm. Khe giữ nguyên 1,4 × 11,0 mm. Bản trước chỉ hở 0,1 mm mỗi
+  bên, nên nếu A1 làm khe hụt 0,2–0,4 mm thì tấm không nhét vừa. Bản mới hở:
+  0,3 mm mỗi mặt theo bề dày; 0,5 mm mỗi bên theo bề rộng khi khe hụt 0,4 mm;
+  đáy tấm cách đáy khe 0,4 mm sau khi khe hụt. Vành quanh lỗ ở mép còn 0,8 mm.
 - **Khe tấm che 1,4 mm** (bản trước 1,3 mm). Trần khe là một cầu in nên sẽ võng
   xuống một chút. Đáy và trần khe rơi đúng bội lớp 0,2 mm.
 - Gờ chặn ở phía trước giữ nguyên nguyên lý: đẩy LED tới khi chóp cầu tì mép
@@ -156,7 +161,7 @@ sáng hơn LED Đỏ hàng chục lần ở cùng d. Có ba cách cân lại, n�
 | File | SL | Kích thước in X × Y × Z (mm) |
 |---|---:|---|
 | `25_carrier_2LED_TDM.stl` | 1 | 18 × 35 × 26 — **dựng đứng, mặt sau áp bàn** |
-| `26_tam_che_mo.stl` | 1 | 10,8 × 10,8 × 1 — Đỏ Ø3, IR Ø3 |
+| `26_tam_che_mo.stl` | 1 | 10,4 × 9,6 × 0,8 — Đỏ Ø3, IR Ø3 (cả 4 tấm cùng cỡ) |
 | `27_tam_che_ir2.stl` | 1 | IR Ø2 |
 | `28_tam_che_ir1_5.stl` | 1 | IR Ø1,5 |
 | `29_tam_che_ir1.stl` | 1 | IR Ø1 |
@@ -196,7 +201,7 @@ và góc lệch trục. `out/tdm/stl/` là hệ lắp ráp, chỉ để kiểm t
 
 ## Đã kiểm tra (hình học CAD danh nghĩa)
 
-Chạy `build_tdm_chamber.py`: **47/47 PASS**, xem
+Chạy `build_tdm_chamber.py`: **51/51 PASS**, xem
 [out/tdm/fit_report.json](out/tdm/fit_report.json). Ngưỡng giao nhau 10⁻⁴ mm³,
 riêng các phép quét LED dùng 10⁻³ mm³ vì mặt cầu được chia lưới.
 

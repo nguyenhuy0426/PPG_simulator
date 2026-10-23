@@ -1,6 +1,6 @@
 {
-  "passed": 47,
-  "total": 47,
+  "passed": 51,
+  "total": 51,
   "tolerance_mm3": 0.0001,
   "checks": [
     {
@@ -16,22 +16,22 @@
     {
       "label": "mask_mo: watertight, một khối",
       "pass_": true,
-      "volume_mm3": 102.58
+      "volume_mm3": 68.62
     },
     {
       "label": "mask_ir2: watertight, một khối",
       "pass_": true,
-      "volume_mm3": 105.68
+      "volume_mm3": 71.11
     },
     {
       "label": "mask_ir1_5: watertight, một khối",
       "pass_": true,
-      "volume_mm3": 106.25
+      "volume_mm3": 71.56
     },
     {
       "label": "mask_ir1: watertight, một khối",
       "pass_": true,
-      "volume_mm3": 106.43
+      "volume_mm3": 71.7
     },
     {
       "label": "vách nhựa giữa hai lỗ LED ở đoạn vành Ø4.5 ≥ 0.8 mm",
@@ -174,6 +174,26 @@
       "label": "tấm che ir1 không chạm chóp LED",
       "pass_": true,
       "intersection_mm3": 0.0
+    },
+    {
+      "label": "A1: tấm che dày 0.8 vào khe 1.4 mm, hở ≥ 0.2 mm mỗi mặt",
+      "pass_": true,
+      "gap_per_face_mm": 0.3
+    },
+    {
+      "label": "A1: tấm che rộng 9.6 mm vào khe rộng 11 mm in hụt 0.4 mm, hở ≥ 0.3 mm mỗi bên",
+      "pass_": true,
+      "gap_per_side_mm": 0.5
+    },
+    {
+      "label": "A1: đáy tấm cách đáy khe in hụt ≥ 0.3 mm",
+      "pass_": true,
+      "gap_mm": 0.4
+    },
+    {
+      "label": "tấm che: vành quanh lỗ Đỏ Ø3 ở mép ≥ 0.6 mm (đủ cứng, không rách)",
+      "pass_": true,
+      "rim_mm": 0.8
     },
     {
       "label": "carrier 2 LED / thanh đẩy / núm không chạm thân, nắp, ray, khẩu độ v4 (d v4 15..90, bước 1)",
