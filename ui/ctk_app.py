@@ -5,6 +5,7 @@ import customtkinter as ctk
 from comm.logger import log
 from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ, MODEL_SAMPLE_RATE_PPG
 from core.signal_engine import SignalEngine
+from hw.opt101_rx import OPT101Receiver
 from ui import theme as T
 from ui.frames.pathology_frame import PathologyFrame
 from ui.frames.calibration_frame import CalibrationFrame
@@ -198,7 +199,7 @@ class CTkApp(ctk.CTk):
         window.minsize(min(620, width), min(380, height))
         window.configure(fg_color=T.BG)
         window.grid_columnconfigure(0, weight=1)
-        window.grid_rowconfigure(1, weight=1)
+        window.grid_rowconfigure(2, weight=1)
         window.transient(self)
         window.protocol("WM_DELETE_WINDOW", self.close_signal_setup)
         window.bind("<Escape>", lambda _event: self.close_signal_setup())
@@ -213,8 +214,20 @@ class CTkApp(ctk.CTk):
         self.language_menu.grid(row=0, column=1, padx=(0, 10), pady=8)
         self.language_hint = T.label(language_bar, text(self.language, "language_hint"), 10, text_color=T.MUTED, anchor="w")
         self.language_hint.grid(row=0, column=2, sticky="ew", padx=(0, 12), pady=8)
+        rx_bar = ctk.CTkFrame(window, fg_color=T.PANEL)
+        rx_bar.grid(row=1, column=0, sticky="ew", padx=self.layout.outer_pad, pady=(6, 0))
+        rx_bar.grid_columnconfigure(2, weight=1)
+        self.rx_mode_label = T.label(rx_bar, text(self.language, "rx_mode"), 12, True)
+        self.rx_mode_label.grid(row=0, column=0, padx=(12, 8), pady=8)
+        self.rx_mode_switch = ctk.CTkSegmentedButton(rx_bar, values=self._rx_mode_labels(),
+                                                     command=self._set_rx_mode_from_label)
+        self.rx_mode_switch.grid(row=0, column=1, padx=(0, 10), pady=8)
+        self.rx_mode_hint = T.label(rx_bar, "", 10, text_color=T.MUTED, anchor="w", justify="left")
+        self.rx_mode_hint.grid(row=0, column=2, sticky="ew", padx=(0, 12), pady=8)
+        self._rx_mode_message = None
+        self._paint_rx_mode()
         panel = AdvancedFrame(window, fg_color="transparent")
-        panel.grid(row=1, column=0, sticky="nsew",
+        panel.grid(row=2, column=0, sticky="nsew",
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
@@ -222,6 +235,37 @@ class CTkApp(ctk.CTk):
         self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
+
+    # ─── RX sensor mode (dual OPT101 / one shared OPT101 in TDM) ───
+    def _rx_mode_labels(self):
+        return [text(self.language, "rx_mode_dual"), text(self.language, "rx_mode_tdm")]
+
+    def _set_rx_mode_from_label(self, label):
+        mode = "tdm" if label == text(self.language, "rx_mode_tdm") else "dual"
+        if mode == self.engine.rx_mode:
+            return
+        try:
+            self.engine.set_rx_mode(mode, OPT101Receiver.get_instance())
+        except RuntimeError:
+            self._rx_mode_message = ("rx_mode_locked", T.ERROR)
+        else:
+            self._save_ui_setting("rx_mode", mode)
+            self._rx_mode_message = ("rx_mode_saved", T.ACCENT)
+        self._paint_rx_mode()
+
+    def _paint_rx_mode(self):
+        """Selection always mirrors the engine; the switch is locked while
+        output runs so the LED pattern never changes mid-stream."""
+        mode = self.engine.rx_mode
+        self.rx_mode_switch.configure(values=self._rx_mode_labels())
+        self.rx_mode_switch.set(text(self.language, "rx_mode_tdm" if mode == "tdm" else "rx_mode_dual"))
+        running = self.engine.is_running
+        self.rx_mode_switch.configure(state="disabled" if running else "normal")
+        key, color = self._rx_mode_message or ("rx_mode_hint_" + mode, T.MUTED)
+        if running:
+            key, color = "rx_mode_locked", T.MUTED
+        self.rx_mode_hint.configure(text=text(self.language, key), text_color=color)
+        self._rx_mode_shown = (mode, running, self.language, self._rx_mode_message)
 
     def _set_language_from_label(self, label):
         code = next((key for key, value in LANGUAGES.items() if value == label), "en")
@@ -252,6 +296,8 @@ class CTkApp(ctk.CTk):
             self.language_label.configure(text=text(language, "language"))
             self.language_menu.set(LANGUAGES[language])
             self.language_hint.configure(text=text(language, "language_hint"))
+            self.rx_mode_label.configure(text=text(language, "rx_mode"))
+            self._paint_rx_mode()
             self.signal_setup_panel.status.configure(text=text(language, "language_applied"), text_color=T.ACCENT)
         self._save_language()
 
@@ -334,6 +380,9 @@ class CTkApp(ctk.CTk):
                 frame.periodic_update()
         if self.signal_setup_visible:
             self.signal_setup_panel.periodic_update()
+            if self._rx_mode_shown[:2] != (self.engine.rx_mode, self.engine.is_running):
+                self._rx_mode_message = None
+                self._paint_rx_mode()
         stats = self.engine.get_stats()
         self._paint_mode()
         values = (("buffer", stats["buffer_fill"]), ("lost", stats["dropped_samples"]),

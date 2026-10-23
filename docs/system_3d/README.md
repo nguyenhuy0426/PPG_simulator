@@ -4,6 +4,9 @@ Nguồn tham số: [build_system.py](build_system.py). Bản v4 sửa khẩu đ�
 bổ sung trục đẩy tròn vào STL và kiểm tra lại đường lắp ráp hai làn quang.
 Báo cáo: [MECHANICAL_V4_REVIEW.md](MECHANICAL_V4_REVIEW.md).
 
+**Chỉ có một OPT101?** Chế độ RX TDM dùng carrier 2 LED (Đỏ + IR) trong làn IR
+của chính hộp này: [README_TDM.md](README_TDM.md).
+
 ![Các chi tiết và mặt cắt lắp ráp v4](out/fit_review.png)
 
 ## File dùng để in
