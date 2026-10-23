@@ -1,0 +1,1246 @@
+<!-- gan-static.html: fragment (no html/head/body). Hình 1, 4, 5 theo cấu trúc Ding et al. (JBHI 2023), số liệu lấy từ mã nguồn. -->
+<section id="g-fig1">
+  <h2>Hình 1 · Quy trình tổng thể PhysioFlow-GAN và giám khảo nghiêm</h2>
+  <p class="lead">PhysioFlow-GAN không học generator từ đầu. Nó lấy U-Net vận tốc của PhysioFlow đang chạy trong app, rút còn 4 bước Heun, rồi tinh chỉnh bằng đối kháng với <b>StrictCritic</b>. Hai thứ giữ mô hình khỏi trôi: một <b>neo chưng cất</b> về bản PhysioFlow 16 bước đóng băng, và một <b>số hạng cảm biến</b> có mức nhiễu học được theo miền, đi qua đúng bộ lọc data-view mà dữ liệu thật đã đi qua. Nhánh G2 thêm loss phổ log của LSM-GAN và chỉ học trên BIDMC. Sau huấn luyện, chất lượng được đo riêng bằng <b>giám khảo nghiêm</b>: một bộ phân biệt mới, huấn luyện lại từ đầu cho từng nguồn, chấm AUC trên người chưa từng thấy. Hình này chỉ mô tả quy trình trong mã; nó không chứa kết quả đo.</p>
+  <div class="card arch-card">
+    <div class="arch-diagram-wrap">
+      <svg class="gs-svg" viewBox="0 0 1000 745" role="img" aria-label="Quy trình huấn luyện PhysioFlow-GAN và đánh giá bằng giám khảo nghiêm">
+        <defs>
+          <marker id="g1-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g1-arl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hdl" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g1-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+        </defs>
+        <style>
+          .gs-svg { --gs-conv-f:#d4edd4; --gs-conv-s:#4caf50; --gs-conv-t:#14532d; --gs-norm-f:#ffffff; --gs-norm-s:#94a3b8; --gs-norm-t:#334155; --gs-act-f:#fef3c7; --gs-act-s:#f59e0b; --gs-act-t:#78350f; --gs-cat-f:#dbeafe; --gs-cat-s:#3b82f6; --gs-cat-t:#1e40af; --gs-res-f:#ede9fe; --gs-res-s:#7c3aed; --gs-res-t:#5b21b6; --gs-loss-f:#fee2e2; --gs-loss-s:#ef4444; --gs-loss-t:#991b1b; }
+          :root[data-theme="dark"] .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; }
+          @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; } }
+          .gs-svg text { font-family: inherit; }
+          .gs-conv { fill: var(--gs-conv-f); stroke: var(--gs-conv-s); stroke-width: 1.3px; } .gs-norm { fill: var(--gs-norm-f); stroke: var(--gs-norm-s); stroke-width: 1.3px; } .gs-act { fill: var(--gs-act-f); stroke: var(--gs-act-s); stroke-width: 1.3px; } .gs-cat { fill: var(--gs-cat-f); stroke: var(--gs-cat-s); stroke-width: 1.3px; } .gs-res { fill: var(--gs-res-f); stroke: var(--gs-res-s); stroke-width: 1.3px; } .gs-loss { fill: var(--gs-loss-f); stroke: var(--gs-loss-s); stroke-width: 1.3px; }
+          .gs-tconv { fill: var(--gs-conv-t); } .gs-tnorm { fill: var(--gs-norm-t); } .gs-tact { fill: var(--gs-act-t); } .gs-tcat { fill: var(--gs-cat-t); } .gs-tres { fill: var(--gs-res-t); } .gs-tloss { fill: var(--gs-loss-t); }
+          .gs-io { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+          .gs-frozen { fill: var(--hw-soft); stroke: var(--hw); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-only { stroke-dasharray: 5 3; }
+          .gs-zone { fill: none; stroke: var(--line); stroke-width: 1.2px; stroke-dasharray: 6 4; }
+          .gs-off { fill: none; stroke: var(--line); stroke-width: 1px; }
+          .gs-t { font-size: 13px; font-weight: 700; fill: var(--ink); }
+          .gs-t12 { font-size: 12px; font-weight: 700; fill: var(--ink); }
+          .gs-s { font-size: 11px; fill: var(--muted); }
+          .gs-s10 { font-size: 10px; fill: var(--muted); }
+          .gs-m { font-size: 11px; fill: var(--ink); }
+          .gs-k { font-size: 12.5px; font-weight: 700; fill: var(--accent); }
+          .gs-sub { font-size: 8.5px; }
+          .gs-mid { text-anchor: middle; }
+          .gs-end { text-anchor: end; }
+          .gs-a { fill: none; stroke: var(--accent); stroke-width: 1.8px; }
+          .gs-al { fill: none; stroke: var(--bad); stroke-width: 1.6px; stroke-dasharray: 5 3; }
+          .gs-at { fill: none; stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-ar { fill: none; stroke: var(--gs-res-s); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+          .gs-skip { fill: none; stroke: var(--gs-cat-s); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-hd { fill: var(--accent); } .gs-hdl { fill: var(--bad); } .gs-hdt { fill: var(--muted); }
+          .gs-hdr { fill: var(--gs-res-s); } .gs-hds { fill: var(--gs-cat-s); }
+          .gs-wave { fill: none; stroke: var(--s1); stroke-width: 1.3px; }
+          .gs-pair { stroke: var(--muted); stroke-width: .8px; opacity: .6; }
+          .gs-chord { stroke: var(--gs-res-s); stroke-width: 1.1px; opacity: .75; }
+          .gs-axis { stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-dot { fill: var(--accent); }
+          .gs-dot-o { fill: var(--panel); stroke: var(--accent); stroke-width: 1.4px; }
+          .gs-eq { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+          .gs-eq-h { margin: 10px 0 4px; font-weight: 700; color: var(--accent); font-size: 14px; }
+          .gs-f { margin: 4px 0; padding: 2px 0; font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+                   font-size: 16px; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+          .gs-eq ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+        </style>
+        <!-- ZONE A: TRAINING -->
+        <rect class="gs-zone" x="8" y="8" width="984" height="512" rx="12"/>
+        <text class="gs-k" x="22" y="27">A · Huấn luyện, mỗi bước một batch 32 — experiment_v3.train_conditional (arm G1_flowgan và G2_flowgan_lsm_bidmc)</text>
+
+        <!-- inputs -->
+        <rect class="gs-io" x="20" y="44" width="170" height="62" rx="8"/>
+        <text class="gs-t gs-mid" x="105" y="66">Nhiễu z ~ N(0, I)</text>
+        <text class="gs-s gs-mid" x="105" y="83">[32, 1200]</text>
+        <text class="gs-s gs-mid" x="105" y="98">khởi đầu + nhịp + cảm biến</text>
+
+        <rect class="gs-io" x="20" y="120" width="170" height="80" rx="8"/>
+        <text class="gs-t gs-mid" x="105" y="141">Điều kiện c [32, 11]</text>
+        <text class="gs-s gs-mid" x="105" y="158">6 one-hot miền +</text>
+        <text class="gs-s gs-mid" x="105" y="173">rate_known, irr_known,</text>
+        <text class="gs-s gs-mid" x="105" y="188">rate, irr, std (chuẩn hoá)</text>
+
+        <!-- student -->
+        <rect class="gs-res" x="215" y="40" width="215" height="160" rx="10"/>
+        <text class="gs-t gs-tres gs-mid" x="322.5" y="62">Học sinh: PhysioFlow U-Net</text>
+        <text class="gs-s gs-mid" x="322.5" y="80">6 923 137 tham số, khởi tạo từ</text>
+        <text class="gs-s gs-mid" x="322.5" y="96">physioflow_generator.ts của app</text>
+        <text class="gs-s gs-mid" x="322.5" y="112">Heun 4 bước, bước cuối Euler</text>
+        <text class="gs-s gs-mid" x="322.5" y="128">t = 1 → 0.75 → 0.5 → 0.25 → 0</text>
+        <text class="gs-s gs-mid" x="322.5" y="144">7 lượt U-Net, checkpoint kích hoạt</text>
+        <text class="gs-s gs-mid" x="322.5" y="160">khung nhịp từ c, cờ rate_known</text>
+        <text class="gs-s gs-mid" x="322.5" y="176">lr 2e-5 cố định (1/10 của critic)</text>
+        <text class="gs-s gs-mid" x="322.5" y="192">(Hình 4a)</text>
+
+        <!-- clean output -->
+        <rect class="gs-io" x="455" y="88" width="165" height="72" rx="8"/>
+        <text class="gs-t gs-mid" x="537.5" y="110">Đầu ra sạch x̂</text>
+        <text class="gs-s gs-mid" x="537.5" y="127">[32, 1, 1200]</text>
+        <text class="gs-s gs-mid" x="537.5" y="143">min-max về [0, 1]</text>
+
+        <!-- sensor -->
+        <rect class="gs-act" x="645" y="40" width="190" height="160" rx="10"/>
+        <text class="gs-t gs-tact gs-mid" x="740" y="62">Số hạng cảm biến</text>
+        <text class="gs-s gs-mid" x="740" y="80">σ_d = 0.1 · sigmoid(r_d)</text>
+        <text class="gs-s gs-mid" x="740" y="96">r_d học được, 1 / miền (6)</text>
+        <text class="gs-s gs-mid" x="740" y="112">khởi tạo σ_d = 0.03</text>
+        <text class="gs-s gs-mid" x="740" y="128">ε = z[:, hoán vị cố định]</text>
+        <text class="gs-s gs-mid" x="740" y="144">(seed 20261023)</text>
+        <text class="gs-s gs-mid" x="740" y="160">lọc data-view v3: Butterworth</text>
+        <text class="gs-s gs-mid" x="740" y="176">bậc 4, 0.5–8 Hz, |H|², đệm 240</text>
+        <text class="gs-s gs-mid" x="740" y="192">→ min-max</text>
+
+        <!-- synthetic -->
+        <rect class="gs-io" x="855" y="88" width="130" height="72" rx="8"/>
+        <text class="gs-t gs-mid" x="920" y="110">PPG tổng hợp y</text>
+        <text class="gs-s gs-mid" x="920" y="127">[32, 1, 1200]</text>
+        <text class="gs-s gs-mid" x="920" y="143">parts() trả y và x̂</text>
+
+        <path class="gs-a" d="M190,75 H214" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M190,160 H214" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M430,124 H454" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M620,124 H644" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M835,124 H854" marker-end="url(#g1-ar)"/>
+
+        <!-- row 2 -->
+        <rect class="gs-frozen" x="215" y="236" width="215" height="84" rx="10"/>
+        <text class="gs-t gs-mid" x="322.5" y="258">Thầy: PhysioFlow 16 bước</text>
+        <text class="gs-s gs-mid" x="322.5" y="275">bản sao đóng băng, không gradient</text>
+        <text class="gs-s gs-mid" x="322.5" y="291">Heun 16 bước · 31 lượt U-Net</text>
+        <text class="gs-s gs-mid" x="322.5" y="307">cùng z và c với học sinh</text>
+
+        <rect class="gs-loss" x="455" y="236" width="165" height="84" rx="10"/>
+        <text class="gs-t gs-tloss gs-mid" x="537.5" y="258">Neo chưng cất</text>
+        <text class="gs-s gs-mid" x="537.5" y="275">MSE(x̂, x̂_T)</text>
+        <text class="gs-s gs-mid" x="537.5" y="291">khi bước % 4 = 0</text>
+        <text class="gs-s gs-mid" x="537.5" y="307">hệ số 4 × 100 = 400</text>
+
+        <rect class="gs-loss gs-only" x="645" y="236" width="190" height="84" rx="10"/>
+        <text class="gs-t gs-tloss gs-mid" x="740" y="258">Loss LSM (chỉ G2)</text>
+        <text class="gs-s gs-mid" x="740" y="275">M + C giữa y và x (Hình 5)</text>
+        <text class="gs-s gs-mid" x="740" y="291">5 khối 400 mẫu, phổ log</text>
+        <text class="gs-s gs-mid" x="740" y="307">hệ số 1 + 1, chỉ BIDMC</text>
+
+        <rect class="gs-io" x="855" y="236" width="130" height="84" rx="8"/>
+        <text class="gs-t gs-mid" x="920" y="258">PPG thật x</text>
+        <text class="gs-s gs-mid" x="920" y="275">[32, 1, 1200]</text>
+        <text class="gs-s gs-mid" x="920" y="291">cân bằng miền/người</text>
+        <text class="gs-s gs-mid" x="920" y="307">G2: chỉ BIDMC</text>
+
+        <path class="gs-a" d="M430,278 H454" marker-end="url(#g1-ar)"/>
+        <text class="gs-s10 gs-mid" x="442" y="271">x̂_T</text>
+        <path class="gs-a" d="M537.5,160 V235" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M920,160 V214 H760 V235" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M855,278 H836" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M920,320 V347" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M985,124 H994 V384 H986" marker-end="url(#g1-ar)"/>
+
+        <!-- critic -->
+        <rect class="gs-cat" x="645" y="348" width="340" height="72" rx="10"/>
+        <text class="gs-t gs-tcat gs-mid" x="815" y="370">StrictCritic · 871 811 tham số (Hình 4b)</text>
+        <text class="gs-s gs-mid" x="815" y="387">3 góc nhìn: thời gian · STFT · ACF · SN · chiếu c</text>
+        <text class="gs-s gs-mid" x="815" y="403">cắt ngẫu nhiên 1024 mẫu (25.6 s) · 3 logit / cửa sổ</text>
+
+        <!-- legend -->
+        <rect class="gs-io" x="20" y="236" width="170" height="184" rx="8"/>
+        <text class="gs-t gs-mid" x="105" y="256">Ký hiệu</text>
+        <path class="gs-a" d="M32,278 H70" marker-end="url(#g1-ar)"/>
+        <text class="gs-s" x="80" y="282">dữ liệu, tín hiệu</text>
+        <path class="gs-al" d="M32,302 H70" marker-end="url(#g1-arl)"/>
+        <text class="gs-s" x="80" y="306">đóng góp vào loss</text>
+        <rect class="gs-frozen" x="32" y="316" width="38" height="16" rx="3"/>
+        <text class="gs-s" x="80" y="328">đóng băng</text>
+        <rect class="gs-loss gs-only" x="32" y="340" width="38" height="16" rx="3"/>
+        <text class="gs-s" x="80" y="352">chỉ nhánh G2</text>
+        <rect class="gs-res" x="32" y="364" width="38" height="16" rx="3"/>
+        <text class="gs-s" x="80" y="376">được huấn luyện</text>
+        <rect class="gs-cat" x="32" y="388" width="38" height="16" rx="3"/>
+        <text class="gs-s" x="80" y="400">critic / giám khảo</text>
+
+        <!-- row 4: losses -->
+        <rect class="gs-norm" x="20" y="440" width="170" height="72" rx="8"/>
+        <text class="gs-t gs-tnorm gs-mid" x="105" y="460">EMA 0.995 → checkpoint</text>
+        <text class="gs-s gs-mid" x="105" y="476">mỗi 500 bước, từ bước 1000</text>
+        <text class="gs-s gs-mid" x="105" y="491">G1: S_real + 0.5 · C</text>
+        <text class="gs-s gs-mid" x="105" y="506">G2: Q của pool BIDMC</text>
+
+        <rect class="gs-loss" x="215" y="440" width="405" height="72" rx="10"/>
+        <text class="gs-t gs-tloss gs-mid" x="417.5" y="460">Loss sinh L_G (Hình 5d)</text>
+        <text class="gs-s gs-mid" x="417.5" y="477">−mean D(y, c) + 0.5 · L_dist(y, x)</text>
+        <text class="gs-s gs-mid" x="417.5" y="492">+ 400 · MSE(x̂, x̂_T) khi bước % 4 = 0 + [G2] (M + C)</text>
+        <text class="gs-s gs-mid" x="417.5" y="507">clip ‖∇‖ ≤ 10 · Adam β = (0, 0.99) · lr 2e-5</text>
+
+        <rect class="gs-loss" x="700" y="440" width="285" height="72" rx="10"/>
+        <text class="gs-t gs-tloss gs-mid" x="842.5" y="460">Loss critic L_D (Hình 5d)</text>
+        <text class="gs-s gs-mid" x="842.5" y="477">hinge thật/giả + 0.5 · cặp c lệch</text>
+        <text class="gs-s gs-mid" x="842.5" y="492">+ R1 lười mỗi 16 bước, hệ số ½ · 16 · 1</text>
+        <text class="gs-s gs-mid" x="842.5" y="507">clip ‖∇‖ ≤ 30 · Adam lr 2e-4 cố định</text>
+
+        <path class="gs-al" d="M537.5,320 V439" marker-end="url(#g1-arl)"/>
+        <path class="gs-al" d="M645,300 H632 V455 H621" marker-end="url(#g1-arl)"/>
+        <path class="gs-al" d="M670,420 V492 H621" marker-end="url(#g1-arl)"/>
+        <path class="gs-al" d="M842.5,420 V439" marker-end="url(#g1-arl)"/>
+        <path class="gs-a" d="M215,476 H191" marker-end="url(#g1-ar)"/>
+
+        <!-- ZONE B: STRICT JUDGE -->
+        <rect class="gs-zone" x="8" y="532" width="984" height="205" rx="12"/>
+        <text class="gs-k" x="56" y="551">B · Sau huấn luyện: giám khảo nghiêm (C2ST) — experiment_flowgan.main → experiment_strict.judge_family</text>
+        <path class="gs-at" d="M40,512 V565" marker-end="url(#g1-art)"/>
+
+        <rect class="gs-res" x="20" y="566" width="185" height="96" rx="10"/>
+        <text class="gs-t gs-tres gs-mid" x="112.5" y="587">Nguồn được chấm</text>
+        <text class="gs-s gs-mid" x="112.5" y="604">arm: best.pt (EMA), 3 seed</text>
+        <text class="gs-s gs-mid" x="112.5" y="619">42 · 123 · 2026</text>
+        <text class="gs-s gs-mid" x="112.5" y="634">app của slot, physioflow_app,</text>
+        <text class="gs-s gs-mid" x="112.5" y="649">physioflow_sensor (σ 0.03)</text>
+
+        <rect class="gs-io" x="230" y="566" width="225" height="96" rx="10"/>
+        <text class="gs-t gs-mid" x="342.5" y="587">Bộ cửa sổ (build_sets)</text>
+        <text class="gs-s gs-mid" x="342.5" y="604">thật train 512/miền: người fit</text>
+        <text class="gs-s gs-mid" x="342.5" y="619">thật inner 64/miền: dừng sớm</text>
+        <text class="gs-s gs-mid" x="342.5" y="634">đánh giá 128/miền: người val/test</text>
+        <text class="gs-s gs-mid" x="342.5" y="649">giả: nhãn người control_eval</text>
+
+        <rect class="gs-cat" x="480" y="566" width="245" height="96" rx="10"/>
+        <text class="gs-t gs-tcat gs-mid" x="602.5" y="587">StrictJudge · 3 610 945 tham số</text>
+        <text class="gs-s gs-mid" x="602.5" y="604">huấn luyện lại từ đầu cho từng nguồn</text>
+        <text class="gs-s gs-mid" x="602.5" y="619">BCE · AdamW 3e-4 · wd 0.05 · 3000 bước</text>
+        <text class="gs-s gs-mid" x="602.5" y="634">batch 64 thật + 64 giả · cắt 1024</text>
+        <text class="gs-s gs-mid" x="602.5" y="649">giữ AUC inner tốt nhất (mỗi 250 bước)</text>
+
+        <rect class="gs-io" x="750" y="566" width="235" height="96" rx="10"/>
+        <text class="gs-t gs-mid" x="867.5" y="587">AUC trên người chưa thấy</text>
+        <text class="gs-s gs-mid" x="867.5" y="604">TB 3 đoạn cắt 0, 88, 176 / cửa sổ</text>
+        <text class="gs-s gs-mid" x="867.5" y="619">TB 3 seed giám khảo 0–2 (+10 / +20)</text>
+        <text class="gs-s gs-mid" x="867.5" y="634">không phân biệt = 100(1 − |2AUC − 1|)</text>
+        <text class="gs-s gs-mid" x="867.5" y="649">null real_other_people ∈ [0.40, 0.60]</text>
+
+        <path class="gs-a" d="M205,614 H229" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M455,614 H479" marker-end="url(#g1-ar)"/>
+        <path class="gs-a" d="M725,614 H749" marker-end="url(#g1-ar)"/>
+
+        <text class="gs-s" x="22" y="684">Quy tắc (experiment_flowgan.RULE, cố định trước khi huấn luyện): arm thắng slot nếu mọi seed qua cổng, AUC trung bình thấp hơn mô hình app hơn max(0.02, SD seed),</text>
+        <text class="gs-s" x="22" y="700">null control hợp lệ, và với slot PhysioMix thêm C ≤ 0.10. Slot LSM chỉ chấm miền BIDMC. Người test được chấm một lần, sau khi DECISION_FLOWGAN.json đã lưu.</text>
+        <text class="gs-s" x="22" y="716">Giám khảo và critic chung kiểu góc nhìn nhưng không chung trọng số; giám khảo chỉ được huấn luyện sau khi generator đã đóng băng. Bộ cửa sổ seed 1 (val) / 2 (test).</text>
+      </svg>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Hằng số trong hình</th><th>Giá trị</th><th>Nguồn trong mã</th></tr></thead>
+      <tbody>
+        <tr><td>Bước Heun học sinh / thầy</td><td>4 / 16</td><td class="small">flow_gan.py:33</td></tr>
+        <tr><td>Lượt U-Net mỗi lần sinh</td><td>7 (2·3 + 1) / 31 (2·15 + 1)</td><td class="small">flow_gan.py:71-75; flow.py:402-409</td></tr>
+        <tr><td>σ cảm biến: khởi tạo / trần</td><td>0.03 / 0.1, mỗi miền một r_d</td><td class="small">flow_gan.py:34, 50-52, 57-58</td></tr>
+        <tr><td>Hoán vị nhiễu cảm biến</td><td>seed 20261023</td><td class="small">flow_gan.py:35, 53, 82</td></tr>
+        <tr><td>Lọc data-view v3</td><td>Butterworth bậc 4, 0.5–8 Hz, |H|², đệm phản xạ 240 mẫu</td><td class="small">view.py:14; physio.py:44-51; flow.py:34, 425-430; flow_gan.py:55, 83</td></tr>
+        <tr><td>Hàng điều kiện c</td><td>11 = 6 miền + 5 nhãn (bố cục v2)</td><td class="small">experiment_v3.py:58; physio.py:144-145</td></tr>
+        <tr><td>lr critic / generator, lịch</td><td>2e-4 / 2e-5, cố định</td><td class="small">experiment_v3.py:134, 222-226, 391-393</td></tr>
+        <tr><td>Adam β</td><td>(0, 0.99) cho cả hai</td><td class="small">experiment_v3.py:392-393</td></tr>
+        <tr><td>Neo chưng cất</td><td>hệ số 100, mỗi 4 bước, nhân 4</td><td class="small">experiment_v3.py:134-135, 460-463</td></tr>
+        <tr><td>R1 lười</td><td>mỗi 16 bước, ½ · 16 · r1_weight, r1_weight = 1</td><td class="small">experiment_v3.py:173-177, 426, 443-445</td></tr>
+        <tr><td>Clip gradient critic / generator</td><td>30 (mọi bước) / 10</td><td class="small">experiment_v3.py:134, 449-450, 470</td></tr>
+        <tr><td>EMA generator</td><td>0.995</td><td class="small">physio.py:493; experiment_v3.py:474</td></tr>
+        <tr><td>Batch / số bước / hạn giờ</td><td>32 / 4000 / 4.5 h</td><td class="small">experiment_flowgan.py:50, 94-95</td></tr>
+        <tr><td>Chấm checkpoint</td><td>mỗi 500 bước từ bước 1000 và bước cuối; G1 S_real + 0.5·C, G2 Q_bidmc</td><td class="small">experiment_v3.py:476-484; experiment_flowgan.py:98</td></tr>
+        <tr><td>Seed huấn luyện / seed giám khảo</td><td>42, 123, 2026 / 0, 1, 2 (+10 val, +20 test)</td><td class="small">experiment_flowgan.py:96-97; experiment_strict.py:41</td></tr>
+        <tr><td>Giám khảo "strict"</td><td>3000 bước, batch 64, lr 3e-4, cắt 1024</td><td class="small">strict_judge.py:47, 50; experiment_flowgan.py:32</td></tr>
+        <tr><td>Cửa sổ giám khảo</td><td>512 / 64 / 128 mỗi miền</td><td class="small">strict_judge.py:46</td></tr>
+        <tr><td>Khoảng null hợp lệ / ngưỡng C</td><td>[0.40, 0.60] / 0.10</td><td class="small">experiment_strict.py:42; experiment_flowgan.py:41</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <p class="small muted">Hình 1: Quy trình PhysioFlow-GAN (A) và giám khảo nghiêm (B), vẽ theo flow_gan.py, experiment_v3.py (FLOWGAN, train_conditional), experiment_flowgan.py, experiment_strict.py và strict_judge.py. Chú thích ở experiment_v3.py:132 ghi thầy chạy 32 lượt U-Net; vòng lặp thực tế (flow.py:402-409, bước cuối Euler) cho 31.</p>
+</section>
+
+<section id="g-fig4">
+  <h2>Hình 4 · Kiến trúc mạng</h2>
+  <p class="lead">Ba mạng, vẽ theo đúng lớp trong mã. <b>(a)</b> Generator là UNet1D của PhysioFlow (5 mức độ phân giải, FiLM từ nhúng thời gian cộng nhúng điều kiện, attention ở hai mức sâu nhất) bọc trong FlowGAN: tích phân Heun 4 bước, chuẩn hoá, số hạng cảm biến và bộ lọc kết thúc. <b>(b)</b> StrictCritic là critic của GAN: ba góc nhìn giống giám khảo nhưng hẹp hơn, mọi lớp có spectral norm, không có lớp chuẩn hoá, mỗi góc nhìn một logit hinge cộng số hạng chiếu điều kiện. <b>(c)</b> StrictJudge là bộ phân biệt dùng để đánh giá: cùng ba góc nhìn nhưng rộng gấp đôi, có GroupNorm và Dropout, ra một logit duy nhất. Số tham số được đếm bằng cách dựng mô-đun trong PyTorch với hàng điều kiện 11 phần tử.</p>
+  <div class="arch-legend">
+    <span class="arch-legend-chip chip-conv">Convolution / Linear</span>
+    <span class="arch-legend-chip chip-norm">GroupNorm / min-max / Dropout</span>
+    <span class="arch-legend-chip chip-act">SiLU / LeakyReLU / nhiễu cảm biến</span>
+    <span class="arch-legend-chip chip-concat">Ghép kênh / pooling / cộng</span>
+    <span class="arch-legend-chip chip-res">ResBlock / FiLM / Attention</span>
+    <span class="arch-legend-chip chip-io">Tensor vào / ra</span>
+  </div>
+  <div class="card arch-card">
+    <h3 style="margin:0">(a) Generator PhysioFlow-GAN: UNet1D trong vỏ FlowGAN</h3>
+    <p class="small muted" style="margin-top:6px">ml/kaggle_multidomain/flow.py (UNet1D, ResBlock, Attention, FlowGenerator, finish) và ml/kaggle_multidomain/flow_gan.py (FlowGAN). FlowGAN dựng FlowGenerator với width = 1 và flag_scaffold = True.</p>
+    <div class="arch-diagram-wrap">
+      <svg class="gs-svg" viewBox="0 0 1000 660" role="img" aria-label="Kiến trúc generator PhysioFlow-GAN">
+        <defs>
+          <marker id="g4a-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g4a-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g4a-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdr" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g4a-ars" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hds" d="M0,1 L9,5 L0,9 z"/></marker>
+        </defs>
+        <style>
+          .gs-svg { --gs-conv-f:#d4edd4; --gs-conv-s:#4caf50; --gs-conv-t:#14532d; --gs-norm-f:#ffffff; --gs-norm-s:#94a3b8; --gs-norm-t:#334155; --gs-act-f:#fef3c7; --gs-act-s:#f59e0b; --gs-act-t:#78350f; --gs-cat-f:#dbeafe; --gs-cat-s:#3b82f6; --gs-cat-t:#1e40af; --gs-res-f:#ede9fe; --gs-res-s:#7c3aed; --gs-res-t:#5b21b6; --gs-loss-f:#fee2e2; --gs-loss-s:#ef4444; --gs-loss-t:#991b1b; }
+          :root[data-theme="dark"] .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; }
+          @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; } }
+          .gs-svg text { font-family: inherit; }
+          .gs-conv { fill: var(--gs-conv-f); stroke: var(--gs-conv-s); stroke-width: 1.3px; } .gs-norm { fill: var(--gs-norm-f); stroke: var(--gs-norm-s); stroke-width: 1.3px; } .gs-act { fill: var(--gs-act-f); stroke: var(--gs-act-s); stroke-width: 1.3px; } .gs-cat { fill: var(--gs-cat-f); stroke: var(--gs-cat-s); stroke-width: 1.3px; } .gs-res { fill: var(--gs-res-f); stroke: var(--gs-res-s); stroke-width: 1.3px; } .gs-loss { fill: var(--gs-loss-f); stroke: var(--gs-loss-s); stroke-width: 1.3px; }
+          .gs-tconv { fill: var(--gs-conv-t); } .gs-tnorm { fill: var(--gs-norm-t); } .gs-tact { fill: var(--gs-act-t); } .gs-tcat { fill: var(--gs-cat-t); } .gs-tres { fill: var(--gs-res-t); } .gs-tloss { fill: var(--gs-loss-t); }
+          .gs-io { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+          .gs-frozen { fill: var(--hw-soft); stroke: var(--hw); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-only { stroke-dasharray: 5 3; }
+          .gs-zone { fill: none; stroke: var(--line); stroke-width: 1.2px; stroke-dasharray: 6 4; }
+          .gs-off { fill: none; stroke: var(--line); stroke-width: 1px; }
+          .gs-t { font-size: 13px; font-weight: 700; fill: var(--ink); }
+          .gs-t12 { font-size: 12px; font-weight: 700; fill: var(--ink); }
+          .gs-s { font-size: 11px; fill: var(--muted); }
+          .gs-s10 { font-size: 10px; fill: var(--muted); }
+          .gs-m { font-size: 11px; fill: var(--ink); }
+          .gs-k { font-size: 12.5px; font-weight: 700; fill: var(--accent); }
+          .gs-sub { font-size: 8.5px; }
+          .gs-mid { text-anchor: middle; }
+          .gs-end { text-anchor: end; }
+          .gs-a { fill: none; stroke: var(--accent); stroke-width: 1.8px; }
+          .gs-al { fill: none; stroke: var(--bad); stroke-width: 1.6px; stroke-dasharray: 5 3; }
+          .gs-at { fill: none; stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-ar { fill: none; stroke: var(--gs-res-s); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+          .gs-skip { fill: none; stroke: var(--gs-cat-s); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-hd { fill: var(--accent); } .gs-hdl { fill: var(--bad); } .gs-hdt { fill: var(--muted); }
+          .gs-hdr { fill: var(--gs-res-s); } .gs-hds { fill: var(--gs-cat-s); }
+          .gs-wave { fill: none; stroke: var(--s1); stroke-width: 1.3px; }
+          .gs-pair { stroke: var(--muted); stroke-width: .8px; opacity: .6; }
+          .gs-chord { stroke: var(--gs-res-s); stroke-width: 1.1px; opacity: .75; }
+          .gs-axis { stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-dot { fill: var(--accent); }
+          .gs-dot-o { fill: var(--panel); stroke: var(--accent); stroke-width: 1.4px; }
+          .gs-eq { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+          .gs-eq-h { margin: 10px 0 4px; font-weight: 700; color: var(--accent); font-size: 14px; }
+          .gs-f { margin: 4px 0; padding: 2px 0; font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+                   font-size: 16px; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+          .gs-eq ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+        </style>
+        <!-- left column -->
+        <rect class="gs-io" x="15" y="24" width="205" height="46" rx="8"/>
+        <text class="gs-t gs-mid" x="117.5" y="44">Nhiễu z [B, 1200]</text>
+        <text class="gs-s gs-mid" x="117.5" y="61">x tại t = 1 chính là z</text>
+
+        <rect class="gs-io" x="15" y="80" width="205" height="46" rx="8"/>
+        <text class="gs-t gs-mid" x="117.5" y="100">Điều kiện c [B, 11]</text>
+        <text class="gs-s gs-mid" x="117.5" y="117">6 miền + 5 nhãn (v2)</text>
+
+        <rect class="gs-res" x="15" y="138" width="205" height="104" rx="8"/>
+        <text class="gs-t gs-tres gs-mid" x="117.5" y="158">Khung nhịp (scaffold_of)</text>
+        <text class="gs-s gs-mid" x="117.5" y="175">Hz = rate/60, kẹp [0.6, 3.3]</text>
+        <text class="gs-s gs-mid" x="117.5" y="190">σ_irr kẹp [0, 0.35] · 160 nhịp</text>
+        <text class="gs-s gs-mid" x="117.5" y="205">IBI log-normal, nhiễu = z đảo</text>
+        <text class="gs-s gs-mid" x="117.5" y="220">[sin 2πφ, cos 2πφ, 1] × cờ</text>
+        <text class="gs-s gs-mid" x="117.5" y="235">cờ = c[rate_known] &gt; 0.5</text>
+
+        <rect class="gs-res" x="15" y="256" width="205" height="62" rx="8"/>
+        <text class="gs-t gs-tres gs-mid" x="117.5" y="276">Nhúng thời gian t</text>
+        <text class="gs-s gs-mid" x="117.5" y="293">64 tần số: sin, cos(1000 · t · ω)</text>
+        <text class="gs-s gs-mid" x="117.5" y="308">Lin 128→256 · SiLU · Lin 256→256</text>
+
+        <rect class="gs-res" x="15" y="330" width="205" height="62" rx="8"/>
+        <text class="gs-t gs-tres gs-mid" x="117.5" y="350">Nhúng điều kiện</text>
+        <text class="gs-s gs-mid" x="117.5" y="367">[c · f, f], f = 1 khi sinh → 12</text>
+        <text class="gs-s gs-mid" x="117.5" y="382">Lin 12→256 · SiLU · Lin 256→256</text>
+
+        <circle class="gs-cat" cx="117.5" cy="414" r="10"/>
+        <text class="gs-t gs-tcat gs-mid" x="117.5" y="419">+</text>
+        <text class="gs-t gs-mid" x="117.5" y="442">emb 256</text>
+        <text class="gs-s gs-mid" x="117.5" y="457">→ FiLM ở 27 ResBlock</text>
+        <path class="gs-a" d="M117.5,392 V403" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M220,287 H228 V414 H128" marker-end="url(#g4a-ar)"/>
+        <path class="gs-ar" d="M190,452 H239" marker-end="url(#g4a-arr)"/>
+
+        <!-- ResBlock inset -->
+        <rect class="gs-zone" x="15" y="470" width="205" height="180" rx="10"/>
+        <text class="gs-t12 gs-mid" x="117.5" y="488">ResBlock(C_in → C_out, k)</text>
+        <rect class="gs-norm" x="35" y="496" width="165" height="17" rx="3"/><text class="gs-m gs-tnorm gs-mid" x="117.5" y="508.5">GroupNorm(8)</text>
+        <rect class="gs-act" x="35" y="515" width="165" height="17" rx="3"/><text class="gs-m gs-tact gs-mid" x="117.5" y="527.5">SiLU</text>
+        <rect class="gs-conv" x="35" y="534" width="165" height="17" rx="3"/><text class="gs-m gs-tconv gs-mid" x="117.5" y="546.5">Conv k, C_in → C_out</text>
+        <rect class="gs-norm" x="35" y="553" width="165" height="17" rx="3"/><text class="gs-m gs-tnorm gs-mid" x="117.5" y="565.5">GroupNorm(8)</text>
+        <rect class="gs-res" x="35" y="572" width="165" height="17" rx="3"/><text class="gs-m gs-tres gs-mid" x="117.5" y="584.5">FiLM: × (1 + s) + b ← emb</text>
+        <rect class="gs-act" x="35" y="591" width="165" height="17" rx="3"/><text class="gs-m gs-tact gs-mid" x="117.5" y="603.5">SiLU</text>
+        <rect class="gs-conv" x="35" y="610" width="165" height="17" rx="3"/><text class="gs-m gs-tconv gs-mid" x="117.5" y="622.5">Conv k (khởi tạo 0)</text>
+        <path class="gs-at" d="M33,500 H25 V630 H33"/>
+        <text class="gs-s gs-mid" x="117.5" y="643">+ skip: Conv 1×1 nếu C đổi</text>
+
+        <!-- U-Net container -->
+        <rect class="gs-zone" x="240" y="14" width="560" height="506" rx="12"/>
+        <text class="gs-t gs-mid" x="520" y="34">UNet1D · 6 923 137 tham số</text>
+        <text class="gs-s gs-mid" x="520" y="50">v(x_t, t | khung nhịp, c) · kênh (32, 64, 128, 160, 160) · 2 ResBlock / mức</text>
+
+        <rect class="gs-cat" x="250" y="62" width="190" height="34" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="345" y="83">Ghép [x_t, khung nhịp] · 4 kênh</text>
+        <rect class="gs-conv" x="250" y="96" width="190" height="22" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="345" y="111">Conv 4→32 · k7 · L = 1200</text>
+        <path class="gs-a" d="M220,47 H236 V74 H249" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M220,190 H231 V88 H249" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M300,118 V139" marker-end="url(#g4a-ar)"/>
+
+        <rect class="gs-res" x="250" y="140" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="345" y="157">L = 1200 · C = 32</text>
+        <text class="gs-s gs-mid" x="345" y="172">2× ResBlock · k = 5</text>
+        <rect class="gs-res" x="600" y="140" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="695" y="157">L = 1200 · → 32</text>
+        <text class="gs-s gs-mid" x="695" y="172">3× ResBlock · k = 5</text>
+        <path class="gs-skip" d="M440,160 H599" marker-end="url(#g4a-ars)"/>
+        <text class="gs-s10 gs-mid" x="520" y="155">skip ×3, ghép kênh</text>
+        <path class="gs-a" d="M300,180 V205" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="312" y="184" width="124" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="374" y="197">Conv k3 · stride 2</text>
+        <path class="gs-a" d="M745,206 V181" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="604" y="184" width="130" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="669" y="197">nearest ×2 · Conv k3</text>
+        <rect class="gs-res" x="250" y="206" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="345" y="223">L = 600 · C = 64</text>
+        <text class="gs-s gs-mid" x="345" y="238">2× ResBlock · k = 5</text>
+        <rect class="gs-res" x="600" y="206" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="695" y="223">L = 600 · → 64</text>
+        <text class="gs-s gs-mid" x="695" y="238">3× ResBlock · k = 5</text>
+        <path class="gs-skip" d="M440,226 H599" marker-end="url(#g4a-ars)"/>
+        <text class="gs-s10 gs-mid" x="520" y="221">skip ×3, ghép kênh</text>
+        <path class="gs-a" d="M300,246 V271" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="312" y="250" width="124" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="374" y="263">Conv k3 · stride 2</text>
+        <path class="gs-a" d="M745,272 V247" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="604" y="250" width="130" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="669" y="263">nearest ×2 · Conv k3</text>
+        <rect class="gs-res" x="250" y="272" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="345" y="289">L = 300 · C = 128</text>
+        <text class="gs-s gs-mid" x="345" y="304">2× ResBlock · k = 3</text>
+        <rect class="gs-res" x="600" y="272" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="695" y="289">L = 300 · → 128</text>
+        <text class="gs-s gs-mid" x="695" y="304">3× ResBlock · k = 3</text>
+        <path class="gs-skip" d="M440,292 H599" marker-end="url(#g4a-ars)"/>
+        <text class="gs-s10 gs-mid" x="520" y="287">skip ×3, ghép kênh</text>
+        <path class="gs-a" d="M300,312 V337" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="312" y="316" width="124" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="374" y="329">Conv k3 · stride 2</text>
+        <path class="gs-a" d="M745,338 V313" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="604" y="316" width="130" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="669" y="329">nearest ×2 · Conv k3</text>
+        <rect class="gs-res" x="250" y="338" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="345" y="355">L = 150 · C = 160</text>
+        <text class="gs-s gs-mid" x="345" y="370">2× (ResBlock + Attn) · k = 3</text>
+        <rect class="gs-res" x="600" y="338" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="695" y="355">L = 150 · → 160</text>
+        <text class="gs-s gs-mid" x="695" y="370">3× (ResBlock + Attn) · k = 3</text>
+        <path class="gs-skip" d="M440,358 H599" marker-end="url(#g4a-ars)"/>
+        <text class="gs-s10 gs-mid" x="520" y="353">skip ×3, ghép kênh</text>
+        <path class="gs-a" d="M300,378 V403" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="312" y="382" width="124" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="374" y="395">Conv k3 · stride 2</text>
+        <path class="gs-a" d="M745,404 V379" marker-end="url(#g4a-ar)"/>
+        <rect class="gs-conv" x="604" y="382" width="130" height="18" rx="4"/>
+        <text class="gs-m gs-tconv gs-mid" x="669" y="395">nearest ×2 · Conv k3</text>
+        <rect class="gs-res" x="250" y="404" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="345" y="421">L = 75 · C = 160</text>
+        <text class="gs-s gs-mid" x="345" y="436">2× (ResBlock + Attn) · k = 3</text>
+        <rect class="gs-res" x="600" y="404" width="190" height="40" rx="6"/>
+        <text class="gs-t12 gs-tres gs-mid" x="695" y="421">L = 75 · → 160</text>
+        <text class="gs-s gs-mid" x="695" y="436">3× (ResBlock + Attn) · k = 3</text>
+        <path class="gs-skip" d="M440,424 H599" marker-end="url(#g4a-ars)"/>
+        <text class="gs-s10 gs-mid" x="520" y="419">skip ×3, ghép kênh</text>
+
+        <rect class="gs-res" x="300" y="466" width="440" height="40" rx="8"/>
+        <text class="gs-t12 gs-tres gs-mid" x="520" y="483">Giữa · L = 75 · C = 160</text>
+        <text class="gs-s gs-mid" x="520" y="498">ResBlock → Attn (4 đầu) → ResBlock · k = 3</text>
+        <path class="gs-a" d="M300,444 V465" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M745,466 V445" marker-end="url(#g4a-ar)"/>
+
+        <rect class="gs-conv" x="600" y="62" width="190" height="56" rx="8"/>
+        <text class="gs-t12 gs-tconv gs-mid" x="695" y="80">Lớp ra: GN 8 · SiLU</text>
+        <text class="gs-s gs-mid" x="695" y="96">Conv 32→1 · k = 3 · khởi tạo 0</text>
+        <text class="gs-s gs-mid" x="695" y="111">→ vận tốc v [B, 1, 1200]</text>
+        <path class="gs-a" d="M745,140 V119" marker-end="url(#g4a-ar)"/>
+
+        <!-- FlowGAN wrapper -->
+        <text class="gs-t gs-mid" x="902.5" y="34">Vỏ FlowGAN</text>
+        <text class="gs-s gs-mid" x="902.5" y="50">flow_gan.py</text>
+        <rect class="gs-res" x="815" y="62" width="175" height="150" rx="10"/>
+        <text class="gs-t12 gs-tres gs-mid" x="902.5" y="81">Heun 4 bước, Δt = −0.25</text>
+        <text class="gs-s gs-mid" x="902.5" y="98">v = U(x, t)</text>
+        <text class="gs-s gs-mid" x="902.5" y="113">x′ = x + Δt · v</text>
+        <text class="gs-s gs-mid" x="902.5" y="128">x ← x + Δt · (v + U(x′, t + Δt))/2</text>
+        <text class="gs-s gs-mid" x="902.5" y="143">bước 4: x ← x′ (Euler)</text>
+        <text class="gs-s gs-mid" x="902.5" y="158">→ 7 lượt U-Net</text>
+        <text class="gs-s gs-mid" x="902.5" y="173">checkpoint kích hoạt khi train</text>
+        <text class="gs-s gs-mid" x="902.5" y="188">t = 1, 0.75, 0.5, 0.25 → 0</text>
+        <path class="gs-a" d="M790,84 H814" marker-end="url(#g4a-ar)"/>
+        <path class="gs-at" d="M815,190 H802" marker-end="url(#g4a-art)"/>
+        <text class="gs-s10 gs-mid" x="802" y="80">v</text>
+        <text class="gs-s10 gs-end" x="812" y="204">x, t</text>
+
+        <rect class="gs-norm" x="815" y="226" width="175" height="30" rx="6"/>
+        <text class="gs-m gs-tnorm gs-mid" x="902.5" y="245">min-max → x̂ ∈ [0, 1]</text>
+        <rect class="gs-act" x="815" y="270" width="175" height="76" rx="8"/>
+        <text class="gs-t12 gs-tact gs-mid" x="902.5" y="289">Cảm biến</text>
+        <text class="gs-s gs-mid" x="902.5" y="305">+ σ_d · z[:, hoán vị]</text>
+        <text class="gs-s gs-mid" x="902.5" y="320">σ_d = 0.1 · sigmoid(c_miền · r)</text>
+        <text class="gs-s gs-mid" x="902.5" y="335">r: 6 tham số, đầu σ = 0.03</text>
+        <rect class="gs-conv" x="815" y="360" width="175" height="62" rx="8"/>
+        <text class="gs-t12 gs-tconv gs-mid" x="902.5" y="379">Lọc data-view v3</text>
+        <text class="gs-s gs-mid" x="902.5" y="395">Butterworth 4 · 0.5–8 Hz, |H|²</text>
+        <text class="gs-s gs-mid" x="902.5" y="410">đệm phản xạ 240 mẫu, FFT</text>
+        <rect class="gs-norm" x="815" y="436" width="175" height="30" rx="6"/>
+        <text class="gs-m gs-tnorm gs-mid" x="902.5" y="455">min-max → y</text>
+        <rect class="gs-io" x="815" y="480" width="175" height="54" rx="8"/>
+        <text class="gs-t gs-mid" x="902.5" y="500">y [B, 1, 1200]</text>
+        <text class="gs-s gs-mid" x="902.5" y="517">và x̂ cho neo chưng cất</text>
+        <path class="gs-a" d="M902.5,212 V225" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M902.5,256 V269" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M902.5,346 V359" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M902.5,422 V435" marker-end="url(#g4a-ar)"/>
+        <path class="gs-a" d="M902.5,466 V479" marker-end="url(#g4a-ar)"/>
+        <text class="gs-s gs-mid" x="902.5" y="556">export(): TorchScript,</text>
+        <text class="gs-s gs-mid" x="902.5" y="571">U-Net trace một lần</text>
+
+        <!-- Attention inset -->
+        <rect class="gs-zone" x="240" y="532" width="560" height="118" rx="10"/>
+        <text class="gs-t12" x="254" y="550">Attention (mức L = 150, L = 75 và khối giữa) · 4 đầu, d = 160/4 = 40</text>
+        <rect class="gs-norm" x="254" y="562" width="90" height="28" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="299" y="580">GroupNorm(8)</text>
+        <rect class="gs-conv" x="356" y="562" width="100" height="28" rx="4"/><text class="gs-m gs-tconv gs-mid" x="406" y="580">Conv 1×1 → Q, K, V</text>
+        <rect class="gs-res" x="468" y="562" width="136" height="28" rx="4"/><text class="gs-m gs-tres gs-mid" x="536" y="580">softmax(QKᵀ/√40) · V</text>
+        <rect class="gs-conv" x="616" y="562" width="96" height="28" rx="4"/><text class="gs-m gs-tconv gs-mid" x="664" y="580">Conv 1×1 (0)</text>
+        <rect class="gs-cat" x="724" y="562" width="66" height="28" rx="4"/><text class="gs-m gs-tcat gs-mid" x="757" y="580">+ x</text>
+        <path class="gs-at" d="M344,576 H355" marker-end="url(#g4a-art)"/>
+        <path class="gs-at" d="M456,576 H467" marker-end="url(#g4a-art)"/>
+        <path class="gs-at" d="M604,576 H615" marker-end="url(#g4a-art)"/>
+        <path class="gs-at" d="M712,576 H723" marker-end="url(#g4a-art)"/>
+        <text class="gs-s" x="254" y="614">FiLM: Linear 256 → 2·C_out cho mỗi ResBlock; 10 ResBlock mã hoá + 2 ở giữa + 15 giải mã = 27; Attention 4 + 1 + 6 = 11.</text>
+        <text class="gs-s" x="254" y="630">Giữ chiều dài: padding k//2. Giảm mẫu: Conv k3 stride 2. Tăng mẫu: nearest ×2 rồi Conv k3. Mỗi mức giải mã ghép 3 skip cùng độ phân giải.</text>
+      </svg>
+    </div>
+
+    <h3 style="margin:18px 0 0">(b) StrictCritic: critic của GAN</h3>
+    <p class="small muted" style="margin-top:6px">ml/kaggle_multidomain/strict_judge.py (CriticBlock, CriticTime, CriticSpectral, CriticAcf, StrictCritic). experiment_v3.build dựng StrictCritic(size) với width = 32, minibatch_std = False.</p>
+    <div class="arch-diagram-wrap">
+      <svg class="gs-svg" viewBox="0 0 1020 480" role="img" aria-label="Kiến trúc StrictCritic">
+        <defs>
+          <marker id="g4b-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g4b-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+        </defs>
+        <rect class="gs-io" x="10" y="175" width="110" height="60" rx="8"/>
+        <text class="gs-t12 gs-mid" x="65" y="199">x hoặc y</text>
+        <text class="gs-s gs-mid" x="65" y="216">[B, 1, 1200]</text>
+        <rect class="gs-io" x="132" y="165" width="100" height="80" rx="8"/>
+        <text class="gs-t12 gs-mid" x="182" y="186">Cắt ngẫu nhiên</text>
+        <text class="gs-s gs-mid" x="182" y="203">1024 mẫu</text>
+        <text class="gs-s gs-mid" x="182" y="218">= 25.6 s</text>
+        <text class="gs-s gs-mid" x="182" y="233">chỉ khi train</text>
+        <path class="gs-a" d="M120,205 H131" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M232,205 H238 V85 H244" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M232,205 H244" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M232,205 H238 V310 H244" marker-end="url(#g4b-ar)"/>
+        <text class="gs-s10 gs-mid" x="305" y="40">nhánh thời gian</text>
+        <text class="gs-s10 gs-mid" x="305" y="160">nhánh phổ</text>
+        <text class="gs-s10 gs-mid" x="305" y="275">nhánh ACF</text>
+        <rect class="gs-io" x="245" y="45" width="120" height="80" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="65">Kênh đạo hàm</text>
+        <text class="gs-s gs-mid" x="305" y="82">x − x̄</text>
+        <text class="gs-s gs-mid" x="305" y="97">10·Δx, 20·Δ²x</text>
+        <text class="gs-s gs-mid" x="305" y="112">→ 3 × 1024</text>
+        <rect class="gs-io" x="245" y="165" width="120" height="80" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="185">STFT</text>
+        <text class="gs-s gs-mid" x="305" y="202">n_fft 128 · hop 16</text>
+        <text class="gs-s gs-mid" x="305" y="217">Hann → 65 × 65</text>
+        <text class="gs-s gs-mid" x="305" y="232">log(P + 10⁻³ · P̄)</text>
+        <rect class="gs-io" x="245" y="280" width="120" height="60" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="300">ACF</text>
+        <text class="gs-s gs-mid" x="305" y="317">trễ 1…200 (5 s)</text>
+        <text class="gs-s gs-mid" x="305" y="332">÷ ACF(0)</text>
+        <path class="gs-a" d="M365,85 H377" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M365,205 H377" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M365,310 H377" marker-end="url(#g4b-ar)"/>
+        <rect class="gs-conv" x="378" y="60" width="60" height="50" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="408" y="81">SN Conv</text>
+        <text class="gs-s gs-mid" x="408" y="97">3→32 · k7</text>
+        <rect class="gs-res" x="443" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="478" y="81">2× CB 32</text>
+        <text class="gs-s gs-mid" x="478" y="97">s1 · 1024</text>
+        <path class="gs-at" d="M438,85 H443"/>
+        <rect class="gs-res" x="518" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="553" y="81">2× CB 64</text>
+        <text class="gs-s gs-mid" x="553" y="97">s2 · 512</text>
+        <path class="gs-at" d="M513,85 H518"/>
+        <rect class="gs-res" x="593" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="628" y="81">2× CB 128</text>
+        <text class="gs-s gs-mid" x="628" y="97">s2 · 256</text>
+        <path class="gs-at" d="M588,85 H593"/>
+        <rect class="gs-res" x="668" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="703" y="81">2× CB 128</text>
+        <text class="gs-s gs-mid" x="703" y="97">s2 · 128</text>
+        <path class="gs-at" d="M663,85 H668"/>
+        <text class="gs-s10 gs-mid" x="558" y="124">mỗi tầng: CB(d = 1, stride s) + CB(d = 2)</text>
+        <text class="gs-s10 gs-mid" x="558" y="139">nhánh thời gian: 735 616 tham số</text>
+        <path class="gs-a" d="M738,85 H749" marker-end="url(#g4b-ar)"/>
+        <rect class="gs-cat" x="750" y="50" width="90" height="70" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="71">LReLU 0.2</text>
+        <text class="gs-s gs-mid" x="795" y="87">mean·max·std</text>
+        <text class="gs-s gs-mid" x="795" y="103">→ 384</text>
+        <rect class="gs-conv" x="378" y="180" width="110" height="50" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="433" y="201">SN Conv 65→64</text>
+        <text class="gs-s gs-mid" x="433" y="217">k = 3</text>
+        <rect class="gs-res" x="500" y="180" width="90" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="545" y="201">CB 64</text>
+        <text class="gs-s gs-mid" x="545" y="217">d = 1</text>
+        <rect class="gs-res" x="602" y="180" width="90" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="647" y="201">CB 64</text>
+        <text class="gs-s gs-mid" x="647" y="217">d = 2</text>
+        <path class="gs-at" d="M488,205 H499" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M590,205 H601" marker-end="url(#g4b-art)"/>
+        <path class="gs-a" d="M692,205 H749" marker-end="url(#g4b-ar)"/>
+        <text class="gs-s10 gs-mid" x="545" y="262">nhánh phổ: 94 720 tham số</text>
+        <rect class="gs-cat" x="750" y="170" width="90" height="70" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="191">LReLU 0.2</text>
+        <text class="gs-s gs-mid" x="795" y="207">mean·max</text>
+        <text class="gs-s gs-mid" x="795" y="223">→ 128</text>
+        <rect class="gs-conv" x="378" y="290" width="110" height="40" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="433" y="314">SN Lin 200→128</text>
+        <rect class="gs-act" x="500" y="290" width="60" height="40" rx="5"/>
+        <text class="gs-m gs-tact gs-mid" x="530" y="314">LReLU</text>
+        <rect class="gs-conv" x="572" y="290" width="110" height="40" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="627" y="314">SN Lin 128→64</text>
+        <rect class="gs-act" x="694" y="290" width="44" height="40" rx="5"/>
+        <text class="gs-m gs-tact gs-mid" x="716" y="314">LReLU</text>
+        <path class="gs-at" d="M488,310 H499" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M560,310 H571" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M682,310 H693" marker-end="url(#g4b-art)"/>
+        <path class="gs-a" d="M738,310 H749" marker-end="url(#g4b-ar)"/>
+        <text class="gs-s10 gs-mid" x="558" y="356">nhánh ACF: 33 984 tham số</text>
+        <rect class="gs-cat" x="750" y="285" width="90" height="50" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="306">→ 64</text>
+        <text class="gs-s gs-mid" x="795" y="322">không pool</text>
+        <!-- heads -->
+        <rect class="gs-conv" x="852" y="50" width="110" height="70" rx="6"/>
+        <text class="gs-m gs-tconv gs-mid" x="907" y="71">SN Lin 384→1</text>
+        <text class="gs-s gs-mid" x="907" y="87">+ f · P(c) / √384</text>
+        <text class="gs-s gs-mid" x="907" y="103">→ logit D₁</text>
+        <rect class="gs-conv" x="852" y="170" width="110" height="70" rx="6"/>
+        <text class="gs-m gs-tconv gs-mid" x="907" y="191">SN Lin 128→1</text>
+        <text class="gs-s gs-mid" x="907" y="207">+ f · P(c) / √128</text>
+        <text class="gs-s gs-mid" x="907" y="223">→ logit D₂</text>
+        <rect class="gs-conv" x="852" y="285" width="110" height="50" rx="6"/>
+        <text class="gs-m gs-tconv gs-mid" x="907" y="301">SN Lin 64→1</text>
+        <text class="gs-s gs-mid" x="907" y="315">+ f · P(c) / √64</text>
+        <text class="gs-s gs-mid" x="907" y="329">→ logit D₃</text>
+        <path class="gs-a" d="M840,85 H851" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M840,205 H851" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M840,310 H851" marker-end="url(#g4b-ar)"/>
+        <rect class="gs-io" x="975" y="50" width="38" height="285" rx="8"/>
+        <text class="gs-t12 gs-mid" transform="translate(999,192) rotate(-90)">Ra [B, 3]: D₁, D₂, D₃</text>
+        <path class="gs-a" d="M962,85 H974" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M962,205 H974" marker-end="url(#g4b-ar)"/>
+        <path class="gs-a" d="M962,310 H974" marker-end="url(#g4b-ar)"/>
+        <rect class="gs-io" x="852" y="365" width="110" height="44" rx="6"/>
+        <text class="gs-t12 gs-mid" x="907" y="383">c [B, 11]</text>
+        <text class="gs-s gs-mid" x="907" y="399">P_k: SN Lin 11→F</text>
+        <path class="gs-at" d="M907,365 V336" marker-end="url(#g4b-art)"/>
+        <text class="gs-s gs-mid" x="907" y="426">chiếu vào cả 3 đầu</text>
+        <text class="gs-s" x="712" y="444">minibatch_std: tắt</text>
+        <text class="gs-s" x="712" y="459">eval: không cắt</text>
+        <!-- CriticBlock inset -->
+        <rect class="gs-zone" x="10" y="372" width="690" height="98" rx="10"/>
+        <text class="gs-t12" x="24" y="390">CriticBlock(C_in → C_out, d, s) — không có lớp chuẩn hoá; mọi Conv và Linear có spectral norm</text>
+        <rect class="gs-act" x="24" y="402" width="80" height="26" rx="4"/><text class="gs-m gs-tact gs-mid" x="64" y="419">LReLU 0.2</text>
+        <rect class="gs-conv" x="116" y="402" width="140" height="26" rx="4"/><text class="gs-m gs-tconv gs-mid" x="186" y="419">SN Conv k5 · s · d</text>
+        <rect class="gs-act" x="268" y="402" width="80" height="26" rx="4"/><text class="gs-m gs-tact gs-mid" x="308" y="419">LReLU 0.2</text>
+        <rect class="gs-conv" x="360" y="402" width="110" height="26" rx="4"/><text class="gs-m gs-tconv gs-mid" x="415" y="419">SN Conv k5</text>
+        <rect class="gs-cat" x="482" y="402" width="70" height="26" rx="4"/><text class="gs-m gs-tcat gs-mid" x="517" y="419">+ skip</text>
+        <rect class="gs-norm" x="564" y="402" width="70" height="26" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="599" y="419">÷ √2</text>
+        <path class="gs-at" d="M104,415 H115" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M256,415 H267" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M348,415 H359" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M470,415 H481" marker-end="url(#g4b-art)"/>
+        <path class="gs-at" d="M552,415 H563" marker-end="url(#g4b-art)"/>
+        <text class="gs-s" x="24" y="448">skip = SN Conv 1×1 (stride s) khi C_in ≠ C_out hoặc s &gt; 1, ngược lại giữ nguyên; d = dilation.</text>
+        <text class="gs-s" x="24" y="463">Lý do ghi trong mã: không GroupNorm để gradient theo đầu vào bị chặn như critic vòng 9 (R1 lười và ngưỡng clip).</text>
+      </svg>
+    </div>
+
+    <h3 style="margin:18px 0 0">(c) StrictJudge: bộ phân biệt đánh giá (giám khảo nghiêm)</h3>
+    <p class="small muted" style="margin-top:6px">ml/kaggle_multidomain/strict_judge.py (Block, TimeBranch, SpectralBranch, AcfBranch, StrictJudge, fit, scores). Kind "strict" dùng cả ba nhánh, width = 64.</p>
+    <div class="arch-diagram-wrap">
+      <svg class="gs-svg" viewBox="0 0 1020 480" role="img" aria-label="Kiến trúc StrictJudge">
+        <defs>
+          <marker id="g4c-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g4c-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+        </defs>
+        <rect class="gs-io" x="10" y="175" width="110" height="60" rx="8"/>
+        <text class="gs-t12 gs-mid" x="65" y="199">x hoặc y</text>
+        <text class="gs-s gs-mid" x="65" y="216">[B, 1, 1200]</text>
+        <rect class="gs-io" x="132" y="165" width="100" height="80" rx="8"/>
+        <text class="gs-t12 gs-mid" x="182" y="186">Cắt 1024 mẫu</text>
+        <text class="gs-s gs-mid" x="182" y="203">train: ngẫu nhiên</text>
+        <text class="gs-s gs-mid" x="182" y="218">chấm: TB 3 đoạn</text>
+        <text class="gs-s gs-mid" x="182" y="233">từ 0, 88, 176</text>
+        <path class="gs-a" d="M120,205 H131" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M232,205 H238 V85 H244" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M232,205 H244" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M232,205 H238 V310 H244" marker-end="url(#g4c-ar)"/>
+        <text class="gs-s10 gs-mid" x="305" y="40">nhánh thời gian</text>
+        <text class="gs-s10 gs-mid" x="305" y="160">nhánh phổ</text>
+        <text class="gs-s10 gs-mid" x="305" y="275">nhánh ACF</text>
+        <rect class="gs-io" x="245" y="45" width="120" height="80" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="65">Kênh đạo hàm</text>
+        <text class="gs-s gs-mid" x="305" y="82">x − x̄</text>
+        <text class="gs-s gs-mid" x="305" y="97">10·Δx, 20·Δ²x</text>
+        <text class="gs-s gs-mid" x="305" y="112">→ 3 × 1024</text>
+        <rect class="gs-io" x="245" y="165" width="120" height="80" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="185">STFT</text>
+        <text class="gs-s gs-mid" x="305" y="202">n_fft 128 · hop 16</text>
+        <text class="gs-s gs-mid" x="305" y="217">Hann → 65 × 65</text>
+        <text class="gs-s gs-mid" x="305" y="232">log(P + 10⁻⁶)</text>
+        <rect class="gs-io" x="245" y="280" width="120" height="60" rx="6"/>
+        <text class="gs-t12 gs-mid" x="305" y="300">ACF</text>
+        <text class="gs-s gs-mid" x="305" y="317">trễ 1…200 (5 s)</text>
+        <text class="gs-s gs-mid" x="305" y="332">÷ ACF(0)</text>
+        <path class="gs-a" d="M365,85 H377" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M365,205 H377" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M365,310 H377" marker-end="url(#g4c-ar)"/>
+        <rect class="gs-conv" x="378" y="60" width="60" height="50" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="408" y="81">Conv</text>
+        <text class="gs-s gs-mid" x="408" y="97">3→64 · k7</text>
+        <rect class="gs-res" x="443" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="478" y="81">2× Block 64</text>
+        <text class="gs-s gs-mid" x="478" y="97">s1 · 1024</text>
+        <path class="gs-at" d="M438,85 H443"/>
+        <rect class="gs-res" x="518" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="553" y="81">2× Block 128</text>
+        <text class="gs-s gs-mid" x="553" y="97">s2 · 512</text>
+        <path class="gs-at" d="M513,85 H518"/>
+        <rect class="gs-res" x="593" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="628" y="81">2× Block 256</text>
+        <text class="gs-s gs-mid" x="628" y="97">s2 · 256</text>
+        <path class="gs-at" d="M588,85 H593"/>
+        <rect class="gs-res" x="668" y="60" width="70" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="703" y="81">2× Block 256</text>
+        <text class="gs-s gs-mid" x="703" y="97">s2 · 128</text>
+        <path class="gs-at" d="M663,85 H668"/>
+        <text class="gs-s10 gs-mid" x="558" y="124">mỗi tầng: Block(d = 1, stride s) + Block(d = 2)</text>
+        <text class="gs-s10 gs-mid" x="558" y="139">nhánh thời gian: 2 943 360 tham số</text>
+        <path class="gs-a" d="M738,85 H749" marker-end="url(#g4c-ar)"/>
+        <rect class="gs-cat" x="750" y="50" width="90" height="70" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="71">GN 8 · SiLU</text>
+        <text class="gs-s gs-mid" x="795" y="87">mean·max·std</text>
+        <text class="gs-s gs-mid" x="795" y="103">→ 768</text>
+        <rect class="gs-conv" x="378" y="180" width="110" height="50" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="433" y="201">Conv 65→128</text>
+        <text class="gs-s gs-mid" x="433" y="217">k = 3</text>
+        <rect class="gs-res" x="500" y="180" width="90" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="545" y="201">Block 128</text>
+        <text class="gs-s gs-mid" x="545" y="217">d = 1</text>
+        <rect class="gs-res" x="602" y="180" width="90" height="50" rx="5"/>
+        <text class="gs-m gs-tres gs-mid" x="647" y="201">Block 128</text>
+        <text class="gs-s gs-mid" x="647" y="217">d = 2</text>
+        <path class="gs-at" d="M488,205 H499" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M590,205 H601" marker-end="url(#g4c-art)"/>
+        <path class="gs-a" d="M692,205 H749" marker-end="url(#g4c-ar)"/>
+        <text class="gs-s10 gs-mid" x="545" y="262">nhánh phổ: 354 560 tham số</text>
+        <rect class="gs-cat" x="750" y="170" width="90" height="70" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="191">GN 8 · SiLU</text>
+        <text class="gs-s gs-mid" x="795" y="207">mean·max</text>
+        <text class="gs-s gs-mid" x="795" y="223">→ 256</text>
+        <rect class="gs-conv" x="378" y="290" width="110" height="40" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="433" y="314">Lin 200→128</text>
+        <rect class="gs-act" x="500" y="290" width="60" height="40" rx="5"/>
+        <text class="gs-m gs-tact gs-mid" x="530" y="314">SiLU</text>
+        <rect class="gs-conv" x="572" y="290" width="110" height="40" rx="5"/>
+        <text class="gs-m gs-tconv gs-mid" x="627" y="314">Lin 128→64</text>
+        <rect class="gs-act" x="694" y="290" width="44" height="40" rx="5"/>
+        <text class="gs-m gs-tact gs-mid" x="716" y="314">SiLU</text>
+        <path class="gs-at" d="M488,310 H499" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M560,310 H571" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M682,310 H693" marker-end="url(#g4c-art)"/>
+        <path class="gs-a" d="M738,310 H749" marker-end="url(#g4c-ar)"/>
+        <text class="gs-s10 gs-mid" x="558" y="356">nhánh ACF: 33 984 tham số</text>
+        <rect class="gs-cat" x="750" y="285" width="90" height="50" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" x="795" y="306">→ 64</text>
+        <text class="gs-s gs-mid" x="795" y="322">không pool</text>
+        <!-- head -->
+        <rect class="gs-cat" x="852" y="50" width="34" height="285" rx="6"/>
+        <text class="gs-m gs-tcat gs-mid" transform="translate(873,192) rotate(-90)">Ghép 768 + 256 + 64 = 1088</text>
+        <path class="gs-a" d="M840,85 H851" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M840,205 H851" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M840,310 H851" marker-end="url(#g4c-ar)"/>
+        <rect class="gs-norm" x="898" y="60" width="114" height="28" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="955" y="78">Dropout 0.2</text>
+        <rect class="gs-conv" x="898" y="100" width="114" height="28" rx="4"/><text class="gs-m gs-tconv gs-mid" x="955" y="118">Lin 1088→256</text>
+        <rect class="gs-act" x="898" y="140" width="114" height="28" rx="4"/><text class="gs-m gs-tact gs-mid" x="955" y="158">SiLU</text>
+        <rect class="gs-conv" x="898" y="180" width="114" height="28" rx="4"/><text class="gs-m gs-tconv gs-mid" x="955" y="198">Lin 256→1</text>
+        <rect class="gs-io" x="898" y="222" width="114" height="50" rx="6"/>
+        <text class="gs-t12 gs-mid" x="955" y="242">logit [B]</text>
+        <text class="gs-s gs-mid" x="955" y="259">&gt; 0 nghĩa là “giả”</text>
+        <path class="gs-a" d="M886,74 H897" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M955,88 V99" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M955,128 V139" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M955,168 V179" marker-end="url(#g4c-ar)"/>
+        <path class="gs-a" d="M955,208 V221" marker-end="url(#g4c-ar)"/>
+        <text class="gs-s gs-mid" x="955" y="292">đầu: 279 041 tham số</text>
+        <!-- Block inset -->
+        <rect class="gs-zone" x="10" y="372" width="690" height="98" rx="10"/>
+        <text class="gs-t12" x="24" y="390">Block(C_in → C_out, d, s) — tiền kích hoạt, GroupNorm nên thật và giả trong batch không trộn qua chuẩn hoá</text>
+        <rect class="gs-norm" x="24" y="402" width="60" height="26" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="54" y="419">GN 8</text>
+        <rect class="gs-act" x="96" y="402" width="50" height="26" rx="4"/><text class="gs-m gs-tact gs-mid" x="121" y="419">SiLU</text>
+        <rect class="gs-conv" x="158" y="402" width="120" height="26" rx="4"/><text class="gs-m gs-tconv gs-mid" x="218" y="419">Conv k5 · s · d</text>
+        <rect class="gs-norm" x="290" y="402" width="60" height="26" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="320" y="419">GN 8</text>
+        <rect class="gs-act" x="362" y="402" width="50" height="26" rx="4"/><text class="gs-m gs-tact gs-mid" x="387" y="419">SiLU</text>
+        <rect class="gs-norm" x="424" y="402" width="86" height="26" rx="4"/><text class="gs-m gs-tnorm gs-mid" x="467" y="419">Dropout 0.1</text>
+        <rect class="gs-conv" x="522" y="402" width="80" height="26" rx="4"/><text class="gs-m gs-tconv gs-mid" x="562" y="419">Conv k5</text>
+        <rect class="gs-cat" x="614" y="402" width="70" height="26" rx="4"/><text class="gs-m gs-tcat gs-mid" x="649" y="419">+ skip</text>
+        <path class="gs-at" d="M84,415 H95" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M146,415 H157" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M278,415 H289" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M350,415 H361" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M412,415 H423" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M510,415 H521" marker-end="url(#g4c-art)"/>
+        <path class="gs-at" d="M602,415 H613" marker-end="url(#g4c-art)"/>
+        <text class="gs-s" x="24" y="448">skip = Conv 1×1 (stride s) khi C_in ≠ C_out hoặc s &gt; 1. Khác CriticBlock: có GroupNorm và Dropout,</text>
+        <text class="gs-s" x="24" y="463">không spectral norm, không chia √2, kích hoạt SiLU thay cho LeakyReLU.</text>
+        <!-- training note -->
+        <text class="gs-t12" x="712" y="390">Huấn luyện (strict_judge.fit)</text>
+        <text class="gs-s" x="712" y="406">BCE · AdamW lr 3e-4 · wd 0.05</text>
+        <text class="gs-s" x="712" y="421">warmup 100 + cosine · 3000 bước</text>
+        <text class="gs-s" x="712" y="436">batch 64 thật + 64 giả · clip 5</text>
+        <text class="gs-s" x="712" y="451">AMP trên CUDA · cắt ngẫu nhiên 1024</text>
+        <text class="gs-s" x="712" y="466">giữ AUC inner tốt nhất, chấm mỗi 250 bước</text>
+      </svg>
+    </div>
+
+    <div class="tablewrap"><table>
+      <thead><tr><th>Mạng</th><th>Phần</th><th>Số tham số</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="6"><b>Generator</b> (FlowGAN)</td><td>ResBlock mã hoá / giữa / giải mã</td><td>1 459 808 / 473 600 / 3 326 496</td></tr>
+        <tr><td>Attention mã hoá / giữa / giải mã</td><td>413 440 / 103 360 / 620 160</td></tr>
+        <tr><td>Nhúng t / nhúng c / Conv vào / giảm mẫu / tăng mẫu / lớp ra</td><td>98 816 / 69 120 / 928 / 141 696 / 215 552 / 161</td></tr>
+        <tr><td>UNet1D (học sinh; thầy là bản sao đóng băng cùng cỡ)</td><td>6 923 137</td></tr>
+        <tr><td>sensor_raw (r_d, một mỗi miền)</td><td>6</td></tr>
+        <tr><td><b>Tổng được huấn luyện</b></td><td><b>6 923 143</b></td></tr>
+        <tr><td rowspan="3"><b>StrictCritic</b></td><td>Nhánh thời gian / phổ / ACF</td><td>735 616 / 94 720 / 33 984</td></tr>
+        <tr><td>3 đầu SN Linear / 3 phép chiếu điều kiện</td><td>579 / 6 912</td></tr>
+        <tr><td><b>Tổng</b></td><td><b>871 811</b></td></tr>
+        <tr><td rowspan="3"><b>StrictJudge</b> ("strict")</td><td>Nhánh thời gian / phổ / ACF</td><td>2 943 360 / 354 560 / 33 984</td></tr>
+        <tr><td>Đầu MLP</td><td>279 041</td></tr>
+        <tr><td><b>Tổng</b></td><td><b>3 610 945</b></td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted" style="margin-top:8px">Đếm bằng python3 + torch trên máy local: dựng FlowGAN(11, …, 6), StrictCritic(11), StrictJudge() rồi cộng numel() của parameters(); với spectral norm, mỗi trọng số chỉ tính một lần (weight_orig). Hàng điều kiện 11 là của gói v3 dùng trong kernel flow-GAN.</p>
+  </div>
+  <p class="small muted">Hình 4: Kiến trúc generator PhysioFlow-GAN (a), critic StrictCritic (b) và giám khảo StrictJudge (c). Chiều dài 1024 ở (b) và (c) là đoạn cắt 25.6 s; trong (b) độ dài sau mỗi tầng là 1024, 512, 256, 128 và STFT cho 65 bin × 65 khung, cùng con số cho (c). Mọi kênh, kernel và stride lấy từ flow.py:114-215, 360-412, flow_gan.py:43-87 và strict_judge.py:64-253.</p>
+</section>
+
+<section id="g-fig5">
+  <h2>Hình 5 · Các khoảng cách và hàm loss</h2>
+  <p class="lead">Bốn thứ quyết định generator học gì. (a) và (b) là hai khoảng cách của loss LSM, đúng như <code>train_lsm.spectral_loss</code> tính: cửa sổ 30 s được cắt thành 5 khối 10 s chồng nhau 50%, mỗi khối thành một phổ log chuẩn hoá 201 bin; <b>M</b> so mọi cặp khối giả–thật, <b>C</b> so các khối của cùng một tín hiệu giả với nhau. Chỉ nhánh G2 dùng hai số hạng này. (c) là neo chưng cất về PhysioFlow 16 bước. (d) ghép tất cả thành loss generator và loss critic đúng như <code>train_conditional</code> làm, kèm lịch các số hạng “lười” trong một chu kỳ 16 bước.</p>
+  <div class="card arch-card">
+    <div class="arch-diagram-wrap">
+      <svg class="gs-svg" viewBox="0 0 1000 720" role="img" aria-label="Khoảng cách khớp, khoảng cách tự nhất quán, neo chưng cất và lịch loss">
+        <defs>
+          <marker id="g5-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+          <marker id="g5-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+        </defs>
+        <style>
+          .gs-svg { --gs-conv-f:#d4edd4; --gs-conv-s:#4caf50; --gs-conv-t:#14532d; --gs-norm-f:#ffffff; --gs-norm-s:#94a3b8; --gs-norm-t:#334155; --gs-act-f:#fef3c7; --gs-act-s:#f59e0b; --gs-act-t:#78350f; --gs-cat-f:#dbeafe; --gs-cat-s:#3b82f6; --gs-cat-t:#1e40af; --gs-res-f:#ede9fe; --gs-res-s:#7c3aed; --gs-res-t:#5b21b6; --gs-loss-f:#fee2e2; --gs-loss-s:#ef4444; --gs-loss-t:#991b1b; }
+          :root[data-theme="dark"] .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; }
+          @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .gs-svg { --gs-conv-f:#14331d; --gs-conv-s:#22c55e; --gs-conv-t:#86efac; --gs-norm-f:#1e293b; --gs-norm-s:#475569; --gs-norm-t:#e2e8f0; --gs-act-f:#3c2410; --gs-act-s:#b45309; --gs-act-t:#fde68a; --gs-cat-f:#172554; --gs-cat-s:#3b82f6; --gs-cat-t:#93c5fd; --gs-res-f:#261647; --gs-res-s:#8b5cf6; --gs-res-t:#c4b5fd; --gs-loss-f:#381a1a; --gs-loss-s:#f87171; --gs-loss-t:#fecaca; } }
+          .gs-svg text { font-family: inherit; }
+          .gs-conv { fill: var(--gs-conv-f); stroke: var(--gs-conv-s); stroke-width: 1.3px; } .gs-norm { fill: var(--gs-norm-f); stroke: var(--gs-norm-s); stroke-width: 1.3px; } .gs-act { fill: var(--gs-act-f); stroke: var(--gs-act-s); stroke-width: 1.3px; } .gs-cat { fill: var(--gs-cat-f); stroke: var(--gs-cat-s); stroke-width: 1.3px; } .gs-res { fill: var(--gs-res-f); stroke: var(--gs-res-s); stroke-width: 1.3px; } .gs-loss { fill: var(--gs-loss-f); stroke: var(--gs-loss-s); stroke-width: 1.3px; }
+          .gs-tconv { fill: var(--gs-conv-t); } .gs-tnorm { fill: var(--gs-norm-t); } .gs-tact { fill: var(--gs-act-t); } .gs-tcat { fill: var(--gs-cat-t); } .gs-tres { fill: var(--gs-res-t); } .gs-tloss { fill: var(--gs-loss-t); }
+          .gs-io { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+          .gs-frozen { fill: var(--hw-soft); stroke: var(--hw); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-only { stroke-dasharray: 5 3; }
+          .gs-zone { fill: none; stroke: var(--line); stroke-width: 1.2px; stroke-dasharray: 6 4; }
+          .gs-off { fill: none; stroke: var(--line); stroke-width: 1px; }
+          .gs-t { font-size: 13px; font-weight: 700; fill: var(--ink); }
+          .gs-t12 { font-size: 12px; font-weight: 700; fill: var(--ink); }
+          .gs-s { font-size: 11px; fill: var(--muted); }
+          .gs-s10 { font-size: 10px; fill: var(--muted); }
+          .gs-m { font-size: 11px; fill: var(--ink); }
+          .gs-k { font-size: 12.5px; font-weight: 700; fill: var(--accent); }
+          .gs-sub { font-size: 8.5px; }
+          .gs-mid { text-anchor: middle; }
+          .gs-end { text-anchor: end; }
+          .gs-a { fill: none; stroke: var(--accent); stroke-width: 1.8px; }
+          .gs-al { fill: none; stroke: var(--bad); stroke-width: 1.6px; stroke-dasharray: 5 3; }
+          .gs-at { fill: none; stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-ar { fill: none; stroke: var(--gs-res-s); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+          .gs-skip { fill: none; stroke: var(--gs-cat-s); stroke-width: 1.4px; stroke-dasharray: 5 3; }
+          .gs-hd { fill: var(--accent); } .gs-hdl { fill: var(--bad); } .gs-hdt { fill: var(--muted); }
+          .gs-hdr { fill: var(--gs-res-s); } .gs-hds { fill: var(--gs-cat-s); }
+          .gs-wave { fill: none; stroke: var(--s1); stroke-width: 1.3px; }
+          .gs-pair { stroke: var(--muted); stroke-width: .8px; opacity: .6; }
+          .gs-chord { stroke: var(--gs-res-s); stroke-width: 1.1px; opacity: .75; }
+          .gs-axis { stroke: var(--muted); stroke-width: 1.2px; }
+          .gs-dot { fill: var(--accent); }
+          .gs-dot-o { fill: var(--panel); stroke: var(--accent); stroke-width: 1.4px; }
+          .gs-eq { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+          .gs-eq-h { margin: 10px 0 4px; font-weight: 700; color: var(--accent); font-size: 14px; }
+          .gs-f { margin: 4px 0; padding: 2px 0; font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+                   font-size: 16px; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+          .gs-eq ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+        </style>
+        <!-- spectrum pipeline -->
+        <text class="gs-k" x="20" y="24">Phổ log chuẩn hoá của một khối — train_lsm.log_spectra, dùng chung cho (a) và (b)</text>
+        <rect class="gs-io" x="20" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-mid" x="91" y="56">Khối 400 mẫu</text>
+        <text class="gs-s gs-mid" x="91" y="73">10 s · bước 200</text>
+        <path class="gs-a" d="M162,60 H182" marker-end="url(#g5-ar)"/>
+        <rect class="gs-act" x="183" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-tact gs-mid" x="254" y="56">× 2 · Hann(400)</text>
+        <text class="gs-s gs-mid" x="254" y="73">cửa sổ tuần hoàn</text>
+        <path class="gs-a" d="M325,60 H345" marker-end="url(#g5-ar)"/>
+        <rect class="gs-conv" x="346" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-tconv gs-mid" x="417" y="56">|rFFT|²</text>
+        <text class="gs-s gs-mid" x="417" y="73">201 bin · 0–20 Hz</text>
+        <path class="gs-a" d="M488,60 H508" marker-end="url(#g5-ar)"/>
+        <rect class="gs-act" x="509" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-tact gs-mid" x="580" y="56">ln(max(·, 10⁻⁶))</text>
+        <text class="gs-s gs-mid" x="580" y="73">log tự nhiên</text>
+        <path class="gs-a" d="M651,60 H671" marker-end="url(#g5-ar)"/>
+        <rect class="gs-norm" x="672" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-tnorm gs-mid" x="743" y="56">min-max theo f</text>
+        <text class="gs-s gs-mid" x="743" y="73">riêng từng khối</text>
+        <path class="gs-a" d="M814,60 H834" marker-end="url(#g5-ar)"/>
+        <rect class="gs-io" x="835" y="36" width="142" height="48" rx="6"/>
+        <text class="gs-t12 gs-mid" x="906" y="56">S ∈ [0, 1]²⁰¹</text>
+        <text class="gs-s gs-mid" x="906" y="73">Ŝ từ y, S từ x</text>
+        <text class="gs-s" x="20" y="102">Tín hiệu (đã min-max về [0, 1]) được kẹp ≥ 10⁻⁶ rồi cắt khối; 1200 mẫu → 5 khối: mẫu 0–399, 200–599, 400–799, 600–999, 800–1199. Không trừ trend.</text>
+
+        <!-- (a) -->
+        <rect class="gs-zone" x="10" y="116" width="480" height="294" rx="10"/>
+        <text class="gs-k" x="24" y="136">(a) Khoảng cách khớp M · mọi cặp khối giả–thật</text>
+        <path class="gs-wave" d="M50.0,176.9 L51.1,164.1 L52.2,151.0 L53.3,157.2 L54.4,168.8 L55.6,169.4 L56.7,167.4 L57.8,170.3 L58.9,175.8 L60.0,179.0 L61.1,176.6 L62.2,164.0 L63.3,151.0 L64.4,157.2 L65.6,168.8 L66.7,169.4 L67.8,167.4 L68.9,170.3 L70.0,175.8 L71.1,179.0 L72.2,176.6 L73.3,164.0 L74.4,151.0 L75.6,157.2 L76.7,168.8 L77.8,169.4 L78.9,167.4 L80.0,170.3 L81.1,175.8 L82.2,179.0 L83.3,176.6 L84.4,164.0 L85.6,151.0 L86.7,157.2 L87.8,168.8 L88.9,169.4 L90.0,167.4 L91.1,170.3 L92.2,175.8 L93.3,179.0 L94.4,176.6 L95.6,164.0 L96.7,151.0 L97.8,157.2 L98.9,168.8 L100.0,169.4 L101.1,167.4 L102.2,170.3 L103.3,175.8 L104.4,179.0 L105.6,176.6 L106.7,164.0 L107.8,151.0 L108.9,157.2 L110.0,168.8 L111.1,169.4 L112.2,167.4 L113.3,170.3 L114.4,175.8 L115.6,179.0 L116.7,176.6 L117.8,164.0 L118.9,151.0 L120.0,157.2 L121.1,168.8 L122.2,169.4 L123.3,167.4 L124.4,170.3 L125.6,175.8 L126.7,179.0 L127.8,176.6 L128.9,164.0 L130.0,151.0 L131.1,157.2 L132.2,168.8 L133.3,169.4 L134.4,167.4 L135.6,170.3 L136.7,175.8 L137.8,179.0 L138.9,176.6 L140.0,164.0 L141.1,151.0 L142.2,157.2 L143.3,168.8 L144.4,169.4 L145.6,167.4 L146.7,170.3 L147.8,175.8 L148.9,179.0 L150.0,176.6 L151.1,164.0 L152.2,151.0 L153.3,157.2 L154.4,168.8 L155.6,169.4 L156.7,167.4 L157.8,170.3 L158.9,175.8 L160.0,179.0 L161.1,176.6 L162.2,164.0 L163.3,151.0 L164.4,157.2 L165.6,168.8 L166.7,169.4 L167.8,167.4 L168.9,170.3 L170.0,175.8 L171.1,179.0 L172.2,176.6 L173.3,164.0 L174.4,151.0 L175.6,157.2 L176.7,168.8 L177.8,169.4 L178.9,167.4 L180.0,170.3 L181.1,175.8 L182.2,179.0 L183.3,176.6 L184.4,164.0 L185.6,151.0 L186.7,157.2 L187.8,168.8 L188.9,169.4 L190.0,167.4 L191.1,170.3 L192.2,175.8 L193.3,179.0 L194.4,176.6 L195.6,164.0 L196.7,151.0 L197.8,157.2 L198.9,168.8 L200.0,169.4 L201.1,167.4 L202.2,170.3 L203.3,175.8 L204.4,179.0 L205.6,176.6 L206.7,164.0 L207.8,151.0 L208.9,157.2 L210.0,168.8 L211.1,169.4 L212.2,167.4 L213.3,170.3 L214.4,175.8 L215.6,179.0 L216.7,176.6 L217.8,164.0 L218.9,151.0 L220.0,157.2 L221.1,168.8 L222.2,169.4 L223.3,167.4 L224.4,170.3 L225.6,175.8 L226.7,179.0 L227.8,176.6 L228.9,164.0 L230.0,151.0 L231.1,157.2 L232.2,168.8 L233.3,169.4 L234.4,167.4 L235.6,170.3 L236.7,175.8 L237.8,179.0 L238.9,176.6 L240.0,164.0 L241.1,151.0 L242.2,157.2 L243.3,168.8 L244.4,169.4 L245.6,167.4 L246.7,170.3 L247.8,175.8 L248.9,179.0 L250.0,176.6 L251.1,164.0 L252.2,151.0 L253.3,157.2 L254.4,168.8 L255.6,169.4 L256.7,167.4 L257.8,170.3 L258.9,175.8 L260.0,179.0 L261.1,176.6 L262.2,164.0 L263.3,151.0 L264.4,157.2 L265.6,168.8 L266.7,169.4 L267.8,167.4 L268.9,170.3 L270.0,175.8 L271.1,179.0 L272.2,176.6 L273.3,164.0 L274.4,151.0 L275.6,157.2 L276.7,168.8 L277.8,169.4 L278.9,167.4 L280.0,170.3 L281.1,175.8 L282.2,179.0 L283.3,176.6 L284.4,164.0 L285.6,151.0 L286.7,157.2 L287.8,168.8 L288.9,169.4 L290.0,167.4 L291.1,170.3 L292.2,175.8 L293.3,179.0 L294.4,176.6 L295.6,164.0 L296.7,151.0 L297.8,157.2 L298.9,168.8 L300.0,169.4 L301.1,167.4 L302.2,170.3 L303.3,175.8 L304.4,179.0 L305.6,176.6 L306.7,164.0 L307.8,151.0 L308.9,157.2 L310.0,168.8 L311.1,169.4 L312.2,167.4 L313.3,170.3 L314.4,175.8 L315.6,179.0 L316.7,176.6 L317.8,164.0 L318.9,151.0 L320.0,157.2 L321.1,168.8 L322.2,169.4 L323.3,167.4 L324.4,170.3 L325.6,175.8 L326.7,179.0 L327.8,176.6 L328.9,164.0 L330.0,151.0 L331.1,157.2 L332.2,168.8 L333.3,169.4 L334.4,167.4 L335.6,170.3 L336.7,175.8 L337.8,179.0 L338.9,176.6 L340.0,164.0 L341.1,151.0 L342.2,157.2 L343.3,168.8 L344.4,169.4 L345.6,167.4 L346.7,170.3 L347.8,175.8 L348.9,179.0 L350.0,176.6 L351.1,164.0 L352.2,151.0 L353.3,157.2 L354.4,168.8 L355.6,169.4 L356.7,167.4 L357.8,170.3 L358.9,175.8 L360.0,179.0 L361.1,176.6 L362.2,164.0 L363.3,151.0 L364.4,157.2 L365.6,168.8 L366.7,169.4 L367.8,167.4 L368.9,170.3 L370.0,175.8 L371.1,179.0 L372.2,176.6 L373.3,164.0 L374.4,151.0 L375.6,157.2 L376.7,168.8 L377.8,169.4 L378.9,167.4 L380.0,170.3 L381.1,175.8 L382.2,179.0 L383.3,176.6 L384.4,164.0 L385.6,151.0 L386.7,157.2 L387.8,168.8 L388.9,169.4 L390.0,167.4 L391.1,170.3 L392.2,175.8 L393.3,179.0 L394.4,176.6 L395.6,164.0 L396.7,151.0 L397.8,157.2 L398.9,168.8 L400.0,169.4 L401.1,167.4 L402.2,170.3 L403.3,175.8 L404.4,179.0 L405.6,176.6 L406.7,164.0 L407.8,151.0 L408.9,157.2 L410.0,168.8 L411.1,169.4 L412.2,167.4 L413.3,170.3 L414.4,175.8 L415.6,179.0 L416.7,176.6 L417.8,164.0 L418.9,151.0 L420.0,157.2 L421.1,168.8 L422.2,169.4 L423.3,167.4 L424.4,170.3 L425.6,175.8 L426.7,179.0 L427.8,176.6 L428.9,164.0 L430.0,151.0 L431.1,157.2 L432.2,168.8 L433.3,169.4 L434.4,167.4 L435.6,170.3 L436.7,175.8 L437.8,179.0 L438.9,176.6 L440.0,164.0 L441.1,151.0 L442.2,157.2 L443.3,168.8 L444.4,169.4 L445.6,167.4 L446.7,170.3 L447.8,175.8 L448.9,179.0 L450.0,176.6"/>
+        <text class="gs-t12" x="24" y="170">y</text>
+        <path class="gs-at" d="M50.0,182 V186 H183.3 V182"/>
+        <text class="gs-s10 gs-end" x="47.0" y="189">1</text>
+        <path class="gs-at" d="M116.7,189 V193 H250.0 V189"/>
+        <text class="gs-s10 gs-end" x="113.7" y="196">2</text>
+        <path class="gs-at" d="M183.3,196 V200 H316.7 V196"/>
+        <text class="gs-s10 gs-end" x="180.3" y="203">3</text>
+        <path class="gs-at" d="M250.0,203 V207 H383.3 V203"/>
+        <text class="gs-s10 gs-end" x="247.0" y="210">4</text>
+        <path class="gs-at" d="M316.7,210 V214 H450.0 V210"/>
+        <text class="gs-s10 gs-end" x="313.7" y="217">5</text>
+        <text class="gs-s10" x="456" y="203">5 khối</text>
+        <text class="gs-s gs-mid" x="142" y="240">Ŝ từ y (giả)</text>
+        <text class="gs-s gs-mid" x="358" y="240">S từ x (thật)</text>
+        <text class="gs-s gs-mid" x="250" y="240">25 cặp</text>
+        <line class="gs-pair" x1="159" y1="254" x2="341" y2="254"/>
+        <line class="gs-pair" x1="159" y1="254" x2="341" y2="276"/>
+        <line class="gs-pair" x1="159" y1="254" x2="341" y2="298"/>
+        <line class="gs-pair" x1="159" y1="254" x2="341" y2="320"/>
+        <line class="gs-pair" x1="159" y1="254" x2="341" y2="342"/>
+        <line class="gs-pair" x1="159" y1="276" x2="341" y2="254"/>
+        <line class="gs-pair" x1="159" y1="276" x2="341" y2="276"/>
+        <line class="gs-pair" x1="159" y1="276" x2="341" y2="298"/>
+        <line class="gs-pair" x1="159" y1="276" x2="341" y2="320"/>
+        <line class="gs-pair" x1="159" y1="276" x2="341" y2="342"/>
+        <line class="gs-pair" x1="159" y1="298" x2="341" y2="254"/>
+        <line class="gs-pair" x1="159" y1="298" x2="341" y2="276"/>
+        <line class="gs-pair" x1="159" y1="298" x2="341" y2="298"/>
+        <line class="gs-pair" x1="159" y1="298" x2="341" y2="320"/>
+        <line class="gs-pair" x1="159" y1="298" x2="341" y2="342"/>
+        <line class="gs-pair" x1="159" y1="320" x2="341" y2="254"/>
+        <line class="gs-pair" x1="159" y1="320" x2="341" y2="276"/>
+        <line class="gs-pair" x1="159" y1="320" x2="341" y2="298"/>
+        <line class="gs-pair" x1="159" y1="320" x2="341" y2="320"/>
+        <line class="gs-pair" x1="159" y1="320" x2="341" y2="342"/>
+        <line class="gs-pair" x1="159" y1="342" x2="341" y2="254"/>
+        <line class="gs-pair" x1="159" y1="342" x2="341" y2="276"/>
+        <line class="gs-pair" x1="159" y1="342" x2="341" y2="298"/>
+        <line class="gs-pair" x1="159" y1="342" x2="341" y2="320"/>
+        <line class="gs-pair" x1="159" y1="342" x2="341" y2="342"/>
+        <rect class="gs-res" x="125.0" y="245.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="142.0" y="258.0">Ŝ₁</text>
+        <rect class="gs-res" x="125.0" y="267.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="142.0" y="280.0">Ŝ₂</text>
+        <rect class="gs-res" x="125.0" y="289.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="142.0" y="302.0">Ŝ₃</text>
+        <rect class="gs-res" x="125.0" y="311.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="142.0" y="324.0">Ŝ₄</text>
+        <rect class="gs-res" x="125.0" y="333.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="142.0" y="346.0">Ŝ₅</text>
+        <rect class="gs-io" x="341.0" y="245.0" width="34" height="18" rx="4"/><text class="gs-m  gs-mid" x="358.0" y="258.0">S₁</text>
+        <rect class="gs-io" x="341.0" y="267.0" width="34" height="18" rx="4"/><text class="gs-m  gs-mid" x="358.0" y="280.0">S₂</text>
+        <rect class="gs-io" x="341.0" y="289.0" width="34" height="18" rx="4"/><text class="gs-m  gs-mid" x="358.0" y="302.0">S₃</text>
+        <rect class="gs-io" x="341.0" y="311.0" width="34" height="18" rx="4"/><text class="gs-m  gs-mid" x="358.0" y="324.0">S₄</text>
+        <rect class="gs-io" x="341.0" y="333.0" width="34" height="18" rx="4"/><text class="gs-m  gs-mid" x="358.0" y="346.0">S₅</text>
+        <text class="gs-m" x="24" y="374">d<tspan class="gs-sub" dy="3">ij</tspan><tspan dy="-3"> = mean</tspan><tspan class="gs-sub" dy="3">n, f</tspan><tspan dy="-3"> ( Ŝ[n, i, f] − S[n, j, f] )²,   M = F(d</tspan><tspan class="gs-sub" dy="3">ij</tspan><tspan dy="-3">), F = trung bình 25 cặp</tspan></text>
+        <text class="gs-s" x="24" y="390">pairing = "all_pairs" (G2); biến thể "aligned" của bài báo chỉ lấy i = j</text>
+        <text class="gs-s" x="24" y="404">n: chỉ số trong batch 32 (giả n đi với thật n), f: 201 bin tần số</text>
+
+        <!-- (b) -->
+        <rect class="gs-zone" x="510" y="116" width="480" height="294" rx="10"/>
+        <text class="gs-k" x="524" y="136">(b) Khoảng cách tự nhất quán C · các khối của cùng một y</text>
+        <path class="gs-wave" d="M550.0,176.9 L551.1,164.1 L552.2,151.0 L553.3,157.2 L554.4,168.8 L555.6,169.4 L556.7,167.4 L557.8,170.3 L558.9,175.8 L560.0,179.0 L561.1,176.6 L562.2,164.0 L563.3,151.0 L564.4,157.2 L565.6,168.8 L566.7,169.4 L567.8,167.4 L568.9,170.3 L570.0,175.8 L571.1,179.0 L572.2,176.6 L573.3,164.0 L574.4,151.0 L575.6,157.2 L576.7,168.8 L577.8,169.4 L578.9,167.4 L580.0,170.3 L581.1,175.8 L582.2,179.0 L583.3,176.6 L584.4,164.0 L585.6,151.0 L586.7,157.2 L587.8,168.8 L588.9,169.4 L590.0,167.4 L591.1,170.3 L592.2,175.8 L593.3,179.0 L594.4,176.6 L595.6,164.0 L596.7,151.0 L597.8,157.2 L598.9,168.8 L600.0,169.4 L601.1,167.4 L602.2,170.3 L603.3,175.8 L604.4,179.0 L605.6,176.6 L606.7,164.0 L607.8,151.0 L608.9,157.2 L610.0,168.8 L611.1,169.4 L612.2,167.4 L613.3,170.3 L614.4,175.8 L615.6,179.0 L616.7,176.6 L617.8,164.0 L618.9,151.0 L620.0,157.2 L621.1,168.8 L622.2,169.4 L623.3,167.4 L624.4,170.3 L625.6,175.8 L626.7,179.0 L627.8,176.6 L628.9,164.0 L630.0,151.0 L631.1,157.2 L632.2,168.8 L633.3,169.4 L634.4,167.4 L635.6,170.3 L636.7,175.8 L637.8,179.0 L638.9,176.6 L640.0,164.0 L641.1,151.0 L642.2,157.2 L643.3,168.8 L644.4,169.4 L645.6,167.4 L646.7,170.3 L647.8,175.8 L648.9,179.0 L650.0,176.6 L651.1,164.0 L652.2,151.0 L653.3,157.2 L654.4,168.8 L655.6,169.4 L656.7,167.4 L657.8,170.3 L658.9,175.8 L660.0,179.0 L661.1,176.6 L662.2,164.0 L663.3,151.0 L664.4,157.2 L665.6,168.8 L666.7,169.4 L667.8,167.4 L668.9,170.3 L670.0,175.8 L671.1,179.0 L672.2,176.6 L673.3,164.0 L674.4,151.0 L675.6,157.2 L676.7,168.8 L677.8,169.4 L678.9,167.4 L680.0,170.3 L681.1,175.8 L682.2,179.0 L683.3,176.6 L684.4,164.0 L685.6,151.0 L686.7,157.2 L687.8,168.8 L688.9,169.4 L690.0,167.4 L691.1,170.3 L692.2,175.8 L693.3,179.0 L694.4,176.6 L695.6,164.0 L696.7,151.0 L697.8,157.2 L698.9,168.8 L700.0,169.4 L701.1,167.4 L702.2,170.3 L703.3,175.8 L704.4,179.0 L705.6,176.6 L706.7,164.0 L707.8,151.0 L708.9,157.2 L710.0,168.8 L711.1,169.4 L712.2,167.4 L713.3,170.3 L714.4,175.8 L715.6,179.0 L716.7,176.6 L717.8,164.0 L718.9,151.0 L720.0,157.2 L721.1,168.8 L722.2,169.4 L723.3,167.4 L724.4,170.3 L725.6,175.8 L726.7,179.0 L727.8,176.6 L728.9,164.0 L730.0,151.0 L731.1,157.2 L732.2,168.8 L733.3,169.4 L734.4,167.4 L735.6,170.3 L736.7,175.8 L737.8,179.0 L738.9,176.6 L740.0,164.0 L741.1,151.0 L742.2,157.2 L743.3,168.8 L744.4,169.4 L745.6,167.4 L746.7,170.3 L747.8,175.8 L748.9,179.0 L750.0,176.6 L751.1,164.0 L752.2,151.0 L753.3,157.2 L754.4,168.8 L755.6,169.4 L756.7,167.4 L757.8,170.3 L758.9,175.8 L760.0,179.0 L761.1,176.6 L762.2,164.0 L763.3,151.0 L764.4,157.2 L765.6,168.8 L766.7,169.4 L767.8,167.4 L768.9,170.3 L770.0,175.8 L771.1,179.0 L772.2,176.6 L773.3,164.0 L774.4,151.0 L775.6,157.2 L776.7,168.8 L777.8,169.4 L778.9,167.4 L780.0,170.3 L781.1,175.8 L782.2,179.0 L783.3,176.6 L784.4,164.0 L785.6,151.0 L786.7,157.2 L787.8,168.8 L788.9,169.4 L790.0,167.4 L791.1,170.3 L792.2,175.8 L793.3,179.0 L794.4,176.6 L795.6,164.0 L796.7,151.0 L797.8,157.2 L798.9,168.8 L800.0,169.4 L801.1,167.4 L802.2,170.3 L803.3,175.8 L804.4,179.0 L805.6,176.6 L806.7,164.0 L807.8,151.0 L808.9,157.2 L810.0,168.8 L811.1,169.4 L812.2,167.4 L813.3,170.3 L814.4,175.8 L815.6,179.0 L816.7,176.6 L817.8,164.0 L818.9,151.0 L820.0,157.2 L821.1,168.8 L822.2,169.4 L823.3,167.4 L824.4,170.3 L825.6,175.8 L826.7,179.0 L827.8,176.6 L828.9,164.0 L830.0,151.0 L831.1,157.2 L832.2,168.8 L833.3,169.4 L834.4,167.4 L835.6,170.3 L836.7,175.8 L837.8,179.0 L838.9,176.6 L840.0,164.0 L841.1,151.0 L842.2,157.2 L843.3,168.8 L844.4,169.4 L845.6,167.4 L846.7,170.3 L847.8,175.8 L848.9,179.0 L850.0,176.6 L851.1,164.0 L852.2,151.0 L853.3,157.2 L854.4,168.8 L855.6,169.4 L856.7,167.4 L857.8,170.3 L858.9,175.8 L860.0,179.0 L861.1,176.6 L862.2,164.0 L863.3,151.0 L864.4,157.2 L865.6,168.8 L866.7,169.4 L867.8,167.4 L868.9,170.3 L870.0,175.8 L871.1,179.0 L872.2,176.6 L873.3,164.0 L874.4,151.0 L875.6,157.2 L876.7,168.8 L877.8,169.4 L878.9,167.4 L880.0,170.3 L881.1,175.8 L882.2,179.0 L883.3,176.6 L884.4,164.0 L885.6,151.0 L886.7,157.2 L887.8,168.8 L888.9,169.4 L890.0,167.4 L891.1,170.3 L892.2,175.8 L893.3,179.0 L894.4,176.6 L895.6,164.0 L896.7,151.0 L897.8,157.2 L898.9,168.8 L900.0,169.4 L901.1,167.4 L902.2,170.3 L903.3,175.8 L904.4,179.0 L905.6,176.6 L906.7,164.0 L907.8,151.0 L908.9,157.2 L910.0,168.8 L911.1,169.4 L912.2,167.4 L913.3,170.3 L914.4,175.8 L915.6,179.0 L916.7,176.6 L917.8,164.0 L918.9,151.0 L920.0,157.2 L921.1,168.8 L922.2,169.4 L923.3,167.4 L924.4,170.3 L925.6,175.8 L926.7,179.0 L927.8,176.6 L928.9,164.0 L930.0,151.0 L931.1,157.2 L932.2,168.8 L933.3,169.4 L934.4,167.4 L935.6,170.3 L936.7,175.8 L937.8,179.0 L938.9,176.6 L940.0,164.0 L941.1,151.0 L942.2,157.2 L943.3,168.8 L944.4,169.4 L945.6,167.4 L946.7,170.3 L947.8,175.8 L948.9,179.0 L950.0,176.6"/>
+        <text class="gs-t12" x="524" y="170">y</text>
+        <path class="gs-at" d="M550.0,182 V186 H683.3 V182"/>
+        <text class="gs-s10 gs-end" x="547.0" y="189">1</text>
+        <path class="gs-at" d="M616.7,189 V193 H750.0 V189"/>
+        <text class="gs-s10 gs-end" x="613.7" y="196">2</text>
+        <path class="gs-at" d="M683.3,196 V200 H816.7 V196"/>
+        <text class="gs-s10 gs-end" x="680.3" y="203">3</text>
+        <path class="gs-at" d="M750.0,203 V207 H883.3 V203"/>
+        <text class="gs-s10 gs-end" x="747.0" y="210">4</text>
+        <path class="gs-at" d="M816.7,210 V214 H950.0 V210"/>
+        <text class="gs-s10 gs-end" x="813.7" y="217">5</text>
+        <text class="gs-s10" x="956" y="203">5 khối</text>
+        <line class="gs-chord" x1="750.0" y1="248.0" x2="797.6" y2="282.5"/>
+        <line class="gs-chord" x1="750.0" y1="248.0" x2="779.4" y2="338.5"/>
+        <line class="gs-chord" x1="750.0" y1="248.0" x2="720.6" y2="338.5"/>
+        <line class="gs-chord" x1="750.0" y1="248.0" x2="702.4" y2="282.5"/>
+        <line class="gs-chord" x1="797.6" y1="282.5" x2="779.4" y2="338.5"/>
+        <line class="gs-chord" x1="797.6" y1="282.5" x2="720.6" y2="338.5"/>
+        <line class="gs-chord" x1="797.6" y1="282.5" x2="702.4" y2="282.5"/>
+        <line class="gs-chord" x1="779.4" y1="338.5" x2="720.6" y2="338.5"/>
+        <line class="gs-chord" x1="779.4" y1="338.5" x2="702.4" y2="282.5"/>
+        <line class="gs-chord" x1="720.6" y1="338.5" x2="702.4" y2="282.5"/>
+        <rect class="gs-res" x="733.0" y="239.0" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="750.0" y="252.0">Ŝ₁</text>
+        <rect class="gs-res" x="780.6" y="273.5" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="797.6" y="286.5">Ŝ₂</text>
+        <rect class="gs-res" x="762.4" y="329.5" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="779.4" y="342.5">Ŝ₃</text>
+        <rect class="gs-res" x="703.6" y="329.5" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="720.6" y="342.5">Ŝ₄</text>
+        <rect class="gs-res" x="685.4" y="273.5" width="34" height="18" rx="4"/><text class="gs-m gs-tres gs-mid" x="702.4" y="286.5">Ŝ₅</text>
+        <text class="gs-s gs-mid" x="625" y="303">Ŝ từ y (giả)</text>
+        <text class="gs-s gs-mid" x="880" y="303">10 cặp i &lt; j</text>
+        <text class="gs-m" x="524" y="374">c<tspan class="gs-sub" dy="3">ij</tspan><tspan dy="-3"> = mean</tspan><tspan class="gs-sub" dy="3">n, f</tspan><tspan dy="-3"> ( Ŝ[n, i, f] − Ŝ[n, j, f] )²,   C = F(c</tspan><tspan class="gs-sub" dy="3">ij</tspan><tspan dy="-3">), F = trung bình 10 cặp</tspan></text>
+        <text class="gs-s" x="524" y="390">không dùng tín hiệu thật: phạt phổ thay đổi giữa các đoạn 10 s</text>
+        <text class="gs-s" x="524" y="404">aggregation = "mean" (mặc định); tuỳ chọn "max" có trong mã nhưng không dùng</text>
+
+        <!-- (c) -->
+        <rect class="gs-zone" x="10" y="424" width="480" height="288" rx="10"/>
+        <text class="gs-k" x="24" y="444">(c) Neo chưng cất · cùng z và c cho học sinh và thầy</text>
+        <text class="gs-t12" x="24" y="474">Học sinh</text>
+        <text class="gs-s10" x="24" y="488">4 bước</text>
+        <line class="gs-axis" x1="110" y1="470" x2="470" y2="470"/>
+        <line class="gs-axis" x1="110.0" y1="466" x2="110.0" y2="474"/>
+        <text class="gs-s10 gs-mid" x="110.0" y="485">1</text>
+        <line class="gs-axis" x1="200.0" y1="466" x2="200.0" y2="474"/>
+        <text class="gs-s10 gs-mid" x="200.0" y="485">0.75</text>
+        <line class="gs-axis" x1="290.0" y1="466" x2="290.0" y2="474"/>
+        <text class="gs-s10 gs-mid" x="290.0" y="485">0.5</text>
+        <line class="gs-axis" x1="380.0" y1="466" x2="380.0" y2="474"/>
+        <text class="gs-s10 gs-mid" x="380.0" y="485">0.25</text>
+        <line class="gs-axis" x1="470.0" y1="466" x2="470.0" y2="474"/>
+        <text class="gs-s10 gs-mid" x="470.0" y="485">0</text>
+        <circle class="gs-dot" cx="110.0" cy="470" r="4"/>
+        <circle class="gs-dot" cx="200.0" cy="470" r="4"/>
+        <circle class="gs-dot" cx="290.0" cy="470" r="4"/>
+        <circle class="gs-dot" cx="380.0" cy="470" r="4"/>
+        <circle class="gs-dot-o" cx="200.0" cy="459" r="3.5"/>
+        <circle class="gs-dot-o" cx="290.0" cy="459" r="3.5"/>
+        <circle class="gs-dot-o" cx="380.0" cy="459" r="3.5"/>
+        <text class="gs-s10 gs-mid" x="425" y="462">Euler</text>
+        <text class="gs-s10" x="110" y="500">● dự đoán + ○ hiệu chỉnh: 4 + 3 = 7 lượt U-Net, có gradient (checkpoint kích hoạt)</text>
+        <text class="gs-t12" x="24" y="534">Thầy</text>
+        <text class="gs-s10" x="24" y="548">16 bước</text>
+        <line class="gs-axis" x1="110" y1="530" x2="470" y2="530"/>
+        <line class="gs-axis" x1="110.0" y1="527" x2="110.0" y2="533"/>
+        <line class="gs-axis" x1="132.5" y1="527" x2="132.5" y2="533"/>
+        <line class="gs-axis" x1="155.0" y1="527" x2="155.0" y2="533"/>
+        <line class="gs-axis" x1="177.5" y1="527" x2="177.5" y2="533"/>
+        <line class="gs-axis" x1="200.0" y1="527" x2="200.0" y2="533"/>
+        <line class="gs-axis" x1="222.5" y1="527" x2="222.5" y2="533"/>
+        <line class="gs-axis" x1="245.0" y1="527" x2="245.0" y2="533"/>
+        <line class="gs-axis" x1="267.5" y1="527" x2="267.5" y2="533"/>
+        <line class="gs-axis" x1="290.0" y1="527" x2="290.0" y2="533"/>
+        <line class="gs-axis" x1="312.5" y1="527" x2="312.5" y2="533"/>
+        <line class="gs-axis" x1="335.0" y1="527" x2="335.0" y2="533"/>
+        <line class="gs-axis" x1="357.5" y1="527" x2="357.5" y2="533"/>
+        <line class="gs-axis" x1="380.0" y1="527" x2="380.0" y2="533"/>
+        <line class="gs-axis" x1="402.5" y1="527" x2="402.5" y2="533"/>
+        <line class="gs-axis" x1="425.0" y1="527" x2="425.0" y2="533"/>
+        <line class="gs-axis" x1="447.5" y1="527" x2="447.5" y2="533"/>
+        <line class="gs-axis" x1="470.0" y1="527" x2="470.0" y2="533"/>
+        <text class="gs-s10 gs-mid" x="110.0" y="545">1</text>
+        <text class="gs-s10 gs-mid" x="200.0" y="545">0.75</text>
+        <text class="gs-s10 gs-mid" x="290.0" y="545">0.5</text>
+        <text class="gs-s10 gs-mid" x="380.0" y="545">0.25</text>
+        <text class="gs-s10 gs-mid" x="470.0" y="545">0</text>
+        <circle class="gs-dot" cx="110.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="132.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="155.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="177.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="200.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="222.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="245.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="267.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="290.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="312.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="335.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="357.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="380.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="402.5" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="425.0" cy="530" r="2.6"/>
+        <circle class="gs-dot" cx="447.5" cy="530" r="2.6"/>
+        <circle class="gs-dot-o" cx="132.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="155.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="177.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="200.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="222.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="245.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="267.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="290.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="312.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="335.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="357.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="380.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="402.5" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="425.0" cy="521" r="2.4"/>
+        <circle class="gs-dot-o" cx="447.5" cy="521" r="2.4"/>
+        <text class="gs-s10" x="110" y="560">16 dự đoán + 15 hiệu chỉnh = 31 lượt U-Net · no_grad, trọng số đóng băng</text>
+        <rect class="gs-res" x="24" y="578" width="160" height="40" rx="6"/>
+        <text class="gs-m gs-tres gs-mid" x="104" y="594">x̂_s = min-max(học sinh)</text>
+        <text class="gs-s gs-mid" x="104" y="609">có gradient</text>
+        <rect class="gs-frozen" x="24" y="626" width="160" height="40" rx="6"/>
+        <text class="gs-m gs-mid" x="104" y="642">x̂_T = min-max(thầy)</text>
+        <text class="gs-s gs-mid" x="104" y="657">no_grad, đóng băng</text>
+        <rect class="gs-loss" x="230" y="596" width="120" height="50" rx="8"/>
+        <text class="gs-t12 gs-tloss gs-mid" x="290" y="616">MSE</text>
+        <text class="gs-s gs-mid" x="290" y="633">trung bình B × 1200</text>
+        <rect class="gs-loss" x="370" y="596" width="110" height="50" rx="8"/>
+        <text class="gs-t12 gs-tloss gs-mid" x="425" y="616">× 4 · 100</text>
+        <text class="gs-s gs-mid" x="425" y="633">khi bước % 4 = 0</text>
+        <path class="gs-a" d="M184,598 L229,614" marker-end="url(#g5-ar)"/>
+        <path class="gs-a" d="M184,646 L229,630" marker-end="url(#g5-ar)"/>
+        <path class="gs-a" d="M350,621 H369" marker-end="url(#g5-ar)"/>
+        <text class="gs-m" x="24" y="687">L<tspan class="gs-sub" dy="3">distill</tspan><tspan dy="-3"> = mean</tspan><tspan class="gs-sub" dy="3">n, t</tspan><tspan dy="-3"> ( x̂_s[n, t] − x̂_T[n, t] )², cộng 4 · 100 · L</tspan><tspan class="gs-sub" dy="3">distill</tspan><tspan dy="-3"> vào L_G</tspan></text>
+        <text class="gs-s" x="24" y="704">Chú thích trong mã: MSE ban đầu ≈ 4·10⁻⁴ (CPU, 8 cửa sổ), tức ≈ 0.04 ở hệ số 100 so với hinge ≈ 1.</text>
+
+        <!-- (d) -->
+        <rect class="gs-zone" x="510" y="424" width="480" height="288" rx="10"/>
+        <text class="gs-k" x="524" y="444">(d) Lịch các số hạng trong một chu kỳ 16 bước</text>
+        <text class="gs-s10 gs-end" x="700" y="461">bước</text>
+        <text class="gs-s10 gs-mid" x="719" y="461">1</text>
+        <text class="gs-s10 gs-mid" x="767" y="461">4</text>
+        <text class="gs-s10 gs-mid" x="831" y="461">8</text>
+        <text class="gs-s10 gs-mid" x="895" y="461">12</text>
+        <text class="gs-s10 gs-mid" x="959" y="461">16</text>
+        <text class="gs-s gs-end" x="700" y="479">Critic: hinge + cặp lệch</text>
+        <rect class="gs-cat" x="712" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="728" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="744" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="760" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="776" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="792" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="808" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="824" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="840" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="856" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="872" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="888" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="904" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="920" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="936" y="468" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="952" y="468" width="14" height="14" rx="2"/>
+        <text class="gs-s gs-end" x="700" y="501">Critic: R1 lười</text>
+        <rect class="gs-off" x="712" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="728" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="744" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="760" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="776" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="792" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="808" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="824" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="840" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="856" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="872" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="888" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="904" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="920" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="936" y="490" width="14" height="14" rx="2"/>
+        <rect class="gs-cat" x="952" y="490" width="14" height="14" rx="2"/>
+        <text class="gs-s gs-end" x="700" y="523">Sinh: −D + 0.5 · L_dist</text>
+        <rect class="gs-res" x="712" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="728" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="744" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="760" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="776" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="792" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="808" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="824" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="840" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="856" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="872" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="888" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="904" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="920" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="936" y="512" width="14" height="14" rx="2"/>
+        <rect class="gs-res" x="952" y="512" width="14" height="14" rx="2"/>
+        <text class="gs-s gs-end" x="700" y="545">Sinh: chưng cất × 4 · 100</text>
+        <rect class="gs-off" x="712" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="728" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="744" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-loss" x="760" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="776" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="792" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="808" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-loss" x="824" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="840" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="856" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="872" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-loss" x="888" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="904" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="920" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-off" x="936" y="534" width="14" height="14" rx="2"/>
+        <rect class="gs-loss" x="952" y="534" width="14" height="14" rx="2"/>
+        <text class="gs-s gs-end" x="700" y="567">Sinh: LSM M + C (chỉ G2)</text>
+        <rect class="gs-loss gs-only" x="712" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="728" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="744" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="760" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="776" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="792" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="808" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="824" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="840" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="856" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="872" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="888" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="904" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="920" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="936" y="556" width="14" height="14" rx="2"/>
+        <rect class="gs-loss gs-only" x="952" y="556" width="14" height="14" rx="2"/>
+        <text class="gs-s gs-end" x="700" y="589">EMA 0.995</text>
+        <rect class="gs-norm" x="712" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="728" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="744" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="760" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="776" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="792" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="808" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="824" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="840" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="856" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="872" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="888" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="904" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="920" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="936" y="578" width="14" height="14" rx="2"/>
+        <rect class="gs-norm" x="952" y="578" width="14" height="14" rx="2"/>
+        <text class="gs-s" x="524" y="614">Thứ tự một bước: cập nhật critic (clip 30) → khoá tham số critic, giữ chế độ</text>
+        <text class="gs-s" x="524" y="630">train (lại cắt ngẫu nhiên) → loss sinh, lùi gradient, clip 10 → Adam → EMA.</text>
+        <text class="gs-s" x="524" y="646">Hệ số R1 = ½ · 16 · r1_weight, r1_weight = 1 (mặc định, FLOWGAN không đổi).</text>
+        <text class="gs-s" x="524" y="662">Chưng cất nhân 4 vì chỉ chạy 1/4 số bước: trung bình ≈ 100 · MSE mỗi bước.</text>
+        <text class="gs-s" x="524" y="678">Chấm checkpoint trên EMA ở bước 1000, 1500, …, 4000 (7 lần nếu không dừng</text>
+        <text class="gs-s" x="524" y="694">theo hạn 4.5 giờ): G1 dùng S_real + 0.5 · C, G2 dùng Q của pool BIDMC.</text>
+      </svg>
+    </div>
+
+    <div class="gs-eq">
+      <p class="gs-eq-h">(d) Loss generator — experiment_v3.py:457-466</p>
+      <p class="gs-f">L<sub>G</sub> = − 1/(3B) · Σ<sub>n</sub> Σ<sub>k</sub> D<sub>k</sub>(y<sub>n</sub>, c<sub>n</sub>) + 0.5 · L<sub>dist</sub>(y, x) + [s mod 4 = 0] · 4 · 100 · L<sub>distill</sub> + [lsm_loss] · (M + C)</p>
+      <p class="gs-f">D<sub>k</sub>(x, c) = w<sub>k</sub> · f<sub>k</sub>(x) + b<sub>k</sub> + f<sub>k</sub>(x) · (P<sub>k</sub> c + q<sub>k</sub>) / √F<sub>k</sub>,  F<sub>k</sub> = 384, 128, 64</p>
+      <p class="gs-f">L<sub>dist</sub>(y, x) = Σ<sub>b ∈ {160, 400, 800}</sub> ⅓ · SmoothL1( sort<sub>n</sub> log p<sub>b</sub>(y), sort<sub>n</sub> log p<sub>b</sub>(x) ) + MSE( sort<sub>n</sub> ρ(y), sort<sub>n</sub> ρ(x) )</p>
+      <p class="gs-eq-h">Loss critic — experiment_v3.py:426-454</p>
+      <p class="gs-f">L<sub>D</sub> = 1/(3B) · Σ<sub>n,k</sub> max(0, 1 − D<sub>k</sub>(x<sub>n</sub>, c<sub>n</sub>)) + 0.5 · 1/(3B) · Σ<sub>n,k</sub> max(0, 1 + D<sub>k</sub>(y<sub>n</sub>, c<sub>n</sub>)) + 0.5 · L<sub>lệch</sub> + [s mod 16 = 0] · R1</p>
+      <p class="gs-f">L<sub>lệch</sub> = Σ<sub>n</sub> m<sub>n</sub> · ⅓ Σ<sub>k</sub> max(0, 1 + D<sub>k</sub>(x<sub>n</sub>, c<sub>n−1</sub>)) / max(1, Σ<sub>n</sub> m<sub>n</sub>)</p>
+      <p class="gs-f">R1 = ½ · 16 · γ · 1/B · Σ<sub>n</sub> ‖ ∇<sub>x<sub>n</sub></sub> ⅓ Σ<sub>k</sub> D<sub>k</sub>(x<sub>n</sub>, c<sub>n</sub>) ‖²,  γ = r1_weight = 1;  ‖∇θ<sub>D</sub>‖ ≤ 30, ‖∇θ<sub>G</sub>‖ ≤ 10</p>
+      <ul class="small">
+        <li>s: chỉ số bước; B = 32; k = 1, 2, 3 là góc nhìn thời gian, phổ, ACF; [·] bằng 1 khi mệnh đề đúng, 0 khi sai.</li>
+        <li>y = G(z, c) sau cảm biến; x̂ là đầu ra sạch; x là cửa sổ thật cùng batch. Critic ở chế độ train trong cả hai lượt, nên mỗi lần gọi lại cắt ngẫu nhiên 1024 mẫu. Ở lượt critic, y đã tách gradient.</li>
+        <li>f<sub>k</sub>: vector đặc trưng của nhánh k sau pooling; w<sub>k</sub>, b<sub>k</sub>: đầu SN Linear F<sub>k</sub>→1; P<sub>k</sub>, q<sub>k</sub>: SN Linear 11→F<sub>k</sub> (strict_judge.py:235-251).</li>
+        <li>L<sub>dist</sub> (models.distribution_loss, models.py:64-83): p<sub>b</sub> là phổ trung bình của các khối Hann dài b, chồng 50%, chuẩn hoá tổng 1, bỏ bin 0, log(p + 10⁻⁶); ρ là ACF trễ 1…200 chia ACF(0); sort<sub>n</sub> xếp theo batch để so phân bố biên, không ghép từng cặp người. FLOWGAN không bật domloss.</li>
+        <li>c<sub>n−1</sub>: hàng điều kiện dịch một vị trí trong batch (c.roll(1)); m<sub>n</sub> = 1 khi khác miền, hoặc khi cả hai biết nhịp và nhịp lệch quá 10 bpm.</li>
+        <li>[lsm_loss] chỉ đúng cho G2_flowgan_lsm_bidmc (experiment_v3.py:137); M, C ở (a), (b), mỗi số hạng hệ số 1.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="small muted">Hình 5: (a) khoảng cách khớp và (b) khoảng cách tự nhất quán của loss LSM theo train_lsm.py:92-122; (c) neo chưng cất theo flow_gan.py:60-101 và experiment_v3.py:460-463; (d) lịch và công thức theo experiment_v3.py:406-474. Đường sóng ở (a), (b) chỉ là minh hoạ dạng xung, không phải dữ liệu.</p>
+</section>

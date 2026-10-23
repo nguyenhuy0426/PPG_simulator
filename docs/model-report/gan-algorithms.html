@@ -1,0 +1,237 @@
+<!-- Fragment: section "Thuật toán" (g-alg). Pseudo-code written from the source; every constant has a file:line under its box. -->
+<section id="g-alg">
+  <style>
+    #g-alg .galg-box { padding: 0; overflow: hidden; margin: 0 0 18px; }
+    #g-alg .galg-head { margin: 14px 18px 0; padding: 7px 0 6px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink);
+      display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+    #g-alg .galg-head b { white-space: nowrap; }
+    #g-alg .galg-head .galg-fn { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12.5px; color: var(--muted); }
+    #g-alg .galg-body { margin: 0 18px; padding: 6px 0 4px; border-bottom: 1.5px solid var(--ink);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; line-height: 1.55; }
+    #g-alg .galg-io { margin: 0 0 6px; padding: 0; list-style: none; }
+    #g-alg .galg-io li { padding-left: 5.2em; text-indent: -5.2em; overflow-wrap: anywhere; }
+    #g-alg .galg-io b { display: inline-block; width: 5.2em; text-indent: 0; }
+    #g-alg ol.galg-code { counter-reset: galg; list-style: none; margin: 0; padding: 0; }
+    #g-alg ol.galg-code li { counter-increment: galg; position: relative; white-space: pre-wrap; overflow-wrap: anywhere;
+      padding-left: calc(3.1em + var(--galg-d, 0) * 1.6em); }
+    #g-alg ol.galg-code li::before { content: counter(galg) ":"; position: absolute; left: 0; width: 2.4em; text-align: right;
+      color: var(--muted); font-variant-numeric: tabular-nums; }
+    #g-alg ol.galg-code li.galg-sec { counter-increment: none; padding-left: 0; margin: 6px 0 2px; color: var(--accent); font-weight: 600; }
+    #g-alg ol.galg-code li.galg-sec::before { content: none; }
+    #g-alg li.d1 { --galg-d: 1; }
+    #g-alg li.d2 { --galg-d: 2; }
+    #g-alg li.d3 { --galg-d: 3; }
+    #g-alg li.d4 { --galg-d: 4; }
+    #g-alg .galg-kw { font-weight: 700; color: var(--ink); }
+    #g-alg .galg-f { color: var(--accent); }
+    #g-alg .galg-cm { color: var(--muted); font-style: italic; }
+    #g-alg .galg-foot { margin: 8px 18px 14px; }
+    #g-alg .galg-foot ul { margin: 6px 0 0; padding-left: 18px; }
+    #g-alg .galg-foot code { font-size: 12px; }
+    #g-alg .galg-diff ul { margin: 6px 0 0; padding-left: 20px; }
+    #g-alg .galg-diff li { margin: 4px 0; }
+  </style>
+
+  <h2>Thuật toán</h2>
+  <p class="lead">Ba hộp giả mã dưới đây viết lại đúng những gì mã nguồn đang làm: (1) chọn checkpoint trong lúc train GAN,
+    (2) giám khảo nghiêm (C2ST) chấm điểm, (3) luật quyết định đã ghi trước khi train. Mọi hằng số đều lấy từ mã; nguồn
+    từng dòng nằm trong mục “Nguồn trong mã” dưới mỗi hộp. Đây là đánh giá kỹ thuật về hình dạng sóng PPG 30 s đã chuẩn hoá,
+    không phải thẩm định lâm sàng, và chưa đo trên Pi/DAC/OPT101.</p>
+
+  <!-- ============================================================ Thuật toán 1 -->
+  <div class="card galg-box">
+    <div class="galg-head"><b>Thuật toán 1</b><span>Chọn checkpoint trong lúc train GAN</span>
+      <span class="galg-fn">experiment_v3.train_conditional → score_arm</span></div>
+    <div class="galg-body">
+      <ul class="galg-io">
+        <li><b>Vào:</b>arm (cấu hình <span class="galg-f">config</span>(arm)), seed, gói train+validation, số bước T
+          (flow-GAN 4000, vòng strict 20000), batch B = 32, chu kỳ đánh giá I = 500, hạn giờ deadline (flow-GAN 4.5 h, strict 10 h)</li>
+        <li><b>Ra:</b>best.pt (generator EMA tốt nhất), generator_cpu.ts, S_arm, gates, eligible</li>
+        <li><b>Định nghĩa:</b>Q_pool = MMD²_acf + MMD²_logPSD + MMD²_morph + 0.5(1 − recall) + 0.25(1 − precision) &nbsp;(k = 5 láng giềng; n = min(256, số cửa sổ validation của pool))</li>
+        <li><b></b>S_real = Σ w·Q_pool + 0.25·|ln ρ|, &nbsp;w: gxu_finger 0.35 · perform_large 0.25 · bidmc 0.15 · perform_cohort (af + non_af) 0.15 · wrist 0.10</li>
+        <li><b></b>ρ = median pdist(đặc trưng hình thái của fake, mọi pool) / median pdist(đặc trưng hình thái của replay train)</li>
+        <li><b></b>C = 0.5·min(MAE_in/10, 2) + 0.25·min(MAE_ext/10, 2) + 0.25(1 − Spearman) + 0.25(1 − AUC_irr) &nbsp;(lưới 40…180 bpm bước 10; “in” = 60…140 bpm; σ nhịp 0.02 / 0.20; không đo được nhịp = lỗi 20 bpm)</li>
+      </ul>
+      <ol class="galg-code">
+        <li>torch.manual_seed(seed); G, D ← <span class="galg-f">build</span>(cfg)   <span class="galg-cm">▷ flow-GAN: G = FlowGAN (student 4 bước) nạp teacher PhysioFlow đóng băng; D = StrictCritic</span></li>
+        <li>Ĝ ← bản sao EMA của G, không gradient</li>
+        <li>optG ← Adam(lr·g_lr/lr, β = (0, 0.99)); optD ← Adam(lr, β = (0, 0.99))   <span class="galg-cm">▷ flow-GAN: lr = 2·10⁻⁴, g_lr = 2·10⁻⁵</span></li>
+        <li>ids, p ← <span class="galg-f">balanced_pool</span>(train, cfg.train_domains)   <span class="galg-cm">▷ G2_flowgan_lsm_bidmc: chỉ bidmc</span></li>
+        <li>best ← +∞; best_step ← 0</li>
+        <li><span class="galg-kw">for</span> t = 1 … T <span class="galg-kw">do</span></li>
+        <li class="d1"><span class="galg-kw">if</span> now &gt; deadline <span class="galg-kw">then</span> stopped_at_step ← t − 1; <span class="galg-kw">break</span></li>
+        <li class="d1">η ← <span class="galg-f">learning_rate</span>(cfg, t − 1, T)   <span class="galg-cm">▷ hằng số (flow-GAN), hoặc cosine: lr·(0.1 + 0.45(1 + cos(π·(t − 1)/T))), giảm dần tới 10%</span></li>
+        <li class="d1">x ← B cửa sổ thật rút theo p; c ← điều kiện của chính các cửa sổ đó; z ~ N(0, I)</li>
+        <li class="d1">L_D ← relu(1 − D(x, c)) + 0.5·relu(1 + D(G(z, c), c)) + 0.5·relu(1 + D(x, c̃))   <span class="galg-cm">▷ c̃ = c cuộn 1 hàng; bản v2 chỉ tính cặp khác miền, hoặc cả hai nhịp đã biết và lệch &gt; 10 bpm</span></li>
+        <li class="d1"><span class="galg-kw">if</span> t mod 16 = 0 <span class="galg-kw">then</span> L_D ← L_D + 0.5·16·r1_weight·‖∇ₓD(x, c)‖²   <span class="galg-cm">▷ lazy R1; r1_weight mặc định 1, arm _r1w 0.1</span></li>
+        <li class="d1">cắt ‖∇D‖ tại d_clip (mặc định 10; critic strict 30; ×16 ở bước R1 nếu r1_scaled_clip); đếm d_clipped; optD.step</li>
+        <li class="d1">L_G ← −D(G(z, c), c) + 0.5·<span class="galg-f">distribution_loss</span>(G(z, c), x)   <span class="galg-cm">▷ phổ ở khối 160/400/800 mẫu + ACF, so phân bố đã sắp xếp</span></li>
+        <li class="d1"><span class="galg-kw">if</span> domloss <span class="galg-kw">then</span> L_G ← L_G + 0.5·<span class="galg-f">domain_distribution_loss</span>   <span class="galg-cm">▷ cùng loss, tính trong từng miền có ≥ 3 cửa sổ</span></li>
+        <li class="d1"><span class="galg-kw">if</span> flow-GAN <span class="galg-kw">and</span> t mod 4 = 0 <span class="galg-kw">then</span> L_G ← L_G + 4·100·MSE(x̂_clean, teacher(z, c))</li>
+        <li class="d1"><span class="galg-kw">if</span> lsm_loss <span class="galg-kw">then</span> L_G ← L_G + L_match + L_self   <span class="galg-cm">▷ spectral_loss, ghép all_pairs, trọng số 1 và 1</span></li>
+        <li class="d1"><span class="galg-kw">if</span> L_G + L_D không hữu hạn <span class="galg-kw">then</span> dừng với lỗi</li>
+        <li class="d1">cắt ‖∇G‖ tại 10; optG.step</li>
+        <li class="d1">Ĝ ← 0.995·Ĝ + 0.005·G   <span class="galg-cm">▷ update_ema; buffer chép thẳng</span></li>
+        <li class="d1"><span class="galg-kw">if</span> (t ≥ min(1000, T) <span class="galg-kw">and</span> t mod I = 0) <span class="galg-kw">or</span> t = T <span class="galg-kw">then</span></li>
+        <li class="d2">S_real, ρ, {Q_pool} ← <span class="galg-f">s_real</span>(Ĝ, seed + 10000)   <span class="galg-cm">▷ prompt từ nhãn cửa sổ train, tham chiếu là cửa sổ validation</span></li>
+        <li class="d2">C ← <span class="galg-f">controllability</span>(Ĝ, n = 8)</li>
+        <li class="d2"><span class="galg-kw">if</span> cfg.train_domains <span class="galg-kw">then</span> v ← mean_{d ∈ train_domains} Q_{POOL_OF[d]}   <span class="galg-cm">▷ arm một miền: C vẫn được tính và ghi, nhưng không vào v</span></li>
+        <li class="d2"><span class="galg-kw">else</span> v ← S_real + 0.5·C   <span class="galg-cm">▷ arm diffusion: v ← S_real</span></li>
+        <li class="d2">ghi history.json (v, S_real, C, ρ, Q từng pool, d_clipped, …)</li>
+        <li class="d2"><span class="galg-kw">if</span> v &lt; best <span class="galg-kw">then</span> best ← v; best_step ← t; lưu Ĝ vào best.pt</li>
+        <li>lưu last_training_state.pt (G, Ĝ, D)</li>
+        <li class="galg-sec">score_arm — validation, seed mới, tại checkpoint đã chọn</li>
+        <li>Ĝ ← best.pt; S_real′, ρ′ ← <span class="galg-f">s_real</span>(seed + 30000); C′ ← <span class="galg-f">controllability</span>(seed + 30000)</li>
+        <li>AUC_c2st ← <span class="galg-f">c2st</span>(seed + 31000)   <span class="galg-cm">▷ probe đạo hàm nhỏ, 1000 bước</span></li>
+        <li>S_arm ← S_real′ + 0.5·C′ + 0.5·max(0, AUC_c2st − 0.5)</li>
+        <li>probe ← 64 cửa sổ prompt gxu_finger, nhiễu seed + 32000</li>
+        <li>gates ← finite(probe), <span class="galg-kw">not</span> flat (ptp &lt; 10⁻⁶), 0.75 ≤ ρ′ ≤ 1.25, d_clipped ≤ 1% số bước đã train</li>
+        <li>traced ← TorchScript (model.export nếu có, ngược lại torch.jit.trace); assert_close ở 3 prompt (45 bpm σ 0.02, 130 bpm σ 0.2, 175 bpm σ 0.1); lưu generator_cpu.ts</li>
+        <li>latency: 1 luồng CPU, 3 lần chạy nóng + 20 lần đo; latency_ok ← trung vị &lt; latency_limit_ms   <span class="galg-cm">▷ mặc định 50 ms; flow, flow-GAN 5000 ms; đo trên CPU máy Kaggle, chưa đo trên Pi</span></li>
+        <li>eligible ← mọi gate ở dòng 32–34 đều đạt</li>
+        <li><span class="galg-kw">return</span> best_step, best, S_arm, gates, eligible</li>
+      </ol>
+    </div>
+    <div class="galg-foot small muted">
+      <details class="more"><summary>Nguồn trong mã (file:dòng)</summary>
+        <ul>
+          <li>Vào: T <code>experiment_flowgan.py:94</code>, <code>experiment_strict.py:316</code>; B = 32 <code>experiment_flowgan.py:50</code>, <code>experiment_strict.py:101</code>; I = 500 <code>experiment_flowgan.py:98</code>, <code>experiment_strict.py:322</code>; deadline <code>experiment_flowgan.py:95,110</code>, <code>experiment_strict.py:318,340</code></li>
+          <li>Q_pool <code>experiment_v3.py:276–279</code>; k = 5 <code>experiment_v3.py:247</code>; n <code>experiment_v3.py:261,266,649</code>; đặc trưng ACF/log-PSD <code>train_lsm.py:174–183</code>, băng thông MMD <code>benchmark.py:46</code></li>
+          <li>S_real, ρ <code>experiment_v3.py:272,296–297</code>; trọng số <code>experiment_v3.py:57</code>; pool <code>experiment_v3.py:55–56</code></li>
+          <li>C <code>control.py:66</code>; lưới, “in”, σ, lỗi NaN <code>control.py:17–20</code></li>
+          <li>1 <code>experiment_v3.py:375,381–386,189–193</code>, student_steps = 4 <code>experiment_v3.py:135</code> · 2 <code>experiment_v3.py:390</code>, <code>physio.py:486–489</code> · 3 <code>experiment_v3.py:391–393,134</code> · 4 <code>experiment_v3.py:397,137</code> · 5 <code>experiment_v3.py:401</code></li>
+          <li>6–7 <code>experiment_v3.py:406–409</code> · 8 <code>experiment_v3.py:411–413,222–226</code>, flow-GAN hằng <code>experiment_v3.py:128,173</code> · 9 <code>experiment_v3.py:414–416,423</code> · 10 <code>experiment_v3.py:428–440</code> · 11 <code>experiment_v3.py:426,442–446</code>, r1_weight <code>experiment_v3.py:174,76</code> · 12 <code>experiment_v3.py:449–454</code>, 30 <code>experiment_v3.py:122,134</code>, r1_scaled_clip <code>experiment_v3.py:73</code></li>
+          <li>13 <code>experiment_v3.py:457</code>, <code>models.py:64–83</code> · 14 <code>experiment_v3.py:458–459,229–239</code> · 15 <code>experiment_v3.py:460–463</code>, distill = 100, distill_every = 4 <code>experiment_v3.py:134–135</code> · 16 <code>experiment_v3.py:464–466</code>, <code>train_lsm.py:109–122</code></li>
+          <li>17 <code>experiment_v3.py:467–468</code> · 18 <code>experiment_v3.py:470–473</code> · 19 <code>experiment_v3.py:474</code>, <code>physio.py:493–497</code> · 20 <code>experiment_v3.py:476</code> · 21 <code>experiment_v3.py:479,282–298</code> · 22 <code>experiment_v3.py:480,161</code> · 23–24 <code>experiment_v3.py:481–484,165</code> · 25 <code>experiment_v3.py:485–492,497</code> · 26 <code>experiment_v3.py:493–496</code> · 27 <code>experiment_v3.py:500–501</code></li>
+          <li>28–29 <code>experiment_v3.py:522–526</code>; c2st 1000 bước <code>experiment_v3.py:161,304–318</code> · 30 <code>experiment_v3.py:546</code> · 31–32 <code>experiment_v3.py:528–533</code> · 33 <code>experiment_v3.py:537–538,348–356</code> · 34 <code>experiment_v3.py:357–368,543</code>; 50 ms <code>experiment_v3.py:177</code>, 5000 ms <code>experiment_v3.py:87,135</code> · 35 <code>experiment_v3.py:544–545</code> · 36 <code>experiment_v3.py:502–508,546–548</code></li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <!-- ============================================================ Thuật toán 2 -->
+  <div class="card galg-box">
+    <div class="galg-head"><b>Thuật toán 2</b><span>Giám khảo nghiêm (C2ST)</span>
+      <span class="galg-fn">strict_judge.build_sets → fit → judge_scores</span></div>
+    <div class="galg-body">
+      <ul class="galg-io">
+        <li><b>Vào:</b>gói dữ liệu (bỏ split external), split ∈ {validation, test}, các nguồn sinh S, miền M (slot PhysioMix: 6 miền; slot LSM: chỉ bidmc), judge seed {0, 1, 2}</li>
+        <li><b>Ra:</b>với mỗi nguồn: AUC trung bình qua 3 judge seed, indistinguishable, balanced accuracy, AUC từng miền</li>
+        <li><b>Quy ước:</b>logit dương = “sinh ra”; AUC 0.5 = giám khảo không tách được; càng thấp càng tốt cho generator</li>
+      </ul>
+      <ol class="galg-code">
+        <li class="galg-sec">build_sets — dựng tập, chia theo người</li>
+        <li>train ← các cửa sổ split train thuộc M</li>
+        <li><span class="galg-kw">for</span> mỗi miền d ∈ M <span class="galg-kw">do</span>   <span class="galg-cm">▷ people_split, PEOPLE_SEED = 20261022</span></li>
+        <li class="d1">xáo người của d; chia fit 60% · inner 10% · control_train 15% · control_eval 15%   <span class="galg-cm">▷ mỗi phần ≥ 1 người; fit nhận phần còn lại</span></li>
+        <li>rng ← SET_SEEDS[split]   <span class="galg-cm">▷ validation 1, test 2 (seed 0 là kernel chọn giám khảo)</span></li>
+        <li>real_train ← 512 cửa sổ/miền từ người fit   <span class="galg-cm">▷ có lặp, mỗi người cùng trọng số trong miền</span></li>
+        <li>real_inner ← 64 cửa sổ/miền từ người inner</li>
+        <li>real_eval ← tối đa 128 cửa sổ/miền từ người của split (validation hoặc test), không lặp</li>
+        <li>prompt fake: train ← nhãn người fit; inner ← nhãn người inner; eval ← nhãn người control_eval   <span class="galg-cm">▷ số cửa sổ từng miền bằng phía thật của cùng tập</span></li>
+        <li>real_other_people (đối chứng rỗng): cửa sổ thật của control_train tách 80% / 20% → train / inner; eval ← người control_eval</li>
+        <li><span class="galg-kw">for</span> nguồn thứ j trong S <span class="galg-kw">do</span></li>
+        <li class="d1"><span class="galg-kw">for</span> i, k ∈ {(0, train), (1, inner), (2, eval)} <span class="galg-kw">do</span> fake_k ← nguồn_j(prompt_k, nhiễu seed 1000·j + i + 100000·SET_SEEDS[split])</li>
+        <li class="galg-sec">fit — giám khảo kind “strict”, train lại từ đầu cho từng cặp (nguồn, seed)</li>
+        <li><span class="galg-kw">for</span> mỗi nguồn ∈ S ∪ {real_other_people}, mỗi judge seed s <span class="galg-kw">do</span>   <span class="galg-cm">▷ seed thật = s + JUDGE_SEED_OFFSETS[split]: validation 10–12, test 20–22</span></li>
+        <li class="d1">J ← StrictJudge(time, spectral, acf) mới; AdamW(lr 3·10⁻⁴, weight_decay 0.05); best ← −1</li>
+        <li class="d1"><span class="galg-kw">for</span> t = 1 … 3000 <span class="galg-kw">do</span></li>
+        <li class="d2">η ← 3·10⁻⁴ · min(1, t/100) · 0.5(1 + cos(π·t/3000))   <span class="galg-cm">▷ warmup 100 bước rồi cosine</span></li>
+        <li class="d2">64 cửa sổ real_train (nhãn 0) + 64 fake_train (nhãn 1); cắt ngẫu nhiên 1024 mẫu = 25.6 s</li>
+        <li class="d2">BCE-with-logits; cắt ‖∇‖ tại 5; AMP khi chạy GPU</li>
+        <li class="d2"><span class="galg-kw">if</span> t mod 250 = 0 <span class="galg-kw">or</span> t = 3000 <span class="galg-kw">then</span></li>
+        <li class="d3">a ← AUC(J(real_inner), J(fake_inner))   <span class="galg-cm">▷ logit = trung bình 3 đoạn cắt bắt đầu tại mẫu 0, 88, 176</span></li>
+        <li class="d3"><span class="galg-kw">if</span> a &gt; best <span class="galg-kw">then</span> best ← a; giữ trạng thái của J</li>
+        <li class="d1">nạp trạng thái tốt nhất (early stopping theo AUC trên người inner)</li>
+        <li class="galg-sec">judge_scores — chấm trên người giám khảo chưa thấy</li>
+        <li class="d1">r ← J(real_eval); f ← J(fake_eval)</li>
+        <li class="d1">AUC ← Mann–Whitney P(f &gt; r), gộp mọi miền và riêng từng miền</li>
+        <li class="d1">indistinguishable ← 100·(1 − |2·AUC − 1|)</li>
+        <li class="d1">balanced accuracy ← 100 · 0.5 · (mean(r &lt; 0) + mean(f &gt; 0))   <span class="galg-cm">▷ ngưỡng logit 0</span></li>
+        <li><span class="galg-kw">return</span> mean_auc(nguồn) = trung bình AUC qua 3 judge seed</li>
+      </ol>
+    </div>
+    <div class="galg-foot small muted">
+      <p style="margin:0">Probe nhỏ (control.Probe, Adam lr 10⁻³, 1000 bước, batch 32) cũng được train cạnh “strict” để đối chiếu; quyết định của vòng flow-GAN chỉ đọc kind “strict”.</p>
+      <details class="more"><summary>Nguồn trong mã (file:dòng)</summary>
+        <ul>
+          <li>Vào: bỏ external <code>experiment_flowgan.py:124</code>; miền <code>experiment_flowgan.py:137</code>, <code>strict_judge.py:42</code>; judge seed <code>experiment_flowgan.py:97</code>; logit dương = sinh ra <code>strict_judge.py:135</code>; kind <code>experiment_flowgan.py:32,138</code>; probe <code>strict_judge.py:48</code></li>
+          <li>1 <code>strict_judge.py:414</code> · 2–3 <code>strict_judge.py:377–389</code>, PEOPLE_SEED <code>strict_judge.py:43</code>, PEOPLE_SHARES <code>strict_judge.py:45</code> · 4 <code>strict_judge.py:413</code>, <code>experiment_strict.py:41,234</code></li>
+          <li>5–7 <code>strict_judge.py:418–420,392–403</code>, 512/64/128 <code>strict_judge.py:46</code> · 8 <code>strict_judge.py:421,427–428</code>, eval_prompts = "control_eval" <code>experiment_strict.py:235</code> · 9 <code>strict_judge.py:431–438,448–458</code>, chỉ real_other_people <code>experiment_strict.py:235</code> · 10–11 <code>strict_judge.py:439–443</code></li>
+          <li>12 <code>experiment_strict.py:240–243</code>, <code>strict_judge.py:531–536</code> · 13 <code>strict_judge.py:50,259,294,300,303</code> · 14 <code>strict_judge.py:304</code> · 15 <code>strict_judge.py:302,306–307</code> · 16 <code>strict_judge.py:309–310,317</code>, CROP = 1024 <code>strict_judge.py:47</code>, 40 Hz <code>train_lsm.py:28</code> · 17 <code>strict_judge.py:316–322</code></li>
+          <li>18 <code>strict_judge.py:323</code>, EVAL_EVERY = 250 <code>strict_judge.py:51</code> · 19 <code>strict_judge.py:324,274–285</code>, EVAL_STARTS <code>strict_judge.py:47</code> · 20 <code>strict_judge.py:326–327</code> · 21 <code>strict_judge.py:328–329</code></li>
+          <li>22–23 <code>strict_judge.py:335–342</code>, <code>control.py:23–30</code> · 24 <code>strict_judge.py:342–343</code> · 25 <code>strict_judge.py:344</code> · 26 <code>experiment_strict.py:250–254</code></li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <!-- ============================================================ Thuật toán 3 -->
+  <div class="card galg-box">
+    <div class="galg-head"><b>Thuật toán 3</b><span>Luật quyết định (ghi trước khi train)</span>
+      <span class="galg-fn">experiment_flowgan.decide · RULE</span></div>
+    <div class="galg-body">
+      <ul class="galg-io">
+        <li><b>Vào:</b>hàng giám khảo validation của từng slot (Thuật toán 2), hàng train của 3 seed {42, 123, 2026} (C_fresh, eligible từ Thuật toán 1)</li>
+        <li><b>Ra:</b>DECISION_FLOWGAN.json: winner và ship_seed cho mỗi slot</li>
+      </ul>
+      <ol class="galg-code">
+        <li>lưu FROZEN_FLOWGAN.json (RULE + sha256) <span class="galg-kw">trước</span> khi train</li>
+        <li><span class="galg-kw">for</span> (slot, arm) ∈ {(physiomix, G1_flowgan), (lsm, G2_flowgan_lsm_bidmc)} <span class="galg-kw">do</span></li>
+        <li class="d1">app ← mean_auc(slot_app)   <span class="galg-cm">▷ giám khảo “strict”</span></li>
+        <li class="d1"><span class="galg-kw">for</span> s ∈ seeds <span class="galg-kw">do</span> auc[s] ← mean_auc(arm_seed s)</li>
+        <li class="d1">m ← max(0.02, SD(auc))   <span class="galg-cm">▷ SD mẫu, ddof = 1</span></li>
+        <li class="d1">C̄ ← trung bình C_fresh qua các seed</li>
+        <li class="d1">null ← mean_auc(real_other_people); null_valid ← 0.40 ≤ null ≤ 0.60</li>
+        <li class="d1">eligible ← mọi seed đạt gate vòng 9 (score_arm)</li>
+        <li class="d1">auc_gain ← app − mean(auc) &gt; m</li>
+        <li class="d1">c_ok ← (slot ≠ physiomix) <span class="galg-kw">or</span> C̄ ≤ 0.10</li>
+        <li class="d1"><span class="galg-kw">if</span> eligible <span class="galg-kw">and</span> auc_gain <span class="galg-kw">and</span> null_valid <span class="galg-kw">and</span> c_ok <span class="galg-kw">then</span> winner ← arm <span class="galg-kw">else</span> winner ← none</li>
+        <li class="d1">ship_seed ← argmin_{s eligible} auc[s]</li>
+        <li class="d1">ghi tham chiếu physioflow_app, physioflow_sensor (σ = 0.03)   <span class="galg-cm">▷ chỉ để so, không phải ứng viên</span></li>
+        <li>lưu DECISION_FLOWGAN.json</li>
+        <li>chấm người test <span class="galg-kw">một lần</span> (tập seed 2, judge seed 20–22) cho app, tham chiếu và mọi seed của arm</li>
+        <li><span class="galg-kw">for</span> slot có winner <span class="galg-kw">do</span> chép generator_cpu.ts của ship_seed vào ship/</li>
+        <li><span class="galg-kw">return</span> decision</li>
+      </ol>
+    </div>
+    <div class="galg-foot small muted">
+      <p style="margin:0"><b>experiment_strict.decide khác ở đâu.</b> Slot PhysioMix (hai arm L3…_strict và _strict_quiet): thay C̄ ≤ 0.10
+        bằng hai giới hạn so với PhysioMix vòng 9: mean S_real ≤ mean(0.3367, 0.3349, 0.3597) + 0.05 ≈ 0.394 và mean C ≤ mean(0.0469,
+        0.0314, 0.0584) + 0.05 ≈ 0.096; đối chứng rỗng xét cho cả họ (sai → không arm nào ship); nhiều arm ship thì arm có mean AUC thấp
+        nhất thắng. Slot LSM (lsm_author_v3, lsm_strict): ứng viên là arm có mean AUC thấp hơn; nó thay LSM-GAN của app nếu
+        app − mean AUC &gt; max(0.02, SD) và đối chứng rỗng hợp lệ; không có gate eligible, ship seed là seed AUC thấp nhất. Kind giám
+        khảo lấy từ SELECTION_JUDGE.json (JUDGE_RULE: null trong [0.40, 0.60], AUC cao nhất trên các nguồn khó, lệch ≤ 0.01 thì chọn
+        mạng ít tham số hơn), không cố định “strict”.</p>
+      <details class="more"><summary>Nguồn trong mã (file:dòng)</summary>
+        <ul>
+          <li>Vào: seeds <code>experiment_flowgan.py:96</code> · 1 <code>experiment_flowgan.py:113–115</code> (train ở dòng 120) · 2 <code>experiment_flowgan.py:31,71</code> · 3 <code>experiment_flowgan.py:32,73</code> · 4 <code>experiment_flowgan.py:75</code> · 5 <code>experiment_flowgan.py:77</code>, <code>experiment_strict.py:257–258</code></li>
+          <li>6 <code>experiment_flowgan.py:78</code> · 7 <code>experiment_flowgan.py:79</code>, <code>experiment_strict.py:42,261–263</code> · 8–10 <code>experiment_flowgan.py:80–81</code>, C_LIMIT <code>experiment_flowgan.py:41</code> · 11 <code>experiment_flowgan.py:84</code> · 12 <code>experiment_flowgan.py:82,85</code> · 13 <code>experiment_flowgan.py:86,129</code>, σ <code>experiment_strict.py:46</code></li>
+          <li>14 <code>experiment_flowgan.py:141–142</code> · 15 <code>experiment_flowgan.py:144–145</code>, <code>experiment_strict.py:41</code> · 16 <code>experiment_flowgan.py:146–151</code> · 17 <code>experiment_flowgan.py:87</code>; RULE <code>experiment_flowgan.py:33–40</code></li>
+          <li>experiment_strict: arm <code>experiment_strict.py:35–37</code>; INCUMBENT <code>experiment_strict.py:49</code>; decide <code>experiment_strict.py:266–298</code>; kind <code>experiment_strict.py:332–335</code>; JUDGE_RULE <code>strict_judge.py:56–60,561–576</code>. Hai giới hạn ≈ 0.394 / ≈ 0.096 là phép tính từ dòng 49, không phải hằng số trong mã.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <div class="card small galg-diff">
+    <b>Khác với Algorithm 1 của bài LSM-GAN</b>
+    <ul>
+      <li>Bài báo dò lưới λ1, λ2 và F rồi giữ bộ có MMD của tự tương quan nhỏ nhất. Mã ở đây không có lưới λ: arm LSM cộng
+        L_match + L_self với trọng số cố định 1 và 1 (<code>experiment_v3.py:465–466</code>; các biến thể LSM cũng ghi cứng 1 và 1,
+        <code>train_lsm.py:31–33</code>). Phổ dùng khối 400 mẫu chồng 200 (<code>train_lsm.py:92</code>), tức 5 khối trên cửa sổ
+        1200 mẫu; con số này không được dò.</li>
+      <li>Thứ được chọn là checkpoint, không phải siêu tham số: cứ 500 bước, Thuật toán 1 tính feature-MMD (ACF + log-PSD + hình thái)
+        so với cửa sổ validation, cộng recall/precision và |ln ρ|, thêm 0.5·C cho arm sáu miền. Thành phần ACF gần với tiêu chí của
+        bài nhưng chỉ là một trong ba MMD².</li>
+      <li>Phán quyết cuối không dùng MMD: giám khảo StrictJudge được train lại từ đầu sau khi generator đã đóng băng, học trên
+        người fit, dừng sớm theo người inner, chấm trên người validation/test nó chưa thấy (Thuật toán 2). Critic của GAN và giám
+        khảo dùng chung ba góc nhìn nhưng không chung trọng số (<code>experiment_strict.py:12–13</code>).</li>
+      <li>Có đối chứng rỗng real_other_people: nếu giám khảo tách được người thật với người thật (AUC ngoài [0.40, 0.60]) thì so sánh
+        của slot đó bị loại.</li>
+      <li>Luật được ghi (kèm sha256) trước khi train, và người test chỉ được chấm một lần sau khi quyết định đã lưu. Mã này không
+        tái lập kết quả phân loại AF của bài (<code>train_lsm.py:8</code>).</li>
+    </ul>
+  </div>
+</section>

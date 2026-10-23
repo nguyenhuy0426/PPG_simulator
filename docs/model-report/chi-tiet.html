@@ -15,6 +15,7 @@
   <div class="links">
     <a href="#overview">1. Hệ thống làm gì</a>
     <a href="#models">2. Các mô hình</a>
+    <a href="#architectures">2.1 Kiến trúc chi tiết các model</a>
     <a href="#physiomix">3. PhysioMix hoạt động ra sao</a>
     <a href="#physioflow">4. PhysioFlow (mô hình mới)</a>
     <a href="#io">5. Đầu vào · đầu ra</a>
@@ -118,6 +119,585 @@
   <div class="card"><svg class="chart" id="cmp-chart" viewBox="0 0 900 220"></svg></div>
   <p class="small muted">Mỗi đường đã chuẩn hoá về 0–1 và lấy 10 s đầu. “Thật” là một cửa sổ BIDMC đã lọc từ tập train.</p>
 </section>
+
+<section id="architectures">
+  <h2>2.1 Kiến trúc chi tiết dạng khối của các mô hình (Neural Architecture)</h2>
+  <p class="lead">Sơ đồ trực quan biểu diễn kiến trúc nơ-ron dạng khối (block diagram) chuẩn: các tầng tích chập (<b>Convolution</b> — xanh lá), chuẩn hoá (<b>Batch Norm</b> — trắng), kích hoạt phi tuyến (<b>ReLU/SiLU/Tanh</b> — cam), ghép kênh (<b>Concatenation</b> — xanh dương) và các nhánh đa tỉ lệ (<b>Short, Middle, Long scale</b>). Mô hình <b>LSM-GAN</b> khởi xướng topology 3 nhánh song song này; <b>PhysioMix</b> kế thừa và phát triển thêm sóng mang điều khiển nhịp và 8 tầng Dilated ResNet; còn <b>PhysioFlow</b> chuyển sang cấu trúc 1D U-Net với cơ chế Flow Matching.</p>
+
+  <div class="controls" style="margin-bottom:12px">
+    <div class="seg" id="arch-model-seg">
+      <button type="button" class="on" data-target="arch-lsm">LSM-GAN (Hình Fig. 4 chuẩn · Ding et al.)</button>
+      <button type="button" data-target="arch-physiomix">PhysioMix (Mô hình App · 3 nhánh + Sóng mang + ResNet)</button>
+      <button type="button" data-target="arch-physioflow">PhysioFlow (Flow Matching 1D U-Net)</button>
+      <button type="button" data-target="arch-critic">Discriminator &amp; Critic (Mạng phân biệt)</button>
+    </div>
+  </div>
+
+  <div class="arch-legend">
+    <span class="arch-legend-chip chip-conv">Convolution</span>
+    <span class="arch-legend-chip chip-norm">Batch Norm / Group Norm</span>
+    <span class="arch-legend-chip chip-act">ReLU / SiLU / Tanh / LeakyReLU</span>
+    <span class="arch-legend-chip chip-concat">Concatenation (Ghép kênh)</span>
+    <span class="arch-legend-chip chip-res">Residual Block / FiLM / Attention</span>
+    <span class="arch-legend-chip chip-io">Input / Output Tensor</span>
+  </div>
+
+  <!-- PANEL 1: LSM-GAN GENERATOR (FIG 4 REPLICA) -->
+  <div class="arch-panel active" id="arch-lsm">
+    <div class="card arch-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">LSM-GAN Generator (Ding et al., 2021 — Fig. 4)</h3>
+        <span class="tag ai">Multi-Scale 1D CNN · GAN Baseline</span>
+      </div>
+      <p class="small muted" style="margin-top:6px">Kiến trúc tái hiện chính xác sơ đồ Hình 4 trong bài báo <i>“Log-spectral matching, a GAN-based approach for photoplethysmogram generation”</i> (arXiv:2108.05272v2), được định nghĩa trong file mã nguồn <code>ml/kaggle_lsm/train_lsm.py</code>.</p>
+      
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 980 430" role="img" aria-label="Kiến trúc LSM-GAN Generator (Fig. 4)">
+          <defs>
+            <marker id="ar-purp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#7c3aed"/>
+            </marker>
+          </defs>
+          <style>
+            .b-conv { fill: #d4edd4; stroke: #4caf50; stroke-width: 1.3px; }
+            .b-norm { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.3px; }
+            .b-act  { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.3px; }
+            .b-cat  { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1.4px; }
+            .b-io   { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+            .t-bold { font-family: inherit; font-size: 13px; font-weight: 700; fill: var(--ink); }
+            .t-sub  { font-family: inherit; font-size: 11px; fill: var(--muted); }
+            .t-lyr  { font-family: inherit; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+            .t-cconv { fill: #14532d; }
+            .t-cnorm { fill: #334155; }
+            .t-cact  { fill: #78350f; }
+            .l-arrow { stroke: #7c3aed; stroke-width: 2.2px; fill: none; }
+            :root[data-theme="dark"] .b-conv { fill: #14331d; stroke: #22c55e; }
+            :root[data-theme="dark"] .t-cconv { fill: #86efac; }
+            :root[data-theme="dark"] .b-norm { fill: #1e293b; stroke: #475569; }
+            :root[data-theme="dark"] .t-cnorm { fill: #e2e8f0; }
+            :root[data-theme="dark"] .b-act  { fill: #3c2410; stroke: #b45309; }
+            :root[data-theme="dark"] .t-cact  { fill: #fde68a; }
+            :root[data-theme="dark"] .b-cat  { fill: #172554; stroke: #3b82f6; }
+          </style>
+
+          <!-- INPUT -->
+          <rect class="b-io" x="15" y="165" width="180" height="70" rx="10"/>
+          <text class="t-bold" x="105" y="196" text-anchor="middle">Random noise (1200)</text>
+          <text class="t-sub" x="105" y="216" text-anchor="middle">z ~ N(0, 1) · [B, 1, 1200]</text>
+
+          <!-- BRANCH 1: SHORT SCALE -->
+          <text class="t-bold" x="340" y="26" text-anchor="middle">Short scale: kernel size = 5</text>
+          <g transform="translate(255, 34)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→80)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (80)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="138" text-anchor="middle">k=5, p=2 · bắt sóng phản xạ &amp; notch</text>
+
+          <!-- BRANCH 2: MIDDLE SCALE -->
+          <text class="t-bold" x="340" y="160" text-anchor="middle">Middle scale: kernel size = 21</text>
+          <g transform="translate(255, 168)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→40)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (40)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="272" text-anchor="middle">k=21, p=10 · bắt trọn 1 chu kỳ tâm thu</text>
+
+          <!-- BRANCH 3: LONG SCALE -->
+          <text class="t-bold" x="340" y="294" text-anchor="middle">Longscale: kernel size = 61</text>
+          <g transform="translate(255, 302)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→20)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (20)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="406" text-anchor="middle">k=61, p=30 · bắt liên nhịp &amp; đường nền</text>
+
+          <!-- ARROWS FROM INPUT TO 3 BRANCHES -->
+          <path class="l-arrow" d="M195,185 L225,79 L255,79" marker-end="url(#ar-purp)"/>
+          <path class="l-arrow" d="M195,200 L255,213" marker-end="url(#ar-purp)"/>
+          <path class="l-arrow" d="M195,215 L225,347 L255,347" marker-end="url(#ar-purp)"/>
+
+          <!-- CONCATENATION BLOCK -->
+          <text class="t-bold" x="525" y="86" text-anchor="middle">Concatenation</text>
+          <text class="t-sub" x="525" y="102" text-anchor="middle">140 kênh</text>
+          <g transform="translate(495, 108)">
+            <rect class="b-cat" x="0" y="0" width="60" height="210" rx="8" ry="8"/>
+            <line x1="0" y1="90" x2="60" y2="90" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="155" x2="60" y2="155" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="30" y="45" fill="#1e40af" font-size="11">80 k</text>
+            <text class="t-lyr" x="30" y="122" fill="#1e40af" font-size="11">40 k</text>
+            <text class="t-lyr" x="30" y="182" fill="#1e40af" font-size="11">20 k</text>
+          </g>
+
+          <!-- ARROWS FROM BRANCHES TO CONCAT -->
+          <path class="l-arrow" d="M425,79 L465,79 L495,148" marker-end="url(#ar-purp)"/>
+          <path class="l-arrow" d="M425,213 L495,213" marker-end="url(#ar-purp)"/>
+          <path class="l-arrow" d="M425,347 L465,347 L495,278" marker-end="url(#ar-purp)"/>
+
+          <!-- ARROW FROM CONCAT TO MERGE 1 -->
+          <path class="l-arrow" d="M555,213 L605,213" marker-end="url(#ar-purp)"/>
+
+          <!-- MERGE BLOCK 1: CONV + BN + RELU -->
+          <g transform="translate(605, 168)">
+            <rect class="b-conv" x="0" y="0" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="75" y="15">Convolution (140→50)</text>
+            <rect class="b-norm" x="0" y="30" width="150" height="30"/>
+            <text class="t-lyr t-cnorm" x="75" y="45">Batch Norm (50)</text>
+            <rect class="b-act" x="0" y="60" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="75" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="680" y="272" text-anchor="middle">k=15, p=7 · hợp nhất 3 thang đo</text>
+
+          <!-- ARROW FROM MERGE 1 TO MERGE 2 -->
+          <path class="l-arrow" d="M755,213 L795,213" marker-end="url(#ar-purp)"/>
+
+          <!-- MERGE BLOCK 2: CONV (50) + CONV (1) -->
+          <g transform="translate(795, 183)">
+            <rect class="b-conv" x="0" y="0" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="15">Convolution (50→50)</text>
+            <rect class="b-conv" x="0" y="30" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="45">Convolution (50→1)</text>
+          </g>
+          <text class="t-sub" x="872" y="258" text-anchor="middle">k=4 (Tanh) → k=2 (Tanh)</text>
+
+          <!-- ARROW TO OUTPUT -->
+          <path class="l-arrow" d="M872,243 L872,315" marker-end="url(#ar-purp)"/>
+
+          <!-- OUTPUT -->
+          <rect class="b-io" x="765" y="315" width="210" height="65" rx="10"/>
+          <text class="t-bold" x="870" y="342" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="870" y="362" text-anchor="middle">1 200 mẫu · 30 s @ 40 Hz (0–1)</text>
+        </svg>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <h4 style="margin:0 0 6px">Ý nghĩa các tham số trong LSM-GAN (Fig. 4):</h4>
+          <ul class="small">
+            <li><b>Không có Upsampling</b>: Khác với DCGAN ảnh thông thường đi từ vector ngắn (100) phóng to dần, ở đây đầu vào là 1 200 mẫu nhiễu nguyên chiều dài 30 giây (ở 40 Hz). Mạng giữ nguyên chiều dài 1 200 qua mọi tầng nhờ zero-padding <code>k // 2</code>.</li>
+            <li><b>Ba thang tỉ lệ (Multi-Scale)</b>:
+              <ul>
+                <li><i>Short scale (k=5, 80 kênh)</i>: tương đương 0,125 s (ở 40 Hz), nắm bắt các gợn tần số cao, góc nghiêng dốc tâm thu và dicrotic notch.</li>
+                <li><i>Middle scale (k=21, 40 kênh)</i>: tương đương 0,525 s, bắt trọn một pha tâm thu hoặc một xung đập bình thường.</li>
+                <li><i>Long scale (k=61, 20 kênh)</i>: tương đương 1,525 s, nhìn thấy toàn bộ chu kỳ tim gồm cả tâm thu và tâm trương ở nhịp chậm (40–60 bpm).</li>
+              </ul>
+            </li>
+            <li><b>Ghép kênh 140</b>: Tích hợp đầy đủ thông tin từ vi mô tới vĩ mô trước khi đưa vào khối gộp <code>k=15</code> và hai tầng Conv phi tuyến <code>Tanh</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Hạn chế trong mô phỏng thực tế:</h4>
+          <ul class="small">
+            <li><b>Không thể chỉnh nhịp tim (HR)</b>: LSM-GAN thuần túy sinh từ nhiễu ngẫu nhiên, không có vector điều kiện. Không thể yêu cầu “sinh 80 bpm” hay “sinh rung nhĩ”.</li>
+            <li><b>Dễ bị máy phân biệt nhận ra</b>: Máy phân biệt (Critic) phát hiện 100% mẫu là giả (đạt điểm khó phân biệt 0%) do nhịp bị trôi dạt và không có ràng buộc sinh lý.</li>
+            <li><b>Động lực cho PhysioMix</b>: Dự án giữ nguyên ý tưởng 3 nhánh tích chập (k=5, 21, 61) này của LSM-GAN nhưng bổ sung sóng mang điều khiển nhịp và ResNet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: PHYSIOMIX GENERATOR -->
+  <div class="arch-panel" id="arch-physiomix">
+    <div class="card arch-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">PhysioMix Generator (Mô hình đang chạy trong App — Round 9)</h3>
+        <span class="tag ai">Conditioned Multi-Scale GAN + FiLM ResNet</span>
+      </div>
+      <p class="small muted" style="margin-top:6px">Kế thừa trực tiếp cấu trúc 3 nhánh tích chập đa tỉ lệ (kernel 5, 21, 61) của LSM-GAN, kết hợp mạng phong cách FiLM và 8 khối Residual giãn nở để kiểm soát nhịp tim tuyệt đối. File mã nguồn: <code>ml/kaggle_multidomain/physio.py</code>.</p>
+
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 1020 450" role="img" aria-label="Kiến trúc PhysioMix Generator">
+          <defs>
+            <marker id="ar-pm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#1f7a5a"/>
+            </marker>
+          </defs>
+          <style>
+            .b-pm-conv { fill: #d4edd4; stroke: #1f7a5a; stroke-width: 1.3px; }
+            .b-pm-res  { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.3px; }
+            .b-pm-film { fill: #fef3c7; stroke: #d97706; stroke-width: 1.3px; }
+            .l-arrow-pm { stroke: #1f7a5a; stroke-width: 2.2px; fill: none; }
+          </style>
+
+          <!-- INPUT GROUP -->
+          <g transform="translate(15, 30)">
+            <rect class="b-io" x="0" y="0" width="180" height="60" rx="8"/>
+            <text class="t-bold" x="90" y="26" text-anchor="middle">Nhiễu z (1200)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">1 200 số ngẫu nhiên · seed</text>
+
+            <rect class="b-io" x="0" y="75" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="98" text-anchor="middle">Sóng mang nhịp (4 kênh)</text>
+            <text class="t-sub" x="90" y="118" text-anchor="middle">sin(θ), cos(θ), sin(2θ), sin(3θ)</text>
+            <text class="t-sub" x="90" y="136" text-anchor="middle">khung nhịp dựng sẵn từ HR</text>
+
+            <rect class="b-io" x="0" y="165" width="180" height="65" rx="8"/>
+            <text class="t-bold" x="90" y="190" text-anchor="middle">Điều kiện c</text>
+            <text class="t-sub" x="90" y="210" text-anchor="middle">Tập dữ liệu, HR, HRV, Std</text>
+          </g>
+
+          <!-- STYLE NETWORK -->
+          <g transform="translate(15, 290)">
+            <rect class="b-pm-film" x="0" y="0" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="24" text-anchor="middle">Style MLP (Phong cách)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">Linear(8+c→48) → SiLU</text>
+            <text class="t-sub" x="90" y="62" text-anchor="middle">→ Linear(48→48) Style Vector</text>
+          </g>
+
+          <!-- ARROWS TO 3 BRANCHES -->
+          <path class="l-arrow-pm" d="M195,95 L225,55 L250,55" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M195,115 L250,150" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M195,135 L225,245 L250,245" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M105,230 L105,290" marker-end="url(#ar-pm)"/>
+
+          <!-- 3 MULTI-SCALE BRANCHES (K=5, 21, 61) -->
+          <g transform="translate(250, 25)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Short scale (k=5)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=5, p=2)</text>
+          </g>
+
+          <g transform="translate(250, 120)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Middle scale (k=21)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=21, p=10)</text>
+          </g>
+
+          <g transform="translate(250, 215)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Longscale (k=61)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=61, p=30)</text>
+          </g>
+
+          <!-- CONCATENATION (48 KÊNH) -->
+          <g transform="translate(460, 65)">
+            <text class="t-bold" x="25" y="-12" text-anchor="middle">Concat</text>
+            <rect class="b-cat" x="0" y="0" width="50" height="180" rx="8"/>
+            <line x1="0" y1="60" x2="50" y2="60" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="120" x2="50" y2="120" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="25" y="30" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="90" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="150" fill="#1e40af" font-size="11">16</text>
+            <text class="t-sub" x="25" y="196" text-anchor="middle">48 k</text>
+          </g>
+
+          <!-- ARROWS TO CONCAT -->
+          <path class="l-arrow-pm" d="M420,65 L460,100" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M420,160 L460,160" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M420,255 L460,220" marker-end="url(#ar-pm)"/>
+
+          <!-- 8 DILATED RESIDUAL BLOCKS WITH FiLM -->
+          <g transform="translate(545, 45)">
+            <rect class="b-pm-res" x="0" y="0" width="220" height="235" rx="10"/>
+            <text class="t-bold" x="110" y="24" text-anchor="middle" fill="#5b21b6">8 Khối Residual Giãn Nở (FiLM)</text>
+            <text class="t-sub" x="110" y="44" text-anchor="middle">Dilation: 1, 2, 4, 8, 16, 32, 64, 128</text>
+
+            <rect x="15" y="58" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="73" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <rect x="15" y="94" width="190" height="30" rx="5" fill="#fef3c7" stroke="#d97706"/>
+            <text class="t-lyr t-cact" x="110" y="109" font-size="11">FiLM: h × (1 + 0.1·gain) + 0.1·bias</text>
+
+            <rect x="15" y="130" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="145" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <text class="t-sub" x="110" y="180" text-anchor="middle">Trường tiếp nhận tích lũy: ~10 giây</text>
+            <text class="t-sub" x="110" y="200" text-anchor="middle">FiLM điều biến phong cách theo từng tập</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M510,155 L545,155" marker-end="url(#ar-pm)"/>
+          <!-- FiLM modulation arrow from Style to ResNet -->
+          <path class="l-arrow-pm" d="M195,330 L655,330 L655,280" marker-end="url(#ar-pm)"/>
+
+          <!-- OUTPUT HEAD & BANDLIMIT -->
+          <g transform="translate(805, 55)">
+            <rect class="b-pm-conv" x="0" y="0" width="195" height="40" rx="6"/>
+            <text class="t-lyr t-cconv" x="97" y="20">Conv1D Head (48→1, k=5)</text>
+
+            <rect class="b-io" x="0" y="55" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="72" fill="var(--ink)" font-size="11.5">+ Sóng mang (hài 1 + 0.3·hài 3)</text>
+            <text class="t-sub" x="97" y="88" text-anchor="middle">Neo biên độ và chu kỳ nhịp</text>
+
+            <rect class="b-io" x="0" y="112" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="129" fill="var(--ink)" font-size="11.5">Lọc thông dải FIR (0.5–8.0 Hz)</text>
+            <text class="t-sub" x="97" y="145" text-anchor="middle">Cắt bỏ gợn vi mô không sinh lý</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M765,155 L805,75" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M902,40 L902,55" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M902,97 L902,112" marker-end="url(#ar-pm)"/>
+          <path class="l-arrow-pm" d="M902,154 L902,280" marker-end="url(#ar-pm)"/>
+
+          <!-- FINAL OUTPUT -->
+          <rect class="b-io" x="785" y="280" width="225" height="65" rx="10"/>
+          <text class="t-bold" x="897" y="306" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="897" y="326" text-anchor="middle">1 200 mẫu · HR đúng lệnh · chuẩn hóa 0–1</text>
+        </svg>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <h4 style="margin:0 0 6px">Kế thừa và nâng cấp từ LSM-GAN:</h4>
+          <ul class="small">
+            <li><b>Giữ nguyên 3 nhánh kernel 5, 21, 61</b>: Đây là di sản giá trị nhất từ LSM-GAN, giúp mạng học đồng thời đặc trưng 3 cấp thời gian (chi tiết nhú notch, một nhịp co bóp và chuỗi nhịp dài).</li>
+            <li><b>Khắc phục triệt để lỗi trôi nhịp</b>: Thay vì chỉ đưa nhiễu ngẫu nhiên vào 3 nhánh, PhysioMix đưa 5 kênh gồm <code>z</code> và 4 sóng mang hài $\sin/\cos$ từ HR. Nhịp tim do công thức quyết định, mạng chỉ học hình thái.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Vai trò của 8 tầng Dilated ResNet &amp; FiLM:</h4>
+          <ul class="small">
+            <li><b>Mở rộng Receptive Field</b>: Dilation tăng theo cấp số nhân ($1 \to 128$) giúp mạng bao quát ~10 giây tín hiệu mà không cần tầng Pooling làm mất độ mịn dạng sóng.</li>
+            <li><b>Đa dạng miền đo (Multi-domain)</b>: Nhờ FiLM điều biến theo điều kiện $c$, cùng một bộ trọng số mô hình có thể tạo ra PPG ngón tay ICU (BIDMC), ngón tay người trẻ (GXU) hoặc cổ tay vận động rung lắc.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 3: PHYSIOFLOW GENERATOR -->
+  <div class="arch-panel" id="arch-physioflow">
+    <div class="card arch-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">PhysioFlow Generator (Flow Matching 1D U-Net)</h3>
+        <span class="tag ai">Conditional Flow Matching · ODE Solver</span>
+      </div>
+      <p class="small muted" style="margin-top:6px">Thế hệ mô hình khuếch tán/dòng chảy (Flow Matching) mới nhất. Thay vì mạng đối kháng GAN, mô hình dùng mạng 1D U-Net (6,9M tham số) dự đoán trường vận tốc hướng dòng từ nhiễu về tín hiệu thật qua 16 bước giải ODE.</p>
+
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 1020 440" role="img" aria-label="Kiến trúc PhysioFlow Generator">
+          <defs>
+            <marker id="ar-pf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#6b4fbb"/>
+            </marker>
+          </defs>
+          <style>
+            .b-pf-enc { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1.3px; }
+            .b-pf-dec { fill: #ede9fe; stroke: #8b5cf6; stroke-width: 1.3px; }
+            .b-pf-att { fill: #fef3c7; stroke: #d97706; stroke-width: 1.3px; }
+            .l-arrow-pf { stroke: #6b4fbb; stroke-width: 2.2px; fill: none; }
+          </style>
+
+          <!-- INPUT -->
+          <g transform="translate(15, 60)">
+            <rect class="b-io" x="0" y="0" width="170" height="65" rx="8"/>
+            <text class="t-bold" x="85" y="26" text-anchor="middle">Sóng nhiễu x_t</text>
+            <text class="t-sub" x="85" y="46" text-anchor="middle">1 200 mẫu · thời điểm t</text>
+
+            <rect class="b-io" x="0" y="80" width="170" height="65" rx="8"/>
+            <text class="t-bold" x="85" y="106" text-anchor="middle">Khung nhịp Scaffold</text>
+            <text class="t-sub" x="85" y="126" text-anchor="middle">Dựng sẵn từ HR (nếu có)</text>
+
+            <rect class="b-io" x="0" y="160" width="170" height="65" rx="8"/>
+            <text class="t-bold" x="85" y="186" text-anchor="middle">Thời điểm t &amp; Điều kiện</text>
+            <text class="t-sub" x="85" y="206" text-anchor="middle">t in [0, 1] · Dataset, HR</text>
+          </g>
+
+          <!-- U-NET 1D CONTAINER -->
+          <g transform="translate(225, 30)">
+            <rect x="0" y="0" width="540" height="350" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-bold" x="270" y="24" text-anchor="middle" fill="#6b4fbb">1D U-Net Backbone (6,9 triệu tham số)</text>
+
+            <!-- ENCODER STAGES -->
+            <rect class="b-pf-enc" x="20" y="45" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="90" y="63" fill="#1e40af" font-size="11">Enc 1: L=1200 (64k)</text>
+
+            <rect class="b-pf-enc" x="20" y="100" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="90" y="118" fill="#1e40af" font-size="11">Enc 2: L=600 (128k)</text>
+
+            <rect class="b-pf-enc" x="20" y="155" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="90" y="173" fill="#1e40af" font-size="11">Enc 3: L=300 (192k)</text>
+
+            <rect class="b-pf-enc" x="20" y="210" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="90" y="228" fill="#1e40af" font-size="11">Enc 4: L=150 (256k)</text>
+
+            <!-- BOTTLENECK WITH ATTENTION -->
+            <rect class="b-pf-att" x="190" y="275" width="160" height="50" rx="8"/>
+            <text class="t-bold" x="270" y="296" text-anchor="middle" fill="#78350f" font-size="12">Bottleneck (L=75, 320k)</text>
+            <text class="t-sub" x="270" y="313" text-anchor="middle">Self-Attention đa đầu</text>
+
+            <!-- DECODER STAGES -->
+            <rect class="b-pf-dec" x="380" y="210" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="450" y="228" fill="#5b21b6" font-size="11">Dec 4: L=150 (256k)</text>
+
+            <rect class="b-pf-dec" x="380" y="155" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="450" y="173" fill="#5b21b6" font-size="11">Dec 3: L=300 (192k)</text>
+
+            <rect class="b-pf-dec" x="380" y="100" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="450" y="118" fill="#5b21b6" font-size="11">Dec 2: L=600 (128k)</text>
+
+            <rect class="b-pf-dec" x="380" y="45" width="140" height="36" rx="6"/>
+            <text class="t-lyr" x="450" y="63" fill="#5b21b6" font-size="11">Dec 1: L=1200 (64k)</text>
+
+            <!-- SKIP CONNECTIONS -->
+            <path d="M160,63 L380,63" stroke="#94a3b8" stroke-dasharray="4 3" stroke-width="1.2" fill="none"/>
+            <path d="M160,118 L380,118" stroke="#94a3b8" stroke-dasharray="4 3" stroke-width="1.2" fill="none"/>
+            <path d="M160,173 L380,173" stroke="#94a3b8" stroke-dasharray="4 3" stroke-width="1.2" fill="none"/>
+            <path d="M160,228 L380,228" stroke="#94a3b8" stroke-dasharray="4 3" stroke-width="1.2" fill="none"/>
+
+            <path class="l-arrow-pf" d="M90,81 L90,100" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M90,136 L90,155" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M90,191 L90,210" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M90,246 L190,295" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M350,295 L450,246" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M450,210 L450,191" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M450,155 L450,136" marker-end="url(#ar-pf)"/>
+            <path class="l-arrow-pf" d="M450,100 L450,81" marker-end="url(#ar-pf)"/>
+          </g>
+
+          <path class="l-arrow-pf" d="M185,140 L225,140" marker-end="url(#ar-pf)"/>
+
+          <!-- ODE SOLVER & VELOCITY HEAD -->
+          <g transform="translate(800, 65)">
+            <rect class="b-conv" x="0" y="0" width="195" height="45" rx="6"/>
+            <text class="t-lyr t-cconv" x="97" y="18">Conv1D Head (64→1)</text>
+            <text class="t-sub" x="97" y="34" text-anchor="middle">v(x, t) = vector vận tốc</text>
+
+            <rect class="b-io" x="0" y="70" width="195" height="75" rx="8"/>
+            <text class="t-bold" x="97" y="94" text-anchor="middle">Bộ giải ODE (Heun 16 bước)</text>
+            <text class="t-sub" x="97" y="112" text-anchor="middle">x ← x + Δt · v(x, t)</text>
+            <text class="t-sub" x="97" y="130" text-anchor="middle">t chạy từ 1 (nhiễu) → 0 (sóng thật)</text>
+          </g>
+
+          <path class="l-arrow-pf" d="M745,75 L800,88" marker-end="url(#ar-pf)"/>
+          <path class="l-arrow-pf" d="M897,45 L897,70" marker-end="url(#ar-pf)"/>
+          <path class="l-arrow-pf" d="M897,145 L897,250" marker-end="url(#ar-pf)"/>
+
+          <!-- OUTPUT -->
+          <rect class="b-io" x="785" y="250" width="225" height="65" rx="10"/>
+          <text class="t-bold" x="897" y="276" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="897" y="296" text-anchor="middle">1 200 mẫu · độ giống thật vượt trội</text>
+        </svg>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <h4 style="margin:0 0 6px">Cơ chế Flow Matching:</h4>
+          <ul class="small">
+            <li><b>Không cần mạng đối kháng (No Discriminator)</b>: Học trực tiếp ánh xạ từ phân phối chuẩn $\mathcal{N}(0, I)$ về đa tạp dữ liệu thật bằng cách tối thiểu hóa sai số vector trường vận tốc $\|v_\theta(x_t, t) - (\epsilon - x)\|^2$. Quá trình huấn luyện không bao giờ bị sụp đổ mode (mode collapse) như GAN.</li>
+            <li><b>Self-Attention ở tầng sâu</b>: Giúp U-Net nắm bắt mối tương quan xa giữa các chu kỳ mạch đập mà tích chập thông thường khó bao quát hết.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">Kết quả thực nghiệm:</h4>
+          <ul class="small">
+            <li><b>Thắng 4/6 nhóm dữ liệu</b>: PhysioFlow đạt điểm khó phân biệt 64% (so với 38% của PhysioMix), đặc biệt xuất sắc ở dữ liệu ngón tay và bệnh nhân rung nhĩ.</li>
+            <li><b>Hạn chế cổ tay</b>: Ở miền cổ tay vận động rung lắc mạnh, chỉ số bám nhịp của PhysioFlow chưa vượt qua PhysioMix nên theo quy tắc kiểm tra nghiêm ngặt (Frozen Rules), PhysioMix vẫn được giữ làm mô hình chính trong app.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 4: DISCRIMINATOR & CRITIC -->
+  <div class="arch-panel" id="arch-critic">
+    <div class="card arch-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">Mạng phân biệt: LSM-GAN Discriminator &amp; PhysioMix Critic</h3>
+        <span class="tag ai">1D CNN Critic · Spectral Normalization</span>
+      </div>
+      <p class="small muted" style="margin-top:6px">Các mạng nơ-ron đóng vai trò "giám khảo" đánh giá tính chân thực của sóng tổng hợp. File: <code>ml/kaggle_lsm/train_lsm.py</code> và <code>ml/kaggle_multidomain/physio.py</code>.</p>
+
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 980 390" role="img" aria-label="Kiến trúc Discriminator và Critic">
+          <defs>
+            <marker id="ar-cr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#b42318"/>
+            </marker>
+          </defs>
+          <style>
+            .b-cr-conv { fill: #fee2e2; stroke: #ef4444; stroke-width: 1.3px; }
+            .b-cr-norm { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.3px; }
+            .b-cr-act  { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.3px; }
+            .l-arrow-cr { stroke: #b42318; stroke-width: 2.2px; fill: none; }
+            :root[data-theme="dark"] .b-cr-conv { fill: #381a1a; stroke: #f87171; }
+          </style>
+
+          <!-- INPUT -->
+          <rect class="b-io" x="20" y="150" width="170" height="65" rx="8"/>
+          <text class="t-bold" x="105" y="176" text-anchor="middle">Sóng PPG cần chấm</text>
+          <text class="t-sub" x="105" y="196" text-anchor="middle">1 200 mẫu · thật hoặc giả</text>
+
+          <!-- 4 CONV STAGES (STRIDE 2) -->
+          <g transform="translate(230, 40)">
+            <text class="t-bold" x="80" y="14" text-anchor="middle">Tầng 1 (k=4, s=2)</text>
+            <rect class="b-cr-conv" x="0" y="24" width="160" height="30" rx="5"/>
+            <text class="t-lyr" x="80" y="39" fill="#991b1b" font-size="11">Conv1D (1→64)</text>
+            <rect class="b-cr-act" x="0" y="54" width="160" height="26" rx="5"/>
+            <text class="t-lyr t-cact" x="80" y="67" font-size="11">LeakyReLU (0.2)</text>
+            <text class="t-sub" x="80" y="96" text-anchor="middle">1 200 → 600 mẫu</text>
+          </g>
+
+          <g transform="translate(420, 40)">
+            <text class="t-bold" x="80" y="14" text-anchor="middle">Tầng 2 (k=4, s=2)</text>
+            <rect class="b-cr-conv" x="0" y="24" width="160" height="30" rx="5"/>
+            <text class="t-lyr" x="80" y="39" fill="#991b1b" font-size="11">Conv1D (64→128)</text>
+            <rect class="b-cr-norm" x="0" y="54" width="160" height="26"/>
+            <text class="t-lyr t-cnorm" x="80" y="67" font-size="11">BatchNorm1D</text>
+            <rect class="b-cr-act" x="0" y="80" width="160" height="26" rx="5"/>
+            <text class="t-lyr t-cact" x="80" y="93" font-size="11">LeakyReLU (0.2)</text>
+            <text class="t-sub" x="80" y="122" text-anchor="middle">600 → 300 mẫu</text>
+          </g>
+
+          <g transform="translate(610, 40)">
+            <text class="t-bold" x="80" y="14" text-anchor="middle">Tầng 3 (k=4, s=2)</text>
+            <rect class="b-cr-conv" x="0" y="24" width="160" height="30" rx="5"/>
+            <text class="t-lyr" x="80" y="39" fill="#991b1b" font-size="11">Conv1D (128→256)</text>
+            <rect class="b-cr-norm" x="0" y="54" width="160" height="26"/>
+            <text class="t-lyr t-cnorm" x="80" y="67" font-size="11">BatchNorm1D</text>
+            <rect class="b-cr-act" x="0" y="80" width="160" height="26" rx="5"/>
+            <text class="t-lyr t-cact" x="80" y="93" font-size="11">LeakyReLU (0.2)</text>
+            <text class="t-sub" x="80" y="122" text-anchor="middle">300 → 150 mẫu</text>
+          </g>
+
+          <g transform="translate(800, 40)">
+            <text class="t-bold" x="80" y="14" text-anchor="middle">Tầng 4 (k=4, s=2)</text>
+            <rect class="b-cr-conv" x="0" y="24" width="160" height="30" rx="5"/>
+            <text class="t-lyr" x="80" y="39" fill="#991b1b" font-size="11">Conv1D (256→512)</text>
+            <rect class="b-cr-norm" x="0" y="54" width="160" height="26"/>
+            <text class="t-lyr t-cnorm" x="80" y="67" font-size="11">BatchNorm1D</text>
+            <rect class="b-cr-act" x="0" y="80" width="160" height="26" rx="5"/>
+            <text class="t-lyr t-cact" x="80" y="93" font-size="11">LeakyReLU (0.2)</text>
+            <text class="t-sub" x="80" y="122" text-anchor="middle">150 → 75 mẫu</text>
+          </g>
+
+          <!-- ARROWS THROUGH STAGES -->
+          <path class="l-arrow-cr" d="M190,182 L230,80" marker-end="url(#ar-cr)"/>
+          <path class="l-arrow-cr" d="M390,95 L420,95" marker-end="url(#ar-cr)"/>
+          <path class="l-arrow-cr" d="M580,95 L610,95" marker-end="url(#ar-cr)"/>
+          <path class="l-arrow-cr" d="M770,95 L800,95" marker-end="url(#ar-cr)"/>
+
+          <!-- OUTPUT DENSE LAYER -->
+          <g transform="translate(500, 240)">
+            <rect class="b-cr-conv" x="0" y="0" width="220" height="50" rx="8"/>
+            <text class="t-bold" x="110" y="22" text-anchor="middle" fill="#991b1b">Linear Readout Head</text>
+            <text class="t-sub" x="110" y="40" text-anchor="middle">AdaptiveAvgPool / Linear(512→1)</text>
+
+            <rect class="b-io" x="270" y="-8" width="180" height="65" rx="8"/>
+            <text class="t-bold" x="360" y="18" text-anchor="middle">Điểm Phân Biệt</text>
+            <text class="t-sub" x="360" y="36" text-anchor="middle">Thật (Real) vs Giả (Fake)</text>
+          </g>
+
+          <path class="l-arrow-cr" d="M880,180 L880,265 L720,265" marker-end="url(#ar-cr)"/>
+          <path class="l-arrow-cr" d="M720,265 L770,265" marker-end="url(#ar-cr)"/>
+        </svg>
+      </div>
+
+      <div class="callout info" style="margin-top:14px">
+        <b>Đánh giá khách quan:</b> Discriminator không được dùng làm thước đo sinh lý trong app, mà chỉ dùng trong quá trình huấn luyện để ép Generator giảm thiểu các gợn lỗi dạng sóng. Để chấm điểm độc lập khi kiểm thử nghiệm thu, dự án sử dụng mô hình nền tảng <b>PaPaGei-S</b> (ResNet1D-MoE của Nokia Bell Labs, ICLR 2025) cùng bộ 7 chỉ số hình thái tim mạch độc lập.
+      </div>
+    </div>
+  </div>
+</section>
+
 
 <section id="physiomix">
   <h2>3. PhysioMix hoạt động ra sao</h2>

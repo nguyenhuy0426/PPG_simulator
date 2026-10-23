@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giám khảo nghiêm và PhysioFlow-GAN</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .algo { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+  .fig9 { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .fig2-grid svg.chart { margin-bottom: 4px; }
+  .caption { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .paperref { border-left: 3px solid var(--ai); padding: 2px 10px; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
+  #table1 td:nth-child(2) { min-width: 210px; }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Mục lục">
+  <div class="brand">PPG Simulator · GAN</div>
+  <div class="sub">Giám khảo nghiêm · PhysioFlow-GAN</div>
+  <a class="back" href="chi-tiet.html">← Báo cáo kỹ thuật đầy đủ</a>
+  <div class="links">
+    <a href="#summary">0. Tóm tắt và quyết định</a>
+    <a href="#g-fig1">Hình 1 · Quy trình</a>
+    <a href="#table1-sec">Bảng I · Dữ liệu</a>
+    <a href="#fig2-sec">Hình 2 · Ví dụ tín hiệu</a>
+    <a href="#fig3-sec">Hình 3 · Phân bố artifact</a>
+    <a href="#g-fig4">Hình 4 · Kiến trúc</a>
+    <a href="#g-fig5">Hình 5 · Khoảng cách và loss</a>
+    <a href="#g-alg">Thuật toán 1–3</a>
+    <a href="#table2-sec">Bảng II · Kết quả chính</a>
+    <a href="#table3-sec">Bảng III · Siêu tham số</a>
+    <a href="#table4-sec">Bảng IV · Ablation</a>
+    <a href="#fig6-sec">Hình 6 · AUC theo miền</a>
+    <a href="#fig7-sec">Hình 7 · Đường train</a>
+    <a href="#fig8-sec">Hình 8 · Validation → test</a>
+    <a href="#fig9-sec">Hình 9 · Phân bố thật/giả</a>
+    <a href="#limits">Giới hạn</a>
+  </div>
+  <div class="theme"><button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button></div>
+</nav>
+<main>
+<header class="hero">
+  <h1>Giám khảo nghiêm và PhysioFlow-GAN</h1>
+  <p>Hai GAN của app (PhysioMix và LSM-GAN) được train lại với critic mạnh hơn, rồi một bộ phân biệt (giám khảo) train lại từ đầu
+  cho từng nguồn để thử tách tín hiệu giả khỏi tín hiệu của người thật chưa từng thấy. Trang này trình bày theo bố cục bài
+  LSM-GAN (Ding et al., IEEE JBHI 2023): Bảng I–IV, Hình 1–9 và thuật toán chọn mô hình. Chỉ số chính là AUC của giám khảo:
+  0,5 nghĩa là không tách được, 1,0 nghĩa là tách hoàn toàn.</p>
+  <div class="meta" id="hero-meta"></div>
+  <div class="cards" style="margin-top:16px" id="hero-cards"></div>
+</header>
+
+<section id="summary">
+  <h2>0. Tóm tắt và quyết định</h2>
+  <p class="lead">Luật quyết định được ghi lại (kèm mã băm) trước khi train. Validation dùng để chọn; test chỉ được mở một lần sau
+  khi đã lưu quyết định, với cửa sổ, nhãn nhắc, nhiễu sinh và seed giám khảo mới.</p>
+  <div class="grid2" id="decision-box"></div>
+  <div class="paperref">Khác với bài báo: bài báo đo chất lượng mẫu gián tiếp (F1 của bộ phát hiện AF train trên dữ liệu đã tăng cường).
+  Ở đây đo trực tiếp: giám khảo có tách được thật/giả trên người chưa thấy hay không (C2ST).</div>
+</section>
+
+<!-- STATIC g-fig1 -->
+
+<section id="table1-sec">
+  <h2>Bảng I · Số người và số cửa sổ theo tập</h2>
+  <p class="lead">Gói dữ liệu v3: cửa sổ PPG 30 s, lấy mẫu 40 Hz, lọc 0,5–8 Hz rồi chuẩn hoá về [0, 1]. Tách theo người: mỗi người
+  chỉ nằm trong một tập. Các miền ngoài (CapnoBase, PTT) không dùng ở đây.</p>
+  <div class="tablewrap"><table id="table1"></table></div>
+  <h3>Tập của giám khảo (lấy từ sets.json của từng vòng)</h3>
+  <ul class="small" id="table1-judge"></ul>
+</section>
+
+<section id="fig2-sec">
+  <h2>Hình 2 · Ví dụ đoạn PPG, vùng artifact tô tím</h2>
+  <p class="lead">Giống Hình 2 của bài báo: các đoạn 30 s, mỗi đoạn thuộc một nhóm tỷ lệ artifact. Vùng tím do luật SQI theo nhịp
+  đánh dấu (<code>ml/kaggle_multidomain/artifact_sqi.py</code>), không phải nhãn của chuyên gia.</p>
+  <div class="card fig2-grid" id="fig2-real"></div>
+  <h3>Mẫu sinh của từng mô hình, cùng luật đánh dấu</h3>
+  <div class="card fig2-grid" id="fig2-synthetic"></div>
+  <p class="caption">Hình 2: (a) cửa sổ thật của người validation/test; (b) một cửa sổ sinh của mỗi nguồn, nhắc bằng nhãn của người train.</p>
+</section>
+
+<section id="fig3-sec">
+  <h2>Hình 3 · Phân bố cửa sổ theo tỷ lệ artifact</h2>
+  <p class="lead">Bốn nhóm như bài báo: 0%, (0–20%], (20–60%], (60–100%]. (a) dữ liệu thật, AF và không AF; (b) mô hình sinh có tái
+  tạo được tỷ lệ artifact của dữ liệu thật hay không (cùng số cửa sổ và cùng nhãn nhắc như Hình 9).</p>
+  <div class="controls"><div class="seg" id="fig3-split"></div></div>
+  <div class="grid2">
+    <div class="card"><svg class="chart" id="fig3a" viewBox="0 0 520 300"></svg><div class="legend" id="fig3a-legend"></div></div>
+    <div class="card"><div class="tablewrap"><table id="fig3-table"></table></div></div>
+  </div>
+  <h3>Thật so với sinh</h3>
+  <div class="controls"><div class="seg" id="fig3-row"></div></div>
+  <div class="card"><svg class="chart" id="fig3b" viewBox="0 0 900 300"></svg><div class="legend" id="fig3b-legend"></div></div>
+  <p class="caption">Hình 3: số cửa sổ (a) và tỷ lệ cửa sổ (b) theo nhóm artifact.</p>
+</section>
+
+<!-- STATIC g-fig4 -->
+
+<!-- STATIC g-fig5 -->
+
+<!-- STATIC g-alg -->
+
+<section id="table2-sec">
+  <h2>Bảng II · Giám khảo tách thật/giả đến đâu</h2>
+  <p class="lead">AUC trung bình của giám khảo nghiêm (3 seed giám khảo, và 3 seed train với các arm), tỷ lệ “không phân biệt
+  được” = 100(1 − |2AUC − 1|), độ chính xác cân bằng ở ngưỡng logit 0, và AUC của probe nhỏ để đối chiếu. Đậm: AUC thấp nhất
+  (khó phân biệt nhất). Đối chứng null là người thật khác: AUC của nó phải nằm trong [0,40; 0,60] thì phép so sánh mới hợp lệ.</p>
+  <div id="table2-wrap"></div>
+</section>
+
+<section id="table3-sec">
+  <h2>Bảng III · Siêu tham số và checkpoint được chọn</h2>
+  <p class="lead">Cấu hình lấy từ training_execution.json. Bài báo chọn λ1, λ2, F bằng lưới tìm kiếm; ở đây siêu tham số cố định
+  trước khi train, checkpoint chọn theo Thuật toán 1.</p>
+  <div id="table3-wrap"></div>
+  <h3>Mức nhiễu cảm biến σ học được theo miền (PhysioFlow-GAN)</h3>
+  <div id="table3-sigma"></div>
+</section>
+
+<section id="table4-sec">
+  <h2>Bảng IV · Ablation: mỗi bước thay đổi giúp được bao nhiêu</h2>
+  <p class="lead">Đọc từ trên xuống: mỗi dòng thêm một thay đổi so với dòng trên. Δ âm nghĩa là khó phân biệt hơn so với model trong app
+  (tô xanh khi giảm hơn 0,02).</p>
+  <div id="table4-wrap"></div>
+</section>
+
+<section id="fig6-sec">
+  <h2>Hình 6 · AUC theo từng miền dữ liệu</h2>
+  <p class="lead">Tương tự Hình 6 của bài báo (F1 theo mức artifact), nhưng nhóm theo miền dữ liệu; thanh sai số = độ lệch chuẩn giữa
+  các lần chạy giám khảo (và các seed train). Đường gạch: 0,5.</p>
+  <div class="controls"><div class="seg" id="fig6-round"></div><div class="seg" id="fig6-split"></div><div class="seg" id="fig6-kind"></div></div>
+  <div class="card"><svg class="chart" id="fig6" viewBox="0 0 900 340"></svg><div class="legend" id="fig6-legend"></div></div>
+  <h3>Khe LSM-GAN (chỉ BIDMC)</h3>
+  <div class="card"><svg class="chart" id="fig6-lsm" viewBox="0 0 900 300"></svg><div class="legend" id="fig6-lsm-legend"></div></div>
+  <p class="caption">Hình 6: AUC của giám khảo theo miền.</p>
+</section>
+
+<section id="fig7-sec">
+  <h2>Hình 7 · Chỉ số validation trong lúc train</h2>
+  <p class="lead">Tương tự Hình 7 (F1 theo cỡ tập train): các chỉ số MMD đặc trưng dùng để chọn checkpoint, theo bước train; chấm tròn =
+  checkpoint được chọn. Thấp hơn là tốt hơn. Đây không phải AUC của giám khảo.</p>
+  <div class="controls"><div class="seg" id="fig7-family"></div><div class="seg" id="fig7-metric"></div></div>
+  <div class="card"><svg class="chart" id="fig7" viewBox="0 0 900 320"></svg><div class="legend" id="fig7-legend"></div></div>
+  <p class="caption">Hình 7: chỉ số chọn checkpoint theo bước train, mỗi đường một seed.</p>
+</section>
+
+<section id="fig8-sec">
+  <h2>Hình 8 · Từ validation sang test, và giám khảo học nhanh đến đâu</h2>
+  <p class="lead">Tương tự Hình 8 (kiểm định ngoài): (a) AUC trên người validation (dùng để chọn) và trên người test (mở một lần);
+  (b) AUC của giám khảo trên nhóm người “inner” theo bước train của giám khảo.</p>
+  <div class="controls"><div class="seg" id="fig8-slot"></div></div>
+  <div class="grid2">
+    <div class="card"><svg class="chart" id="fig8a" viewBox="0 0 900 300"></svg><div class="legend" id="fig8a-legend"></div></div>
+    <div class="card"><svg class="chart" id="fig8b" viewBox="0 0 520 300"></svg><div class="legend" id="fig8b-legend"></div></div>
+  </div>
+  <p class="caption">Hình 8: (a) validation → test; (b) đường học của giám khảo.</p>
+</section>
+
+<section id="fig9-sec">
+  <h2>Hình 9 · Phân bố thật và giả trên mặt phẳng 2 chiều</h2>
+  <p class="lead">Tương tự Hình 9 (bài báo dùng PaCMAP trên giá trị biên độ). Ở đây dùng t-SNE (scikit-learn; máy chưa cài PaCMAP) trên
+  cùng một lần nhúng cho mọi nguồn: điểm xám là tất cả, điểm màu là nguồn của ô đó. Có thêm lựa chọn đặc trưng phổ log + tự tương
+  quan, không phụ thuộc pha của nhịp.</p>
+  <div class="controls"><div class="seg" id="fig9-row"></div><div class="seg" id="fig9-feat"></div></div>
+  <div class="fig9" id="fig9"></div>
+  <p class="caption">Hình 9: thật (validation) và mẫu sinh, nhúng chung.</p>
+</section>
+
+<section id="limits">
+  <h2>Giới hạn</h2>
+  <ul class="small">
+    <li>Đây là đánh giá kỹ thuật về hình dạng PPG 30 s đã chuẩn hoá. Không phải kiểm định lâm sàng, không đo trên Pi/DAC/OPT101.</li>
+    <li>AUC gần 0,5 chỉ nói giám khảo này, với lượng dữ liệu này, không tách được; không chứng minh hai phân bố giống nhau.</li>
+    <li>Tỷ lệ artifact là luật SQI tự viết, không phải nhãn của chuyên gia như trong bài báo.</li>
+    <li>Số người validation/test của một số miền rất ít (PERform không AF: 1 người; cổ tay: 2 người), nên AUC theo miền dao động lớn.</li>
+    <li>Hình 9 là t-SNE: khoảng cách giữa các cụm không có ý nghĩa định lượng.</li>
+  </ul>
+  <p class="small muted" id="footer-meta"></p>
+</section>
+</main>
+</div>
+<div class="tip" id="tip"></div>
+<script src="gan-data.js"></script>
+<script src="gan-report.js"></script>
+</body>
+</html>
