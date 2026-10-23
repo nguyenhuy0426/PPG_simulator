@@ -1,3 +1,4 @@
+import gc
 import time
 import tkinter as tk
 import customtkinter as ctk
@@ -40,7 +41,10 @@ class CTkApp(ctk.CTk):
         self.engine = SignalEngine.get_instance()
         self._closing = False
         self._shutdown_requested = False
-        compact = self.layout.compact
+        self._tk_gc_pending = False
+        # The "all" tag reaches every Tk window, so each widget destroy (the
+        # Recordings list rebuild, a closed Toplevel) queues one collection.
+        self.bind_all("<Destroy>", self._queue_tk_gc, add="+")
         u = self.layout.ui
         header_pad = u(14)
         # ── Navigation rail (overlays the page when expanded) ──
@@ -62,33 +66,24 @@ class CTkApp(ctk.CTk):
         self.bind("<Button-1>", self.rail.click_outside, add="+")
 
         # ── Page area ──
-        # Compact panels scroll long pages while the rail and footer
-        # stay fixed. The Classic page is laid out to fit 1024x600 without
-        # scrolling, so it lives in a plain host that stretches its plots.
-        self.page_host = ctk.CTkScrollableFrame(self, fg_color="transparent") if compact else ctk.CTkFrame(self, fg_color="transparent")
+        # Every page is laid out to fit 1024x600 without scrolling, so one
+        # plain host stretches their plots to the window height.
+        self.page_host = ctk.CTkFrame(self, fg_color="transparent")
         self.page_host.grid(row=0, column=1, sticky="nsew")
         self.page_host.grid_columnconfigure(0, weight=1)
-        if compact:
-            self.page_host._scrollbar.configure(width=28)
-            self.fixed_host = ctk.CTkFrame(self, fg_color="transparent")
-            self.fixed_host.grid_columnconfigure(0, weight=1)
-            self.fixed_host.grid_rowconfigure(0, weight=1)
-        else:
-            self.page_host.grid_rowconfigure(0, weight=1)
-            self.fixed_host = self.page_host
-        for host in {self.page_host, self.fixed_host}:
-            host.layout = self.layout
-            host.language = self.language
+        self.page_host.grid_rowconfigure(0, weight=1)
+        self.page_host.layout = self.layout
+        self.page_host.language = self.language
         self.frames = {
-            "Pathology": PathologyFrame(self.fixed_host, fg_color="transparent"),
-            "Calibration": CalibrationFrame(self.fixed_host, fg_color="transparent"),
-            "Playback": PlaybackFrame(self.fixed_host, fg_color="transparent"),
+            "Pathology": PathologyFrame(self.page_host, fg_color="transparent"),
+            "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
+            "Playback": PlaybackFrame(self.page_host, fg_color="transparent"),
             "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
-        for host in {self.page_host, self.fixed_host}:
-            host.frames = self.frames
+        self.page_host.frames = self.frames
         self.signal_setup_window = None
         self.signal_setup_panel = None
+        self.signal_setup_visible = False
         # ── Footer: output health and build ──
         footer = ctk.CTkFrame(self, corner_radius=0, fg_color=T.PANEL)
         footer.grid(row=2, column=1, sticky="ew")
@@ -120,6 +115,27 @@ class CTkApp(ctk.CTk):
         self.after_idle(self._maximize_to_work_area)
         self._after_id = self.after(50, self.update_gui)
 
+    def _queue_tk_gc(self, _event=None):
+        """Collect destroyed widgets on the Tk thread, never on an output worker.
+
+        CustomTkinter widgets sit in reference cycles and own objects whose
+        __del__ calls Tcl (CTkFont, tkinter.Variable, PhotoImage). Left for the
+        automatic collector, they are finalized on whichever thread allocates,
+        rarely but possibly SignalDAC or SignalGen. _tkinter then marshals each
+        Tcl call to the Tk thread and waits for it without a timeout: the DAC
+        output stalls while a Tk callback runs, and a Stop pressed at that
+        moment blocks in SignalEngine._stop_thread until its 2 s join fails.
+        Idle time comes after the destroying callback has dropped its references.
+        """
+        if self._closing or self._tk_gc_pending:
+            return
+        self._tk_gc_pending = True
+        self.after_idle(self._collect_tk_garbage)
+
+    def _collect_tk_garbage(self):
+        self._tk_gc_pending = False
+        gc.collect()
+
     def _maximize_to_work_area(self):
         try:
             self.attributes("-zoomed", True)
@@ -136,16 +152,6 @@ class CTkApp(ctk.CTk):
         self.active_frame = self.frames[name]
         self.active_frame.grid(row=0, column=0, sticky="nsew",
                                padx=self.layout.outer_pad, pady=self.layout.outer_pady)
-        host = self.active_frame.master
-        if host is not self.page_host:
-            self.page_host.grid_remove()
-            host.grid(row=0, column=1, sticky="nsew")
-        else:
-            if self.fixed_host is not self.page_host:
-                self.fixed_host.grid_remove()
-            self.page_host.grid()
-        if self.layout.compact and host is self.page_host:
-            self.page_host._parent_canvas.yview_moveto(0)
         self.rail.select(name)
         self.rail.lift()
         if hasattr(self.active_frame, "on_show"):
@@ -164,9 +170,20 @@ class CTkApp(ctk.CTk):
         self.open_signal_setup()
 
     def open_signal_setup(self):
-        """Open the former Signal Setup page as a non-modal floating editor."""
+        """Open the former Signal Setup page as a non-modal floating editor.
+
+        The window is built once and then only hidden and shown again: building
+        its three tabs of CustomTkinter widgets is the slowest UI operation
+        (about 0.25 s on the x86 laptop even without the layout flushes).
+        Showing it reloads every field from the engine, as a new window did.
+        """
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
+            if not self.signal_setup_visible:
+                self.signal_setup_panel.on_show()
+                self.signal_setup_panel.status.configure(text=self.signal_setup_panel.idle_status, text_color=T.MUTED)
+                self.signal_setup_visible = True
+                self.signal_setup_bubble.set_active(True)
             window.deiconify()
             window.lift()
             window.focus_set()
@@ -214,6 +231,7 @@ class CTkApp(ctk.CTk):
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
         self.signal_setup_panel = panel
+        self.signal_setup_visible = True
         self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
@@ -260,8 +278,7 @@ class CTkApp(ctk.CTk):
             return
         self.language = language
         self.title(text(language, "title"))
-        for host in {self.page_host, self.fixed_host}:
-            host.language = language
+        self.page_host.language = language
         for key, text_key, _icon in self.nav_keys:
             self.nav_buttons[key].set_label(text(language, text_key))
         self.signal_setup_bubble.set_label(text(language, "settings_short"))
@@ -320,17 +337,22 @@ class CTkApp(ctk.CTk):
         except OSError:
             log.exception("Could not save UI language")
 
-    def close_signal_setup(self):
+    def close_signal_setup(self, destroy=False):
+        """Hide the editor (kept for the next open); destroy it only on shutdown."""
         window = self.signal_setup_window
         if window is not None and window.winfo_exists():
-            window.destroy()
-        self.signal_setup_window = None
-        self.signal_setup_panel = None
+            if destroy:
+                window.destroy()
+            else:
+                window.withdraw()
+        if destroy or window is None or not window.winfo_exists():
+            self.signal_setup_window = None
+            self.signal_setup_panel = None
+        self.signal_setup_visible = False
         self.signal_setup_bubble.set_active(False)
 
     def toggle_signal_setup(self):
-        window = self.signal_setup_window
-        if window is not None and window.winfo_exists():
+        if self.signal_setup_visible:
             self.close_signal_setup()
         else:
             self.open_signal_setup()
@@ -356,7 +378,7 @@ class CTkApp(ctk.CTk):
         for frame in self.frames.values():
             if hasattr(frame, "periodic_update"):
                 frame.periodic_update()
-        if self.signal_setup_panel is not None:
+        if self.signal_setup_visible:
             self.signal_setup_panel.periodic_update()
             if self._rx_mode_shown[:2] != (self.engine.rx_mode, self.engine.is_running):
                 self._rx_mode_message = None
@@ -400,7 +422,7 @@ class CTkApp(ctk.CTk):
             self.engine.stop_simulation()
         self.frames["Neural"].shutdown()
         if self.signal_setup_window is not None:
-            self.close_signal_setup()
+            self.close_signal_setup(destroy=True)
         self.destroy()
 
     def request_shutdown(self):

@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mô hình PPG tóm tắt</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="simple">
+<main class="simple-main">
+
+<header class="simple-hero">
+  <p class="eyebrow">PPG Simulator · tóm tắt cho người không chuyên · cập nhật 17/10/2026</p>
+  <h1>Máy tạo nhịp tim giả, và AI “vẽ” nhịp tim giỏi đến đâu</h1>
+  <p class="lede">Thiết bị phát ra ánh sáng nhấp nháy giống hệt mạch máu đập dưới đầu ngón tay, để thử các máy đo nhịp tim.
+    Phần AI chỉ làm một việc: <b>vẽ ra dạng sóng nhịp tim (PPG) trông giống của người thật</b>, theo nhịp mình chọn.</p>
+  <div class="flow3" aria-label="Ba bước của hệ thống">
+    <div><span>1</span>Chọn nhịp tim, kiểu người (ngón tay, cổ tay, rung nhĩ…)</div>
+    <div><span>2</span>AI vẽ 30 giây dạng sóng</div>
+    <div><span>3</span>Đèn LED phát sóng đó, cảm biến OPT101 đo lại</div>
+  </div>
+</header>
+
+<section>
+  <h2>Ba câu trả lời nhanh</h2>
+  <div class="answers">
+    <article class="answer now">
+      <p class="k">Model đang chạy trong app</p>
+      <p class="v">PhysioMix (vòng 9)</p>
+      <p>Ổn định, bám nhịp tốt, sóng cổ tay tốt nhất. Là “mốc” mọi model mới phải thắng.</p>
+    </article>
+    <article class="answer best">
+      <p class="k">Giống người thật nhất trong bài kiểm tra</p>
+      <p class="v">PhysioFlow (vòng 4)</p>
+      <p>Thắng ở 4/6 nhóm dữ liệu, nhưng sóng <b>cổ tay</b> chưa bằng PhysioMix nên theo luật chưa được thay.</p>
+    </article>
+    <article class="answer old">
+      <p class="k">Model cũ</p>
+      <p class="v">LSM-GAN</p>
+      <p>Chỉ học một bộ dữ liệu bệnh viện, không chỉnh được nhịp, máy kiểm tra nhận ra là giả gần như 100%.</p>
+    </article>
+  </div>
+</section>
+
+<section>
+  <h2>Ba model AI khác nhau thế nào</h2>
+  <div class="models3">
+    <article>
+      <h3>PhysioMix <span class="tag ai">GAN</span></h3>
+      <p>Hai mạng nơ-ron thi với nhau: <b>một “hoạ sĩ”</b> vẽ sóng, <b>một “giám khảo”</b> (mạng CNN) đoán sóng thật hay giả.
+        Hoạ sĩ học cách qua mặt giám khảo. Vẽ một lần là xong, nên rất nhanh.</p>
+    </article>
+    <article>
+      <h3>PhysioFlow <span class="tag ai">flow matching</span></h3>
+      <p>Không có giám khảo. Bắt đầu từ <b>một nắm nhiễu ngẫu nhiên</b> rồi sửa dần qua 16 bước cho tới khi thành sóng nhịp tim.
+        Giống phác thảo rồi tô dần. Chậm hơn nhưng đa dạng hơn.</p>
+    </article>
+    <article>
+      <h3>LSM-GAN <span class="tag ai">GAN đời đầu</span></h3>
+      <p>Bản GAN đầu tiên của dự án. Chỉ học 32 bệnh nhân của một bệnh viện (BIDMC) và chỉ vẽ trong dải tần hẹp; không có nút chỉnh nhịp.</p>
+    </article>
+  </div>
+
+  <div class="card arch-card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0">Sơ đồ khối kiến trúc đa tỉ lệ (Fig. 4 Multi-Scale Blocks)</h3>
+      <a href="chi-tiet.html#architectures" style="font-size:13px;font-weight:600">Xem phân tích kỹ thuật chi tiết →</a>
+    </div>
+    <p class="small muted" style="margin:0 0 12px">Kiến trúc dạng khối chuẩn của Generator: tách nhiễu ngẫu nhiên qua 3 nhánh tích chập đa tỉ lệ (Short scale: k=5, Middle scale: k=21, Longscale: k=61) rồi ghép kênh và hợp nhất để vẽ nên dạng sóng PPG.</p>
+    
+    <div class="controls" style="margin-bottom:10px">
+      <div class="seg" id="index-arch-seg">
+        <button type="button" class="on" data-target="idx-lsm">LSM-GAN (Hình Fig. 4 gốc)</button>
+        <button type="button" data-target="idx-physiomix">PhysioMix (Mô hình App)</button>
+      </div>
+    </div>
+
+    <div class="arch-legend" style="margin:8px 0 12px">
+      <span class="arch-legend-chip chip-conv">Convolution</span>
+      <span class="arch-legend-chip chip-norm">Batch Norm</span>
+      <span class="arch-legend-chip chip-act">ReLU / SiLU</span>
+      <span class="arch-legend-chip chip-concat">Concatenation</span>
+    </div>
+
+    <div class="arch-panel active" id="idx-lsm">
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 980 430" role="img" aria-label="Kiến trúc LSM-GAN Generator (Fig. 4)">
+          <defs>
+            <marker id="ar-idx-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#7c3aed"/>
+            </marker>
+          </defs>
+          <style>
+            .b-conv { fill: #d4edd4; stroke: #4caf50; stroke-width: 1.3px; }
+            .b-norm { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.3px; }
+            .b-act  { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.3px; }
+            .b-cat  { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1.4px; }
+            .b-io   { fill: var(--soft); stroke: var(--line); stroke-width: 1.4px; }
+            .t-bold { font-family: inherit; font-size: 13px; font-weight: 700; fill: var(--ink); }
+            .t-sub  { font-family: inherit; font-size: 11px; fill: var(--muted); }
+            .t-lyr  { font-family: inherit; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+            .t-cconv { fill: #14532d; }
+            .t-cnorm { fill: #334155; }
+            .t-cact  { fill: #78350f; }
+            .l-arrow { stroke: #7c3aed; stroke-width: 2.2px; fill: none; }
+            :root[data-theme="dark"] .b-conv { fill: #14331d; stroke: #22c55e; }
+            :root[data-theme="dark"] .t-cconv { fill: #86efac; }
+            :root[data-theme="dark"] .b-norm { fill: #1e293b; stroke: #475569; }
+            :root[data-theme="dark"] .t-cnorm { fill: #e2e8f0; }
+            :root[data-theme="dark"] .b-act  { fill: #3c2410; stroke: #b45309; }
+            :root[data-theme="dark"] .t-cact  { fill: #fde68a; }
+            :root[data-theme="dark"] .b-cat  { fill: #172554; stroke: #3b82f6; }
+          </style>
+
+          <rect class="b-io" x="15" y="165" width="180" height="70" rx="10"/>
+          <text class="t-bold" x="105" y="196" text-anchor="middle">Random noise (1200)</text>
+          <text class="t-sub" x="105" y="216" text-anchor="middle">z ~ N(0, 1) · [B, 1, 1200]</text>
+
+          <text class="t-bold" x="340" y="26" text-anchor="middle">Short scale: kernel size = 5</text>
+          <g transform="translate(255, 34)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→80)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (80)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="138" text-anchor="middle">k=5, p=2 · bắt sóng phản xạ &amp; notch</text>
+
+          <text class="t-bold" x="340" y="160" text-anchor="middle">Middle scale: kernel size = 21</text>
+          <g transform="translate(255, 168)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→40)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (40)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="272" text-anchor="middle">k=21, p=10 · bắt trọn 1 chu kỳ tâm thu</text>
+
+          <text class="t-bold" x="340" y="294" text-anchor="middle">Longscale: kernel size = 61</text>
+          <g transform="translate(255, 302)">
+            <rect class="b-conv" x="0" y="0" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="85" y="15">Convolution (1→20)</text>
+            <rect class="b-norm" x="0" y="30" width="170" height="30"/>
+            <text class="t-lyr t-cnorm" x="85" y="45">Batch Norm (20)</text>
+            <rect class="b-act" x="0" y="60" width="170" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="85" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="340" y="406" text-anchor="middle">k=61, p=30 · bắt liên nhịp &amp; đường nền</text>
+
+          <path class="l-arrow" d="M195,185 L225,79 L255,79" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M195,200 L255,213" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M195,215 L225,347 L255,347" marker-end="url(#ar-idx-p)"/>
+
+          <text class="t-bold" x="525" y="86" text-anchor="middle">Concatenation</text>
+          <text class="t-sub" x="525" y="102" text-anchor="middle">140 kênh</text>
+          <g transform="translate(495, 108)">
+            <rect class="b-cat" x="0" y="0" width="60" height="210" rx="8" ry="8"/>
+            <line x1="0" y1="90" x2="60" y2="90" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="155" x2="60" y2="155" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="30" y="45" fill="#1e40af" font-size="11">80 k</text>
+            <text class="t-lyr" x="30" y="122" fill="#1e40af" font-size="11">40 k</text>
+            <text class="t-lyr" x="30" y="182" fill="#1e40af" font-size="11">20 k</text>
+          </g>
+
+          <path class="l-arrow" d="M425,79 L465,79 L495,148" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M425,213 L495,213" marker-end="url(#ar-idx-p)"/>
+          <path class="l-arrow" d="M425,347 L465,347 L495,278" marker-end="url(#ar-idx-p)"/>
+
+          <path class="l-arrow" d="M555,213 L605,213" marker-end="url(#ar-idx-p)"/>
+
+          <g transform="translate(605, 168)">
+            <rect class="b-conv" x="0" y="0" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="75" y="15">Convolution (140→50)</text>
+            <rect class="b-norm" x="0" y="30" width="150" height="30"/>
+            <text class="t-lyr t-cnorm" x="75" y="45">Batch Norm (50)</text>
+            <rect class="b-act" x="0" y="60" width="150" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cact" x="75" y="75">Relu</text>
+          </g>
+          <text class="t-sub" x="680" y="272" text-anchor="middle">k=15, p=7 · hợp nhất 3 thang đo</text>
+
+          <path class="l-arrow" d="M755,213 L795,213" marker-end="url(#ar-idx-p)"/>
+
+          <g transform="translate(795, 183)">
+            <rect class="b-conv" x="0" y="0" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="15">Convolution (50→50)</text>
+            <rect class="b-conv" x="0" y="30" width="155" height="30" rx="6" ry="6"/>
+            <text class="t-lyr t-cconv" x="77" y="45">Convolution (50→1)</text>
+          </g>
+          <text class="t-sub" x="872" y="258" text-anchor="middle">k=4 (Tanh) → k=2 (Tanh)</text>
+
+          <path class="l-arrow" d="M872,243 L872,315" marker-end="url(#ar-idx-p)"/>
+
+          <rect class="b-io" x="765" y="315" width="210" height="65" rx="10"/>
+          <text class="t-bold" x="870" y="342" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="870" y="362" text-anchor="middle">1 200 mẫu · 30 s @ 40 Hz (0–1)</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="arch-panel" id="idx-physiomix">
+      <div class="arch-diagram-wrap">
+        <svg viewBox="0 0 1020 450" role="img" aria-label="Kiến trúc PhysioMix Generator">
+          <defs>
+            <marker id="ar-idx-pm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,1 L9,5 L0,9 z" fill="#1f7a5a"/>
+            </marker>
+          </defs>
+          <style>
+            .b-pm-conv { fill: #d4edd4; stroke: #1f7a5a; stroke-width: 1.3px; }
+            .b-pm-res  { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.3px; }
+            .b-pm-film { fill: #fef3c7; stroke: #d97706; stroke-width: 1.3px; }
+            .l-arrow-pm { stroke: #1f7a5a; stroke-width: 2.2px; fill: none; }
+          </style>
+
+          <g transform="translate(15, 30)">
+            <rect class="b-io" x="0" y="0" width="180" height="60" rx="8"/>
+            <text class="t-bold" x="90" y="26" text-anchor="middle">Nhiễu z (1200)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">1 200 số ngẫu nhiên · seed</text>
+
+            <rect class="b-io" x="0" y="75" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="98" text-anchor="middle">Sóng mang nhịp (4 kênh)</text>
+            <text class="t-sub" x="90" y="118" text-anchor="middle">sin(θ), cos(θ), sin(2θ), sin(3θ)</text>
+            <text class="t-sub" x="90" y="136" text-anchor="middle">khung nhịp dựng sẵn từ HR</text>
+
+            <rect class="b-io" x="0" y="165" width="180" height="65" rx="8"/>
+            <text class="t-bold" x="90" y="190" text-anchor="middle">Điều kiện c</text>
+            <text class="t-sub" x="90" y="210" text-anchor="middle">Tập dữ liệu, HR, HRV, Std</text>
+          </g>
+
+          <g transform="translate(15, 290)">
+            <rect class="b-pm-film" x="0" y="0" width="180" height="75" rx="8"/>
+            <text class="t-bold" x="90" y="24" text-anchor="middle">Style MLP (Phong cách)</text>
+            <text class="t-sub" x="90" y="44" text-anchor="middle">Linear(8+c→48) → SiLU</text>
+            <text class="t-sub" x="90" y="62" text-anchor="middle">→ Linear(48→48) Style Vector</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M195,95 L225,55 L250,55" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,115 L250,150" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,135 L225,245 L250,245" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M105,230 L105,290" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(250, 25)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Short scale (k=5)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=5, p=2)</text>
+          </g>
+
+          <g transform="translate(250, 120)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Middle scale (k=21)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=21, p=10)</text>
+          </g>
+
+          <g transform="translate(250, 215)">
+            <text class="t-bold" x="85" y="16" text-anchor="middle">Longscale (k=61)</text>
+            <rect class="b-pm-conv" x="0" y="24" width="170" height="34" rx="6"/>
+            <text class="t-lyr t-cconv" x="85" y="41">Conv1D (5→16, k=61, p=30)</text>
+          </g>
+
+          <g transform="translate(460, 65)">
+            <text class="t-bold" x="25" y="-12" text-anchor="middle">Concat</text>
+            <rect class="b-cat" x="0" y="0" width="50" height="180" rx="8"/>
+            <line x1="0" y1="60" x2="50" y2="60" stroke="#3b82f6" stroke-width="1.2"/>
+            <line x1="0" y1="120" x2="50" y2="120" stroke="#3b82f6" stroke-width="1.2"/>
+            <text class="t-lyr" x="25" y="30" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="90" fill="#1e40af" font-size="11">16</text>
+            <text class="t-lyr" x="25" y="150" fill="#1e40af" font-size="11">16</text>
+            <text class="t-sub" x="25" y="196" text-anchor="middle">48 k</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M420,65 L460,100" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M420,160 L460,160" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M420,255 L460,220" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(545, 45)">
+            <rect class="b-pm-res" x="0" y="0" width="220" height="235" rx="10"/>
+            <text class="t-bold" x="110" y="24" text-anchor="middle" fill="#5b21b6">8 Khối Residual Giãn Nở (FiLM)</text>
+            <text class="t-sub" x="110" y="44" text-anchor="middle">Dilation: 1, 2, 4, 8, 16, 32, 64, 128</text>
+
+            <rect x="15" y="58" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="73" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <rect x="15" y="94" width="190" height="30" rx="5" fill="#fef3c7" stroke="#d97706"/>
+            <text class="t-lyr t-cact" x="110" y="109" font-size="11">FiLM: h × (1 + 0.1·gain) + 0.1·bias</text>
+
+            <rect x="15" y="130" width="190" height="30" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+            <text class="t-lyr" x="110" y="145" fill="var(--ink)" font-size="11">Dilated Conv1D (48→48, k=3)</text>
+
+            <text class="t-sub" x="110" y="180" text-anchor="middle">Trường tiếp nhận tích lũy: ~10 giây</text>
+            <text class="t-sub" x="110" y="200" text-anchor="middle">FiLM điều biến phong cách theo từng tập</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M510,155 L545,155" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M195,330 L655,330 L655,280" marker-end="url(#ar-idx-pm)"/>
+
+          <g transform="translate(805, 55)">
+            <rect class="b-pm-conv" x="0" y="0" width="195" height="40" rx="6"/>
+            <text class="t-lyr t-cconv" x="97" y="20">Conv1D Head (48→1, k=5)</text>
+
+            <rect class="b-io" x="0" y="55" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="72" fill="var(--ink)" font-size="11.5">+ Sóng mang (hài 1 + 0.3·hài 3)</text>
+            <text class="t-sub" x="97" y="88" text-anchor="middle">Neo biên độ và chu kỳ nhịp</text>
+
+            <rect class="b-io" x="0" y="112" width="195" height="42" rx="6"/>
+            <text class="t-lyr" x="97" y="129" fill="var(--ink)" font-size="11.5">Lọc thông dải FIR (0.5–8.0 Hz)</text>
+            <text class="t-sub" x="97" y="145" text-anchor="middle">Cắt bỏ gợn vi mô không sinh lý</text>
+          </g>
+
+          <path class="l-arrow-pm" d="M765,155 L805,75" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,40 L902,55" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,97 L902,112" marker-end="url(#ar-idx-pm)"/>
+          <path class="l-arrow-pm" d="M902,154 L902,280" marker-end="url(#ar-idx-pm)"/>
+
+          <rect class="b-io" x="785" y="280" width="225" height="65" rx="10"/>
+          <text class="t-bold" x="897" y="306" text-anchor="middle">Synthetic PPG signal</text>
+          <text class="t-sub" x="897" y="326" text-anchor="middle">1 200 mẫu · HR đúng lệnh · chuẩn hóa 0–1</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>“Giống thật” được đo thế nào</h2>
+  <p class="lede">Lấy sóng của <b>những người model chưa từng thấy</b>, trộn với sóng do AI vẽ, rồi cho một mạng CNN tập phân biệt.
+    Nếu CNN đoán đúng không hơn tung đồng xu thì sóng AI <b>khó phân biệt</b> với thật.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt trung bình trên 6 nhóm dữ liệu">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:82%" class="ref"></i></span><b>82%</b></div>
+    <div class="bar"><span class="name">PhysioFlow vòng 4</span><span class="track"><i style="width:64%" class="flow"></i></span><b>64%</b></div>
+    <div class="bar"><span class="name">PhysioMix vòng 9 (app)</span><span class="track"><i style="width:38%" class="mix"></i></span><b>38%</b></div>
+    <div class="bar"><span class="name">LSM-GAN</span><span class="track"><i style="width:0.5%" class="lsm"></i></span><b>~0%</b></div>
+  </div>
+  <p class="note">100% là không thể phân biệt, 0% là lộ hoàn toàn. Trung bình trên 6 nhóm: ngón tay GXU, MIMIC, BIDMC, rung nhĩ, không rung nhĩ, cổ tay.
+    Ngay cả sóng của người thật khác cũng chỉ đạt 82%, vì mỗi nhóm người có đặc điểm riêng.</p>
+  <details class="more">
+    <summary>Xem từng nhóm dữ liệu</summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Nhóm</th><th>Người thật khác</th><th>PhysioFlow</th><th>PhysioMix</th><th>LSM-GAN</th></tr></thead>
+      <tbody>
+        <tr><td>Ngón tay (GXU)</td><td>94%</td><td><b>50%</b></td><td>9%</td><td>0%</td></tr>
+        <tr><td>Bệnh viện lớn (MIMIC)</td><td>97%</td><td><b>91%</b></td><td>37%</td><td>0%</td></tr>
+        <tr><td>Bệnh viện BIDMC</td><td>96%</td><td><b>67%</b></td><td>45%</td><td>0%</td></tr>
+        <tr><td>Rung nhĩ</td><td>56%</td><td><b>82%</b></td><td>7%</td><td>0%</td></tr>
+        <tr><td>Không rung nhĩ</td><td>59%</td><td>39%</td><td><b>80%</b></td><td>0%</td></tr>
+        <tr><td>Cổ tay khi tập</td><td>92%</td><td>52%</td><td>53%</td><td>0%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Nguồn: <code>ml/runs/realism-v1/realism_round10.json</code>. Dữ liệu này đã được dùng nhiều lần để chọn model, nên các con số hơi lạc quan.
+      Đây là đánh giá tín hiệu, không phải kiểm định lâm sàng.</p>
+  </details>
+</section>
+
+<section>
+  <h2>Vì sao chưa thay PhysioMix</h2>
+  <p class="lede">Trước mỗi lần thử, luật chấm được <b>khoá lại</b> để không “chấm theo ý thích”. Model mới phải:</p>
+  <ul class="checks">
+    <li>tốt hơn PhysioMix rõ ràng trên điểm tổng (kết hợp giống thật và bám nhịp), qua cả 3 lần train;</li>
+    <li>không tệ hơn ở sóng cổ tay.</li>
+  </ul>
+  <p>PhysioFlow luôn thắng điểm tổng nhưng <b>trượt điều kiện cổ tay</b>. Nguyên nhân gốc: cổ tay chỉ có <b>83 đoạn 30 giây</b> để học,
+    và tất cả ở nhịp nhanh (101–120 nhịp/phút). Model không có ví dụ nào về cổ tay khi nhịp chậm.</p>
+  <ol class="timeline">
+    <li><b>Vòng 1–3</b> · thử nhiều cách lấy mẫu và cách train → PhysioFlow vượt PhysioMix về điểm tổng.</li>
+    <li><b>Vòng 4</b> · chấm 3 lần train, luật khoá trước → trượt vì cổ tay.</li>
+    <li><b>Vòng 5</b> · sửa nhiễu tần số cao ở cổ tay → cổ tay đẹp, nhưng hết bám nhịp chậm.</li>
+    <li><b>Vòng 6</b> · cân lại → gần qua (cổ tay hụt 0,024).</li>
+    <li><b>Vòng 7</b> · “kéo giãn” sóng cổ tay để dạy nhịp chậm → phản tác dụng.</li>
+  </ol>
+  <p class="callout">Kết luận: <b>thiếu dữ liệu cổ tay</b> mới là nút thắt, không phải do model. Sửa tiếp bằng mẹo train sẽ không đi xa hơn.</p>
+</section>
+
+<section>
+  <h2>Thế giới có model nào tốt hơn không?</h2>
+  <p class="lede">Đã tìm trên arXiv, PubMed, Nature, Kaggle (tháng 10/2026). Chưa có model nào vừa <b>vẽ được PPG</b>, vừa <b>chỉnh được nhịp</b>,
+    vừa <b>công bố trọng số</b> để dùng ngay. Cũng chưa có bài kiểm tra chung để so các model với nhau.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Model (năm)</th><th>Làm gì</th><th>Dùng được cho dự án?</th></tr></thead>
+    <tbody>
+      <tr><td>GPT-PPG (2025)</td><td>Học 200 triệu đoạn PPG bệnh viện; cùng khuôn 30 s, 40 Hz như dự án</td><td>Chưa thấy trọng số công khai</td></tr>
+      <tr><td>UniCardio (2025)</td><td>Chuyển đổi qua lại PPG / ECG / huyết áp</td><td>Không vẽ theo nhịp; chưa có trọng số</td></tr>
+      <tr><td>VAMP-Diff (2026)</td><td>Diffusion vẽ lại PPG, thử trên CapnoBase</td><td>Không chỉnh nhịp; mới là bản thảo</td></tr>
+      <tr><td>PaPaGei, Pulse-PPG (2024–25)</td><td>Model “hiểu” PPG (không vẽ), có trọng số mở</td><td><b>Có</b>: dùng làm giám khảo độc lập</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Bài thi mới: cổ tay đời thường (bước A, đã xong)</h2>
+  <p class="lede">Lấy bộ <b>GalaxyPPG</b>: 24 người đeo đồng hồ khi ngồi nghỉ, làm việc trí óc, đi bộ, chạy. <b>Chưa model nào từng thấy</b> bộ này.
+    Nhịp tim “đáp án” lấy từ đai ngực Polar. Luật chấm được khoá trong code trước khi chấm.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt trên GalaxyPPG">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:89%" class="ref"></i></span><b>89%</b></div>
+    <div class="bar"><span class="name">PhysioMix vòng 9 (app)</span><span class="track"><i style="width:0.7%" class="mix"></i></span><b>0,7%</b></div>
+    <div class="bar"><span class="name">PhysioFlow vòng 4</span><span class="track"><i style="width:0.6%" class="flow"></i></span><b>0,6%</b></div>
+    <div class="bar"><span class="name">LSM-GAN</span><span class="track"><i style="width:0.3%" class="lsm"></i></span><b>0%</b></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Khó phân biệt<br>(cao = tốt)</th><th>Sai lệch hình dạng Q<br>(thấp = tốt)</th><th>Sai nhịp<br>(nhịp/phút)</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác</td><td>89%</td><td>0,08</td><td>1,2</td></tr>
+      <tr><td><b>PhysioMix (app)</b></td><td>0,7%</td><td><b>0,84</b></td><td><b>1,5</b></td></tr>
+      <tr><td>PhysioFlow</td><td>0,6%</td><td>1,33</td><td>1,7</td></tr>
+      <tr><td>LSM-GAN</td><td>0%</td><td>2,13</td><td>14,4</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> cả ba model AI đều <b>bị nhận ra gần như 100%</b> trên sóng cổ tay đời thường. Hai model mới vẫn <b>bám nhịp tốt</b>
+    (sai khoảng 1,5 nhịp/phút); LSM-GAN thì không chỉnh được nhịp. PhysioMix giống hình dạng thật hơn PhysioFlow, nên theo luật <b>PhysioMix vẫn ở lại app</b>.</p>
+  <p class="callout">Điều này khớp với nguyên nhân đã đoán: model chỉ được học <b>83 đoạn cổ tay khi tập thể dục</b> từ một loại thiết bị khác.
+    Điểm cao ở bài kiểm tra cũ không chuyển sang được cổ tay đời thường.</p>
+  <p class="note">Nguồn: <code>ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json</code>, 3 lần chia đôi người. Đánh giá dạng sóng 30 giây đã chuẩn hoá, không phải kiểm định lâm sàng.</p>
+</section>
+
+<section>
+  <h2>Thêm dữ liệu cổ tay rồi train lại (bước B, đã xong)</h2>
+  <p class="lede">Lấy <b>12 người</b> GalaxyPPG cho model học thêm, rồi thi trên <b>12 người còn lại</b> mà model chưa từng thấy.</p>
+  <div class="bars" role="img" aria-label="Điểm khó phân biệt sau khi train lại">
+    <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:71%" class="ref"></i></span><b>71%</b></div>
+    <div class="bar"><span class="name">PhysioFlow train lại</span><span class="track"><i style="width:32%" class="flow"></i></span><b>32%</b></div>
+    <div class="bar"><span class="name">PhysioMix train lại</span><span class="track"><i style="width:3.3%" class="mix"></i></span><b>3%</b></div>
+    <div class="bar"><span class="name">PhysioMix trong app</span><span class="track"><i style="width:0.7%" class="mix"></i></span><b>0,7%</b></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Sai nhịp khi đi bộ</th><th>Sai nhịp khi chạy</th><th>Bài kiểm tra cũ (cổ tay)</th></tr></thead>
+    <tbody>
+      <tr><td>PhysioMix trong app</td><td>9,6</td><td>12,1</td><td>đạt</td></tr>
+      <tr><td>PhysioMix train lại</td><td>1,9</td><td>2,9</td><td><b>tệ đi</b></td></tr>
+      <tr><td><b>PhysioFlow train lại</b></td><td><b>1,5</b></td><td><b>1,9</b></td><td><b>tệ đi</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Sai nhịp tính bằng nhịp/phút, đo trên một lần chia người.</p>
+  <p><b>Đọc thế nào:</b> thêm dữ liệu cổ tay giúp <b>rất nhiều</b>. PhysioFlow train lại giống thật hơn hơn 40 lần
+    (0,7% → 32%), và khi đi bộ hay chạy thì sai nhịp giảm từ khoảng 10 xuống khoảng 2 nhịp/phút.</p>
+  <p class="callout">Nhưng luật đã khoá trước còn một điều kiện: <b>không được tệ đi ở bài kiểm tra cũ</b>. Cả hai model train lại đều tệ đi ở
+    phần cổ tay của bài cũ (4 người tập thể dục, thiết bị khác). Nên <b>app vẫn giữ PhysioMix</b>; không đổi luật sau khi đã thấy điểm.</p>
+  <p class="note">Lý do có thể (chưa kiểm chứng): hai loại cổ tay rất khác nhau đang dùng chung một nhãn “cổ tay”, và 94% dữ liệu là
+    đồng hồ đời thường, nên model “quên” kiểu cổ tay khi tập. Đây mới là một lần train (seed 42).
+    Nguồn: <code>docs/physioflow/loop/galaxy_b_pilot.json</code>.</p>
+</section>
+
+<section>
+  <h2>LSM-GAN học thêm nhiều bộ dữ liệu (bước B2, đã xong)</h2>
+  <p class="lede">Trước đây LSM-GAN chỉ học 1 bộ bệnh viện (BIDMC). Lần này nó học cùng dữ liệu với PhysioMix/PhysioFlow, rồi thi trên cùng 12 người.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>LSM-GAN học gì</th><th>Khó phân biệt</th><th>Sai lệch hình dạng Q</th><th>Sai nhịp</th></tr></thead>
+    <tbody>
+      <tr><td>Chỉ BIDMC (bản trong app)</td><td>0%</td><td>1,99</td><td>16,7</td></tr>
+      <tr><td>Mọi bộ, chưa có GalaxyPPG</td><td>0,2%</td><td>0,83</td><td>15,0</td></tr>
+      <tr><td>Mọi bộ + GalaxyPPG</td><td>1,5%</td><td>0,95</td><td>13,4</td></tr>
+      <tr><td>Chỉ cổ tay + GalaxyPPG</td><td>7,6%</td><td><b>0,76</b></td><td>10,6</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> học nhiều dữ liệu hơn giúp <b>hình dạng sóng</b> của LSM-GAN gần thật hơn rõ (Q giảm từ 1,99 xuống còn khoảng 0,8).
+    Nhưng máy kiểm tra vẫn nhận ra gần hết, và điểm tăng còn nằm trong mức dao động nên theo luật <b>chưa tính là cải thiện</b>.
+    LSM-GAN vẫn <b>sai nhịp 10–17 nhịp/phút</b> vì không có nút chỉnh nhịp (PhysioMix: 1,5). Nên LSM-GAN chỉ để so sánh, không vào app.</p>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/lsm_galaxy.json</code>. Một lần train (seed 42).</p>
+</section>
+
+<section>
+  <h2>Giám khảo có công bằng không? (bước C, đã xong)</h2>
+  <p class="lede">Cho thêm <b>PaPaGei</b>, một mạng nơ-ron đã học hơn 57.000 giờ PPG thật và chưa từng thấy dự án này, chấm cùng đề thi.</p>
+  <ul class="checks">
+    <li>PaPaGei xếp hạng các model <b>gần như y hệt</b> giám khảo của dự án (tương quan thứ hạng 0,88). Giám khảo của dự án không chấm tuỳ tiện.</li>
+    <li>Trên cổ tay đời thường, PhysioMix lộ chủ yếu ở <b>dải 5–8 Hz</b> (kết cấu rung nhỏ, chỉ 1%). Ở dải nhịp chính nó đạt 56–80%.</li>
+    <li>PhysioFlow train lại ở bước B được cả hai giám khảo chấm cao nhất (CNN 35%, PaPaGei 67%; người thật khác 75% và 91%).</li>
+  </ul>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/judges_c.json</code>. Chi tiết, hình và video: <a href="trinh-bay.html">trang trình bày</a>.</p>
+</section>
+
+<section>
+  <h2>Tách hai loại cổ tay (bước D, đã xong lần thử)</h2>
+  <p class="lede">Cho model hai nhãn riêng: “cổ tay khi tập” và “cổ tay đời thường”. 8 người GalaxyPPG để học, 4 người để chọn model, 12 người để thi.</p>
+  <ul class="checks">
+    <li>Hết lỗi của bước B: cả hai model mới <b>không còn tệ đi</b> ở bài kiểm tra cũ.</li>
+    <li>PhysioFlow mới hơn app 29 điểm trên 4 người validation, nhưng luật đòi hơn 32,8 (4 người thì điểm dao động ± 16) → <b>không vào vòng 3 seed, giữ PhysioMix</b>.</li>
+    <li>Chỉ để báo cáo, trên 12 người chưa từng thấy: PhysioFlow mới <b>24%</b> khó phân biệt (app 0,7%), sai lệch hình dạng 0,23 (app 0,85).</li>
+  </ul>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/galaxy_d_pilot.json</code>. Một lần train (seed 42).</p>
+</section>
+
+<section>
+  <h2>Xác nhận PhysioFlow với 6 người validation (bước E, đã xong)</h2>
+  <p class="lede">Khoá luật mới trước khi train: 6 người GalaxyPPG để chọn model (thay vì 4), chấm 5 lần chia, train 3 seed PhysioFlow bước D.</p>
+  <ul class="checks">
+    <li>Cả 3 seed <b>không tệ đi</b> ở bài kiểm tra cũ (trung bình S_arm 0,440, Q cổ tay khi tập 0,585, giới hạn 0,587).</li>
+    <li>Trên 6 người validation, PhysioFlow hơn app <b>25,6 điểm</b> (app 0,05%), 3 seed gần như bằng nhau, nhưng luật đòi hơn 32,5 vì điểm vẫn dao động mạnh giữa các cách chia người (± 16) → <b>giữ PhysioMix vòng 9</b>.</li>
+    <li>Chỉ để báo cáo, trên 12 người chưa từng thấy: PhysioFlow <b>33%</b> khó phân biệt (app 0,4%), sai lệch hình dạng 0,21 (app 0,88).</li>
+  </ul>
+  <p class="note">Nguồn: <code>docs/physioflow/loop/galaxy_e.json</code>. 3 seed, Kaggle 2 × T4, 6,6 giờ. Không đổi luật sau khi thấy điểm.</p>
+</section>
+
+<section>
+  <h2>Kế hoạch tiếp theo</h2>
+  <div class="plan">
+    <article><span class="step">A</span><h3>Bài thi mới, công bằng</h3>
+      <p>Dùng bộ <b>GalaxyPPG</b> (24 người, đồng hồ đeo tay, giấy phép CC BY 4.0) mà chưa model nào từng thấy. Khoá luật chấm trước,
+        rồi chấm lại PhysioMix, PhysioFlow, LSM-GAN.</p><p class="status done">Xong: giữ PhysioMix (xem kết quả ở trên)</p></article>
+    <article><span class="step">B</span><h3>Thêm dữ liệu cổ tay để train</h3>
+      <p>Lấy 12 người GalaxyPPG thêm vào dữ liệu cổ tay (83 → 1293 đoạn 30 giây), train lại PhysioMix và PhysioFlow;
+        12 người còn lại chỉ để thi. Chỉ được vào app nếu thắng PhysioMix hiện tại trên 12 người đó <b>và</b> không tệ đi ở bài kiểm tra cũ.</p>
+      <p class="status done">Xong: tiến bộ lớn trên dữ liệu mới, nhưng trượt bài cũ → giữ PhysioMix</p></article>
+    <article><span class="step">B2</span><h3>LSM-GAN học thêm nhiều bộ dữ liệu</h3>
+      <p>Trước giờ LSM-GAN chỉ học bộ BIDMC. Lần này cho nó học cùng dữ liệu với PhysioMix/PhysioFlow (có và không có GalaxyPPG,
+        và một bản chỉ học cổ tay), rồi thi trên cùng 12 người. LSM-GAN <b>không chỉnh được nhịp</b>, nên dù tốt hơn cũng chỉ để so sánh,
+        không vào app. Câu hỏi: chỉ thêm dữ liệu thì một GAN đơn giản có giống thật hơn không?</p>
+      <p class="status done">Xong: hình dạng tốt hơn, vẫn không chỉnh được nhịp → chỉ để so sánh</p></article>
+    <article><span class="step">D</span><h3>Tách hai loại cổ tay</h3>
+      <p>Cho model hai nhãn riêng: “cổ tay khi tập” và “cổ tay đời thường”, để học cái mới mà không quên cái cũ.
+        Khoá luật mới trước, rồi train lại và chấm cả hai bài thi.</p>
+      <p class="status done" id="plan-d">Xong lần thử: không còn tệ đi ở bài cũ, PhysioFlow 0,7% → 24% trên người chưa thấy; chưa đủ chắc theo luật → giữ PhysioMix</p></article>
+    <article><span class="step">C</span><h3>Giám khảo độc lập</h3>
+      <p>Thêm PaPaGei (model PPG mở của Nokia Bell Labs) làm giám khảo thứ hai, để điểm không phụ thuộc vào giám khảo tự làm.</p>
+      <p class="status done">Xong: hai giám khảo xếp hạng gần như nhau (xem ở trên)</p></article>
+  </div>
+  <div class="plan">
+    <article><span class="step">E</span><h3>Xác nhận PhysioFlow bước D</h3>
+      <p>Khoá luật mới với 6 người validation và 5 lần chia, rồi train 3 seed PhysioFlow bước D (6,6 giờ GPU).</p>
+      <p class="status done" id="plan-e">Xong: giữ được bài cũ, hơn app 25,6 điểm nhưng ngưỡng 32,5 → giữ PhysioMix</p></article>
+  </div>
+  <p class="callout info">Khi nào chốt? Model nào thắng bài thi mới theo luật đã khoá thì vào app. Nếu không model nào thắng rõ, giữ PhysioMix vòng 9.</p>
+</section>
+
+<section>
+  <h2>Từ điển nhỏ</h2>
+  <dl class="gloss">
+    <dt>PPG</dt><dd>Dạng sóng ánh sáng đi qua mạch máu; mỗi nhịp tim là một “gợn sóng”.</dd>
+    <dt>Train / validation / test</dt><dd>Dữ liệu để học / để chọn model / để thi lần cuối. Test phải là người model chưa từng thấy.</dd>
+    <dt>Seed</dt><dd>Một lần train với khởi đầu ngẫu nhiên khác. Train 3 seed để chắc kết quả không do may mắn.</dd>
+    <dt>Fine-tune</dt><dd>Train tiếp một model đã có trên dữ liệu mới, thay vì train lại từ đầu.</dd>
+  </dl>
+</section>
+
+<footer class="simple-foot">
+  <a class="cta" href="trinh-bay.html">Trang trình bày (hình, video, cách mạng nơ-ron hoạt động) →</a>
+  <a class="cta" href="chi-tiet.html">Xem báo cáo kỹ thuật đầy đủ →</a>
+  <button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button>
+  <p class="note">Không có kết quả nào trên trang này là kiểm định lâm sàng hay đo trên phần cứng Pi/DAC/OPT101.</p>
+</footer>
+</main>
+<script>
+(() => {
+  const root = document.documentElement, btn = document.getElementById('theme');
+  try { const t = sessionStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  btn.addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { sessionStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  });
+
+  const archSeg = document.getElementById('index-arch-seg');
+  if (archSeg) {
+    const archBtns = archSeg.querySelectorAll('button');
+    archBtns.forEach((b) => {
+      b.addEventListener('click', () => {
+        archBtns.forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        const targetId = b.getAttribute('data-target');
+        document.querySelectorAll('#idx-lsm, #idx-physiomix').forEach((p) => {
+          p.classList.toggle('active', p.id === targetId);
+        });
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

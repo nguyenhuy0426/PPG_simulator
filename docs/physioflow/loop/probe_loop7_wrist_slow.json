@@ -1,0 +1,189 @@
+{
+ "loop": 7,
+ "purpose": "Vòng 6 hụt rào cổ tay (Q 3 seed 0,597 > 0,573). Trọng số 0,3 cho cổ tay giống thật hơn (pilot 0,501) nhưng cổ tay khoá hài khi nhịp chậm. Tìm cách dạy bám nhịp chậm ở cổ tay khi train.",
+ "evaluation": "laptop CPU; cửa sổ train (Conditions v2: chỉ split train); nhịp đo bằng flow.window_peaks (luật khung nhịp của dữ liệu thật) và labels.beat_stats (bộ đo của tiêu chí C, chỉ để đối chiếu)",
+ "wrist_training_scaffolds": {
+  "windows": 11,
+  "subjects": {
+   "wrist:s6": 5,
+   "wrist:s9": 6
+  },
+  "label_bpm": [
+   99,
+   113,
+   119,
+   119,
+   121,
+   103,
+   102,
+   103,
+   102,
+   102,
+   102
+  ]
+ },
+ "f10_final_history": {
+  "note": "(nghìn bước, Q cổ tay, C) theo từng seed: C tăng khi train lâu",
+  "seed42": [
+   [
+    4,
+    0.74,
+    0.021
+   ],
+   [
+    10,
+    0.67,
+    0.072
+   ],
+   [
+    14,
+    0.57,
+    0.103
+   ],
+   [
+    20,
+    0.64,
+    0.19
+   ]
+  ],
+  "seed123": [
+   [
+    4,
+    0.74,
+    0.056
+   ],
+   [
+    12,
+    0.63,
+    0.028
+   ],
+   [
+    20,
+    0.81,
+    0.132
+   ]
+  ],
+  "seed2026": [
+   [
+    4,
+    0.72,
+    0.046
+   ],
+   [
+    8,
+    0.55,
+    0.037
+   ],
+   [
+    20,
+    0.7,
+    0.065
+   ]
+  ]
+ },
+ "uniform_stretch": {
+  "note": "giãn đều cả cửa sổ (dạng sóng kéo dài theo nhịp), lọc lại 0,5–8 Hz; [nhịp gốc, đích, beat_stats]",
+  "examples": [
+   [
+    113,
+    42,
+    61
+   ],
+   [
+    103,
+    50,
+    142
+   ],
+   [
+    102,
+    58,
+    114
+   ],
+   [
+    102,
+    42,
+    114
+   ]
+  ],
+  "finding": "Chính cửa sổ cổ tay thật, khi giãn đều, bị đọc ~gấp đôi: đỉnh phụ của sóng cổ tay tách xa khi nhịp chậm. Giãn đều sẽ dạy đúng lỗi khoá hài nên bị loại."
+ },
+ "diastole_stretch": {
+  "note": "chỉ kéo dài pha tâm trương: 0,5 s sau đỉnh và 0,1 s trước đỉnh kế giữ nguyên thời gian (như PhysioMix giữ SYSTOLE); beat_stats theo đích",
+  "s6": {
+   "target_40": [
+    41,
+    48,
+    41,
+    37,
+    38
+   ],
+   "target_60": [
+    62,
+    64,
+    60,
+    54,
+    60
+   ],
+   "target_80": [
+    83,
+    85,
+    76,
+    73,
+    86
+   ]
+  },
+  "s9": {
+   "target_40": [
+    69,
+    62,
+    68,
+    70,
+    61,
+    64
+   ],
+   "target_60": [
+    107,
+    91,
+    111,
+    103,
+    106,
+    108
+   ],
+   "target_80": [
+    149,
+    143,
+    149,
+    153,
+    154,
+    142
+   ]
+  },
+  "finding": "s6 bám đích; s9 có một nhịp tuần hoàn không gắn với mạch (đọc nhanh hơn đích ở mọi mức), nên mỗi bản giãn phải qua đúng luật khung nhịp của dữ liệu thật (window_peaks, sai số max(6 bpm, 10%))."
+ },
+ "slow_bank": {
+  "copies": 87,
+  "targets_bpm": "40–115, bước 5",
+  "per_target": {
+   "40": 9,
+   "45": 6,
+   "50–90": "5–6 (chủ yếu s6)",
+   "95": 11,
+   "100": 6,
+   "105–115": 3
+  },
+  "beat_stats_at_40": [
+   43,
+   55,
+   45,
+   39,
+   46,
+   69,
+   66,
+   70,
+   66
+  ],
+  "note": "Bản sao chỉ từ cửa sổ train. Ở 40 bpm, 4/9 bản của s9 qua window_peaks nhưng beat_stats đọc ~66–70: hai bộ dò đỉnh khác nhau ở tín hiệu mơ hồ; dùng luật khung nhịp của train, không dùng bộ đo của tiêu chí."
+ },
+ "change": "Vòng 7: thay một nửa số hàng cổ tay có khung nhịp trong mỗi batch bằng một bản đã giãn tâm trương (đích 40 bpm..nhịp gốc), điều kiện nhịp đi theo. Hai nhánh: loss dải chặn 0,3 (F11) và 0,1 (F12). Ngưỡng go chặt hơn, khoá trước khi chạy: Q cổ tay ≤ 0,546 (rào final 0,573 trừ 1 SD seed 0,027) và S_arm ≤ 0,487.",
+ "caveat": "Không có cổ tay thật dưới ~95 bpm có khung nhịp: phần này cải thiện bám lệnh nhịp, không chứng minh hình dạng sóng cổ tay ở nhịp chậm là thật."
+}

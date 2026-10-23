@@ -1,0 +1,283 @@
+"""GalaxyPPG fresh-test preparation: session cutting, Polar clock alignment, app prompts and the frozen rule."""
+import io
+import json
+import zipfile
+
+import numpy as np
+import pytest
+
+from ml.kaggle_multidomain import fresh_galaxy as fg
+
+T0 = 1_710_000_000_000  # ms, UTC
+
+
+def _zip(path, rate_bpm=72., polar_offset_ms=fg.POLAR_OFFSET_MS, events=True):
+    """One participant: 4 min of a 64 Hz pulse-like BVP, a rest and a running session, 1 Hz Polar HR."""
+    t = np.arange(0, 240, 1/fg.E4_FS)
+    phase = 2*np.pi*rate_bpm/60*t
+    bvp = np.sin(phase)+.35*np.sin(2*phase+.8)
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("Dataset/Meta.csv", "UID,AGE,GENDER,TSST,SSST,GalaxyWatch\nP01,25,M,5,6,R\n")
+        z.writestr("Dataset/P01/E4/BVP.csv", "value,timestamp\n"+"".join(
+            f"{v:.4f},{int((T0+1000*s)*1000)}\n" for v, s in zip(bvp, t)))
+        z.writestr("Dataset/P01/PolarH10/HR.csv", "phoneTimestamp,hr,hrv\n"+"".join(
+            f"{T0+polar_offset_ms+1000*s},{rate_bpm},1.0\n" for s in range(240)))
+        if events:
+            z.writestr("Dataset/P01/Event.csv", "timestamp,session,status\n"
+                       f"{T0},baseline,ENTER\n{T0+120_000},baseline,EXIT\n"
+                       f"{T0+120_000},running,ENTER\n{T0+240_000},running,EXIT\n")
+    return path
+
+
+def test_prepare_cuts_sessions_and_aligns_the_polar_clock(tmp_path):
+    pack, manifest = fg.prepare(_zip(tmp_path/"g.zip"), tmp_path/"out", md5=None)
+    assert manifest["per_group"]["rest"] == 4 and manifest["per_group"]["jogging_running"] == 4
+    assert set(pack["subject"]) == {"galaxyppg:P01"}
+    # The Korean-local Polar clock lines up only with the +9 h offset; at offset 0 nothing overlaps.
+    assert np.allclose(pack["polar_hr"], 72.) and np.isnan(pack["polar_hr_utc"]).all()
+    assert manifest["ppg_vs_polar_median_abs_bpm"]["polar_hr"] < 3
+    assert manifest["ppg_vs_polar_median_abs_bpm"]["polar_hr_utc"] is None
+    assert pack["signal"].shape[1] == 1200 and pack["signal"].min() >= 0 and pack["signal"].max() <= 1
+
+
+def test_prepare_rejects_a_wrong_archive(tmp_path):
+    with pytest.raises(ValueError, match="checksum"):
+        fg.prepare(_zip(tmp_path/"g.zip"), tmp_path/"out")
+
+
+def test_participant_without_events_is_kept_but_unlabeled(tmp_path):
+    pack, manifest = fg.prepare(_zip(tmp_path/"g.zip", events=False), tmp_path/"out", md5=None)
+    assert manifest["per_group"]["unlabeled"] == len(pack["signal"]) == 8
+
+
+def test_wrist_prompts_follow_the_app_condition_contract():
+    meta = json.loads(open("assets/neural/manifest.json").read())["physiomix"]
+    t = np.arange(1200)/40
+    signal = np.stack([.5+.5*np.sin(2*np.pi*r/60*t) for r in (60, 150)]).astype(np.float32)
+    rows, rates = fg.wrist_prompts(meta, signal, np.array([65., np.nan]))
+    domains = len(meta["domains"])
+    assert rows.shape == (2, domains+5)
+    assert (rows[:, :domains].argmax(1) == meta["domains"].index("wrist")).all()
+    assert np.allclose(rows[:, domains:domains+2], 1)
+    # Polar HR wins where present; otherwise the PPG consensus rate of the window.
+    assert rates[0] == 65. and abs(rates[1]-150) < 3
+    assert np.allclose(rows[:, -3]*meta["scale"][0]+meta["center"][0], rates, atol=1e-3)
+
+
+def _summary(flow_ind, flow_q=.6, flow_rate=1., sd=2.):
+    entry = lambda ind, q, rate: dict(indistinguishable=dict(mean=ind, sd=sd), Q=dict(mean=q, sd=0),
+                                      rate_error_median_bpm=dict(mean=rate, sd=0))
+    return dict(physiomix=entry(40., .6, 1.), physioflow=entry(flow_ind, flow_q, flow_rate))
+
+
+@pytest.mark.parametrize("flow_ind,flow_q,flow_rate,app", [
+    (45., .6, 1., "physioflow"),   # gap 5 > 2 x SD 2
+    (43., .6, 1., "physiomix"),    # gap 3 within noise
+    (60., .7, 1., "physiomix"),    # wrist Q worse by 0.1
+    (60., .6, 4., "physiomix"),    # rate error worse by 3 bpm
+])
+def test_frozen_rule(flow_ind, flow_q, flow_rate, app):
+    assert fg.decide(_summary(flow_ind, flow_q, flow_rate))["app_model"] == app
+
+
+def test_person_split_is_fixed_and_disjoint():
+    people = [f"galaxyppg:P{i:02d}" for i in range(1, 25)]
+    split = fg.person_split(people)
+    assert split == fg.person_split(list(reversed(people)))
+    assert sum(v == "train" for v in split.values()) == 12 and set(split.values()) == {"train", "external"}
+
+
+def test_step_b_rule_needs_fresh_gain_and_no_old_validation_regression():
+    from ml.kaggle_multidomain.experiment_galaxy import decide_b
+    entry = lambda ind, q, rate: dict(indistinguishable=dict(mean=ind, sd=1.), Q=dict(mean=q, sd=0),
+                                      rate_error_median_bpm=dict(mean=rate, sd=0))
+    summary = dict(physiomix=entry(1., .8, 1.5), physiomix_g=entry(30., .4, 1.5), physioflow_g=entry(30., .4, 1.5))
+    ok, bad = dict(ok=True), dict(ok=False)
+    decision = decide_b(summary, dict(physiomix_g=ok, physioflow_g=bad))
+    assert decision["go"] == ["physiomix_g"]
+    summary["physiomix_g"] = entry(2.5, .4, 1.5)  # gain 1.5 within 2 x SD
+    assert decide_b(summary, dict(physiomix_g=ok, physioflow_g=ok))["go"] == ["physioflow_g"]
+
+
+def test_unmeasurable_rate_is_saved_as_null_and_fails_the_rule():
+    assert fg.median_or_none(np.array([np.nan, np.nan])) is None
+    assert fg.median_or_none(np.array([np.nan, 2., 4.])) == 3.
+    halving = dict(indistinguishable=1., Q=.5, fidelity=.5, coverage=.5, rate_error_median_bpm=None, rate_within_5bpm=0.)
+    summary = fg.summarize([dict(physioflow=halving), dict(physioflow=dict(halving, rate_error_median_bpm=1.))])
+    assert summary["physioflow"]["rate_error_median_bpm"] == dict(mean=None, sd=None)
+    json.dumps(summary, allow_nan=False)
+    flow_unmeasurable = _summary(60.)
+    flow_unmeasurable["physioflow"]["rate_error_median_bpm"] = dict(mean=None, sd=None)
+    assert fg.decide(flow_unmeasurable)["app_model"] == "physiomix"
+
+
+def test_lsm_arms_split_rows_by_dataset_and_never_use_external():
+    from ml.kaggle_multidomain.experiment_lsm_galaxy import arm_masks
+    pack = dict(subject=np.array(["galaxyppg:P01", "galaxyppg:P02", "w1", "f1", "f2", "f3"]),
+                domain=np.array(["wrist", "wrist", "wrist", "gxu_finger", "gxu_finger", "gxu_finger"]),
+                split=np.array(["train", "external", "train", "train", "validation", "test"]))
+    rows = lambda arm, split: list(np.flatnonzero(arm_masks(pack, arm)[split]))
+    assert rows("lsm_v3_all", "train") == [2, 3]
+    assert rows("lsm_v3g_all", "train") == [0, 2, 3] and rows("lsm_v3g_all", "validation") == [4]
+    assert rows("lsm_v3g_wrist", "train") == [0, 2] and rows("lsm_v3g_wrist", "test") == []
+
+
+def test_lsm_rule_is_report_only_and_needs_a_clear_gain():
+    from ml.kaggle_multidomain.experiment_lsm_galaxy import decide_lsm
+    entry = lambda ind: dict(indistinguishable=dict(mean=ind, sd=1.))
+    summary = dict(lsm_gan=entry(0.), lsm_v3_all=entry(1.5), lsm_v3g_all=entry(10.), lsm_v3g_wrist=entry(3.))
+    decision = decide_lsm(summary)
+    assert decision["app_eligible"] == []
+    assert not decision["more_data_vs_app_lsm"]["lsm_v3_all"]["helped"]
+    assert decision["galaxy_vs_no_galaxy"]["lsm_v3g_all"]["helped"] and decision["galaxy_helped"]
+    assert not decision["galaxy_vs_no_galaxy"]["lsm_v3g_wrist"]["helped"]
+
+
+def _v3g_like():
+    galaxy = [f"galaxyppg:P{i:02d}" for i in range(1, 9)]
+    subject = np.array(galaxy+["w1", "f1"])
+    split = np.array(["train"]*6+["external"]*2+["train", "validation"])
+    pack = dict(signal=np.zeros((10, 4), np.float32), subject=subject, split=split,
+                domain=np.array(["wrist"]*9+["gxu_finger"]))
+    manifest = dict(protocol="ppg_physiomix_v3g", windows_sha256="x",
+                    galaxyppg=dict(people=dict(train=galaxy[:6], external=galaxy[6:])))
+    return pack, manifest
+
+
+def test_daily_wrist_pack_separates_the_device_and_moves_four_training_people_to_validation():
+    pack, manifest = _v3g_like()
+    out, derived = fg.daily_wrist(pack, manifest)
+    galaxy = np.char.startswith(out["subject"], "galaxyppg:")
+    assert (out["domain"][galaxy] == fg.DAILY_DOMAIN).all() and out["domain"][8] == "wrist"
+    people = derived["galaxyppg"]["people"]
+    assert len(people["validation"]) == fg.DAILY_VALIDATION_PEOPLE and len(people["train"]) == 2
+    assert people["external"] == manifest["galaxyppg"]["people"]["external"]
+    assert set(people["validation"]) <= set(manifest["galaxyppg"]["people"]["train"])
+    assert derived["protocol"] == "ppg_physiomix_v3d" and derived["windows_sha256"] == "x"
+    assert pack["domain"][0] == "wrist"  # the loaded pack is not modified in place
+    again, derived_again = fg.daily_wrist(*_v3g_like())
+    assert derived_again["content_sha256"] == derived["content_sha256"]
+    with pytest.raises(ValueError):
+        fg.daily_wrist(pack, dict(manifest, protocol="ppg_physiomix_v3"))
+
+
+def test_daily_prompts_use_the_named_domain():
+    meta = dict(domains=["gxu_finger", "wrist", "wrist_daily"], center=[80., .05, .2], scale=[15., .05, .05],
+                domain_defaults=dict(wrist=[.05, .2], wrist_daily=[.08, .2]), condition_version="v2",
+                hr_support_bpm=[40., 180.], prompt_domain="wrist_daily")
+    t = np.arange(1200)/40
+    rows, _ = fg.wrist_prompts(meta, (.5+.5*np.sin(2*np.pi*t)).astype(np.float32)[None], np.array([60.]))
+    assert rows[0, :3].tolist() == [0., 0., 1.]
+
+
+def _entry(ind, q=.4, rate=1.5, sd=1.):
+    return dict(indistinguishable=dict(mean=ind, sd=sd), Q=dict(mean=q, sd=0), rate_error_median_bpm=dict(mean=rate, sd=0))
+
+
+def test_step_d_pilot_rule_uses_validation_only_and_picks_the_more_realistic_recipe():
+    from ml.kaggle_multidomain.experiment_daily import decide_pilot
+    summary = dict(physiomix=_entry(1., .8), physiomix_d=_entry(20.), physioflow_d=_entry(30.))
+    ok, bad = dict(ok=True), dict(ok=False)
+    decision = decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=ok))
+    assert decision["go"] == ["physiomix_d", "physioflow_d"] and decision["final_recipe"] == "physioflow_d"
+    decision = decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=bad))
+    assert decision["go"] == ["physiomix_d"] and decision["final_recipe"] == "physiomix_d"
+    summary["physiomix_d"] = _entry(2.5)  # gain 1.5 within 2 x SD
+    summary["physioflow_d"] = _entry(30., q=.9)  # Q not lower than the app's
+    assert decide_pilot(summary, dict(physiomix_d=ok, physioflow_d=ok))["final_recipe"] is None
+
+
+def test_step_d_final_rule_pools_seeds_and_ships_the_best_passing_seed():
+    from ml.kaggle_multidomain.experiment_daily import decide_final
+    seeds = (42, 123, 2026)
+    summary = dict(physiomix=_entry(1., .8), **{f"physioflow_d_seed{s}": _entry(v) for s, v in zip(seeds, (28., 34., 31.))})
+    row = lambda s_arm, wrist, eligible=True: dict(S_arm=s_arm, wrist_Q=wrist, eligible=eligible,
+                                                   ok=bool(eligible and s_arm <= .559 and wrist <= .587))
+    validation = {"physioflow_d_seed42": row(.50, .55), "physioflow_d_seed123": row(.50, .62),
+                  "physioflow_d_seed2026": row(.50, .55)}
+    decision = decide_final(summary, validation, "physioflow_d", seeds)
+    # Seed 123 is the most realistic but misses the wrist-exercise limit on its own; mean wrist Q 0.573 passes.
+    assert decision["ship"] and decision["shipped"] == "physioflow_d_seed2026"
+    validation["physioflow_d_seed42"] = row(.50, .55, eligible=False)
+    assert not decide_final(summary, validation, "physioflow_d", seeds)["ship"]
+
+
+def _twelve_train_people():
+    galaxy = [f"galaxyppg:P{i:02d}" for i in range(1, 25)]
+    subject = np.array(galaxy+["w1"])
+    split = np.array(["train"]*12+["external"]*12+["train"])
+    pack = dict(signal=np.arange(25*4, dtype=np.float32).reshape(25, 4), subject=subject, split=split,
+                domain=np.array(["wrist"]*25))
+    manifest = dict(protocol="ppg_physiomix_v3g", windows_sha256="x",
+                    galaxyppg=dict(people=dict(train=galaxy[:12], external=galaxy[12:])))
+    return pack, manifest
+
+
+def test_step_e_pack_moves_six_training_people_and_keeps_the_step_d_pack():
+    pack, manifest = _twelve_train_people()
+    e, e_manifest = fg.daily_wrist(pack, manifest, "ppg_physiomix_v3e")
+    d, d_manifest = fg.daily_wrist(pack, manifest)
+    people = e_manifest["galaxyppg"]["people"]
+    assert e_manifest["protocol"] == "ppg_physiomix_v3e" and e_manifest["galaxyppg"]["daily_split_seed"] == 20261017
+    assert len(people["validation"]) == 6 and len(people["train"]) == 6
+    assert people["external"] == manifest["galaxyppg"]["people"]["external"]
+    assert len(d_manifest["galaxyppg"]["people"]["validation"]) == 4
+    assert e_manifest["content_sha256"] != d_manifest["content_sha256"]
+    assert fg.daily_wrist(*_twelve_train_people(), "ppg_physiomix_v3e")[1]["content_sha256"] == e_manifest["content_sha256"]
+    assert e["split"][-1] == "train" and e["domain"][-1] == "wrist"  # non-GalaxyPPG rows are untouched
+    with pytest.raises(ValueError):
+        fg.daily_wrist(*_v3g_like(), "ppg_physiomix_v3e")  # 6 validation people would leave none to train
+
+
+def test_derived_packs_match_their_pinned_content():
+    from pathlib import Path
+    from ml.kaggle_multidomain.data_gxu import load_input
+    from ml.kaggle_multidomain.experiment_v3 import DERIVED_CONTENT_SHA256, PACKS
+    root = Path(__file__).resolve().parents[1]/"ml"/"runs"/"halovie-datasets-v2"
+    if not (root/"ppg-physio3g-data-v1"/"windows.npz").exists():
+        pytest.skip("local v3g pack not present")
+    for protocol in ("ppg_physiomix_v3d", "ppg_physiomix_v3e"):
+        _, manifest = load_input(root, protocol)
+        assert manifest["windows_sha256"] == PACKS[protocol]
+        assert manifest["content_sha256"] == DERIVED_CONTENT_SHA256[protocol]
+    _, manifest = load_input(root, "ppg_physiomix_v3e")
+    assert manifest["galaxyppg"]["people"]["validation"] == [
+        "galaxyppg:P04", "galaxyppg:P08", "galaxyppg:P15", "galaxyppg:P20", "galaxyppg:P21", "galaxyppg:P22"]
+
+
+def _seed_rows(values, sd=4., q=.4, rate=1.5):
+    from ml.kaggle_multidomain.experiment_e import name
+    return {name(s): _entry(v, q, rate, sd) for s, v in zip((42, 123, 2026), values)}
+
+
+def _old_rows(*wrist, eligible=(True, True, True)):
+    from ml.kaggle_multidomain.experiment_e import name
+    return {name(s): dict(S_arm=.45, wrist_Q=w, eligible=e, ok=bool(e and w <= .587))
+            for s, w, e in zip((42, 123, 2026), wrist, eligible)}
+
+
+def test_step_e_rule_needs_a_gain_beyond_seed_and_halving_noise():
+    from ml.kaggle_multidomain.experiment_e import decide, RULE_E
+    from ml.kaggle_multidomain.experiment_v3 import DERIVED_CONTENT_SHA256
+    assert DERIVED_CONTENT_SHA256["ppg_physiomix_v3e"] in RULE_E and "5 halvings" in RULE_E
+    assert "S_arm <= 0.559" in RULE_E and "Q <= 0.587" in RULE_E and "reported only" in RULE_E
+    app = dict(physiomix=_entry(1., .8, sd=.5))
+    old = _old_rows(.55, .60, .55)
+    decision = decide(dict(app, **_seed_rows((28., 34., 31.))), old)
+    # Seed SD 3, halving SD 4 -> margin 8 < gap 30. Seed 123 is the most realistic but misses wrist Q on its own.
+    assert decision["margin"] == pytest.approx(8.) and decision["gap"] == pytest.approx(30.)
+    assert decision["ship"] and decision["shipped"] == "physioflow_e_seed2026"
+    # The per-seed halving SD alone can block the gain (step D's failure mode).
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), sd=16.)), old)["checks"]["realism"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), q=.9)), old)["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.), rate=4.)), old)["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.))), _old_rows(.55, .60, .55, eligible=(1, 0, 1)))["ship"]
+    assert not decide(dict(app, **_seed_rows((28., 34., 31.))), _old_rows(.60, .60, .60))["ship"]  # mean wrist Q
+
+
+def test_step_e_rule_fails_an_unmeasurable_summary():
+    from ml.kaggle_multidomain.experiment_e import decide
+    rows = _seed_rows((28., 34., 31.))
+    rows["physioflow_e_seed123"]["indistinguishable"] = dict(mean=None, sd=None)
+    decision = decide(dict(physiomix=_entry(1., .8, sd=.5), **rows), _old_rows(.55, .55, .55))
+    assert decision["margin"] is None and not decision["checks"]["realism"] and not decision["ship"]

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI vẽ sóng PPG</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="trinh-bay.css">
+</head>
+<body class="simple pres">
+<main class="simple-main">
+
+<header class="simple-hero pres-hero">
+  <p class="eyebrow">PPG Simulator · bản trình bày cho khách hàng · cập nhật <span id="updated">17/10/2026</span></p>
+  <h1>AI vẽ sóng nhịp tim cho máy giả lập PPG: cách nó hoạt động và được chấm điểm ra sao</h1>
+  <p class="lede">Máy giả lập phát ánh sáng nhấp nháy giống mạch máu đập, để thử các thiết bị đo nhịp tim. Mạng nơ-ron trong máy làm một việc:
+    <b>vẽ ra 30 giây sóng PPG giống của người thật</b>, theo nhịp tim và kiểu người mình chọn.</p>
+  <nav class="pres-nav" aria-label="Mục lục">
+    <a href="#dang-lam">Đang làm gì</a><a href="#physiomix">PhysioMix vẽ sóng</a><a href="#gan">Hoạ sĩ & giám khảo</a>
+    <a href="#physioflow">PhysioFlow</a><a href="#train">Video train</a><a href="#cham">Chấm điểm</a>
+    <a href="#buoc-c">Bước C</a><a href="#buoc-d">Bước D</a><a href="#buoc-e">Bước E</a><a href="#ket-luan">Kết luận</a>
+  </nav>
+</header>
+
+<section id="dang-lam">
+  <h2>Chúng tôi đang làm gì</h2>
+  <p class="lede">Model trong app hiện nay (PhysioMix vòng 9) vẽ tốt sóng ngón tay và sóng bệnh viện, nhưng trên <b>đồng hồ cổ tay đời thường</b> thì
+    máy kiểm tra nhận ra là giả gần như 100%. Hai việc đang làm:</p>
+  <div class="pres-two">
+    <article class="pres-card c">
+      <p class="k">Bước C · kiểm tra lại “giám khảo”</p>
+      <h3>Giám khảo của mình có thật sự hiểu PPG?</h3>
+      <p>Thêm hai giám khảo độc lập: <b>PaPaGei</b> (mạng nơ-ron của Nokia Bell Labs đã học 57.000 giờ PPG thật) và một bộ
+        <b>đo chỉ số sinh lý</b> viết riêng. Đồng thời xem giám khảo cũ dựa vào dải tần số nào để bắt lỗi.</p>
+      <p class="status done" id="c-status">Xong: giám khảo của dự án đúng hướng; lỗi nằm ở dải 5–8 Hz</p>
+    </article>
+    <article class="pres-card d">
+      <p class="k">Bước D · tách hai loại cổ tay</p>
+      <h3>Cho model học cổ tay đời thường mà không quên cổ tay khi tập</h3>
+      <p>Thêm nhãn mới “cổ tay đời thường” (đồng hồ Empatica E4 của bộ GalaxyPPG) bên cạnh “cổ tay khi tập”, train lại PhysioMix và PhysioFlow
+        trên GPU. Luật chọn model <b>khoá trong code trước khi train</b> và chỉ dùng dữ liệu validation.</p>
+      <p class="status done" id="d-status">Xong lần thử: tiến bộ rõ, nhưng chưa đủ chắc theo luật → giữ PhysioMix. Bước E (6 người, 3 seed): vẫn chưa qua luật</p>
+    </article>
+  </div>
+  <ol class="pres-timeline" aria-label="Thời gian biểu">
+    <li><b>A</b> Bài thi mới GalaxyPPG <span class="ok">xong</span></li>
+    <li><b>B</b> Thêm dữ liệu cổ tay <span class="ok">xong · không qua luật</span></li>
+    <li><b>B2</b> LSM-GAN học nhiều dữ liệu <span class="ok">xong · chỉ để so</span></li>
+    <li><b>C</b> Giám khảo độc lập <span class="ok" id="c-chip">xong</span></li>
+    <li><b>D</b> Tách hai loại cổ tay <span class="ok" id="d-chip">xong · chưa qua luật</span></li>
+    <li><b>E</b> Xác nhận với 6 người, 3 seed <span class="ok" id="e-chip">xong · chưa qua luật</span></li>
+  </ol>
+</section>
+
+<section id="physiomix">
+  <h2>Mạng nơ-ron PhysioMix vẽ một sóng như thế nào</h2>
+  <p class="lede">Đây là đúng model đang chạy trong app (checkpoint vòng 9, mã băm khớp với file trong app). Bấm từng bước để xem tín hiệu
+    <b>thật sự</b> ở bên trong mạng khi nó vẽ một sóng ngón tay 72 nhịp/phút (8 giây đầu).</p>
+  <div class="stepper">
+    <div class="stepper-head">
+      <button type="button" id="mix-prev" aria-label="Bước trước">‹</button>
+      <div id="mix-dots" class="dots"></div>
+      <button type="button" id="mix-next" aria-label="Bước sau">›</button>
+      <input type="range" id="mix-step" min="0" value="0" aria-label="Chọn bước">
+    </div>
+    <h3 id="mix-title"></h3>
+    <canvas id="mix-canvas" class="wave" aria-label="Tín hiệu ở bước đang chọn"></canvas>
+    <p id="mix-text" class="step-text"></p>
+  </div>
+  <figure class="pres-fig">
+    <figcaption>So sánh: một sóng ngón tay <b>thật</b> của người chưa dùng để train</figcaption>
+    <canvas id="real-canvas" class="wave short" aria-label="Sóng PPG thật"></canvas>
+  </figure>
+  <p class="note">Hình tĩnh cả 7 bước để đưa vào slide: <a href="media/physiomix-7-buoc.png">media/physiomix-7-buoc.png</a>
+    (mỗi ô tự co giãn trục dọc; phần chi tiết TCN thật ra nhỏ hơn nhịp mạch nhiều).</p>
+  <details class="more">
+    <summary>Kiến trúc chi tiết (cho kỹ sư)</summary>
+    <svg class="arch" viewBox="0 0 860 210" role="img" aria-label="Sơ đồ kiến trúc PhysioMix">
+      <g class="box in"><rect x="10" y="20" width="150" height="70" rx="10"/><text x="85" y="48">Lệnh: kiểu người,</text><text x="85" y="66">nhịp, độ không đều, biên độ</text></g>
+      <g class="box in"><rect x="10" y="120" width="150" height="70" rx="10"/><text x="85" y="150">Nhiễu z</text><text x="85" y="168">1200 số ngẫu nhiên</text></g>
+      <g class="box"><rect x="200" y="20" width="160" height="70" rx="10"/><text x="280" y="48">Dựng dãy nhịp</text><text x="280" y="66">(khoảng cách nhịp, pha)</text></g>
+      <g class="box ai"><rect x="200" y="120" width="160" height="70" rx="10"/><text x="280" y="148">Mạng “phong cách”</text><text x="280" y="166">MLP → FiLM</text></g>
+      <g class="box ai"><rect x="400" y="20" width="200" height="170" rx="10"/><text x="500" y="60">8 khối TCN giãn</text><text x="500" y="80">(dilation 1…128,</text><text x="500" y="98">nhìn ~25 giây)</text><text x="500" y="130">→ biên độ + pha</text><text x="500" y="148">của 6 sóng hài</text><text x="500" y="166">+ chi tiết ±0,15</text></g>
+      <g class="box"><rect x="640" y="20" width="200" height="70" rx="10"/><text x="740" y="48">Cộng: nhịp mạch + chi tiết</text><text x="740" y="66">+ chuyển động cổ tay</text></g>
+      <g class="box out"><rect x="640" y="120" width="200" height="70" rx="10"/><text x="740" y="148">Lọc 0,5–8 Hz, chuẩn hoá</text><text x="740" y="166">→ 30 s, 40 Hz → DAC</text></g>
+      <path class="arrow" d="M160 55 H200 M160 155 H200 M360 55 H400 M360 155 H400 M600 55 H640 M740 90 V120"/>
+    </svg>
+    <p class="note">PhysioMixR: 0,16 triệu tham số, vẽ một sóng 30 s mất vài mili giây trên CPU. Nhịp tim được <b>dựng sẵn</b> từ lệnh rồi mới
+      cho mạng vẽ hình dạng, nên nhịp luôn bám đúng lệnh. Mã: <code>ml/kaggle_multidomain/physio.py</code> (<code>PhysioMixR</code>).</p>
+  </details>
+</section>
+
+<section id="gan">
+  <h2>GAN: một “hoạ sĩ” và một “giám khảo” cùng học</h2>
+  <div class="gan-loop" aria-label="Vòng lặp train GAN">
+    <div class="g1"><b>Hoạ sĩ (generator)</b><br>PhysioMix ở trên. Vẽ sóng theo lệnh.</div>
+    <div class="arrow">sóng giả →</div>
+    <div class="g2"><b>Giám khảo (critic)</b><br>Mạng CNN nhìn sóng ở 3 độ phân giải, đọc cả lệnh, cho điểm “giống thật”.</div>
+    <div class="arrow">← sóng thật</div>
+    <div class="g3"><b>Dữ liệu thật</b><br>Hơn 6.000 đoạn 30 s của người thật (ngón tay, bệnh viện, rung nhĩ, cổ tay).</div>
+    <div class="feedback">↺ Giám khảo trả điểm về cho hoạ sĩ: “chỗ này chưa giống”. Hoạ sĩ sửa, giám khảo khó tính hơn, lặp lại 20.000 lần.</div>
+  </div>
+  <p>Mỗi bước train (20.000 bước): giám khảo học phân biệt sóng thật và sóng giả; hoạ sĩ học sửa sóng để giám khảo cho điểm cao hơn.
+    Giám khảo còn được hỏi “sóng này có <b>đúng lệnh</b> không” (nhịp 60 mà vẽ 120 là bị trừ điểm). Ngoài ra có thêm một phép phạt về phổ tần số và tự tương quan,
+    để sóng giả có cùng “nhịp điệu” với sóng thật của cùng nhóm.</p>
+  <details class="more">
+    <summary>Giám khảo trong GAN được thiết kế ra sao</summary>
+    <ul>
+      <li>3 mạng CNN con (mỗi mạng 4 lớp tích chập, 16→128 kênh, có spectral normalization để học ổn định), nhìn sóng ở 40 Hz, 20 Hz và 10 Hz.</li>
+      <li>Ngoài sóng còn nhìn <b>đạo hàm bậc 1 và bậc 2</b> (độ dốc, độ cong): chỗ sóng giả hay lộ.</li>
+      <li>Lệnh (kiểu người, nhịp…) được chiếu vào đặc trưng (projection), nên giám khảo chấm “giống thật <i>với lệnh này</i>”.</li>
+      <li>Phạt R1 để giám khảo không quá “gắt” làm hỏng việc học.</li>
+    </ul>
+  </details>
+  <div class="pres-two">
+    <figure class="pres-fig">
+      <figcaption>Cuối quá trình train, giám khảo chấm 96 sóng <span class="sw real">thật</span> và 96 sóng <span class="sw fake">giả</span></figcaption>
+      <canvas id="critic-canvas" class="wave" aria-label="Biểu đồ điểm của giám khảo"></canvas>
+    </figure>
+    <div class="pres-callout">
+      <p class="big"><span id="critic-auc">–</span></p>
+      <p>là khả năng giám khảo xếp một sóng thật trên một sóng giả (50% = đoán mò). Cuối train, giám khảo <b>bị hoạ sĩ qua mặt</b>,
+        đúng như GAN được thiết kế. Vì vậy <b>không thể dùng chính giám khảo này để chấm điểm</b>: cần giám khảo khác, độc lập (phần “Chấm điểm” bên dưới).</p>
+      <p class="note">Run PhysioMix ở bước B (cùng công thức với app, seed 42), trọng số ở bước cuối, sóng validation ngón tay.</p>
+    </div>
+  </div>
+</section>
+
+<section id="physioflow">
+  <h2>PhysioFlow: không có giám khảo, sửa nhiễu dần thành sóng</h2>
+  <p class="lede">PhysioFlow (flow matching) bắt đầu từ <b>đúng một nắm nhiễu</b> như PhysioMix, rồi một mạng U-Net 1D đoán “nên dịch mỗi điểm về hướng nào”
+    và đi 16 bước nhỏ cho tới khi thành sóng. Lúc train, nó chỉ học đoán hướng đi từ nhiễu tới sóng thật, không cần giám khảo.</p>
+  <div class="flowbox">
+    <div class="flow-controls">
+      <button type="button" id="flow-play" class="play">▶ Chạy</button>
+      <input type="range" id="flow-step" min="0" value="0" aria-label="Bước khử nhiễu">
+      <span id="flow-label" class="muted"></span>
+    </div>
+    <p class="mini">Mẫu hiện tại (còn nhiễu)</p>
+    <canvas id="flow-canvas" class="wave short" aria-label="Mẫu ở bước đang chọn"></canvas>
+    <p class="mini">Mạng đoán sóng sạch cuối cùng sẽ là</p>
+    <canvas id="flow-clean" class="wave short" aria-label="Dự đoán sóng sạch"></canvas>
+  </div>
+  <figure class="pres-fig">
+    <video controls preload="metadata" width="880" height="360" src="media/physioflow-tu-nhieu-thanh-song.mp4"></video>
+    <figcaption>Video (MP4) của cùng quá trình, để chiếu khi trình bày. Model PhysioFlow vòng 4 (checkpoint trùng mã băm trong app), cùng nhiễu và lệnh với ví dụ PhysioMix.</figcaption>
+  </figure>
+  <p class="note">Ưu: sóng đa dạng hơn, giống thật hơn ở 4/6 nhóm dữ liệu cũ. Nhược: phải chạy U-Net 32 lần, chậm hơn PhysioMix khoảng 100 lần
+    (vài giây cho 30 s sóng), nên app chạy nó ở tiến trình riêng.</p>
+</section>
+
+<section id="train">
+  <h2>Video quá trình train</h2>
+  <p class="lede">Trong lúc train ở bước D, cứ 500 bước model vẽ lại <b>cùng một nhiễu, cùng một lệnh</b> (72 nhịp/phút) cho ba kiểu người.
+    Kéo thanh trượt để thấy sóng thay đổi từ lúc mới học tới lúc học xong.</p>
+  <p id="snap-missing" class="callout info">Sẽ có khi lần train bước D trên GPU xong.</p>
+  <div id="snap-box" hidden>
+    <div class="flow-controls">
+      <label>Model <select id="snap-model"></select></label>
+      <button type="button" id="snap-play" class="play">▶ Chạy</button>
+      <input type="range" id="snap-step" min="0" value="0" aria-label="Bước train">
+      <span id="snap-label" class="muted"></span>
+    </div>
+    <div id="snap-panels" class="snap-panels"></div>
+    <p class="mini" id="snap-curve-label"></p>
+    <canvas id="snap-curve" class="wave tiny" aria-label="Điểm validation theo bước train"></canvas>
+    <div id="snap-videos" class="pres-two">
+      <figure class="pres-fig"><video controls preload="metadata" width="880" height="560" src="media/train-PhysioMix.mp4"></video>
+        <figcaption>Video: PhysioMix học 20.000 bước (ngón tay, cổ tay khi tập, cổ tay đời thường)</figcaption></figure>
+      <figure class="pres-fig"><video controls preload="metadata" width="880" height="560" src="media/train-PhysioFlow.mp4"></video>
+        <figcaption>Video: PhysioFlow học 20.000 bước, cùng nhiễu và cùng lệnh</figcaption></figure>
+    </div>
+    <p class="note">Lần train pilot bước D trên Kaggle (2 × T4, seed 42). Đường cam: điểm validation dùng để chọn checkpoint.</p>
+  </div>
+</section>
+
+<section id="cham">
+  <h2>Chấm “giống thật” bằng cách nào</h2>
+  <p class="lede">Ý tưởng: trộn sóng thật của <b>người model chưa từng thấy</b> với sóng AI, rồi cho một giám khảo mới tập phân biệt.
+    Nếu nó đoán không hơn tung đồng xu, sóng AI <b>khó phân biệt</b> với thật (100% = hoàn toàn không phân biệt được).</p>
+  <div class="judges">
+    <article><p class="k">Giám khảo 1 · đang dùng</p><h3>CNN nhỏ học từ đầu</h3>
+      <p>3 lớp tích chập (16→32→32 kênh), ~11 nghìn tham số, nhìn sóng + độ dốc + độ cong, mỗi lần nhìn ~1 giây. Học 600 bước trên vài trăm đoạn,
+        tách theo người để không “học thuộc” người.</p>
+      <p class="pro">Rất nhạy: bắt được mọi khác biệt nhỏ.</p><p class="con">Không biết trước PPG là gì: lỗi nhỏ vô hại cũng bị coi là “giả”.</p></article>
+    <article><p class="k">Giám khảo 2 · bước C</p><h3>PaPaGei (mạng nền tảng PPG)</h3>
+      <p>ResNet 1D 18 khối, 5,8 triệu tham số, đã học hơn 57.000 giờ PPG thật từ các bộ dữ liệu công khai (Nokia Bell Labs, 2024). Giữ nguyên, không train lại;
+        chỉ đọc “cảm nhận” 512 chiều của nó về mỗi đoạn 10 giây.</p>
+      <p class="pro">Đã thấy rất nhiều PPG thật: nhìn như người có kinh nghiệm.</p><p class="con">Học chủ yếu dữ liệu bệnh viện và giấc ngủ (VitalDB, MIMIC-III, MESA), ít cổ tay.</p></article>
+    <article><p class="k">Giám khảo 3 · bước C</p><h3>Chỉ số sinh lý</h3>
+      <p>Đo trực tiếp trên từng nhịp: thời gian lên đỉnh, khấc mạch đôi (dicrotic notch), tỉ số b/a của đạo hàm bậc 2, độ thay đổi biên độ,
+        độ giống nhau giữa các nhịp, độ đều nhịp.</p>
+      <p class="pro">Dễ hiểu, gắn với sinh lý.</p><p class="con">Chỉ nhìn vài đặc điểm, không thay được hai giám khảo kia.</p></article>
+  </div>
+</section>
+
+<section id="buoc-c">
+  <h2>Bước C: giám khảo của mình có công bằng không?</h2>
+  <div id="c-results">
+  <p class="lede">Cùng một đề thi, ba giám khảo chấm riêng. Đề chính: <b>12 người GalaxyPPG</b> (đồng hồ cổ tay đời thường) mà không model nào được
+    học hay dùng để chọn; chia đôi người 3 lần. Số càng cao càng giống thật (100% = không phân biệt được).</p>
+  <div class="tablewrap"><table class="scoregrid">
+    <thead><tr><th>Nguồn sóng</th><th>Giám khảo 1<br>CNN của dự án</th><th>Giám khảo 2<br>PaPaGei</th><th>Hình dạng nhịp<br>(khoảng cách tới thật*)</th></tr></thead>
+    <tbody>
+      <tr><td>Người thật khác (mức trần)</td><td>75 ± 23%</td><td>91 ± 6%</td><td>1,0×</td></tr>
+      <tr><td><b>PhysioMix trong app</b></td><td class="lo">1 ± 1%</td><td class="lo">10 ± 1%</td><td>8,2×</td></tr>
+      <tr><td>PhysioFlow vòng 4</td><td class="lo">4,5 ± 2%</td><td class="lo">3 ± 1%</td><td>8,9×</td></tr>
+      <tr><td>PhysioMix train lại (bước B)</td><td>6 ± 3%</td><td>26 ± 4%</td><td>2,5×</td></tr>
+      <tr><td><b>PhysioFlow train lại (bước B)</b></td><td class="hi">35 ± 7%</td><td class="hi">67 ± 6%</td><td class="hi">1,5×</td></tr>
+      <tr><td>LSM-GAN</td><td class="lo">0%</td><td class="lo">0%</td><td>5,4×</td></tr>
+      <tr><td>Gaussian (không AI)</td><td class="lo">0%</td><td class="lo">0%</td><td>6,1×</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">* Độ giống nhau giữa các nhịp trong một đoạn, so với khoảng cách giữa hai người thật (1,0× = xa như sóng của một người khác).</p>
+  <div class="pres-two">
+    <article class="pres-card c"><p class="k">Kết luận 1</p><h3>Giám khảo của dự án chấm “đúng hướng”</h3>
+      <p>PaPaGei đã học 57.000 giờ PPG thật và <b>không hề được train trên dự án này</b>, nhưng xếp hạng các model gần như y hệt giám khảo CNN:
+        tương quan thứ hạng <b>0,88</b> trên 22 cặp (model × bộ dữ liệu), 0,80–1,00 trong từng bộ. Model nào CNN chê thì PaPaGei cũng chê.</p></article>
+    <article class="pres-card c"><p class="k">Kết luận 2</p><h3>CNN khắt khe hơn, và khắt khe ở chi tiết nhỏ</h3>
+      <p>Cho CNN chỉ nhìn một dải tần mỗi lần: với PhysioMix trên cổ tay đời thường, dải nhịp chính (0,5–3 Hz) đạt <b>56–80%</b>,
+        nhưng dải <b>5–8 Hz</b> chỉ <b>1%</b>. Hình dạng nhịp gần đúng; cái lộ ra là “kết cấu” rung nhỏ của tín hiệu đồng hồ thật.</p></article>
+  </div>
+  <figure class="pres-fig">
+    <figcaption>Điểm “khó phân biệt” của giám khảo CNN khi chỉ được nhìn một dải tần (12 người GalaxyPPG, trung bình 3 lần chia)</figcaption>
+    <div class="bands" role="img" aria-label="Điểm theo dải tần">
+      <div class="bandrow head"><span></span><span>0,5–1,5 Hz<br><small>nhịp cơ bản</small></span><span>1,5–3 Hz<br><small>hài bậc 2</small></span><span>3–5 Hz<br><small>chi tiết hình dạng</small></span><span>5–8 Hz<br><small>kết cấu nhỏ</small></span></div>
+      <div class="bandrow"><span>Người thật khác</span><i style="--v:76">76%</i><i style="--v:82">82%</i><i style="--v:75">75%</i><i style="--v:89">89%</i></div>
+      <div class="bandrow"><span>PhysioMix (app)</span><i style="--v:56">56%</i><i style="--v:80">80%</i><i style="--v:52">52%</i><i style="--v:1">1%</i></div>
+      <div class="bandrow"><span>PhysioFlow (app)</span><i style="--v:74">74%</i><i style="--v:66">66%</i><i style="--v:43">43%</i><i style="--v:17">17%</i></div>
+      <div class="bandrow"><span>PhysioFlow (bước B)</span><i style="--v:82">82%</i><i style="--v:87">87%</i><i style="--v:86">86%</i><i style="--v:81">81%</i></div>
+    </div>
+  </figure>
+  <details class="more"><summary>Trên các bộ dữ liệu cũ (người chưa dùng để train, 1 lần chấm)</summary>
+    <div class="tablewrap"><table class="scoregrid">
+      <thead><tr><th>Bộ dữ liệu</th><th>Thật khác<br>CNN · PaPaGei</th><th>PhysioMix<br>CNN · PaPaGei</th><th>PhysioFlow<br>CNN · PaPaGei</th></tr></thead>
+      <tbody>
+        <tr><td>Ngón tay (GXU)</td><td>92 · 96</td><td>10 · 18</td><td>51 · 59</td></tr>
+        <tr><td>Bệnh viện lớn (MIMIC)</td><td>96 · 90</td><td>47 · 30</td><td>85 · 95</td></tr>
+        <tr><td>Bệnh viện BIDMC</td><td>97 · 87</td><td>53 · 34</td><td>73 · 72</td></tr>
+        <tr><td>Cổ tay khi tập</td><td>95 · 97</td><td>39 · 6</td><td>48 · 67</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Nguồn: <code>docs/physioflow/loop/judges_c.json</code> (CPU laptop, 192 đoạn mỗi nhóm). PaPaGei-S: trọng số Zenodo 13983110,
+      kiểm tra md5; mã BSD-3 của Nokia Bell Labs. Không dùng để chọn model.</p>
+  </details>
+  <p class="callout">Việc cần làm tiếp suy ra từ bước C: giữ giám khảo CNN (nó đúng hướng) nhưng báo cáo kèm PaPaGei; với cổ tay đời thường,
+    cần dạy model đúng kết cấu 5–8 Hz của đồng hồ thật. Đó chính là việc của bước D (cho model học dữ liệu đồng hồ dưới nhãn riêng).</p>
+  </div>
+</section>
+
+<section id="buoc-d">
+  <h2>Bước D: tách hai loại cổ tay</h2>
+  <div id="d-results">
+  <p class="lede">Model có thêm nhãn <b>“cổ tay đời thường”</b> (8 người GalaxyPPG để học, 4 người để chọn model), vẫn giữ nhãn “cổ tay khi tập”.
+    Train lại cả hai model một lần (seed 42, 2,7 giờ trên 2 GPU T4). Luật đã khoá trước khi train.</p>
+  <div class="tablewrap"><table class="scoregrid">
+    <thead><tr><th>Điều kiện (chỉ dùng validation)</th><th>PhysioMix bước D</th><th>PhysioFlow bước D</th></tr></thead>
+    <tbody>
+      <tr><td>Không tệ đi ở bài kiểm tra cũ (Q cổ tay khi tập ≤ 0,587)</td><td class="hi">0,558 ✓</td><td class="hi">0,574 ✓</td></tr>
+      <tr><td>Điểm tổng bài cũ S_arm ≤ 0,559 (thấp = tốt)</td><td class="hi">0,502 ✓</td><td class="hi">0,439 ✓</td></tr>
+      <tr><td>Khó phân biệt trên 4 người validation: hơn app &gt; 2 × độ dao động</td><td class="lo">7,2% so với 0,4% (cần hơn 11,4) ✗</td><td class="lo">29,2% so với 0,4% (cần hơn 32,8) ✗</td></tr>
+      <tr><td>Sai lệch hình dạng Q thấp hơn app (1,05)</td><td class="hi">0,79 ✓</td><td class="hi">0,55 ✓</td></tr>
+      <tr><td>Sai nhịp không tệ hơn quá 2 nhịp/phút</td><td class="hi">0,9 ✓</td><td class="hi">0,8 ✓</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> tách nhãn đã <b>sửa được lỗi của bước B</b>: model mới học cổ tay đời thường mà không còn “quên” cổ tay khi tập.
+    PhysioFlow bước D hơn app 29 điểm trên validation, nhưng luật đòi hơn 32,8 điểm, vì với chỉ 4 người validation điểm dao động rất mạnh (± 16).
+    Theo luật đã khoá, <b>không vào vòng 3 seed</b> và <b>app giữ PhysioMix vòng 9</b>. Không đổi luật sau khi đã thấy điểm.</p>
+  <figure class="pres-fig">
+    <figcaption>Chỉ để báo cáo, không dùng để quyết định: 12 người thi GalaxyPPG chưa từng thấy (3 lần chia đôi người)</figcaption>
+    <div class="bars" role="img" aria-label="Điểm khó phân biệt trên 12 người thi">
+      <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:71%" class="ref"></i></span><b>71%</b></div>
+      <div class="bar"><span class="name">PhysioFlow bước D</span><span class="track"><i style="width:24%" class="flow"></i></span><b>24%</b></div>
+      <div class="bar"><span class="name">PhysioMix bước D</span><span class="track"><i style="width:2.8%" class="mix"></i></span><b>2,8%</b></div>
+      <div class="bar"><span class="name">PhysioFlow trong app</span><span class="track"><i style="width:3.2%" class="flow"></i></span><b>3,2%</b></div>
+      <div class="bar"><span class="name">PhysioMix trong app</span><span class="track"><i style="width:0.7%" class="mix"></i></span><b>0,7%</b></div>
+    </div>
+    <p class="note">Sai lệch hình dạng Q trên 12 người thi: PhysioFlow bước D 0,23, PhysioMix bước D 0,49, PhysioMix app 0,85 (thấp = tốt).
+      Sai nhịp: 1,2 / 1,4 / 1,5 nhịp/phút. Nguồn: <code>docs/physioflow/loop/galaxy_d_pilot.json</code>.</p>
+  </figure>
+  </div>
+</section>
+
+<section id="buoc-e">
+  <h2>Bước E: xác nhận PhysioFlow với 6 người validation và 3 seed</h2>
+  <div id="e-results">
+  <p class="lede">Luật mới khoá trong code trước khi train: <b>6 người</b> GalaxyPPG để chọn model (3 người mỗi bên khi chia), <b>5 lần chia</b>,
+    train lại PhysioFlow bước D ở <b>3 seed</b> (6 người còn lại để học). 12 người thi vẫn chỉ để báo cáo.</p>
+  <div class="tablewrap"><table class="scoregrid">
+    <thead><tr><th>Điều kiện (chỉ dùng validation)</th><th>PhysioFlow bước E (trung bình 3 seed)</th></tr></thead>
+    <tbody>
+      <tr><td>Mọi seed đạt mọi cổng của bài kiểm tra cũ</td><td class="hi">✓</td></tr>
+      <tr><td>Điểm tổng bài cũ S_arm ≤ 0,559 (thấp = tốt)</td><td class="hi">0,440 ✓</td></tr>
+      <tr><td>Không tệ đi ở cổ tay khi tập (Q ≤ 0,587)</td><td class="hi">0,585 ✓ (seed 123 riêng: 0,684)</td></tr>
+      <tr><td>Khó phân biệt trên 6 người validation: hơn app &gt; 2 × độ dao động</td><td class="lo">25,6% so với 0,05% (cần hơn 32,5) ✗</td></tr>
+      <tr><td>Sai lệch hình dạng Q thấp hơn app (0,89)</td><td class="hi">0,37 ✓</td></tr>
+      <tr><td>Sai nhịp không tệ hơn quá 2 nhịp/phút (app 1,2)</td><td class="hi">1,0 ✓</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Đọc thế nào:</b> 3 seed cho điểm gần như bằng nhau (24–27%), nên kết quả không do may mắn của một lần train. Nhưng điểm vẫn
+    dao động mạnh tuỳ cách chia người (± 16, gần như bước D), và luật đòi hơn app gấp đôi mức đó. Theo luật đã khoá,
+    <b>app giữ PhysioMix vòng 9</b>. Không đổi luật sau khi đã thấy điểm.</p>
+  <p class="callout info">Trong cả 5 cách chia, PhysioFlow đều hơn app (6 đến 43 điểm). Chính người thật khác cũng chỉ đạt 23–100% tuỳ cách chia:
+    độ dao động đến từ việc chọn ai làm mẫu, chung cho mọi model. Đây là nhận xét sau khi thấy điểm, không dùng để quyết định.</p>
+  <figure class="pres-fig">
+    <figcaption>Chỉ để báo cáo, không dùng để quyết định: 12 người thi GalaxyPPG chưa từng thấy (5 lần chia đôi người)</figcaption>
+    <div class="bars" role="img" aria-label="Điểm khó phân biệt trên 12 người thi, bước E">
+      <div class="bar"><span class="name">Người thật khác (mức trần)</span><span class="track"><i style="width:70%" class="ref"></i></span><b>70%</b></div>
+      <div class="bar"><span class="name">PhysioFlow bước E (3 seed)</span><span class="track"><i style="width:33%" class="flow"></i></span><b>33%</b></div>
+      <div class="bar"><span class="name">PhysioFlow trong app</span><span class="track"><i style="width:2.5%" class="flow"></i></span><b>2,5%</b></div>
+      <div class="bar"><span class="name">PhysioMix trong app</span><span class="track"><i style="width:0.4%" class="mix"></i></span><b>0,4%</b></div>
+    </div>
+    <p class="note">Sai lệch hình dạng Q trên 12 người thi: PhysioFlow bước E 0,21, PhysioMix app 0,88 (thấp = tốt). Sai nhịp: 1,2 / 1,5 nhịp/phút.
+      Nguồn: <code>docs/physioflow/loop/galaxy_e.json</code> (Kaggle 2 × T4, 6,6 giờ).</p>
+  </figure>
+  </div>
+</section>
+
+<section id="ket-luan">
+  <h2>Kết luận và bước tiếp theo</h2>
+  <div id="conclusion">
+  <ol class="checks">
+    <li><b>Model trong app không đổi:</b> PhysioMix vòng 9. Không model mới nào qua luật đã khoá trước.</li>
+    <li><b>Giám khảo đáng tin:</b> PaPaGei (đã học 57.000 giờ PPG thật) xếp hạng giống giám khảo của dự án (tương quan 0,88).</li>
+    <li><b>Lỗi còn lại đã rõ:</b> trên đồng hồ cổ tay đời thường, sóng AI lộ ở dải 5–8 Hz (kết cấu rung nhỏ), không phải ở nhịp chính.</li>
+    <li><b>Hướng đúng đã thấy:</b> tách nhãn “cổ tay đời thường” giữ được bài cũ và đưa PhysioFlow từ 3% lên 24% (bước D) rồi 33% (bước E, 3 seed) trên người chưa thấy.</li>
+    <li><b>Vẫn chưa qua luật:</b> ở bước E, 3 seed ổn định nhưng điểm dao động mạnh giữa các cách chia 6 người validation, nên mức hơn 25,6 điểm vẫn dưới ngưỡng 32,5.</li>
+  </ol>
+  <p class="callout info"><b>Nếu muốn đi tiếp</b> (chưa làm, cần khách hàng đồng ý): khoá trước một luật so cặp theo từng cách chia (cùng người, cùng mẫu cho app và model),
+    rồi kiểm tra trên người chưa dùng để chọn model. Không áp luật mới lên kết quả bước E đã thấy.</p>
+  </div>
+  <p class="note">Tất cả kết quả trên trang là đánh giá kỹ thuật của dạng sóng 30 giây đã chuẩn hoá. Không phải kiểm định lâm sàng, không đo SpO₂,
+    chưa đo trên phần cứng Pi/DAC/OPT101.</p>
+</section>
+
+<footer class="simple-foot">
+  <a class="cta" href="index.html">← Bản tóm tắt</a>
+  <a class="cta" href="chi-tiet.html">Báo cáo kỹ thuật đầy đủ →</a>
+  <button class="themebtn" id="theme" type="button">Đổi giao diện sáng/tối</button>
+</footer>
+</main>
+<script src="media/presentation.js"></script>
+<script src="trinh-bay.js"></script>
+<script>
+(() => {
+  const root = document.documentElement, btn = document.getElementById('theme');
+  try { const t = sessionStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  btn.addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { sessionStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

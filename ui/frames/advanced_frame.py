@@ -24,20 +24,21 @@ class AdvancedFrame(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         T.label(self, "Signal setup", 22, True, anchor="w").grid(row=0, column=0, sticky="w", pady=(0, 8))
-        self.tabs = ctk.CTkTabview(self, fg_color=T.PANEL)
+        self.tabs = ctk.CTkTabview(self, fg_color=T.PANEL, command=lambda: self._build_tab(self.tabs.get()))
         self.tabs.grid(row=1, column=0, sticky="nsew")
         self.entries, self.vars = {}, {}
-        for name in ("Amplitude & shape", "Respiration", "Noise & calibration"):
+        # Each tab is filled the first time it is shown: building all three at once made opening
+        # the window the slowest UI operation. Every Apply reads only its own tab.
+        self._unbuilt = {}
+        for name, build in (("Amplitude & shape", self._amplitude), ("Respiration", self._respiration),
+                            ("Noise & calibration", self._noise)):
             tab = self.tabs.add(name)
             tab.grid_columnconfigure(0, weight=1)
             tab.grid_rowconfigure(0, weight=1)
-            body = ctk.CTkScrollableFrame(tab, fg_color=T.PANEL)
-            body.grid(row=0, column=0, sticky="nsew")
-            body.grid_columnconfigure((0, 1), weight=1, uniform="forms")
-            if name == "Amplitude & shape": self._amplitude(body)
-            elif name == "Respiration": self._respiration(body)
-            else: self._noise(body)
-        self.status = T.label(self, "Changes apply only when you press Apply.", 12, text_color=T.MUTED, anchor="w")
+            self._unbuilt[name] = (tab, build)
+        self._build_tab(self.tabs.get())
+        self.idle_status = "Changes apply only when you press Apply."
+        self.status = T.label(self, self.idle_status, 12, text_color=T.MUTED, anchor="w")
         self.status.grid(row=2, column=0, sticky="ew", pady=(8, 0))
 
     def _entry(self, body, row, column, key, title, hint=""):
@@ -246,13 +247,37 @@ class AdvancedFrame(ctk.CTkFrame):
                 continue
             var.set(bool(getattr(p, key)))
 
-    def on_show(self):
+    def _build_tab(self, name):
+        """Fill a tab on its first showing and load its fields from the engine."""
+        if name not in self._unbuilt:
+            return
+        tab, build = self._unbuilt.pop(name)
+        entries, variables, menus = set(self.entries), set(self.vars), set(self._menus())
+        body = ctk.CTkScrollableFrame(tab, fg_color=T.PANEL)
+        body.grid(row=0, column=0, sticky="nsew")
+        body.grid_columnconfigure((0, 1), weight=1, uniform="forms")
+        build(body)
+        # Only the new widgets: unapplied edits on tabs already built stay as they are.
+        self._load(set(self.entries)-entries, set(self.vars)-variables, set(self._menus())-menus)
+
+    def _menus(self):
+        return [name for name in ("waveform_menu", "polarity_menu", "noise_menu") if hasattr(self, name)]
+
+    def _load(self, entry_keys, var_keys, menus):
         p = self.engine.ppg_params
-        self._user_hold.clear()
-        for key, entry in self.entries.items():
+        for key in entry_keys:
+            entry = self.entries[key]
             entry.delete(0, "end")
             entry.insert(0, self._display_value(p, key))
-        for key, var in self.vars.items(): var.set(getattr(p, key))
-        self.waveform_menu.set(p.waveform)
-        self.noise_menu.set(p.noise_kind)
-        self.polarity_menu.set("AC above DC" if p.ac_polarity == 0 else "AC below DC")
+        for key in var_keys:
+            self.vars[key].set(getattr(p, key))
+        if "waveform_menu" in menus:
+            self.waveform_menu.set(p.waveform)
+        if "polarity_menu" in menus:
+            self.polarity_menu.set("AC above DC" if p.ac_polarity == 0 else "AC below DC")
+        if "noise_menu" in menus:
+            self.noise_menu.set(p.noise_kind)
+
+    def on_show(self):
+        self._user_hold.clear()
+        self._load(set(self.entries), set(self.vars), set(self._menus()))

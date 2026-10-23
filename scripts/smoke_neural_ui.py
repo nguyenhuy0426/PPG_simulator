@@ -8,6 +8,7 @@ import time
 os.environ['PPG_DRY_RUN']='1'
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from PIL import ImageGrab
+import subprocess
 import customtkinter as ctk
 from config_store import config_from_ppg_params
 from core.signal_engine import SignalEngine
@@ -28,7 +29,16 @@ def main():
         assert not errors,errors
     def capture(name):
         pump();x,y=app.winfo_rootx(),app.winfo_rooty()
-        ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height())).save(args.output/name)
+        try:
+            image=ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height()))
+        except OSError:
+            # XWayland refuses root-window reads; the app's own window can still be read.
+            from smoke_physiomix_ui import xwd_window
+            try:
+                image=xwd_window(app.winfo_id())
+            except (OSError,subprocess.CalledProcessError) as exc:
+                print(f'SKIP screenshot {name}: {exc}');return
+        image.save(args.output/name)
     def no_entries(widget):
         assert not isinstance(widget,ctk.CTkEntry)
         for child in widget.winfo_children(): no_entries(child)
@@ -44,6 +54,8 @@ def main():
         for widget in (panel.play_btn,panel.export_btn,panel.status,panel.trace,panel.rx_panel):
             assert widget.winfo_rootx()+widget.winfo_width()<=app.winfo_rootx()+app.winfo_width()
             assert widget.winfo_rooty()+widget.winfo_height()<=app.winfo_rooty()+app.winfo_height()
+        # Desktop scaling in a 1024x600 window (the Pi panel itself is covered by tests/test_classic_ui.py).
+        assert panel.trace.winfo_height()>=100 and panel.rx_panel.winfo_height()>=100
         capture('gaussian-vi-1024.png')
         panel.play_btn.invoke();pump(.3)
         assert engine.is_waveform_playing

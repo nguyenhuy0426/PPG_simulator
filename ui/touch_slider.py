@@ -6,29 +6,34 @@ from ui import theme as T
 
 class TouchSlider(ctk.CTkFrame):
     def __init__(self, master, minimum, maximum, step=1, value=None,
-                 optional=False, command=None, width=230, **kwargs):
+                 optional=False, command=None, width=230, inline=False, **kwargs):
         super().__init__(master, fg_color="transparent", width=width, **kwargs)
         self.minimum, self.maximum, self.step = minimum, maximum, step
         self.command, self.optional = command, optional
         self._value = minimum if value is None else value
         self._auto = optional and value is None
         self._disabled = False
-        self.grid_columnconfigure(1, weight=1)
         # Same control language as the Classic setpoint cards: outlined −/+,
         # a bold readout and a 28 px touch strip that draws a 6 px track.
+        # inline puts all four on one row for pages short of height.
         u = T.ui
         button = dict(width=u(34), height=u(34), font=T.font(u(17)))
         self.minus = T.outline_button(self, "−", command=lambda: self._move(-1), **button)
         self.minus.grid(row=0, column=0)
-        self.readout = T.label(self, "", u(16), True)
+        self.readout = T.label(self, "", u(16), True, width=u(46) if inline else 0)
         self.readout.grid(row=0, column=1, sticky="ew")
         self.plus = T.outline_button(self, "+", command=lambda: self._move(1), **button)
-        self.plus.grid(row=0, column=2)
+        self.plus.grid(row=0, column=3 if inline else 2)
         self.slider = ctk.CTkSlider(self, from_=minimum, to=maximum, height=u(28), border_width=u(11),
                                    button_length=u(2), corner_radius=u(3), button_corner_radius=u(4),
                                    progress_color=T.ACCENT, button_color=T.INK,
-                                   button_hover_color=T.ACCENT, command=self._slide)
-        self.slider.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(u(4), 0))
+                                   button_hover_color=T.ACCENT, command=self._slide, width=u(60) if inline else 200)
+        if inline:
+            self.grid_columnconfigure(2, weight=1)
+            self.slider.grid(row=0, column=2, sticky="ew", padx=u(4))
+        else:
+            self.grid_columnconfigure(1, weight=1)
+            self.slider.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(u(4), 0))
         if optional:
             self.auto_var = ctk.BooleanVar(value=self._auto)
             self.auto = ctk.CTkCheckBox(self, text="Auto", variable=self.auto_var, font=T.font(u(12)),
@@ -64,11 +69,18 @@ class TouchSlider(ctk.CTkFrame):
         self._refresh()
 
     def _refresh(self):
-        self.readout.configure(text="Auto" if self._auto else f"{self._value:g}")
-        self.slider.set(self._value)
+        # Every CustomTkinter configure redraws the widget; a slider drag calls this per motion
+        # event, so only what changed is pushed to the widgets.
+        shown = "Auto" if self._auto else f"{self._value:g}"
+        if shown != self.readout.cget("text"):
+            self.readout.configure(text=shown)
+        if self.slider.get() != self._value:
+            self.slider.set(self._value)
         state = "disabled" if self._disabled or self._auto else "normal"
-        for widget in (self.slider, self.minus, self.plus):
-            widget.configure(state=state)
+        if state != getattr(self, "_state_shown", None):
+            self._state_shown = state
+            for widget in (self.slider, self.minus, self.plus):
+                widget.configure(state=state)
 
     def get(self):
         return "" if self._auto else f"{self._value:g}"

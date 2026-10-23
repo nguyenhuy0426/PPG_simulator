@@ -1,0 +1,421 @@
+# PhysioFlow: mô hình mới cho PPG simulator (vòng 10)
+
+Ngày 2026-10-12. Cùng dữ liệu v3 (SHA-256 `5036fb64…6433`), cùng tiêu chí khoá trước như PhysioMix (`813c4dd1…`):
+S_arm = S_real + 0,5·C + 0,5·max(0, AUC_C2ST đạo hàm − 0,5), chỉ dùng validation. Trang web `docs/model-report`
+mục 4 trình bày lại phần này kèm sơ đồ.
+
+## Vì sao một mô hình mới
+
+PhysioMix (GAN) điều khiển nhịp tốt, nhưng một CNN chuyên tách thật/giả vẫn nhận ra mẫu sinh qua đạo hàm dạng sóng
+(AUC 0,80–0,84 ở vòng 9), và 9 vòng GAN chủ yếu là chỉnh độ ổn định (R1, ngưỡng cắt gradient). Các công trình gần đây
+về tín hiệu sinh lý dùng họ diffusion / flow matching
+([FlowECG](https://arxiv.org/abs/2509.10491), [VAMP-Diff](https://arxiv.org/pdf/2605.22851)): không có mạng đối kháng,
+một loss hồi quy, phủ phân bố tốt hơn. Mô hình khuếch tán thuần trong v2 lại điều khiển HR sai 4,3 bpm, nên PhysioFlow
+giữ phần mạnh nhất của PhysioMix: **nhịp dựng sẵn**.
+
+## Kiến trúc (`ml/kaggle_multidomain/flow.py`)
+
+- **Khung nhịp**: đỉnh tâm thu từ HR và độ bất thường (khoảng nhịp log-normal), mã hoá thành pha sin/cos + cờ có khung.
+  Lúc train, khung lấy từ đỉnh phát hiện được của chính cửa sổ thật (sửa đỉnh bị sót/trùng); cửa sổ có nhãn HR bị che
+  (87% cổ tay, ~1/3 AF) không có khung, và lúc sinh cũng chỉ thêm khung khi điều kiện có cờ “đã biết HR”.
+- **U-Net 1D** 6,9 triệu tham số: 5 tầng 1 200 → 75 mẫu, attention ở 150 và 75 mẫu, FiLM theo thời điểm t và điều kiện
+  (tập dữ liệu, cờ nhãn, HR, độ bất thường, độ lớn), classifier-free guidance (bỏ điều kiện 10% lúc train).
+- **Rectified flow**: x_t = (1 − t)·x + t·ε, mạng đoán vận tốc v = ε − x; loss MSE + loss sai lệch đạo hàm bậc một của
+  ước lượng x (trọng số (1 − t)²); t chọn **đều** trong (0, 1).
+- **Sinh**: 16 bước Heun từ nhiễu (t = 1) tới t = 0 (31 lần gọi U-Net), chuẩn hoá 0–1; không lọc ở đầu ra, không critic.
+  TorchScript: U-Net trace một lần, vòng lặp lấy mẫu dạng script (khớp tuyệt đối với bản Python).
+- Thời gian sinh 30 s: ~1,4 s trên 1 luồng CPU laptop, ~1,8 s trên CPU Kaggle. Pi chưa đo.
+
+## Vòng lặp kỹ thuật (pilot = seed 42, validation)
+
+Bằng chứng từng vòng: `docs/physioflow/loop/pilot{1,2,3}.json`, thử nghiệm bộ lấy mẫu `probe_loop2_samplers.json`.
+
+| Vòng | Thay đổi | S_arm | S_real | AUC đạo hàm | Q cổ tay | Kết luận |
+|---|---|---|---|---|---|---|
+| 1 | Khung nhịp luôn bật; có/không loss đạo hàm | 0,610 | 0,468 | 0,750 | 1,180 | Cổ tay rất kém: khung bị ép lên cửa sổ vốn không đo được nhịp |
+| 2 | Khung theo cờ “đã biết HR”; loss đạo hàm 1 / 0,3 | 0,537 | 0,391 | 0,696 | 0,974 | Gần PhysioMix; phần thua nằm ở phổ log |
+| 3 | t đều / trộn; thử “dừng ở t = 0,04 + lọc” | **0,470** | 0,348 | 0,697 | 0,755 | t đều thắng; “dừng + lọc” bị CNN bắt (AUC 0,99), loại |
+| PhysioMix vòng 9 | (mốc, 3 seed) | 0,530 ± 0,029 | 0,344 | 0,827 | 0,527 | |
+
+Chẩn đoán giữa vòng 2 và 3 (trên laptop, checkpoint vòng 2): phổ log thay đổi mạnh theo vài bước lấy mẫu cuối (lưới
+bước mịn ở cuối làm GXU 0,075 → 1,04), trong khi khi train logit-normal chỉ cho dưới 0,2% số lần t < 0,05. Mô hình
+nhiễu nền khớp từ dữ liệu train làm mọi tập kém đi (phần > 10 Hz của dữ liệu thật chủ yếu là hài còn sót sau bộ lọc,
+không phải nhiễu) nên bị bỏ. Pilot 1 dừng khi trace bộ lấy mẫu 16 bước (đồ thị trải mọi bước); đã thay bằng xuất script.
+
+## Vòng 4: 3 seed, quy tắc khoá trước
+
+Quy tắc (`rules/FROZEN_ROUND10.json`, ghi trước khi train 3 seed; viết từ vòng 1, trước mọi lần train PhysioFlow):
+PhysioFlow thay PhysioMix chỉ khi mọi seed qua cổng, S_arm tốt hơn quá SD gộp, S_real không kém quá 0,05 **và Q cổ tay
+không kém quá SD gộp** (giữ thành quả cổ tay của vòng 9). Cổng thời gian cho flow: < 5 s / cửa sổ 30 s trên 1 luồng CPU.
+
+| Seed | S_arm | S_real | C | AUC đạo hàm | Q cổ tay | Bước tốt nhất | Chấm trên |
+|---|---|---|---|---|---|---|---|
+| 42 | **0,472** | 0,370 | 0,027 | 0,678 | 0,857 | 8 000 | CPU laptop |
+| 123 | 0,475 | 0,356 | 0,022 | 0,715 | 0,827 | 14 000 | GPU Kaggle |
+| 2026 | 0,500 | 0,379 | 0,026 | 0,716 | 0,694 | 8 000 | CPU laptop |
+| **Trung bình** | **0,482 ± 0,015** | 0,368 | | 0,703 | 0,793 | | |
+| PhysioMix vòng 9 | 0,530 ± 0,029 | 0,344 | 0,045 | 0,827 | 0,527 | | |
+
+**Quyết định: PhysioMix vẫn là model mặc định của app.** S_arm tốt hơn rõ (chênh 0,048 > SD gộp 0,023), S_real đạt
+(0,368 ≤ 0,394), mọi seed qua cổng, nhưng Q cổ tay 0,793 > 0,527 + 0,074. PhysioFlow seed 42 (S_arm thấp nhất) được
+đóng gói vào app như chế độ nghiên cứu “PhysioFlow · flow matching” để so sánh trực tiếp (commit `9999bf22`).
+
+Ghi chú: trong vòng cuối, ba seed chạy song song (hai seed chung một GPU); cả ba train xong 20 000 bước, seed 123 chấm
+xong trên Kaggle rồi tiến trình chết khi chấm hai seed còn lại (lần chạy lại trên Kaggle không gắn được output của kernel
+lỗi). Seed 42 và 2026 được chấm trên CPU laptop bằng đúng `score_arm` (`--resume-from`); bộ đếm ổn định khi train của hai
+seed này mất cùng tiến trình.
+
+GXU test (niêm phong tới vòng 3, chỉ báo cáo; `rules/GXU_TEST_seed42.json`): seed 42 Q 0,130 (độ phủ 95%, độ giống 94%)
+so với PhysioMix vòng 9 trung bình 0,194; sàn dữ liệu thật (train replay) 0,078. Chỉ seed 42 được chấm trên CPU laptop:
+tiến trình dừng trước hai seed còn lại (nhiều khả năng do bộ nhớ khi chạy song song), nên số này là một seed.
+
+## Vòng 5: nhắm riêng vào cổ tay (sau quyết định vòng 4)
+
+Bằng chứng: `loop/probe_loop5_wrist.json` (chẩn đoán và thử trên laptop), `loop/pilot5.json`,
+`rules/PILOT_SELECTION_LOOP5.json`.
+
+**Chẩn đoán** (laptop CPU, checkpoint seed 42 đang có trong app, validation, cùng nhiễu như `score_arm`; Q cổ tay tái
+lập đúng 0,857):
+
+- 75% MMD phổ log cổ tay (0,287 / 0,385) nằm ở dải 12–20 Hz. Ở đó mẫu sinh cao hơn dữ liệu thật 0,86 bậc log10. Dữ liệu
+  thật nằm đúng sàn 1e-8 sau bộ lọc 0,5–8 Hz, còn mẫu sinh vẫn sót nhiễu nền trải đều theo thời gian. Trong dải 0,5–8 Hz
+  phổ log khớp tốt. Năng lượng 0,5–1 Hz cao gấp đôi nếu tính tuyến tính, nhưng gần như không góp vào MMD.
+- Khử nhiễu một bước từ x_t đúng phân bố train chỉ dư 0,25 bậc (GXU 0,17). Phần dư lớn của cổ tay (0,72–0,77) sinh ra
+  trên quỹ đạo lấy mẫu ở t 0,75–1: nếu bắt đầu từ x_0,75 thật thì phần dư chỉ còn 0,46. Đây là lệch train/sinh của một
+  tập chỉ có 83 cửa sổ.
+- Loại: lấy mẫu cổ tay nhiều hơn (cổ tay đã chiếm 1/6 mỗi batch, gấp ~12 lần tỉ lệ thật, và Q cổ tay xấu dần khi train
+  lâu); đổi khung nhịp cho cổ tay (ép tắt khung, phổ log vẫn 0,34); lọc ở đầu ra (đã bị C2ST bắt ở vòng 3).
+
+**Thử trên laptop** (fine-tune 400 bước, chỉ để xem cơ chế, so với đối chứng cùng điều kiện): loss phổ log toàn dải
+làm cổ tay và GXU xấu đi (0,50 → 0,77; 0,07 → 0,14). Nhiễu đầu vào chống exposure bias (γ 0,1 / 0,3) cũng làm cổ tay
+xấu đi. Chỉ loss phổ log **dải chặn** (0,1–0,5 Hz và > 8 Hz) giúp, và ít (Q cổ tay 0,88 → 0,81).
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước): F6 + loss phổ log dải chặn trên ước lượng x0 ở t < 0,25, trọng số 1
+(F7) và 3 (F8). Ngưỡng đi tiếp được ghi trong code trước khi chạy (commit `40c9d1b0`): Q cổ tay ≤ 0,601 **và**
+S_arm ≤ 0,487.
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay | log-PSD cổ tay |
+|---|---|---|---|---|---|---|
+| Vòng 4, seed 42 (F6) | 0,472 | 0,370 | 0,027 | 0,678 | 0,857 | 0,385 |
+| F7 (dải chặn, 1) | 0,505 | **0,297** | 0,199 | 0,718 | **0,524** | 0,112 |
+| F8 (dải chặn, 3) | 0,517 | 0,305 | 0,213 | 0,712 | 0,560 | 0,122 |
+| PhysioMix vòng 9 (3 seed) | 0,530 | 0,344 | 0,045 | 0,827 | 0,527 | |
+
+Train từ đầu, loss dải chặn sửa được cổ tay (Q 0,857 → 0,524, ngang PhysioMix) và cải thiện S_real ở mọi tập trừ
+PERform Large. Nhưng ở cổ tay, mạng không còn bám khung nhịp chậm: lệnh 40–80 bpm cho ra 67–131 bpm (Spearman cổ tay
+0,83 / 0,80; năm tập còn lại vẫn 1,0). Vì vậy C tăng từ 0,027 lên 0,199 và S_arm vượt ngưỡng.
+
+**Quyết định: theo ngưỡng khoá trước, không chạy final 3 seed. PhysioMix vòng 9 vẫn là model của app; PhysioFlow
+trong app vẫn là seed 42 của vòng 4.** Hướng tiếp theo nếu làm: giữ loss dải chặn và sửa riêng việc bám nhịp chậm của
+cổ tay. Dữ liệu cổ tay khi vận động gần như không có nhịp < 80 bpm, nên việc bám nhịp chậm ở đây là ngoại suy.
+
+## Vòng 6: cổ tay, giữ bám nhịp chậm
+
+Bằng chứng: `loop/probe_loop6_wrist_rate.json`, `loop/pilot6.json`, `rules/PILOT_SELECTION_LOOP6.json`,
+`rules/FROZEN_LOOP6.json`, `rules/DECISION_LOOP6.json`.
+
+**Chẩn đoán** (laptop CPU, validation):
+- Ở pilot vòng 5, cổ tay khoá ở hài bậc 2 khi nhịp chậm: lệnh 50/60/70 bpm cho ra khoảng 102/120/140 bpm. BIDMC cùng
+  checkpoint vẫn đúng, và cổ tay của vòng 4 cũng đúng.
+- Cổ tay có 83 cửa sổ train, chỉ 11 cửa sổ có khung nhịp, tất cả ở 101–120 bpm. Nhịp cổ tay dưới 90 bpm là ngoại suy
+  hoàn toàn từ các tập khác, và đã từng vỡ trước đây (F2, F4, pilot F6 ở 50 bpm).
+- Tại checkpoint seed 42 của vòng 4, gradient của loss dải chặn ở trọng số 1 có trung vị 2,07, gấp khoảng 5 lần
+  gradient của loss vận tốc cộng đạo hàm (0,42). Vì vậy clip chuẩn 1 cắt 80–92% số bước (F6: 20%), và phần vận tốc,
+  tức phần dạy bám khung nhịp, bị thu nhỏ khoảng 5 lần.
+- Giả thuyết "lỗi do dải chặn thấp" bị loại: phổ log thật ở 0,3–0,5 Hz không phụ thuộc nhịp, và bỏ dải thấp thì
+  gradient gần như không đổi (2,15).
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước): cùng loss dải chặn nhưng trọng số 0,3 (F9) và 0,1 (F10). Ngưỡng go
+giữ như vòng 5 (commit `76c3a457`).
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay | clip |
+|---|---|---|---|---|---|---|
+| Vòng 4, seed 42 (F6) | 0,472 | 0,370 | 0,027 | 0,678 | 0,857 | ~20% |
+| Vòng 5, F7 (λ 1) | 0,505 | 0,297 | 0,199 | 0,718 | 0,524 | 80% |
+| F9 (λ 0,3) | 0,457 | 0,298 | 0,147 | 0,672 | 0,501 | 58% |
+| **F10 (λ 0,1)** | **0,449** | 0,314 | 0,066 | 0,704 | 0,581 | 38% |
+
+Cả hai nhánh qua ngưỡng go. F10 thắng và được chạy final 3 seed, với cùng luật và cùng incumbent như vòng 4.
+
+**Final 3 seed** (`F10_flow_unif_stop01_s16_w1`; seed 42, 123, 2026; tối đa 2 seed cùng lúc):
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay |
+|---|---|---|---|---|---|
+| F10, 3 seed | **0,445 ± 0,004** | 0,321 ± 0,010 | 0,039 ± 0,024 | 0,709 ± 0,015 | 0,597 ± 0,027 |
+| PhysioMix vòng 9 (app) | 0,530 ± 0,029 | 0,344 ± 0,014 | | 0,827 | 0,527 ± 0,060 |
+| Vòng 4 (F6, 3 seed) | 0,482 ± 0,015 | 0,368 | | 0,703 | 0,793 |
+
+- Từng seed: S_arm 0,444 / 0,441 / 0,450; Q cổ tay 0,582 / 0,628 / 0,579.
+- Seed 123 và 2026 bám nhịp cổ tay đúng ở 40–80 bpm. Seed 42 vẫn khoá ở hài bậc 2 khi lệnh 50 bpm (ra 109 bpm).
+- GXU test Q 0,122 ± 0,014 (test đã mở từ vòng 3, chỉ để báo cáo).
+
+**Quyết định theo luật khoá trước: không thay model trong app.**
+- Đạt: S_arm tốt hơn PhysioMix 0,085, lớn hơn SD gộp 0,021; S_real đạt; mọi seed qua gate.
+- Không đạt: Q cổ tay trung bình 0,597 vượt mức cho phép 0,527 + 0,046 = 0,573, hụt 0,024.
+
+PhysioMix vòng 9 vẫn là model mặc định; PhysioFlow trong app vẫn là seed 42 của vòng 4. So với vòng 4, Q cổ tay của
+final giảm từ 0,793 xuống 0,597 và S_arm từ 0,482 xuống 0,445, nhưng vẫn chưa đủ để vượt rào cổ tay.
+
+## Vòng 7: dạy cổ tay bám nhịp chậm bằng bản sao giãn
+
+Bằng chứng: `loop/probe_loop7_wrist_slow.json`, `loop/pilot7.json`, `rules/PILOT_SELECTION_LOOP7.json`.
+
+**Ý tưởng:**
+- Cổ tay chỉ có 11 cửa sổ train có khung nhịp (người s6 và s9), tất cả ở 101–120 bpm.
+- Kéo giãn đều cả cửa sổ thì chính tín hiệu thật cũng bị bộ đo nhịp đọc gấp đôi, nên cách này bị loại.
+- Cách dùng: chỉ kéo dài pha tâm trương, giữ nguyên 0,5 s sau đỉnh và 0,1 s trước đỉnh kế. Bản giãn nào không qua luật
+  khung nhịp của dữ liệu thật thì bị bỏ.
+- Kết quả là 87 bản sao phủ 40–115 bpm. Mỗi batch thay một nửa số hàng cổ tay có khung nhịp bằng một bản sao.
+- Hai nhánh: F11 (λ 0,3) và F12 (λ 0,1). Ngưỡng go chặt hơn, khoá trong code trước khi chạy: Q cổ tay ≤ 0,546,
+  S_arm ≤ 0,487. Commit `2cdbea6d`.
+
+**Pilot** (Kaggle 2 × T4, seed 42, 20 000 bước; chạy trên tài khoản `halovie2412` vì tài khoản cũ hết hạn mức GPU tuần,
+cùng dữ liệu, cùng code):
+
+| | S_arm | S_real | C | AUC đạo hàm | Q cổ tay |
+|---|---|---|---|---|---|
+| Vòng 6 pilot, F10 (λ 0,1) | 0,449 | 0,314 | 0,066 | 0,704 | 0,581 |
+| F11 (λ 0,3, bản giãn) | 0,580 | 0,319 | 0,298 | 0,724 | 0,533 |
+| F12 (λ 0,1, bản giãn) | 0,529 | 0,318 | 0,218 | 0,705 | 0,561 |
+
+Nhịp đo được của cổ tay theo lệnh (bpm):
+
+| Lệnh | 40 | 50 | 60 | 70 | 80 | ≥ 90 |
+|---|---|---|---|---|---|---|
+| F10 vòng 6 | 47 | 103 | 60 | 70 | 80 | đúng |
+| F11 | 149 | 70 | 80 | 140 | 160 | đúng |
+| F12 | 143 | 63 | 67 | 87 | 160 | đúng |
+
+**Kết luận: không đạt go, không chạy final.**
+- Bản sao giãn không dạy được cổ tay bám nhịp chậm. Ngược lại, khoá hài lan ra khắp 40–80 bpm, nên C tăng từ 0,066 lên
+  0,22–0,30.
+- F11 có Q cổ tay qua ngưỡng (0,533), nhưng không nhánh nào qua ngưỡng S_arm.
+- PhysioMix vòng 9 vẫn là model mặc định.
+- Validation đã dùng qua 7 vòng nên điểm của các vòng sau ngày càng lạc quan. Đề xuất: dừng vòng lặp PhysioFlow cho cổ
+  tay ở đây.
+
+## Giống người thật đến đâu (người chưa dùng để train)
+
+`ml/runs/realism-v1/realism_round10.json` (laptop CPU; số của PhysioMix trùng khớp với lần đo vòng 9). Mỗi ô: độ giống ·
+độ phủ · không phân biệt được (CNN đạo hàm, chia theo người, 3 lần lặp).
+
+| Tập | PhysioFlow (seed 42, app) | PhysioMix vòng 9 (app) | LSM-GAN | Thật · người khác (trần) |
+|---|---|---|---|---|
+| GXU ngón tay, 44 người | 96 · **92** · **50%** | 95 · 76 · 9% | 12 · 0 · 0% | 98 · 99 · 94% |
+| PERform Large, 191 người | 97 · **88** · **91%** | 98 · 63 · 36% | 97 · 1 · 0% | 98 · 95 · 97% |
+| BIDMC, 14 người | **57** · **84** · **67%** | 49 · 67 · 45% | 79 · 2 · 0% | 51 · 88 · 96% |
+| PERform AF, 4 người | 57 · **95** · **82%** | 51 · 46 · 7% | 27 · 1 · 0% | 55 · 83 · 56% |
+| PERform không AF, 2 người | 11 · 41 · 39% | 10 · 94 · 80% | 5 · 0 · 0% | 11 · 18 · 59% |
+| Cổ tay vận động, 4 người | 65 · 61 · 52% | **92** · 56 · 52% | 0 · 0 · 0% | 77 · 54 · 92% |
+
+- Bám lệnh trạng thái (CNN 7 trạng thái chỉ học trên dữ liệu thật, đoán mò 14%): PhysioFlow 68%, PhysioMix 54%, dữ liệu
+  thật 51%; “cùng nhiễu, đổi lệnh” 71% so với 49%. Lệnh “cổ tay vận động” được nhận đúng 94% (thật 86%). Cao hơn cả dữ
+  liệu thật nghĩa là mẫu PhysioFlow “đúng kiểu” trạng thái hơn người thật, tức đa dạng ít hơn (rho validation 0,87–0,89).
+- Kiểm tra chép dữ liệu (tương quan lớn nhất với cửa sổ train cùng tập, thử mọi độ dịch; trung vị · % > 0,99): ngang
+  người thật ở mọi tập trừ cổ tay (0,46 so với 0,28; không cửa sổ nào > 0,99). BIDMC 1% và không AF 2% số cửa sổ > 0,99
+  (PhysioMix: 0%): có dấu hiệu nhớ một ít cửa sổ ở tập rất nhỏ.
+- LSM-GAN (để so sánh, theo yêu cầu): ở BIDMC — tập nó được train — 79 · 2 · 0% trong dải chung 0,5–8 Hz và 88 · 2 · 37%
+  khi chấm trong chính dải 0,9–5 Hz của nó (`realism_lsm_narrow.json`): gần như luôn sinh một kiểu sóng (mode collapse),
+  không nhận điều kiện (bám lệnh 14% = đoán mò).
+
+## Bài thi mới GalaxyPPG (bước A, chưa dùng để chọn model)
+
+Bộ GalaxyPPG (Zenodo 14635823, CC BY 4.0, md5 kiểm tra trong kernel): 24 người, E4 BVP 64 Hz ở cổ tay, nghỉ / trí óc /
+đi bộ / chạy; nhịp tham chiếu từ Polar H10 (đồng hồ điện thoại theo giờ Hàn Quốc, trừ 9 h; lệch nhịp PPG trung vị 1,2 bpm).
+Cắt thành cửa sổ v3 (0,5–8 Hz, 40 Hz, 30 s). Luật (`fresh_galaxy.RULE`) khoá trong code trước khi chấm. Mỗi model được
+nhắc bằng nhịp Polar của người “bên kia”; 3 lần chia đôi người, C2ST nhóm theo người.
+
+| Nguồn (kernel `ppg-fresh-galaxy-v1`, CPU) | Khó phân biệt | Q | Sai nhịp trung vị (bpm) | Trong 5 bpm |
+|---|---|---|---|---|
+| Người thật khác | 89 ± 10% | 0,08 | 1,2 | 72% |
+| **PhysioMix vòng 9 (app)** | 0,7 ± 1,0% | **0,84** | **1,5** | 61% |
+| PhysioFlow vòng 4 (app) | 0,6 ± 0,4% | 1,33 | 1,7 | 70% |
+| LSM-GAN | 0% | 2,13 | 14,4 | 15% |
+| Gaussian shaper (luật, không AI) | 0% | 2,53 | 0,0 | 100% |
+
+Quyết định theo luật: **giữ PhysioMix** (PhysioFlow không hơn về độ giống, Q kém hơn 0,49). Cả hai model đều bị nhận ra
+gần như hoàn toàn trên cổ tay đời thường: điểm validation cổ tay cũ (83 cửa sổ tập thể dục của thiết bị khác) không chuyển
+sang được. Sai nhịp theo nhóm (lần chia 0): PhysioMix nghỉ 0,9 · trí óc 3,4 · đi bộ 7,2 · chạy 14,1; PhysioFlow 1,3 · 2,9 ·
+8,9 · 5,8 bpm. Nguồn: `ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json`.
+
+## Bước B: train lại với 12 người GalaxyPPG (pilot xong: không vào final theo luật)
+
+Pack `ppg_physiomix_v3g` (sha256 `996abac8…`): v3 + cửa sổ GalaxyPPG của 12 người train (chia cố định seed 20261014) làm
+miền cổ tay, cổ tay train 83 → 1293 cửa sổ; 12 người còn lại chỉ dùng để thi. Train lại công thức PhysioMix vòng 9 và
+PhysioFlow F10 (vòng 6), seed 42, mỗi model một T4, chọn checkpoint bằng validation cũ như mọi vòng
+(`experiment_galaxy.py`). Luật `RULE_B` khoá trước khi train: chỉ vào final 3 seed nếu trên 12 người thi, độ khó phân biệt
+hơn PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm, **và** trên validation cũ đạt mọi cổng với
+S_arm ≤ 0,559, Q cổ tay ≤ 0,587 (không lùi quá dao động 3 seed của vòng 9). Kernel `halovie2412/ppg-galaxy-b-pilot-v1`.
+Chạy thử CPU 4 bước: chạy trọn tới quyết định (không model nào qua, như dự kiến).
+
+Kết quả pilot (seed 42, 2 × T4, 2,5 h; `loop/galaxy_b_pilot.json`, luật `rules/FROZEN_GALAXY_B.json`), 12 người thi:
+
+| Nguồn | Khó phân biệt | Q | Sai nhịp (bpm) | Trong 5 bpm | Validation cũ: S_arm · Q cổ tay |
+|---|---|---|---|---|---|
+| Người thật khác | 71 ± 23% | 0,09 | 1,2 | 76% | |
+| PhysioMix app | 0,7 ± 1,1% | 0,85 | 1,5 | 65% | 0,530 · 0,527 (vòng 9, 3 seed) |
+| PhysioFlow app | 3,2 ± 1,8% | 1,16 | 1,8 | 70% | |
+| physiomix_g | 3,3 ± 2,0% | 0,28 | 1,3 | 89% | 0,465 · **0,794** |
+| **physioflow_g** | **31,8 ± 3,6%** | **0,19** | **1,2** | **89%** | 0,491 · **0,950** |
+
+Sai nhịp theo nhóm (lần chia 0; nghỉ · trí óc · đi bộ · chạy): PhysioMix app 1,1 · 1,8 · 9,6 · 12,1; physiomix_g 1,0 · 1,4 ·
+1,9 · 2,9; physioflow_g 0,9 · 1,7 · 1,5 · 1,9 bpm.
+
+Quyết định theo `RULE_B`: **không model nào vào final** (`go: []`). physioflow_g qua cả ba điều kiện trên GalaxyPPG (hơn
+PhysioMix app 31 điểm, ngưỡng 7,1) nhưng trượt điều kiện không lùi ở validation cũ: Q cổ tay 0,950 > 0,587. physiomix_g
+trượt độ giống (hơn 2,6 điểm, ngưỡng 4,0) và Q cổ tay cũ 0,794. App giữ PhysioMix vòng 9.
+
+Suy luận kỹ thuật (chưa kiểm chứng): miền “wrist” giờ gộp hai thiết bị, 1210/1293 cửa sổ train là E4 đời thường, nên model
+dịch về kiểu E4 và xa 89 cửa sổ validation cổ tay cũ (tập thể dục, thiết bị khác). Hướng tiếp theo hợp lý là tách thành
+hai miền riêng (cổ tay khi tập / cổ tay đời thường E4) và khoá luật mới trước khi train; một seed chưa đủ để kết luận.
+
+## Bước B-LSM: LSM-GAN học trên nhiều bộ dữ liệu (xong)
+
+LSM-GAN trong app chỉ được train trên BIDMC (dải 0,9–5 Hz, `train_lsm.prepare`). `experiment_lsm_galaxy.py` train lại
+đúng công thức đó (`lsm_repo_corrected`, `train_lsm.train_one`, chọn checkpoint bằng MMD validation) trên pack v3g, dải
+chung 0,5–8 Hz, 6000 bước, seed 42: `lsm_v3_all` (mọi tập, bỏ người GalaxyPPG), `lsm_v3g_all` (mọi tập + 12 người
+GalaxyPPG), `lsm_v3g_wrist` (chỉ cổ tay). LSM-GAN không có đầu vào điều kiện nên không bám nhịp, không chọn miền: không
+arm nào được vào app. `RULE_LSM` (khoá trước) chỉ trả lời “thêm dữ liệu có giúp không” trên 12 người thi: hơn LSM-GAN app,
+hoặc bản có GalaxyPPG hơn bản không có, quá 2 × SD. Kernel `halovie2412/ppg-lsm-galaxy-v1` (1 GPU). Chạy thử CPU 3 bước:
+chạy trọn tới quyết định.
+
+Kết quả (1 × T4, 0,6 h; `loop/lsm_galaxy.json`, luật `rules/FROZEN_LSM.json`), 12 người thi GalaxyPPG:
+
+| Nguồn | Cửa sổ train | Khó phân biệt | Q | Sai nhịp (bpm) |
+|---|---|---|---|---|
+| LSM-GAN app (BIDMC) | 619 | 0,0% | 1,99 | 16,7 |
+| lsm_v3_all | 6073 | 0,2 ± 0,1% | 0,83 | 15,0 |
+| lsm_v3g_all | 7283 | 1,5 ± 1,0% | 0,95 | 13,4 |
+| lsm_v3g_wrist | 1293 | 7,6 ± 4,5% | 0,76 | 10,6 |
+| PhysioMix app (để so) | | 0,7 ± 1,1% | 0,85 | 1,5 |
+
+Theo `RULE_LSM`: không arm nào “thêm dữ liệu đã giúp” (mọi khoảng cách nằm trong 2 × SD; bản chỉ cổ tay hơn 7,5 điểm nhưng
+ngưỡng 9,1 vì dao động giữa các lần chia lớn). Ngoài luật (chỉ mô tả): Q giảm rõ từ 1,99 xuống 0,76–0,95 khi học nhiều dữ
+liệu, tức hình dạng trung bình gần thật hơn; sai nhịp vẫn 10–15 bpm vì LSM-GAN không nhận nhịp. Không arm nào được vào app.
+
+
+## Bước C: giám khảo độc lập (xong, chỉ báo cáo)
+
+Câu hỏi: giám khảo C2ST của dự án (`control.Probe`: 3 Conv1d k7 s2, 16/32/32 kênh, ~11k tham số, học từ đầu 600 bước,
+nhìn ~1,1 s) có “hiểu” PPG thật không, hay chỉ bắt lỗi vặt? `judges.py` (CPU, không dùng để chọn model) chấm cùng bộ
+cửa sổ bằng ba cách:
+
+1. **PaPaGei-S** (Pillai và cs., ICLR 2025): ResNet1D-MoE 18 khối, 5,8 triệu tham số, train trên >57.000 giờ PPG công
+   khai (VitalDB, MIMIC-III, MESA); đông cứng. Mã vendored ở `ml/third_party/papagei` (BSD-3-Clause-Clear), trọng số
+   `papagei_s.pt` Zenodo 13983110, md5 khớp Zenodo, sha256 ghim trong code. 40 Hz → 125 Hz, 3 đoạn 10 s chuẩn hoá z,
+   embedding 512 chiều trung bình; C2ST tuyến tính chia theo người, Fréchet, fidelity/coverage k-NN.
+2. **Chỉ số sinh lý** viết riêng (khuôn nhịp chân–chân): tỉ lệ thời gian lên đỉnh, CV biên độ, độ giống giữa các nhịp,
+   tỉ lệ có khấc mạch đôi và pha khấc, b/a của APG, CV khoảng nhịp. Báo cáo W1 tới thật chia cho W1 thật–thật.
+3. **Dải tần**: cùng C2ST CNN nhưng cả thật và giả bị lọc còn một dải (0,5–1,5 / 1,5–3 / 3–5 / 5–8 Hz).
+
+Kết quả (`loop/judges_c.json`; 12 người thi GalaxyPPG, 3 lần chia, 192 cửa sổ; % khó phân biệt):
+
+| Nguồn | CNN dự án | PaPaGei | Độ giống giữa nhịp (× thật–thật) |
+|---|---|---|---|
+| Người thật khác | 75 ± 23 | 91 ± 6 | 1,0 |
+| PhysioMix app | 1,1 ± 1,4 | 9,7 ± 1,1 | 8,2 |
+| PhysioFlow app | 4,5 ± 2,2 | 2,9 ± 1,1 | 8,9 |
+| physiomix_g (bước B) | 6,2 ± 3,1 | 25,6 ± 4,2 | 2,4 |
+| physioflow_g (bước B) | 35,0 ± 7,2 | 66,9 ± 6,0 | 1,5 |
+| LSM-GAN | 0,1 | 0,1 | 5,4 |
+| Gaussian | 0 | 0 | 6,1 |
+
+- Hai giám khảo xếp hạng gần như nhau: Spearman 0,88 trên 22 cặp (nguồn × tập: GalaxyPPG + 4 tập v3 chưa thấy),
+  0,80–1,00 trong từng tập. Giám khảo của dự án không chấm tuỳ tiện.
+- Theo dải tần, PhysioMix app trên GalaxyPPG: 56 / 80 / 52 / **1**% (thật khác 76 / 82 / 75 / 89%). Phần lộ chủ yếu là
+  dải 5–8 Hz (kết cấu nhỏ của tín hiệu E4), không phải nhịp cơ bản. physioflow_g đạt 81–87% ở mọi dải.
+- Trên 4 tập v3 (1 lần chấm), CNN · PaPaGei: GXU PhysioMix 10 · 18, PhysioFlow 51 · 59; MIMIC 47 · 30 / 85 · 95;
+  BIDMC 53 · 34 / 73 · 72; cổ tay tập 39 · 6 / 48 · 67.
+- Giám khảo trong GAN (critic) cuối train không còn phân biệt được: run PhysioMix bước B, AUC 0,44 trên validation ngón
+  tay (`scripts/build_presentation_media.py`); vì vậy không dùng critic làm thước đo.
+- Hạn chế: PaPaGei học chủ yếu PPG bệnh viện/giấc ngủ, ít cổ tay; tập v3 chỉ chấm 1 lần, không có SD.
+
+## Bước D: tách cổ tay đời thường thành miền riêng (pilot xong: không vào final theo luật)
+
+Pack `ppg_physiomix_v3d` dựng trong bộ nhớ từ pack v3g đã kiểm tra (`fresh_galaxy.daily_wrist`, sha256 nội dung ghim
+`e8e32d64…`): cửa sổ GalaxyPPG thành miền `wrist_daily`; 4 trong 12 người train GalaxyPPG chuyển sang validation (seed
+20261015: P08, P11, P14, P20), 8 người còn lại train (813 cửa sổ), 12 người thi giữ nguyên. Miền `wrist` (tập thể dục,
+83 cửa sổ) như trước. `experiment_daily.py` train lại PhysioMix (công thức vòng 9) và PhysioFlow F10, seed 42, mỗi model
+một T4; checkpoint chọn bằng tiêu chí validation cũ như mọi vòng.
+
+`RULE_D` (khoá trước, chỉ validation): vào final 3 seed nếu (1) validation cũ đạt mọi cổng, S_arm ≤ 0,559, Q cổ tay tập ≤
+0,587; và (2) trên 4 người validation cổ tay đời thường (3 lần chia), nhắc bằng miền `wrist_daily`, “khó phân biệt” hơn
+PhysioMix app > 2 × SD, Q thấp hơn, sai nhịp không tệ hơn quá 2 bpm. Cả hai qua thì chọn bản khó phân biệt hơn.
+`RULE_D_FINAL`: seed 42 (pilot) + 123 + 2026; trung bình seed đạt các điều kiện trên (ngưỡng 2 × max(SD seed, SD app));
+seed giao là seed khó phân biệt nhất trong các seed tự đạt giới hạn validation cũ. 12 người thi chỉ báo cáo, chấm sau khi
+file quyết định đã ghi. Mỗi 500 bước train lưu mẫu cố định (`Snapshots`, RNG tách riêng) cho video trên trang trình bày.
+Chạy thử CPU 4 bước (pilot và final): chạy trọn tới quyết định. Kernel `halovie2412/ppg-galaxy-d-pilot-v1` (2 × T4).
+
+Kết quả pilot (seed 42, 2 × T4, 2,7 h; `loop/galaxy_d_pilot.json`, luật `rules/FROZEN_D_PILOT.json`):
+
+| | PhysioMix app | physiomix_d | physioflow_d |
+|---|---|---|---|
+| Validation cũ: S_arm (≤ 0,559) | 0,530 (vòng 9) | 0,502 ✓ | 0,439 ✓ |
+| Validation cũ: Q cổ tay tập (≤ 0,587) | 0,527 (vòng 9) | 0,558 ✓ | 0,574 ✓ |
+| 4 người validation đời thường: khó phân biệt | 0,4 ± 0,2% | 7,2 ± 5,7% | 29,2 ± 16,4% |
+| … hơn app / ngưỡng 2 × SD | | 6,7 / 11,4 ✗ | 28,8 / 32,8 ✗ |
+| … Q (thấp hơn app) | 1,05 | 0,79 ✓ | 0,55 ✓ |
+| … sai nhịp trung vị (bpm) | 0,87 | 0,87 ✓ | 0,78 ✓ |
+| 12 người thi (chỉ báo cáo): khó phân biệt | 0,7 ± 1,1% | 2,8 ± 3,0% | 24,3 ± 3,6% |
+| 12 người thi: Q · sai nhịp (bpm) | 0,85 · 1,5 | 0,49 · 1,4 | 0,23 · 1,2 |
+
+Quyết định theo `RULE_D`: `go: []`, **không chạy final, app giữ PhysioMix vòng 9**. Tách miền đã sửa đúng lỗi của bước B:
+cả hai model không còn lùi ở cổ tay tập (physioflow_g bước B: Q cổ tay 0,950; physioflow_d: 0,574). physioflow_d trượt
+duy nhất điều kiện độ khó phân biệt: hơn app 28,8 điểm nhưng ngưỡng 32,8, vì SD giữa 3 lần chia trên 4 người validation
+(2 người mỗi bên) là 16,4. Trên 12 người thi (chỉ báo cáo), physioflow_d đạt 24,3 ± 3,6% so với 0,7% của app, gần
+physioflow_g bước B (31,8%) mà không đánh đổi bài cũ.
+
+Suy luận (chưa kiểm chứng): với 4 người validation, luật quá nhiễu để xác nhận một khác biệt cỡ 25–30 điểm. Một vòng tiếp
+theo nên khoá luật trước với nhiều người validation hơn (ví dụ 6 người, nhiều lần chia hơn) rồi chạy 3 seed physioflow_d
+(ước tính 6–8 GPU-giờ). Chưa chạy, chờ đồng ý. (Đã chạy ở bước E bên dưới.)
+
+## Bước E: xác nhận PhysioFlow bước D với 6 người validation (xong: không thay app theo luật)
+
+Pack `ppg_physiomix_v3e` (`fresh_galaxy.DAILY_SPLITS`, dựng trong bộ nhớ từ pack v3g như v3d, sha256 nội dung ghim
+`39b26706…`, có test đối chiếu pack thật): 6 trong 12 người train GalaxyPPG làm validation cổ tay đời thường (seed
+20261017: P04, P08, P15, P20, P21, P22; 619 cửa sổ), 6 người còn lại train (591 cửa sổ), 12 người thi giữ nguyên.
+`experiment_e.py` train công thức physioflow_d (F10_flow_unif_stop01, sampler F10_flow_unif_stop01_s16_w1) ở seed 42, 123,
+2026 (hai seed song song trên 2 × T4, rồi seed thứ ba). Chấm 5 lần chia (3 người mỗi bên, 5 cách chia khác nhau).
+
+`RULE_E` (khoá trong code trước khi train, commit `0e07810a`, file `rules/FROZEN_E.json`, chỉ validation): PhysioFlow thay
+PhysioMix vòng 9 chỉ khi (1) mọi seed đạt mọi cổng validation cũ và trung bình seed S_arm ≤ 0,559, Q cổ tay tập ≤ 0,587;
+(2) trên 6 người validation, “khó phân biệt” trung bình seed hơn PhysioMix app > 2 × max(SD giữa seed, SD giữa các lần
+chia trung bình theo seed, SD lần chia của app); (3) Q thấp hơn app; (4) sai nhịp trung vị không tệ hơn quá 2 bpm. 12 người
+thi chỉ báo cáo, chấm sau khi `DECISION_E.json` đã ghi. Chạy thử CPU (4 bước) chạy trọn tới quyết định. Kernel
+`halovie2412/ppg-galaxy-e-v1` (2 × T4, 6,6 h; mã nguồn trong kernel khớp băm với commit). Bằng chứng: `loop/galaxy_e.json`.
+
+| | PhysioMix app | physioflow_e (3 seed) |
+|---|---|---|
+| Validation cũ: mọi seed đạt cổng | | ✓ |
+| Validation cũ: S_arm trung bình (≤ 0,559) | 0,530 (vòng 9) | 0,440 ✓ (0,425 / 0,448 / 0,446) |
+| Validation cũ: Q cổ tay tập trung bình (≤ 0,587) | 0,527 (vòng 9) | 0,585 ✓ (0,503 / 0,684 / 0,570) |
+| 6 người validation: khó phân biệt | 0,05 ± 0,07% | 25,6% (24,3 / 26,7 / 25,9), SD seed 1,2, SD lần chia 16,3 |
+| … hơn app / ngưỡng 2 × SD lớn nhất | | 25,6 / 32,5 ✗ |
+| … Q (thấp hơn app) | 0,89 | 0,37 ✓ |
+| … sai nhịp trung vị (bpm) | 1,16 | 0,99 ✓ |
+| 12 người thi (chỉ báo cáo): khó phân biệt | 0,4 ± 0,9% | 33,0% (31,9 / 34,4 / 32,8) |
+| 12 người thi: Q · sai nhịp (bpm) | 0,88 · 1,50 | 0,21 · 1,24 |
+
+Người thật khác (mức trần): 75,7 ± 32,2% trên validation, 69,9 ± 20,6% trên 12 người thi. PhysioFlow app (nhắc là
+`wrist`): 0,5% validation, 2,5% thi.
+
+Quyết định theo `RULE_E`: `ship: false`. **App giữ PhysioMix vòng 9**, không sửa `assets/neural`. Trượt duy nhất điều kiện
+(2): 3 seed rất giống nhau (SD 1,2), nhưng SD giữa 5 lần chia vẫn 16,3, gần như bước D (16,4), nên ngưỡng 32,5 vẫn cao hơn
+mức hơn 25,6. Không đổi luật sau khi đã thấy điểm. Q cổ tay tập trung bình 0,585 sát giới hạn 0,587; riêng seed 123 là
+0,684.
+
+Đọc từng lần chia (sự kiện từ `DECISION_E.json`): mức hơn app theo từng lần chia là 6–43 điểm, cả 5 lần đều dương; độ dao
+động chủ yếu do chọn ai làm “người thật”: chính người thật khác cũng chỉ đạt 23–100% tuỳ lần chia. Suy luận (chưa kiểm
+chứng): với 6 người, SD giữa các lần chia đo độ khó của cách chia (chung cho app và model), nên luật “2 × SD lần chia” gần như
+không thể đạt dù model hơn đều đặn; một luật sau này nên so cặp theo từng lần chia (cùng người, cùng mẫu). Chưa làm, cần khoá
+luật mới trước và chạy lại trên dữ liệu chưa dùng để chọn (6 người validation này đã dùng ở bước E).
+
+## Giới hạn
+
+- Đây là độ giống phân bố của PPG đã lọc 0,5–8 Hz và độ chính xác điều khiển nhịp; không phải SpO₂, không có cặp IR/RED
+  thật, không phải kiểm chứng lâm sàng. Validation đã dùng qua nhiều vòng (PhysioMix và PhysioFlow), nên điểm validation
+  hơi lạc quan; GXU test đã mở từ vòng 3 và chỉ để báo cáo.
+- Cổ tay chỉ có 4 người, 83 cửa sổ train: PhysioFlow bám sát các cửa sổ train cổ tay hơn mức người thật (kiểm tra chép
+  dữ liệu), và phổ cổ tay vẫn khác thật, chủ yếu do nhiễu sót ở 12–20 Hz (vòng 5). Loss dải chặn trọng số 0,1 (vòng 6) giảm phần này (Q cổ tay 3 seed 0,597) nhưng vẫn kém PhysioMix; bám nhịp cổ tay dưới 90 bpm là ngoại suy và đôi khi khoá ở hài bậc 2.
+- Chạy chậm hơn PhysioMix ~100 lần (giây so với mili giây); app chạy nó trong tiến trình riêng, không chặn DAC. Chưa đo
+  trên Pi/DAC/OPT101.

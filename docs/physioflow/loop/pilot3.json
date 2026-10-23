@@ -1,0 +1,513 @@
+{
+ "loop": 3,
+ "change": "Chọn thời điểm t khi train phủ cả vùng gần tín hiệu sạch (trộn, hoặc đều thay cho logit-normal); thử thêm cách kết thúc “dừng ở t = 0,04 rồi lọc 0,5–8 Hz”.",
+ "conclusion": "t đều thắng: S_arm 0,470, bám nhịp ổn định cả khi train lâu. Cách “dừng sớm + lọc” bị CNN nhận ra gần như 100% (AUC 0,99, dấu vết ở mép cửa sổ) nên bị loại, dù trên laptop nó làm phổ cổ tay đẹp hơn.",
+ "candidates": [
+  {
+   "arm": "F5_flow_flag_deriv_mix",
+   "sampler": "F5_flow_flag_deriv_mix_s8_w1",
+   "S_arm": 0.51,
+   "S_real": 0.369,
+   "C": 0.043,
+   "auc": 0.737,
+   "eligible": true,
+   "latency_ms": 677,
+   "Q": {
+    "gxu_finger": 0.14,
+    "perform_large": 0.1,
+    "bidmc": 0.754,
+    "perform_cohort": 0.46,
+    "wrist": 0.847
+   },
+   "mae_ext": 0.77
+  },
+  {
+   "arm": "F5_flow_flag_deriv_mix",
+   "sampler": "F5_flow_flag_deriv_mix_s16_w1",
+   "S_arm": 0.512,
+   "S_real": 0.374,
+   "C": 0.042,
+   "auc": 0.735,
+   "eligible": true,
+   "latency_ms": 1508,
+   "Q": {
+    "gxu_finger": 0.138,
+    "perform_large": 0.094,
+    "bidmc": 0.749,
+    "perform_cohort": 0.449,
+    "wrist": 0.919
+   },
+   "mae_ext": 0.77
+  },
+  {
+   "arm": "F5_flow_flag_deriv_mix",
+   "sampler": "F5_flow_flag_deriv_mix_s16_w1_f04",
+   "S_arm": 0.647,
+   "S_real": 0.381,
+   "C": 0.045,
+   "auc": 0.987,
+   "eligible": true,
+   "latency_ms": 1450,
+   "Q": {
+    "gxu_finger": 0.223,
+    "perform_large": 0.114,
+    "bidmc": 0.727,
+    "perform_cohort": 0.462,
+    "wrist": 0.615
+   },
+   "mae_ext": 0.84
+  },
+  {
+   "arm": "F6_flow_flag_deriv_unif",
+   "sampler": "F6_flow_flag_deriv_unif_s8_w1",
+   "S_arm": 0.503,
+   "S_real": 0.378,
+   "C": 0.048,
+   "auc": 0.702,
+   "eligible": true,
+   "latency_ms": 655,
+   "Q": {
+    "gxu_finger": 0.125,
+    "perform_large": 0.128,
+    "bidmc": 0.787,
+    "perform_cohort": 0.439,
+    "wrist": 0.904
+   },
+   "mae_ext": 1.32
+  },
+  {
+   "arm": "F6_flow_flag_deriv_unif",
+   "sampler": "F6_flow_flag_deriv_unif_s16_w1",
+   "S_arm": 0.47,
+   "S_real": 0.348,
+   "C": 0.047,
+   "auc": 0.697,
+   "eligible": true,
+   "latency_ms": 1425,
+   "Q": {
+    "gxu_finger": 0.113,
+    "perform_large": 0.106,
+    "bidmc": 0.77,
+    "perform_cohort": 0.418,
+    "wrist": 0.755
+   },
+   "mae_ext": 1.27
+  },
+  {
+   "arm": "F6_flow_flag_deriv_unif",
+   "sampler": "F6_flow_flag_deriv_unif_s16_w1_f04",
+   "S_arm": 0.631,
+   "S_real": 0.364,
+   "C": 0.046,
+   "auc": 0.987,
+   "eligible": true,
+   "latency_ms": 1536,
+   "Q": {
+    "gxu_finger": 0.192,
+    "perform_large": 0.119,
+    "bidmc": 0.749,
+    "perform_cohort": 0.407,
+    "wrist": 0.609
+   },
+   "mae_ext": 1.24
+  }
+ ],
+ "curves": {
+  "F5_flow_flag_deriv_mix": [
+   {
+    "step": 4000,
+    "S_real": 0.473,
+    "C": 0.022,
+    "Q": {
+     "gxu_finger": 0.276,
+     "perform_large": 0.233,
+     "bidmc": 0.773,
+     "perform_cohort": 0.565,
+     "wrist": 0.918
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.412,
+    "C": 0.037,
+    "Q": {
+     "gxu_finger": 0.19,
+     "perform_large": 0.173,
+     "bidmc": 0.744,
+     "perform_cohort": 0.464,
+     "wrist": 0.968
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.382,
+    "C": 0.03,
+    "Q": {
+     "gxu_finger": 0.163,
+     "perform_large": 0.132,
+     "bidmc": 0.693,
+     "perform_cohort": 0.436,
+     "wrist": 0.967
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.38,
+    "C": 0.034,
+    "Q": {
+     "gxu_finger": 0.155,
+     "perform_large": 0.117,
+     "bidmc": 0.72,
+     "perform_cohort": 0.411,
+     "wrist": 1.002
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.372,
+    "C": 0.035,
+    "Q": {
+     "gxu_finger": 0.139,
+     "perform_large": 0.111,
+     "bidmc": 0.771,
+     "perform_cohort": 0.408,
+     "wrist": 0.918
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.374,
+    "C": 0.047,
+    "Q": {
+     "gxu_finger": 0.144,
+     "perform_large": 0.112,
+     "bidmc": 0.745,
+     "perform_cohort": 0.411,
+     "wrist": 0.926
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.367,
+    "C": 0.042,
+    "Q": {
+     "gxu_finger": 0.137,
+     "perform_large": 0.122,
+     "bidmc": 0.73,
+     "perform_cohort": 0.41,
+     "wrist": 0.881
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.369,
+    "C": 0.039,
+    "Q": {
+     "gxu_finger": 0.154,
+     "perform_large": 0.111,
+     "bidmc": 0.726,
+     "perform_cohort": 0.412,
+     "wrist": 0.854
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.364,
+    "C": 0.047,
+    "Q": {
+     "gxu_finger": 0.148,
+     "perform_large": 0.099,
+     "bidmc": 0.709,
+     "perform_cohort": 0.411,
+     "wrist": 0.87
+    }
+   }
+  ],
+  "F6_flow_flag_deriv_unif": [
+   {
+    "step": 4000,
+    "S_real": 0.482,
+    "C": 0.021,
+    "Q": {
+     "gxu_finger": 0.307,
+     "perform_large": 0.253,
+     "bidmc": 0.757,
+     "perform_cohort": 0.55,
+     "wrist": 0.91
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.417,
+    "C": 0.023,
+    "Q": {
+     "gxu_finger": 0.212,
+     "perform_large": 0.183,
+     "bidmc": 0.716,
+     "perform_cohort": 0.487,
+     "wrist": 0.91
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.396,
+    "C": 0.026,
+    "Q": {
+     "gxu_finger": 0.162,
+     "perform_large": 0.147,
+     "bidmc": 0.773,
+     "perform_cohort": 0.449,
+     "wrist": 0.927
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.387,
+    "C": 0.043,
+    "Q": {
+     "gxu_finger": 0.153,
+     "perform_large": 0.131,
+     "bidmc": 0.75,
+     "perform_cohort": 0.456,
+     "wrist": 0.932
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.38,
+    "C": 0.035,
+    "Q": {
+     "gxu_finger": 0.143,
+     "perform_large": 0.123,
+     "bidmc": 0.754,
+     "perform_cohort": 0.424,
+     "wrist": 0.933
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.377,
+    "C": 0.041,
+    "Q": {
+     "gxu_finger": 0.136,
+     "perform_large": 0.126,
+     "bidmc": 0.753,
+     "perform_cohort": 0.424,
+     "wrist": 0.916
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.381,
+    "C": 0.062,
+    "Q": {
+     "gxu_finger": 0.137,
+     "perform_large": 0.123,
+     "bidmc": 0.764,
+     "perform_cohort": 0.444,
+     "wrist": 0.906
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.383,
+    "C": 0.068,
+    "Q": {
+     "gxu_finger": 0.145,
+     "perform_large": 0.123,
+     "bidmc": 0.758,
+     "perform_cohort": 0.426,
+     "wrist": 0.932
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.384,
+    "C": 0.077,
+    "Q": {
+     "gxu_finger": 0.16,
+     "perform_large": 0.115,
+     "bidmc": 0.762,
+     "perform_cohort": 0.42,
+     "wrist": 0.895
+    }
+   }
+  ]
+ },
+ "selection": {
+  "winner": "F6_flow_flag_deriv_unif_s16_w1",
+  "base": "F6_flow_flag_deriv_unif",
+  "candidates": [
+   {
+    "arm": "F5_flow_flag_deriv_mix",
+    "sampler": "F5_flow_flag_deriv_mix_s8_w1",
+    "S_arm": 0.5096949499491825,
+    "S_real": 0.3693590099308516,
+    "C": 0.04343179709574777,
+    "auc": 0.7372400829409143,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 676.6296709997732,
+     "p95_ms": 705.1869016003366,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F5_flow_flag_deriv_mix",
+    "sampler": "F5_flow_flag_deriv_mix_s16_w1",
+    "S_arm": 0.5119396236600904,
+    "S_real": 0.3736887183403325,
+    "C": 0.04180421553845573,
+    "auc": 0.73469759510106,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1508.0316200001107,
+     "p95_ms": 1617.1632631499963,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F5_flow_flag_deriv_mix",
+    "sampler": "F5_flow_flag_deriv_mix_s16_w1_f04",
+    "S_arm": 0.6469306430640394,
+    "S_real": 0.38098991605785587,
+    "C": 0.04494658588454477,
+    "auc": 0.986934868127822,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1450.2663119992576,
+     "p95_ms": 1521.4422288989226,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F6_flow_flag_deriv_unif",
+    "sampler": "F6_flow_flag_deriv_unif_s8_w1",
+    "S_arm": 0.5030363130814541,
+    "S_real": 0.37792444507448647,
+    "C": 0.048128896566616355,
+    "auc": 0.702094839447319,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 655.2347070000906,
+     "p95_ms": 698.4943939995446,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F6_flow_flag_deriv_unif",
+    "sampler": "F6_flow_flag_deriv_unif_s16_w1",
+    "S_arm": 0.47029335008480594,
+    "S_real": 0.34828176136806005,
+    "C": 0.04654434868322535,
+    "auc": 0.6974788287502665,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1425.272511500225,
+     "p95_ms": 1469.5131864001269,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F6_flow_flag_deriv_unif",
+    "sampler": "F6_flow_flag_deriv_unif_s16_w1_f04",
+    "S_arm": 0.6308445840676669,
+    "S_real": 0.3640933767050259,
+    "C": 0.04638926238917754,
+    "auc": 0.9871131523361045,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1535.5548734996773,
+     "p95_ms": 1590.8828463994723,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   }
+  ],
+  "reason": "argmin S_arm over eligible (arm, sampler) pairs, seed 42",
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0"
+ },
+ "configuration": {
+  "input_root": "/kaggle/input",
+  "output": "/kaggle/working/physioflow10",
+  "stage": "pilot",
+  "pilot_root": null,
+  "incumbent_root": null,
+  "arms": [
+   "F5_flow_flag_deriv_mix",
+   "F6_flow_flag_deriv_unif"
+  ],
+  "samplers": [
+   "F5_flow_flag_deriv_mix_s8_w1",
+   "F5_flow_flag_deriv_mix_s16_w1",
+   "F5_flow_flag_deriv_mix_s16_w1_f04",
+   "F6_flow_flag_deriv_unif_s8_w1",
+   "F6_flow_flag_deriv_unif_s16_w1",
+   "F6_flow_flag_deriv_unif_s16_w1_f04"
+  ],
+  "steps": 20000,
+  "seeds": [
+   42,
+   123,
+   2026
+  ],
+  "batch": 128,
+  "interval": 2000,
+  "eval_samples": 256,
+  "bootstrap": 200,
+  "allow_cpu": false
+ }
+}

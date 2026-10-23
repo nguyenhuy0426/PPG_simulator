@@ -1,0 +1,179 @@
+{
+  "D1": false,
+  "D2": false,
+  "checks": {
+    "every_seed_eligible": true,
+    "R_error_ok": true,
+    "S_arm_vs_F6": false,
+    "wrist_Q_ok": false,
+    "red_beats_copy": false
+  },
+  "d2_checks": {
+    "S_arm_gap_vs_R9": false,
+    "S_real_non_inferior": false,
+    "S_arm_abs": false
+  },
+  "ship_seed": 2026,
+  "S_arm": {
+    "mean": 0.5635608825745466,
+    "sd": 0.07814512344243309,
+    "values": [
+      0.531080146919165,
+      0.652708120286337,
+      0.5068943805181378
+    ]
+  },
+  "S_real": {
+    "mean": 0.4183657742122595,
+    "values": [
+      0.3898399147660243,
+      0.47676700008953127,
+      0.38849040778122296
+    ]
+  },
+  "wrist_Q": {
+    "mean": 0.8315916854484748,
+    "values": [
+      0.7995950166027913,
+      0.9597809182026269,
+      0.7353991215400062
+    ]
+  },
+  "pair_indistinguishable": {
+    "model": [
+      24.2401123046875,
+      24.8260498046875,
+      31.8084716796875
+    ],
+    "copy": [
+      19.580078125,
+      21.93603515625,
+      24.6612548828125
+    ],
+    "margin": 8.421306376231469
+  },
+  "F6_pooled_sd": 0.05630498934893088,
+  "R9_pooled_sd": 0.059008383801935745,
+  "winner": "U2",
+  "rule": "Round 11 (PhysioFlow-2), fixed before training. Pack ppg_physioflow2_v4. Arms U2 (two-channel U-Net) and T2 (DiT-1D), recipe: uniform flow times, first-difference weight 1 and stop-band log-PSD weight 0.1 on each channel, red terms only where red is known, 20000 steps, batch 128, AdamW 3e-4 with cosine decay, 16 Heun steps; checkpoints every 2000 steps on infrared S_real + 0.5C. Gates: finite, not flat, rho in [0.75, 1.25], TorchScript agreement, single-thread latency < 5000 ms. Pilot (seed 42): an arm is eligible if it passes every gate and the median |R_generated - R_prompted| on the red validation windows is <= 0.05; the winner is the eligible arm with the lowest S_arm, U2 within 0.02; with no eligible arm the round stops. Final: the winner at seeds 123 and 2026 plus the pilot seed. D1 (the two-channel model replaces PhysioFlow F6 as the research mode): every seed eligible; seed-mean S_arm <= F6 mean + pooled SD; seed-mean wrist-exercise Q <= 0.587; seed-mean two-channel 'indistinguishable' on the red validation windows exceeds the infrared-copy baseline's by more than 2 x max(seed SD of the model, seed SD of the copy). D2 (the two-channel model replaces PhysioMix R9 as the app default): D1 and the R9 rule of round 10: S_arm gap to R9 > pooled SD, seed-mean S_real <= R9 S_real + 0.05, seed-mean S_arm <= 0.559. Shipped seed: the eligible seed with the lowest S_arm. Validation only; test splits are not used.",
+  "wall_seconds": 17469.002288768,
+  "rows": [
+    {
+      "arm": "U2",
+      "seed": 42,
+      "S_arm": 0.531080146919165,
+      "S_real_fresh": 0.3898399147660243,
+      "C_fresh": 0.07074277463707633,
+      "c2st_derivative_auc": 0.7117376896692053,
+      "wrist_Q": 0.7995950166027913,
+      "red": {
+        "R_abs_error_median": 0.028081625699996948,
+        "R_abs_error_by_domain": {
+          "gxu_finger": 0.03284686803817749,
+          "ptt_sit": 0.025154441595077515,
+          "ptt_walk": 0.010398119688034058,
+          "ptt_run": 0.02112467586994171
+        },
+        "R_spearman": 0.9084601739528495,
+        "pair_auc_model": 0.8787994384765625,
+        "pair_indistinguishable_model": 24.2401123046875,
+        "pair_auc_copy": 0.902099609375,
+        "pair_indistinguishable_copy": 19.580078125,
+        "red_validation_windows": 256,
+        "red_train_windows": 511
+      },
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "eligible": true,
+      "latency": {
+        "median_ms": 1380.8970989994123,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU"
+      },
+      "best_step": 20000
+    },
+    {
+      "arm": "U2",
+      "seed": 123,
+      "S_arm": 0.652708120286337,
+      "S_real_fresh": 0.47676700008953127,
+      "C_fresh": 0.15573279171814663,
+      "c2st_derivative_auc": 0.6961494486754646,
+      "wrist_Q": 0.9597809182026269,
+      "red": {
+        "R_abs_error_median": 0.023266375064849854,
+        "R_abs_error_by_domain": {
+          "gxu_finger": 0.02825331687927246,
+          "ptt_sit": 0.018585145473480225,
+          "ptt_walk": 0.009469926357269287,
+          "ptt_run": 0.013225644826889038
+        },
+        "R_spearman": 0.9388647287708857,
+        "pair_auc_model": 0.8758697509765625,
+        "pair_indistinguishable_model": 24.8260498046875,
+        "pair_auc_copy": 0.89031982421875,
+        "pair_indistinguishable_copy": 21.93603515625,
+        "red_validation_windows": 256,
+        "red_train_windows": 511
+      },
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "eligible": true,
+      "latency": {
+        "median_ms": 1352.8838960010034,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU"
+      },
+      "best_step": 20000
+    },
+    {
+      "arm": "U2",
+      "seed": 2026,
+      "S_arm": 0.5068943805181378,
+      "S_real_fresh": 0.38849040778122296,
+      "C_fresh": 0.05915742127949998,
+      "c2st_derivative_auc": 0.6776505241943298,
+      "wrist_Q": 0.7353991215400062,
+      "red": {
+        "R_abs_error_median": 0.02625623345375061,
+        "R_abs_error_by_domain": {
+          "gxu_finger": 0.032628029584884644,
+          "ptt_sit": 0.01891040802001953,
+          "ptt_walk": 0.007871836423873901,
+          "ptt_run": 0.013009577989578247
+        },
+        "R_spearman": 0.9331375886930646,
+        "pair_auc_model": 0.8409576416015625,
+        "pair_indistinguishable_model": 31.8084716796875,
+        "pair_auc_copy": 0.8766937255859375,
+        "pair_indistinguishable_copy": 24.6612548828125,
+        "red_validation_windows": 256,
+        "red_train_windows": 511
+      },
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "eligible": true,
+      "latency": {
+        "median_ms": 1396.6737170012493,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU"
+      },
+      "best_step": 20000
+    }
+  ]
+}

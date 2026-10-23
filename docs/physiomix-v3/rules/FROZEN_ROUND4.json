@@ -1,0 +1,81 @@
+{
+  "rule": "PhysioMix round 4 rule (validation only; same locked criterion sha256 813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0).\nArms L1-L4, three seeds each, Adam 1e-4 cosine-decayed to 1e-5, checkpoints every 500 steps from 1000.\nWinner: lowest mean S_arm among arms whose every seed passes all round-3 gates; any arm within 0.01 of\nthat mean with fewer changes (L1 < L2 < L3 < L4) wins instead. Ship to the app only if the winner beats\nround-3 physiomix_v2 (mean S_arm 0.5956) by more than the pooled seed SD and its\nmean S_real is at most round-3 + 0.05; the shipped seed is the winner's lowest-S_arm seed. Otherwise\nround-3 physiomix_v2 stays in the app. The GXU test is scored only after this selection is saved.",
+  "rule_sha256": "5c78f9364d05895338b7bc9799dfba98bd0b649cc1d493bee4e45dbc84bc4ebd",
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0",
+  "arms": {
+    "L1_v2_lr": {
+      "diffusion": false,
+      "osc": true,
+      "dc": true,
+      "guidance": 1.0,
+      "sample_steps": 32,
+      "lr": 0.0001,
+      "schedule": "cosine",
+      "rel": false,
+      "beat": false,
+      "domloss": false,
+      "version": "v2"
+    },
+    "L2_rel_lr": {
+      "diffusion": false,
+      "osc": true,
+      "dc": true,
+      "guidance": 1.0,
+      "sample_steps": 32,
+      "lr": 0.0001,
+      "schedule": "cosine",
+      "rel": true,
+      "beat": false,
+      "domloss": false,
+      "version": "v2"
+    },
+    "L3_rel_beat_lr": {
+      "diffusion": false,
+      "osc": true,
+      "dc": true,
+      "guidance": 1.0,
+      "sample_steps": 32,
+      "lr": 0.0001,
+      "schedule": "cosine",
+      "rel": true,
+      "beat": true,
+      "domloss": false,
+      "version": "v2"
+    },
+    "L4_rel_beat_dom_lr": {
+      "diffusion": false,
+      "osc": true,
+      "dc": true,
+      "guidance": 1.0,
+      "sample_steps": 32,
+      "lr": 0.0001,
+      "schedule": "cosine",
+      "rel": true,
+      "beat": true,
+      "domloss": true,
+      "version": "v2"
+    }
+  },
+  "seeds": [
+    42,
+    123,
+    2026
+  ],
+  "steps": 20000,
+  "batch": 32,
+  "round3_physiomix_v2": {
+    "S_arm": [
+      0.5786631538990534,
+      0.5822552091758637,
+      0.6259113024743039
+    ],
+    "S_real_fresh": [
+      0.37724536685135757,
+      0.3394293098960376,
+      0.38247588889461326
+    ]
+  },
+  "data_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "gxu_test_subject_sha256": "a0d0c0e982ab31f265ab02853efe93c26ab8d547df68eef2576f8489079ebb45",
+  "holdout_rule": "GXU test opened once in round 3; scored here after SELECTION_ROUND4.json, report only"
+}

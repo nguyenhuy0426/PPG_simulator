@@ -1,0 +1,42 @@
+{
+  "arm": "F10_flow_unif_stop01_s16_w1",
+  "incumbent": "round9_L3_rel_beat_lr_crop_r1w_motion_dom",
+  "ship": false,
+  "ship_seed": 123,
+  "eligible": true,
+  "gap": 0.08489563808920486,
+  "pooled_sd": 0.02094432565524558,
+  "non_inferior": true,
+  "S_arm": {
+    "mean": 0.4449538056678668,
+    "sd": 0.004487406946372577,
+    "n": 3
+  },
+  "S_real": {
+    "mean": 0.3208987033796747,
+    "sd": 0.009807779339520548,
+    "n": 3
+  },
+  "incumbent_S_arm": {
+    "mean": 0.5298494437570717,
+    "sd": 0.02927785397196324,
+    "n": 3
+  },
+  "incumbent_S_real": {
+    "mean": 0.34375041348844687,
+    "sd": 0.013837685214358573,
+    "n": 3
+  },
+  "wrist_Q": {
+    "mean": 0.5966853139151297,
+    "sd": 0.02738067175222294,
+    "n": 3
+  },
+  "incumbent_wrist_Q": {
+    "mean": 0.526627467244943,
+    "sd": 0.05964817165583148,
+    "n": 3
+  },
+  "wrist_pooled_sd": 0.04640908083277731,
+  "wrist_non_inferior": false
+}

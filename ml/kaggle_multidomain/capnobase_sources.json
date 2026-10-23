@@ -1,0 +1,218 @@
+{
+  "doi": "10.5683/SP2/NLB8IT",
+  "version": "1.1",
+  "use": "external_only_follow_author_recommendation",
+  "termsOfUse": "This is an agreement (\u201cAgreement\u201d) between you the downloader (\u201cDownloader\u201d) and the owner of the materials (\u201cUser\u201d) governing the use of the materials (\u201cMaterials\u201d) to be downloaded.\n<br>\n<b>I. Acceptance of this Agreement</b>\n<br>\nBy downloading or otherwise accessing the Materials, Downloader represents his/her acceptance of the terms of this Agreement.\n<br>\n<b>II. Modification of this Agreement</b>\n<br>\nUsers may modify the terms of this Agreement at any time. However, any modifications to this Agreement will only be effective for downloads subsequent to such modification. No modifications will supersede any previous terms that were in effect at the time of the Downloader\u2019s download.\n<br>\n<b>III. Use of the Materials</b>\n<br>\nUse of the Materials include but are not limited to viewing parts or the whole of the content included in the Materials; comparing data or content from the Materials with data or content in other Materials; verifying research results with the content included in the Materials; and extracting and/or appropriating any part of the content included in the Materials for use in other projects, publications, research, or other related work products.\n<br>\n<b>A.    Representations </b>\n<br>\nIn Use of the Materials, Downloader represents that:\n<br><ul>\n<li>    Downloader is not bound by any pre-existing legal obligations or other applicable laws that prevent Downloader from downloading or using the Materials; </li>\n<li> Downloader will not use the Materials in any way prohibited by applicable laws; </li>\n<li> Downloader has no knowledge of and will therefore not be responsible for any restrictions regarding the use of Materials beyond what is described in this Agreement; and</li>\n<li> Downloader has no knowledge of and will therefore not be responsible for any inaccuracies and any other such problems with regards to the content of the Materials and the accompanying citation information. </li></ul>\n<br>\n<b>B. Restrictions In his/her Use of the Materials, Downloaders cannot:</b>\n<br><ul>\n  <li>   obtain information from the Materials that results in Downloader or any third party(ies) directly or indirectly identifying any research subjects with the aid of other information acquired elsewhere; </li>\n<li> produce connections or links among the information included in User\u2019s datasets (including information in the Materials), or between the information included in User\u2019s datasets (including information in the Materials) and other third-party information that could be used to identify any individuals or organizations, not limited to research subjects; and </li>\n<li> extract information from the Materials that could aid Downloader in gaining knowledge about or obtaining any means of contacting any subjects already known to Downloader.</li> </ul>\n<br>\n<b>IV. Representations and Warranties</b>\n<br>\nUSER REPRESENTS THAT USER HAS ALL RIGHTS REQUIRED TO MAKE AVAILABLE AND DISTRIBUTE THE MATERIALS. EXCEPT FOR SUCH REPRESENTATION, THE MATERIALS IS PROVIDED \u201cAS IS\u201d AND \u201cAS AVAILABLE\u201d AND WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND ANY WARRANTIES IMPLIED BY ANY COURSE OF PERFORMANCE OR USAGE OF TRADE, ALL OF WHICH ARE EXPRESSLY DISCLAIMED.\n<br>\nWITHOUT LIMITING THE FOREGOING, USER DOES NOT WARRANT THAT: (A) THE MATERIALS ARE ACCURATE, COMPLETE, RELIABLE OR CORRECT; (B) THE MATERIALS FILES WILL BE SECURE ; (C) THE MATERIALS WILL BE AVAILABLE AT ANY PARTICULAR TIME OR LOCATION; (D) ANY DEFECTS OR ERRORS WILL BE CORRECTED; (E) THE MATERIALS AND ACCOMPANYING FILES ARE FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS; OR (F) THE RESULTS OF USING THE MATERIALS WILL MEET DOWNLOADER\u2019S REQUIREMENTS. DOWNLOADER\u2019S USE OF THE MATERIALS IS SOLELY AT DOWNLOADER\u2019S OWN RISK.\n<br>\n<b>V. Limitation of Liability</b>\n<br>\nIN NO EVENT SHALL USER BE LIABLE UNDER CONTRACT, TORT, STRICT LIABILITY, NEGLIGENCE OR ANY OTHER LEGAL THEORY WITH RESPECT TO THE MATERIALS (I) FOR ANY DIRECT DAMAGES, OR (II) FOR ANY LOST PROFITS OR SPECIAL, INDIRECT, INCIDENTAL, PUNITIVE, OR CONSEQUENTIAL DAMAGES OF ANY KIND WHATSOEVER.\n<br>\n<b>VI. Indemnification</b>\n<br>\nDownloader will indemnify and hold User harmless from and against any and all loss, cost, expense, liability, or damage, including, without limitation, all reasonable attorneys\u2019 fees and court costs, arising from the i) Downloader\u2019s misuse of the Materials; (ii) Downloader\u2019s violation of the terms of this Agreement; or (iii) infringement by Downloader or any third party of any intellectual property or other right of any person or entity contained in the Materials. Such losses, costs, expenses, damages, or liabilities shall include, without limitation, all actual, general, special, and consequential damages.\n<br>\n<b>VII. Dispute Resolution</b>\n<br>\nDownloader and User agree that any cause of action arising out of or related to the download or use of the Materials must commence within one (1) year after the cause of action arose; otherwise, such cause of action is permanently barred.\n<br>\nThis Agreement shall be governed by and interpreted in accordance with the laws of the Commonwealth of Massachusetts (excluding the conflict of laws rules thereof). All disputes under this Agreement will be resolved in the applicable state or federal courts of Massachusetts. Downloader consents to the jurisdiction of such courts and waives any jurisdictional or venue defenses otherwise available.\n<br>\n<b>VIII. Integration and Severability</b>\n<br>\nThis Agreement represents the entire agreement between Downloader and User with respect to the downloading and use of the Materials, and supersedes all prior or contemporaneous communications and proposals (whether oral, written or electronic) between Downloader and User with respect to downloading or using the Materials. If any provision of this Agreement is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that the Agreement will otherwise remain in full force and effect and enforceable.\n<br>\n<b>IX. Miscellaneous</b>\n<br>\nUser may assign, transfer or delegate any of its rights and obligations hereunder without consent. No agency, partnership, joint venture, or employment relationship is created as a result of the Agreement and neither party has any authority of any kind to bind the other in any respect outside of the terms described within this Agreement. In any action or proceeding to enforce rights under the Agreement, the prevailing party will be entitled to recover costs and attorneys\u2019 fees.",
+  "files": [
+    {
+      "id": 141719,
+      "name": "0009_8min.mat",
+      "md5": "d04ed36bfb3c0731bd2bff669c12ebca"
+    },
+    {
+      "id": 141451,
+      "name": "0015_8min.mat",
+      "md5": "776648660362cd4056b59d9f0eb30d4c"
+    },
+    {
+      "id": 141557,
+      "name": "0016_8min.mat",
+      "md5": "5a9a7fcc82af186bb40992d6817af052"
+    },
+    {
+      "id": 141714,
+      "name": "0018_8min.mat",
+      "md5": "b5d66e30fefbe59007a303d8f9b69878"
+    },
+    {
+      "id": 141415,
+      "name": "0023_8min.mat",
+      "md5": "c401044727891d547f88b2242e7acbd1"
+    },
+    {
+      "id": 141502,
+      "name": "0028_8min.mat",
+      "md5": "388053eea86ba0dec175d7db69932a2b"
+    },
+    {
+      "id": 141700,
+      "name": "0029_8min.mat",
+      "md5": "f57351a217d2124cb294ac3ac8426c11"
+    },
+    {
+      "id": 141664,
+      "name": "0030_8min.mat",
+      "md5": "036b77e8b9e39567f4e49cdf5f28b104"
+    },
+    {
+      "id": 141477,
+      "name": "0031_8min.mat",
+      "md5": "84f978aa2b91679a0dc3f2cd5c41736f"
+    },
+    {
+      "id": 141498,
+      "name": "0032_8min.mat",
+      "md5": "24b7d3aabdde3d2cad514aec56c067b3"
+    },
+    {
+      "id": 141530,
+      "name": "0035_8min.mat",
+      "md5": "9904dac90714c4723c9751daf6790355"
+    },
+    {
+      "id": 141541,
+      "name": "0038_8min.mat",
+      "md5": "f9adc5cfb3d6e9785e006ad911b5f2f6"
+    },
+    {
+      "id": 141387,
+      "name": "0103_8min.mat",
+      "md5": "7032aae14b97cbd762700dc006027ad8"
+    },
+    {
+      "id": 141574,
+      "name": "0104_8min.mat",
+      "md5": "1cf21ddd6598bb7c41d3e410d39b3937"
+    },
+    {
+      "id": 141514,
+      "name": "0105_8min.mat",
+      "md5": "c667d4bc22027c17a7df51f67e3581ce"
+    },
+    {
+      "id": 141673,
+      "name": "0115_8min.mat",
+      "md5": "f338327f3d8968a3d28501238a226a0c"
+    },
+    {
+      "id": 141433,
+      "name": "0121_8min.mat",
+      "md5": "880f6bb4f45b44a82d1f1374aca700c4"
+    },
+    {
+      "id": 141505,
+      "name": "0122_8min.mat",
+      "md5": "8b558589b5892dc22e76ee656266c596"
+    },
+    {
+      "id": 141594,
+      "name": "0123_8min.mat",
+      "md5": "2dfd7439da62e963c48bf382234b7aa3"
+    },
+    {
+      "id": 141455,
+      "name": "0125_8min.mat",
+      "md5": "f15e2fb2f1b75167f752aaa177a9f2c0"
+    },
+    {
+      "id": 141680,
+      "name": "0127_8min.mat",
+      "md5": "57dd7b0f7044147762102c0faed68615"
+    },
+    {
+      "id": 141490,
+      "name": "0128_8min.mat",
+      "md5": "648af9e588d95faba7ddcac0559a1687"
+    },
+    {
+      "id": 141391,
+      "name": "0133_8min.mat",
+      "md5": "472826fcd4de9bb2ae8ffa8b67067022"
+    },
+    {
+      "id": 141601,
+      "name": "0134_8min.mat",
+      "md5": "f5e9f076057cb6c61bfba6e6b5d86da7"
+    },
+    {
+      "id": 141432,
+      "name": "0142_8min.mat",
+      "md5": "1492722523c881cf231315d5cb008145"
+    },
+    {
+      "id": 141410,
+      "name": "0147_8min.mat",
+      "md5": "3eb033516ef13d717db8794c57fb3129"
+    },
+    {
+      "id": 141662,
+      "name": "0148_8min.mat",
+      "md5": "e9c70c91ff48e7cd8abcaa5d498dc4b1"
+    },
+    {
+      "id": 141643,
+      "name": "0149_8min.mat",
+      "md5": "3656b6ca4635f369b8c3237b5be9412b"
+    },
+    {
+      "id": 141608,
+      "name": "0150_8min.mat",
+      "md5": "06a3eb00be15f6769b9b3df08a5db6e7"
+    },
+    {
+      "id": 141713,
+      "name": "0309_8min.mat",
+      "md5": "a4bda37e3faa56fa0dcb5161ff98dcae"
+    },
+    {
+      "id": 141597,
+      "name": "0311_8min.mat",
+      "md5": "cd0c4fa982ca1f730925725e6db927b7"
+    },
+    {
+      "id": 141609,
+      "name": "0312_8min.mat",
+      "md5": "760137b4fa285ba0e4868528e332c68b"
+    },
+    {
+      "id": 141610,
+      "name": "0313_8min.mat",
+      "md5": "df20e3d41a8025e8b3a1504a796abc6b"
+    },
+    {
+      "id": 141517,
+      "name": "0322_8min.mat",
+      "md5": "51d363f9a3b7a3767bda11ec19616ebd"
+    },
+    {
+      "id": 141404,
+      "name": "0325_8min.mat",
+      "md5": "dce3e03c6f80e454bfd46ba19eb4a1b1"
+    },
+    {
+      "id": 141639,
+      "name": "0328_8min.mat",
+      "md5": "ebf0b95314524b75d36bd7a4b377cda2"
+    },
+    {
+      "id": 141512,
+      "name": "0329_8min.mat",
+      "md5": "db95aceb91dbea839deea6079faf2e70"
+    },
+    {
+      "id": 141434,
+      "name": "0330_8min.mat",
+      "md5": "9dafe56027aceeed60ae25a721f20c80"
+    },
+    {
+      "id": 141454,
+      "name": "0331_8min.mat",
+      "md5": "00d13ae8cf06a5d31733ab8caa5af879"
+    },
+    {
+      "id": 141606,
+      "name": "0332_8min.mat",
+      "md5": "d201cadf7a812c693e1c8bd631be3cc3"
+    },
+    {
+      "id": 141668,
+      "name": "0333_8min.mat",
+      "md5": "8eaf55234a868ac5a4ddb7ac9788b8e3"
+    },
+    {
+      "id": 141419,
+      "name": "0370_8min.mat",
+      "md5": "c117f92163373484e968bc34c14112fc"
+    }
+  ]
+}

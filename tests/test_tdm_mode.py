@@ -192,7 +192,7 @@ def test_rx_panel_names_the_shared_sensor_and_shows_dark_level():
         rx.acquire_tdm_slot(slot)
     panel = RXPanel.__new__(RXPanel)  # exercise the lane logic without a Tk window
     panel.receiver, panel.language, panel.channels = rx, "en", ((IR, "IR", "#0f0"), (RED, "RED", "#f00"))
-    panel._last_update, panel.window_s = 0.0, 8.0
+    panel._last_update, panel.window_s, panel._rates = 0.0, 8.0, {}
     panel.winfo_ismapped = lambda: True
     captured = {}
     panel.update_lanes = lambda lanes, end_s=None: captured.setdefault("lanes", lanes)

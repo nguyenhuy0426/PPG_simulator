@@ -1,0 +1,18 @@
+{
+  "id": "charlesday2612/ppg-multidomain-model-benchmark",
+  "title": "PPG Multidomain Model Benchmark",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [
+    "charlesday2612/ppg-multidomain-data-v1",
+    "charlesday2612/ppg-lsm-gan-bidmc-comparison"
+  ],
+  "model_sources": []
+}

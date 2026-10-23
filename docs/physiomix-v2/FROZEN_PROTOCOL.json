@@ -1,0 +1,91 @@
+{
+  "arms": [
+    "lsm_multi",
+    "hybrid_multi",
+    "physiomix_no_div",
+    "physiodiffusion",
+    "physiomix_v2"
+  ],
+  "aliases": {
+    "physiomix_v2": "P4_v2_osc_dc"
+  },
+  "seeds": [
+    42,
+    123,
+    2026
+  ],
+  "steps": 10000,
+  "batch": 32,
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0",
+  "gxu_test_subject_sha256": "a0d0c0e982ab31f265ab02853efe93c26ab8d547df68eef2576f8489079ebb45",
+  "pilot_selection": {
+    "winner": "P4_v2_osc_dc",
+    "reason": "argmin S_arm with 0.02 tie margin, fewer changes, lower AUC",
+    "control_S_real": 0.46131508838292934,
+    "non_inferiority_limit": 0.5113150883829294,
+    "candidates": [
+      {
+        "arm": "P1_v2_lab",
+        "S_arm": 0.7466803009667349,
+        "auc": 0.9765168691742728,
+        "eligible": true,
+        "non_inferior": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": true,
+          "trace_ok": true,
+          "latency_ok": true
+        }
+      },
+      {
+        "arm": "P2_v2_osc",
+        "S_arm": 0.7323115459827743,
+        "auc": 0.9927988682828518,
+        "eligible": true,
+        "non_inferior": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": true,
+          "trace_ok": true,
+          "latency_ok": true
+        }
+      },
+      {
+        "arm": "P3_v2_dc",
+        "S_arm": 0.7411631902786151,
+        "auc": 0.8984477646648451,
+        "eligible": false,
+        "non_inferior": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": false,
+          "trace_ok": true,
+          "latency_ok": true
+        }
+      },
+      {
+        "arm": "P4_v2_osc_dc",
+        "S_arm": 0.595048390436969,
+        "auc": 0.912954673177916,
+        "eligible": true,
+        "non_inferior": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": true,
+          "trace_ok": true,
+          "latency_ok": true
+        }
+      }
+    ],
+    "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0"
+  },
+  "holdout_rule": "GXU test opened once after this file; old test/external splits exploratory only"
+}

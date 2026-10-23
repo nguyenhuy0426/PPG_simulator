@@ -1,0 +1,429 @@
+{
+ "loop": 2,
+ "change": "Khung nhịp chỉ bật khi điều kiện “đã biết HR” (giống lúc train); loss đạo hàm 1 và 0,3; 20 000 bước.",
+ "conclusion": "Gần bằng PhysioMix (0,537 so với 0,530) và khó bị nhận ra hơn hẳn (AUC 0,70). Phần thua còn lại gần như chỉ ở phổ log; thử trên laptop cho thấy nó phụ thuộc vài bước lấy mẫu cuối.",
+ "candidates": [
+  {
+   "arm": "F3_flow_flag_deriv",
+   "sampler": "F3_flow_flag_deriv_s8_w1",
+   "S_arm": 0.543,
+   "S_real": 0.392,
+   "C": 0.099,
+   "auc": 0.704,
+   "eligible": true,
+   "latency_ms": 686,
+   "Q": {
+    "gxu_finger": 0.121,
+    "perform_large": 0.142,
+    "bidmc": 0.754,
+    "perform_cohort": 0.482,
+    "wrist": 1.048
+   },
+   "mae_ext": 2.25
+  },
+  {
+   "arm": "F3_flow_flag_deriv",
+   "sampler": "F3_flow_flag_deriv_s16_w1",
+   "S_arm": 0.537,
+   "S_real": 0.391,
+   "C": 0.095,
+   "auc": 0.696,
+   "eligible": true,
+   "latency_ms": 1430,
+   "Q": {
+    "gxu_finger": 0.138,
+    "perform_large": 0.145,
+    "bidmc": 0.735,
+    "perform_cohort": 0.476,
+    "wrist": 0.974
+   },
+   "mae_ext": 2.25
+  },
+  {
+   "arm": "F4_flow_flag_deriv03",
+   "sampler": "F4_flow_flag_deriv03_s8_w1",
+   "S_arm": 0.595,
+   "S_real": 0.422,
+   "C": 0.152,
+   "auc": 0.694,
+   "eligible": true,
+   "latency_ms": 709,
+   "Q": {
+    "gxu_finger": 0.188,
+    "perform_large": 0.163,
+    "bidmc": 0.706,
+    "perform_cohort": 0.525,
+    "wrist": 1.073
+   },
+   "mae_ext": 1.47
+  },
+  {
+   "arm": "F4_flow_flag_deriv03",
+   "sampler": "F4_flow_flag_deriv03_s16_w1",
+   "S_arm": 0.583,
+   "S_real": 0.415,
+   "C": 0.151,
+   "auc": 0.685,
+   "eligible": true,
+   "latency_ms": 1493,
+   "Q": {
+    "gxu_finger": 0.199,
+    "perform_large": 0.169,
+    "bidmc": 0.679,
+    "perform_cohort": 0.506,
+    "wrist": 0.993
+   },
+   "mae_ext": 1.45
+  }
+ ],
+ "curves": {
+  "F3_flow_flag_deriv": [
+   {
+    "step": 4000,
+    "S_real": 0.461,
+    "C": 0.031,
+    "Q": {
+     "gxu_finger": 0.284,
+     "perform_large": 0.235,
+     "bidmc": 0.758,
+     "perform_cohort": 0.561,
+     "wrist": 0.893
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.459,
+    "C": 0.077,
+    "Q": {
+     "gxu_finger": 0.218,
+     "perform_large": 0.176,
+     "bidmc": 0.822,
+     "perform_cohort": 0.602,
+     "wrist": 1.092
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.415,
+    "C": 0.125,
+    "Q": {
+     "gxu_finger": 0.182,
+     "perform_large": 0.142,
+     "bidmc": 0.774,
+     "perform_cohort": 0.532,
+     "wrist": 1.056
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.404,
+    "C": 0.138,
+    "Q": {
+     "gxu_finger": 0.138,
+     "perform_large": 0.124,
+     "bidmc": 0.789,
+     "perform_cohort": 0.533,
+     "wrist": 1.031
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.395,
+    "C": 0.114,
+    "Q": {
+     "gxu_finger": 0.13,
+     "perform_large": 0.128,
+     "bidmc": 0.776,
+     "perform_cohort": 0.526,
+     "wrist": 0.946
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.401,
+    "C": 0.139,
+    "Q": {
+     "gxu_finger": 0.14,
+     "perform_large": 0.131,
+     "bidmc": 0.792,
+     "perform_cohort": 0.511,
+     "wrist": 0.976
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.39,
+    "C": 0.154,
+    "Q": {
+     "gxu_finger": 0.135,
+     "perform_large": 0.129,
+     "bidmc": 0.78,
+     "perform_cohort": 0.5,
+     "wrist": 0.931
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.397,
+    "C": 0.183,
+    "Q": {
+     "gxu_finger": 0.13,
+     "perform_large": 0.129,
+     "bidmc": 0.788,
+     "perform_cohort": 0.519,
+     "wrist": 0.936
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.384,
+    "C": 0.208,
+    "Q": {
+     "gxu_finger": 0.129,
+     "perform_large": 0.123,
+     "bidmc": 0.762,
+     "perform_cohort": 0.518,
+     "wrist": 0.875
+    }
+   }
+  ],
+  "F4_flow_flag_deriv03": [
+   {
+    "step": 4000,
+    "S_real": 0.526,
+    "C": 0.159,
+    "Q": {
+     "gxu_finger": 0.348,
+     "perform_large": 0.285,
+     "bidmc": 0.795,
+     "perform_cohort": 0.645,
+     "wrist": 0.964
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.469,
+    "C": 0.125,
+    "Q": {
+     "gxu_finger": 0.256,
+     "perform_large": 0.221,
+     "bidmc": 0.753,
+     "perform_cohort": 0.579,
+     "wrist": 1.058
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.442,
+    "C": 0.122,
+    "Q": {
+     "gxu_finger": 0.228,
+     "perform_large": 0.188,
+     "bidmc": 0.72,
+     "perform_cohort": 0.537,
+     "wrist": 1.069
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.424,
+    "C": 0.169,
+    "Q": {
+     "gxu_finger": 0.193,
+     "perform_large": 0.167,
+     "bidmc": 0.737,
+     "perform_cohort": 0.502,
+     "wrist": 1.032
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.4,
+    "C": 0.156,
+    "Q": {
+     "gxu_finger": 0.186,
+     "perform_large": 0.139,
+     "bidmc": 0.704,
+     "perform_cohort": 0.473,
+     "wrist": 0.973
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.403,
+    "C": 0.195,
+    "Q": {
+     "gxu_finger": 0.163,
+     "perform_large": 0.143,
+     "bidmc": 0.735,
+     "perform_cohort": 0.467,
+     "wrist": 1.013
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.4,
+    "C": 0.218,
+    "Q": {
+     "gxu_finger": 0.169,
+     "perform_large": 0.132,
+     "bidmc": 0.743,
+     "perform_cohort": 0.47,
+     "wrist": 0.963
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.404,
+    "C": 0.221,
+    "Q": {
+     "gxu_finger": 0.163,
+     "perform_large": 0.121,
+     "bidmc": 0.742,
+     "perform_cohort": 0.485,
+     "wrist": 1.025
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.402,
+    "C": 0.227,
+    "Q": {
+     "gxu_finger": 0.157,
+     "perform_large": 0.127,
+     "bidmc": 0.736,
+     "perform_cohort": 0.505,
+     "wrist": 0.975
+    }
+   }
+  ]
+ },
+ "selection": {
+  "winner": "F3_flow_flag_deriv_s16_w1",
+  "base": "F3_flow_flag_deriv",
+  "candidates": [
+   {
+    "arm": "F3_flow_flag_deriv",
+    "sampler": "F3_flow_flag_deriv_s8_w1",
+    "S_arm": 0.5432036238595923,
+    "S_real": 0.3919065616577622,
+    "C": 0.09877070328473295,
+    "auc": 0.7038234211189272,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 685.8386609997069,
+     "p95_ms": 703.614621950237,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F3_flow_flag_deriv",
+    "sampler": "F3_flow_flag_deriv_s16_w1",
+    "S_arm": 0.5368635810525578,
+    "S_real": 0.39146949950683363,
+    "C": 0.09480537139329123,
+    "auc": 0.6959827916981571,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1429.7904269997161,
+     "p95_ms": 1462.3163380998449,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F4_flow_flag_deriv03",
+    "sampler": "F4_flow_flag_deriv03_s8_w1",
+    "S_arm": 0.5950529947269009,
+    "S_real": 0.4218769706761249,
+    "C": 0.152206358897436,
+    "auc": 0.694145689204116,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 708.6994320002304,
+     "p95_ms": 724.9988338006006,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   },
+   {
+    "arm": "F4_flow_flag_deriv03",
+    "sampler": "F4_flow_flag_deriv03_s16_w1",
+    "S_arm": 0.5828628792745948,
+    "S_real": 0.4150678845651276,
+    "C": 0.15066857012160675,
+    "auc": 0.6849214192973276,
+    "eligible": true,
+    "gates": {
+     "finite": true,
+     "flat": false,
+     "rho_ok": true,
+     "d_clipped_ok": true,
+     "trace_ok": true,
+     "latency_ok": true
+    },
+    "latency": {
+     "median_ms": 1493.3812310000576,
+     "p95_ms": 1540.7406595495559,
+     "cpu_threads": 1,
+     "hardware_scope": "Kaggle host CPU; Pi not measured"
+    }
+   }
+  ],
+  "reason": "argmin S_arm over eligible (arm, sampler) pairs, seed 42",
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0"
+ },
+ "configuration": {
+  "input_root": "/kaggle/input",
+  "output": "/kaggle/working/physioflow10",
+  "stage": "pilot",
+  "pilot_root": null,
+  "incumbent_root": null,
+  "arms": [
+   "F3_flow_flag_deriv",
+   "F4_flow_flag_deriv03"
+  ],
+  "samplers": [
+   "F3_flow_flag_deriv_s8_w1",
+   "F3_flow_flag_deriv_s16_w1",
+   "F4_flow_flag_deriv03_s8_w1",
+   "F4_flow_flag_deriv03_s16_w1"
+  ],
+  "steps": 20000,
+  "seeds": [
+   42,
+   123,
+   2026
+  ],
+  "batch": 128,
+  "interval": 2000,
+  "eval_samples": 256,
+  "bootstrap": 200,
+  "allow_cpu": false
+ }
+}

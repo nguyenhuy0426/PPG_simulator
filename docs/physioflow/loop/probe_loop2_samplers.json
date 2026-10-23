@@ -1,0 +1,355 @@
+{
+ "checkpoint": "pilot 2, F3_flow_flag_deriv seed 42 (S_real+0.5C best step)",
+ "evaluation": "laptop CPU; PromptedEvaluator validation pools, n=128 per pool, fixed noise per pool",
+ "note": "Sampling-only changes, no retraining. square16 = t grid (1-i/16)^2; uniform16+filter = data-view filter on a reflection-padded window at t=0; stopX+filter = Heun to t=X then the same filter; noisefloor = train-fitted >10 Hz ratio noise added (dropped: worse everywhere).",
+ "variants": {
+  "uniform16": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.075,
+    "morphology_mmd2": 0.025,
+    "precision": 0.984,
+    "recall": 0.953,
+    "Q": 0.146
+   },
+   "perform_large": {
+    "acf_mmd2": 0.01,
+    "log_psd_mmd2": 0.054,
+    "morphology_mmd2": 0.01,
+    "precision": 0.992,
+    "recall": 0.953,
+    "Q": 0.1
+   },
+   "bidmc": {
+    "acf_mmd2": 0.216,
+    "log_psd_mmd2": 0.139,
+    "morphology_mmd2": 0.058,
+    "precision": 0.396,
+    "recall": 0.667,
+    "Q": 0.73
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.147,
+    "morphology_mmd2": 0.054,
+    "precision": 0.271,
+    "recall": 0.958,
+    "Q": 0.444
+   },
+   "wrist": {
+    "acf_mmd2": 0.049,
+    "log_psd_mmd2": 0.527,
+    "morphology_mmd2": 0.075,
+    "precision": 0.562,
+    "recall": 0.596,
+    "Q": 0.962
+   }
+  },
+  "square16": {
+   "gxu_finger": {
+    "acf_mmd2": 0.018,
+    "log_psd_mmd2": 1.04,
+    "morphology_mmd2": 0.026,
+    "precision": 0.969,
+    "recall": 0.969,
+    "Q": 1.108
+   },
+   "wrist": {
+    "acf_mmd2": 0.051,
+    "log_psd_mmd2": 1.24,
+    "morphology_mmd2": 0.078,
+    "precision": 0.562,
+    "recall": 0.596,
+    "Q": 1.68
+   }
+  },
+  "uniform16+filter": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.244,
+    "morphology_mmd2": 0.025,
+    "precision": 0.953,
+    "recall": 0.93,
+    "Q": 0.335
+   },
+   "wrist": {
+    "acf_mmd2": 0.047,
+    "log_psd_mmd2": 0.38,
+    "morphology_mmd2": 0.069,
+    "precision": 0.562,
+    "recall": 0.629,
+    "Q": 0.791
+   }
+  },
+  "uniform32": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.121,
+    "morphology_mmd2": 0.022,
+    "precision": 0.984,
+    "recall": 0.953,
+    "Q": 0.189
+   },
+   "wrist": {
+    "acf_mmd2": 0.052,
+    "log_psd_mmd2": 0.429,
+    "morphology_mmd2": 0.074,
+    "precision": 0.562,
+    "recall": 0.596,
+    "Q": 0.867
+   }
+  },
+  "stop0.005+filter": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.129,
+    "morphology_mmd2": 0.025,
+    "precision": 0.953,
+    "recall": 0.93,
+    "Q": 0.221
+   },
+   "perform_large": {
+    "acf_mmd2": 0.01,
+    "log_psd_mmd2": 0.042,
+    "morphology_mmd2": 0.011,
+    "precision": 1.0,
+    "recall": 0.961,
+    "Q": 0.083
+   },
+   "bidmc": {
+    "acf_mmd2": 0.216,
+    "log_psd_mmd2": 0.137,
+    "morphology_mmd2": 0.058,
+    "precision": 0.432,
+    "recall": 0.676,
+    "Q": 0.716
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.146,
+    "morphology_mmd2": 0.054,
+    "precision": 0.28,
+    "recall": 0.958,
+    "Q": 0.442
+   },
+   "wrist": {
+    "acf_mmd2": 0.047,
+    "log_psd_mmd2": 0.267,
+    "morphology_mmd2": 0.069,
+    "precision": 0.562,
+    "recall": 0.618,
+    "Q": 0.684
+   }
+  },
+  "stop0.01+filter": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.131,
+    "morphology_mmd2": 0.025,
+    "precision": 0.953,
+    "recall": 0.938,
+    "Q": 0.219
+   },
+   "perform_large": {
+    "acf_mmd2": 0.01,
+    "log_psd_mmd2": 0.043,
+    "morphology_mmd2": 0.011,
+    "precision": 1.0,
+    "recall": 0.969,
+    "Q": 0.08
+   },
+   "bidmc": {
+    "acf_mmd2": 0.216,
+    "log_psd_mmd2": 0.139,
+    "morphology_mmd2": 0.058,
+    "precision": 0.432,
+    "recall": 0.685,
+    "Q": 0.712
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.149,
+    "morphology_mmd2": 0.054,
+    "precision": 0.297,
+    "recall": 0.966,
+    "Q": 0.435
+   },
+   "wrist": {
+    "acf_mmd2": 0.047,
+    "log_psd_mmd2": 0.276,
+    "morphology_mmd2": 0.069,
+    "precision": 0.573,
+    "recall": 0.607,
+    "Q": 0.696
+   }
+  },
+  "stop0.02+filter": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.143,
+    "morphology_mmd2": 0.025,
+    "precision": 0.953,
+    "recall": 0.93,
+    "Q": 0.233
+   },
+   "perform_large": {
+    "acf_mmd2": 0.01,
+    "log_psd_mmd2": 0.049,
+    "morphology_mmd2": 0.012,
+    "precision": 1.0,
+    "recall": 0.961,
+    "Q": 0.09
+   },
+   "bidmc": {
+    "acf_mmd2": 0.216,
+    "log_psd_mmd2": 0.144,
+    "morphology_mmd2": 0.058,
+    "precision": 0.432,
+    "recall": 0.685,
+    "Q": 0.717
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.158,
+    "morphology_mmd2": 0.053,
+    "precision": 0.305,
+    "recall": 0.966,
+    "Q": 0.442
+   },
+   "wrist": {
+    "acf_mmd2": 0.047,
+    "log_psd_mmd2": 0.285,
+    "morphology_mmd2": 0.068,
+    "precision": 0.562,
+    "recall": 0.618,
+    "Q": 0.701
+   }
+  },
+  "stop0.04+filter": {
+   "gxu_finger": {
+    "acf_mmd2": 0.019,
+    "log_psd_mmd2": 0.094,
+    "morphology_mmd2": 0.024,
+    "precision": 0.961,
+    "recall": 0.914,
+    "Q": 0.19
+   },
+   "perform_large": {
+    "acf_mmd2": 0.01,
+    "log_psd_mmd2": 0.038,
+    "morphology_mmd2": 0.012,
+    "precision": 0.992,
+    "recall": 0.953,
+    "Q": 0.086
+   },
+   "bidmc": {
+    "acf_mmd2": 0.216,
+    "log_psd_mmd2": 0.121,
+    "morphology_mmd2": 0.056,
+    "precision": 0.441,
+    "recall": 0.676,
+    "Q": 0.694
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.04,
+    "log_psd_mmd2": 0.101,
+    "morphology_mmd2": 0.052,
+    "precision": 0.297,
+    "recall": 0.958,
+    "Q": 0.391
+   },
+   "wrist": {
+    "acf_mmd2": 0.047,
+    "log_psd_mmd2": 0.207,
+    "morphology_mmd2": 0.066,
+    "precision": 0.562,
+    "recall": 0.64,
+    "Q": 0.61
+   }
+  },
+  "noisefloor": {
+   "gxu_finger": {
+    "acf_mmd2": 0.017,
+    "log_psd_mmd2": 0.227,
+    "morphology_mmd2": 0.194,
+    "precision": 0.633,
+    "recall": 0.922,
+    "Q": 0.57
+   },
+   "perform_large": {
+    "acf_mmd2": 0.018,
+    "log_psd_mmd2": 0.257,
+    "morphology_mmd2": 0.145,
+    "precision": 0.992,
+    "recall": 0.953,
+    "Q": 0.446
+   },
+   "bidmc": {
+    "acf_mmd2": 0.21,
+    "log_psd_mmd2": 0.236,
+    "morphology_mmd2": 0.1,
+    "precision": 0.315,
+    "recall": 0.802,
+    "Q": 0.816
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.036,
+    "log_psd_mmd2": 0.312,
+    "morphology_mmd2": 0.225,
+    "precision": 0.127,
+    "recall": 0.983,
+    "Q": 0.8
+   },
+   "wrist": {
+    "acf_mmd2": 0.032,
+    "log_psd_mmd2": 0.517,
+    "morphology_mmd2": 0.13,
+    "precision": 0.506,
+    "recall": 0.64,
+    "Q": 0.983
+   }
+  },
+  "noisefloor_median": {
+   "gxu_finger": {
+    "acf_mmd2": 0.013,
+    "log_psd_mmd2": 0.191,
+    "morphology_mmd2": 0.153,
+    "precision": 0.773,
+    "recall": 0.961,
+    "Q": 0.433
+   },
+   "perform_large": {
+    "acf_mmd2": 0.012,
+    "log_psd_mmd2": 0.187,
+    "morphology_mmd2": 0.094,
+    "precision": 0.992,
+    "recall": 0.953,
+    "Q": 0.317
+   },
+   "bidmc": {
+    "acf_mmd2": 0.218,
+    "log_psd_mmd2": 0.2,
+    "morphology_mmd2": 0.055,
+    "precision": 0.423,
+    "recall": 0.802,
+    "Q": 0.716
+   },
+   "perform_cohort": {
+    "acf_mmd2": 0.036,
+    "log_psd_mmd2": 0.245,
+    "morphology_mmd2": 0.114,
+    "precision": 0.186,
+    "recall": 0.797,
+    "Q": 0.7
+   },
+   "wrist": {
+    "acf_mmd2": 0.044,
+    "log_psd_mmd2": 0.532,
+    "morphology_mmd2": 0.073,
+    "precision": 0.461,
+    "recall": 0.652,
+    "Q": 0.958
+   }
+  }
+ }
+}
