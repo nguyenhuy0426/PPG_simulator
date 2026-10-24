@@ -165,3 +165,71 @@ dl.gloss dt { font-weight: 600; } dl.gloss dd { margin: 0; color: var(--muted); 
   .bar { grid-template-columns: 1fr 44px; } .bar .name { grid-column: 1 / -1; }
   dl.gloss { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Kiến trúc mạng dạng khối (Fig. 4 style: Multi-scale Block Diagrams)
+   ========================================================================== */
+.arch-card {
+  margin-top: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.arch-diagram-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+  background: var(--panel);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 16px 12px;
+}
+.arch-diagram-wrap svg {
+  display: block;
+  width: 100%;
+  min-width: 880px;
+  height: auto;
+}
+.arch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 14px 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+  align-items: center;
+}
+.arch-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.chip-conv { background: #d4edd4; color: #14532d; border-color: #86efac; }
+.chip-norm { background: #ffffff; color: #334155; border-color: #cbd5e1; }
+.chip-act { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.chip-concat { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.chip-res { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.chip-io { background: var(--soft); color: var(--ink); border-color: var(--line); }
+
+:root[data-theme="dark"] .chip-conv,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-conv { background: #14331d; color: #86efac; border-color: #22c55e; } }
+:root[data-theme="dark"] .chip-norm,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-norm { background: #1e293b; color: #e2e8f0; border-color: #475569; } }
+:root[data-theme="dark"] .chip-act,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-act { background: #3c2410; color: #fde68a; border-color: #b45309; } }
+:root[data-theme="dark"] .chip-concat,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-concat { background: #172554; color: #93c5fd; border-color: #3b82f6; } }
+:root[data-theme="dark"] .chip-res,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-res { background: #261647; color: #c4b5fd; border-color: #7c3aed; } }
+:root[data-theme="dark"] .chip-io,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-io { background: #212834; color: #e6e9ee; border-color: #2b3340; } }
+
+.arch-panel { display: none; }
+.arch-panel.active { display: block; }
+

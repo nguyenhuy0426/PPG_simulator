@@ -49,3 +49,17 @@ Số liệu viết tay, không qua `data.js`: bước A từ `ml/runs/fresh-gala
 bước B, B-LSM, C, D, E từ `docs/physioflow/loop/galaxy_b_pilot.json`, `lsm_galaxy.json`, `judges_c.json`,
 `galaxy_d_pilot.json`, `galaxy_e.json`; luật ở `docs/physioflow/rules/`. Khi có bước mới, cập nhật mục này cùng
 `index.html`, `trinh-bay.html` và `docs/physioflow/REPORT_VI.md`.
+
+## Giám khảo nghiêm và PhysioFlow-GAN (`gan-report.html`)
+
+Bố cục theo bài LSM-GAN (Ding et al., IEEE JBHI 27(3), 2023): Bảng I–IV, Hình 1–9, Thuật toán 1–3. `gan-data.js` được tạo bởi
+`scripts/build_gan_report.py` từ kết quả vòng giám khảo nghiêm (`ml/runs/strict-judge-round-result-v1`), các vòng train
+(`ml/runs/strict-train-*-result-v1`), vòng PhysioFlow-GAN (`ml/runs/flowgan-round-result-v2`, khi đã có), gói dữ liệu v3 và
+model trong `assets/neural`; mẫu sinh cho Hình 2b, 3b, 9 được vẽ lại trên CPU (khoảng 3 phút):
+
+```bash
+python3 scripts/build_gan_report.py
+```
+
+Tỷ lệ artifact là luật SQI tự viết (`ml/kaggle_multidomain/artifact_sqi.py`), không phải nhãn chuyên gia. Hình 1, 4, 5 và
+các thuật toán viết tay từ mã nguồn (mỗi số có ghi file:line trong trang).
