@@ -39,21 +39,39 @@ from calibration import (
     SPO2_COEFF_B_DEFAULT,
 )
 
-# ─── Project morphology presets (not clinical reference intervals) ───
+# ─── Project morphology preset (not a clinical reference interval) ───
+# Fitted to the mean of 5 beats of a Philips IntelliVue Pleth display trace (normal rhythm, 75 bpm, SpO2 99 %,
+# RR 16) by scripts/fit_intellivue_gaussian.py; parameters and fit error in assets/gaussian/intellivue_fit.json
+# (RMSE 0.020 of the 0-1 beat, beat-to-beat SD 0.025). One monitor's filtered display trace, not a raw sensor signal.
+# The notch centre is the formula's local-attenuation centre (it shapes the fall after the peak); the visible
+# notch/plateau of the fitted beat sits near 0.55 of the cycle.
 # --- Temporal positions (fraction of RR cycle) ---
-PPG_SYSTOLIC_POS    = 0.15    # Systolic peak: ~15% of cycle
-PPG_NOTCH_POS       = 0.30    # Local attenuation centre; measured notch may shift
-PPG_DIASTOLIC_POS   = 0.40    # Diastolic peak: ~40% (reflected wave)
+PPG_SYSTOLIC_POS    = 0.240   # Systolic component centre
+PPG_NOTCH_POS       = 0.257   # Local attenuation centre; measured notch may shift
+PPG_DIASTOLIC_POS   = 0.536   # Diastolic component centre (reflected wave)
 
 # --- Gaussian widths (normalized std deviation) ---
-PPG_SYSTOLIC_WIDTH  = 0.055   # σ systolic (sharp peak)
-PPG_DIASTOLIC_WIDTH = 0.10    # σ diastolic (broader)
-PPG_NOTCH_WIDTH     = 0.02    # σ of the synthetic local indentation
+PPG_SYSTOLIC_WIDTH  = 0.0837  # σ systolic
+PPG_DIASTOLIC_WIDTH = 0.1807  # σ diastolic (broader)
+PPG_NOTCH_WIDTH     = 0.1072  # σ of the local attenuation
 
 # --- Base normalized amplitudes ---
-PPG_BASE_SYSTOLIC_AMPL   = 1.0    # Systolic amplitude (reference)
-PPG_BASE_DIASTOLIC_RATIO = 0.4    # Component amplitude ratio, not measured DP/SP
-PPG_BASE_DICROTIC_DEPTH  = 0.25   # 25% local envelope attenuation; not a normality threshold
+PPG_BASE_SYSTOLIC_AMPL   = 1.0     # Systolic amplitude (reference)
+PPG_BASE_DIASTOLIC_RATIO = 0.1557  # Component amplitude ratio, not measured DP/SP
+PPG_BASE_DICROTIC_DEPTH  = 0.65    # 65% local envelope attenuation; not a normality threshold
+# The condition presets keep their diastolic ratio relative to the normal one (they were written against 0.4).
+_LEGACY_DIASTOLIC_RATIO = 0.4
+
+
+# Run defaults (the IntelliVue reference screen): HR 75 bpm, SpO2 99 %, RR 16 /min; feature times in ms at 60 bpm.
+DEFAULT_SPO2 = 99.0
+DEFAULT_SP_MS = round(PPG_SYSTOLIC_POS * 1000.0)
+DEFAULT_DN_MS = round(PPG_NOTCH_POS * 1000.0)
+DEFAULT_DP_MS = round(PPG_DIASTOLIC_POS * 1000.0)
+
+
+def _diastolic(legacy_ratio):
+    return PPG_BASE_DIASTOLIC_RATIO * legacy_ratio / _LEGACY_DIASTOLIC_RATIO
 
 # --- Pulse-shape normalisation search (see PPGModel._find_raw_pulse_peak) ---
 PULSE_PEAK_SCAN_STEPS   = 1000  # coarse scan resolution over one cycle
@@ -109,7 +127,8 @@ class ConditionRanges:
 
     def __init__(self, hr_min=60, hr_max=100, hr_cv=0.02,
                  pi_min=2.9, pi_max=6.1, pi_cv=0.10,
-                 systolic_ampl=1.0, diastolic_ampl=0.4, dicrotic_depth=0.25):
+                 systolic_ampl=1.0, diastolic_ampl=PPG_BASE_DIASTOLIC_RATIO,
+                 dicrotic_depth=PPG_BASE_DICROTIC_DEPTH):
         self.hr_min = hr_min; self.hr_max = hr_max; self.hr_cv = hr_cv
         self.pi_min = pi_min; self.pi_max = pi_max; self.pi_cv = pi_cv
         self.systolic_ampl = systolic_ampl
@@ -138,8 +157,8 @@ def get_ppg_limits(condition: int) -> PPGLimits:
     _LIMITS = {
         COND_NORMAL: PPGLimits(
             ParamRange(60, 100, 75), ParamRange(2.9, 6.1, 3.0),
-            ParamRange(95, 100, 98), ParamRange(12, 20, 16),
-            ParamRange(0, 0.10, 0), ParamRange(0.15, 0.35, 0.25),
+            ParamRange(95, 100, 99), ParamRange(12, 20, 16),
+            ParamRange(0, 0.10, 0), ParamRange(0.55, 0.75, PPG_BASE_DICROTIC_DEPTH),
             ParamRange(0.5, 2.0, 1.0)),
         COND_ARRHYTHMIA: PPGLimits(
             ParamRange(60, 180, 80), ParamRange(1.0, 5.0, 2.5),
@@ -189,10 +208,10 @@ class PPGParameters:
         self.condition = COND_NORMAL
         self.heart_rate = 75.0
         self.perfusion_index = 3.0
-        self.spo2 = 98.0
+        self.spo2 = DEFAULT_SPO2
         self.resp_rate = 16.0
         self.noise_level = 0.0
-        self.dicrotic_notch = 0.25
+        self.dicrotic_notch = PPG_BASE_DICROTIC_DEPTH
         self.amplification = 1.0
         # SpO2 calibration coefficients (SpO2 = A - B*R). Configurable/persisted
         # (Phase 2); consumed by the R_target derivation below and, later, by the
@@ -224,9 +243,9 @@ class PPGParameters:
         self.output_dc_offset_mv = 0.0
         self.lock_ac = self.lock_dc = False
         for channel in ("ir", "red"):
-            self.__setattr__("sp_ms_" + channel, 150.0)
-            self.__setattr__("dn_ms_" + channel, 300.0)
-            self.__setattr__("dp_ms_" + channel, 400.0)
+            self.__setattr__("sp_ms_" + channel, DEFAULT_SP_MS)
+            self.__setattr__("dn_ms_" + channel, DEFAULT_DN_MS)
+            self.__setattr__("dp_ms_" + channel, DEFAULT_DP_MS)
         for source, target in RESP_FIELDS.items():
             setattr(self, target, getattr(RespirationConfig(), source))
 
@@ -348,12 +367,13 @@ class PPGModel:
     def _init_condition_ranges(self):
         c = self.params.condition
         _MAP = {
-            COND_NORMAL:           ConditionRanges(60, 100, 0.02, 2.9, 6.1, 0.10, 1.0, 0.4, 0.25),
-            COND_ARRHYTHMIA:       ConditionRanges(60, 180, 0.15, 1.0, 5.0, 0.20, 1.0, 0.4, 0.20),
-            COND_WEAK_PERFUSION:   ConditionRanges(70, 120, 0.02, 0.5, 2.1, 0.15, 1.0, 0.3, 0.05),
-            COND_VASOCONSTRICTION: ConditionRanges(65, 110, 0.02, 0.7, 0.8, 0.10, 1.0, 0.25, 0.05),
-            COND_STRONG_PERFUSION: ConditionRanges(60,  90, 0.02, 7.0, 20.0, 0.10, 1.0, 0.6, 0.35),
-            COND_VASODILATION:     ConditionRanges(60,  90, 0.02, 5.0, 10.0, 0.10, 1.0, 0.5, 0.30),
+            COND_NORMAL:           ConditionRanges(60, 100, 0.02, 2.9, 6.1, 0.10, 1.0, _diastolic(0.4),
+                                                   PPG_BASE_DICROTIC_DEPTH),
+            COND_ARRHYTHMIA:       ConditionRanges(60, 180, 0.15, 1.0, 5.0, 0.20, 1.0, _diastolic(0.4), 0.20),
+            COND_WEAK_PERFUSION:   ConditionRanges(70, 120, 0.02, 0.5, 2.1, 0.15, 1.0, _diastolic(0.3), 0.05),
+            COND_VASOCONSTRICTION: ConditionRanges(65, 110, 0.02, 0.7, 0.8, 0.10, 1.0, _diastolic(0.25), 0.05),
+            COND_STRONG_PERFUSION: ConditionRanges(60,  90, 0.02, 7.0, 20.0, 0.10, 1.0, _diastolic(0.6), 0.35),
+            COND_VASODILATION:     ConditionRanges(60,  90, 0.02, 5.0, 10.0, 0.10, 1.0, _diastolic(0.5), 0.30),
         }
         self.cond_ranges = _MAP.get(c, _MAP[COND_NORMAL])
 

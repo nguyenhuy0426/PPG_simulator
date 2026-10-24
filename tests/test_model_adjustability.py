@@ -245,7 +245,11 @@ class TestOutputDcOffset(unittest.TestCase):
 
 class TestAmplificationAndNotch(unittest.TestCase):
     def test_corrected_notch_preserves_dual_channel_ac_and_ratio(self):
-        for depth in (0.0, 0.25, 0.35, 0.5, 1.0):
+        for depth in (0.0, 0.25, 0.35, 0.5, 0.65, 1.0):
+            # The continuous shape peaks at exactly 1 (test_waveform); the 100 Hz samples can miss the top of the
+            # sharper peak the IntelliVue preset gets at extreme depth: <= 0.1 mV up to the 0.65 default, ~0.2 mV
+            # at depth 1.0.
+            tolerance = 0.0001 if depth <= 0.65 else 0.0003
             for polarity in (0, 1):
                 with self.subTest(depth=depth, polarity=polarity):
                     model = _quiet_model(hr=60.0)
@@ -258,7 +262,7 @@ class TestAmplificationAndNotch(unittest.TestCase):
                     red = [row[3] for row in rows]
                     ir_swing = max(ir) - min(ir)
                     red_swing = max(red) - min(red)
-                    self.assertAlmostEqual(ir_swing, 0.045, delta=0.0001)
+                    self.assertAlmostEqual(ir_swing, 0.045, delta=tolerance)
                     self.assertAlmostEqual(red_swing / ir_swing, 0.48, places=10)
                     self.assertEqual(model.clipped_samples, 0)
 
@@ -266,10 +270,13 @@ class TestAmplificationAndNotch(unittest.TestCase):
         model = _quiet_model()
         for channel in ('ir', 'red'):
             with self.subTest(channel=channel):
+                # At the attenuation centre (DN); elsewhere the preset's overlapping notch mainly sharpens the
+                # systolic fall and peak renormalisation can lift the value (docs/ppg_morphology.md).
+                centre = model.params.dn_ms_ir / 1000.0
                 model.set_dicrotic_notch(0.0)
-                envelope = model._compute_pulse_shape(0.3, channel=channel)
+                envelope = model._compute_pulse_shape(centre, channel=channel)
                 model.set_dicrotic_notch(0.35)
-                indented = model._compute_pulse_shape(0.3, channel=channel)
+                indented = model._compute_pulse_shape(centre, channel=channel)
                 self.assertGreater(indented, 0.0)
                 self.assertLess(indented, envelope)
 
@@ -293,10 +300,10 @@ class TestAmplificationAndNotch(unittest.TestCase):
         flat = [s[2] for s in _run(model, 2.0)]
         model.set_dicrotic_notch(0.5)
         deep = [s[2] for s in _run(model, 2.0)]
-        # The cycle endpoints are zero for either setting, so min() cannot
-        # distinguish them. A deeper local notch removes area
-        # from the middle of every cycle, so compare the cycle mean instead.
-        self.assertLess(sum(deep) / len(deep), sum(flat) / len(flat))
+        # The cycle endpoints are zero for either setting, so min() cannot distinguish them. With the IntelliVue
+        # preset the attenuation overlaps the systolic fall, so after peak renormalisation the cycle mean can rise;
+        # the control must still change the delivered waveform by more than 1 mV of the 45 mV pulse.
+        self.assertGreater(max(abs(a - b) for a, b in zip(deep, flat)), 0.001)
 
     def test_notch_out_of_range_raises(self):
         model = _quiet_model()
@@ -340,11 +347,11 @@ class TestWaveformKind(unittest.TestCase):
 
 
 class TestFeatureTimes(unittest.TestCase):
-    def test_default_times_preserve_project_component_centres(self):
+    def test_default_times_are_the_intellivue_preset(self):
         model = PPGModel()
-        self.assertAlmostEqual(model.params.sp_ms_ir, 150.0)
-        self.assertAlmostEqual(model.params.dn_ms_ir, 300.0)
-        self.assertAlmostEqual(model.params.dp_ms_ir, 400.0)
+        self.assertAlmostEqual(model.params.sp_ms_ir, 240.0)
+        self.assertAlmostEqual(model.params.dn_ms_ir, 257.0)
+        self.assertAlmostEqual(model.params.dp_ms_ir, 536.0)
 
     def test_systolic_time_moves_the_peak(self):
         model = _quiet_model(hr=60.0)
@@ -357,7 +364,7 @@ class TestFeatureTimes(unittest.TestCase):
         model = _quiet_model(hr=60.0)
         model.set_feature_times("red", 400.0, 600.0, 700.0)
         self.assertAlmostEqual(model.params.sp_ms_red, 400.0)
-        self.assertAlmostEqual(model.params.sp_ms_ir, 150.0)
+        self.assertAlmostEqual(model.params.sp_ms_ir, 240.0)
 
     def test_out_of_order_times_raise(self):
         model = _quiet_model()

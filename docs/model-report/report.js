@@ -172,17 +172,55 @@
   })();
 
   // ---------- compare sources ----------
-  const CMP = { real: ["Thật (BIDMC)", "--real"], classic: ["Classic", "--s4"], gaussian: ["Gaussian đã fit", "--s3"], lsm: ["LSM-GAN", "--s2"], physiomix: ["PhysioMix", "--s1"], physioflow: ["PhysioFlow", "--s5"] };
-  function drawCompare(pick) {
-    const keys = pick === "all" ? ["real", "physiomix", "physioflow", "lsm", "gaussian", "classic"] : ["real", pick];
-    const series = keys.map((k) => R.compare.find((c) => c.key === k)).filter((c) => c && c.values.length)
-      .map((c) => ({ values: c.values, fs: c.fs, color: css(CMP[c.key][1]), label: CMP[c.key][0] }));
-    $("cmp-chart").dataset.h = 60 + 78 * series.length;
-    waveform($("cmp-chart"), series, 10);
-    $("cmp-note").textContent = pick === "all" ? "Tất cả, 10 s" : `${CMP[pick][0]} cạnh dữ liệu thật`;
+  // Every public dataset (real windows near 75 bpm) next to every generator; data from scripts/build_compare75.py.
+  const C = window.COMPARE75;
+  const CMP_COLOR = { physiomix: "--s1", physioflow: "--s5", lsm: "--s2", gaussian: "--s3",
+    physiomix_s: "--s6", g1_flowgan: "--s7", g2_flowgan_lsm: "--s8", beatgen: "--s9", lsm_strict: "--s10" };
+  const GROUP = { app: "AI · trong app", research: "AI · nghiên cứu", formula: "công thức" };
+  const SPLIT = { validation: "người val", train: "người train", external: "ngoài, chưa train" };
+  const bpm = (v) => (v == null ? "không đo được" : fmt(v, 1) + " bpm");
+  let cmpData = C.datasets[0].key, cmpPick = "all";
+  function modelWave(m, d) { return m.conditioned ? m.waves[d.key] : m.wave; }
+  function sampling(m, d) {
+    if (m.conditioned) return `Điều kiện 75 bpm, miền ${d.condition}${d.condition !== d.domain ? " (bộ này không có trong train)" : ""}, seed ${m.seed} cố định`;
+    if (m.seeds_tried) {
+      const range = `các seed đã thử ra ${fmt(m.rate_range[0], 1)}–${fmt(m.rate_range[1], 1)} bpm`;
+      return Math.abs(m.wave.measured - C.target_bpm) <= 3
+        ? `Không điều khiển được nhịp: seed ${m.seed} là seed đầu tiên ra 75 ± 3 bpm (thử ${m.seeds_tried} seed; ${range})`
+        : `Không điều khiển được nhịp: không seed nào ra 75 ± 3 bpm; seed ${m.seed} gần nhất trong ${m.seeds_tried} seed (${range})`;
+    }
+    return m.group === "formula" ? `Mặc định khi chạy: HR 75, SpO₂ 99, RR 16, Normal (có điều biến hô hấp), seed ${m.seed}` : "—";
   }
-  let cmpPick = "all";
-  segmented($("cmp-seg"), [["all", "Tất cả"], ["physiomix", "PhysioMix"]].concat(pf ? [["physioflow", "PhysioFlow"]] : [], [["lsm", "LSM-GAN"], ["gaussian", "Gaussian"], ["classic", "Classic"]]), cmpPick, (k) => { cmpPick = k; drawCompare(k); });
+  function drawCompare() {
+    const d = C.datasets.find((x) => x.key === cmpData);
+    const blocked = $("cmp-blocked");
+    blocked.hidden = !d.note || !!d.real;
+    if (!d.real) { blocked.textContent = d.note; clear($("cmp-chart")); $("cmp-table").textContent = ""; $("cmp-note").textContent = ""; return; }
+    const keep = (m) => cmpPick === "all" || m.group === cmpPick || m.key === cmpPick;
+    const models = C.models.filter(keep);
+    const series = d.real.map((r, i) => ({ values: r.values, fs: r.fs, color: css("--real"),
+      label: `Thật ${d.label} #${i + 1} · ${SPLIT[r.split]} · ${bpm(r.measured)}` }))
+      .concat([{ values: C.intellivue.values, fs: C.intellivue.fs, color: css("--s4"), label: C.intellivue.label }])
+      .concat(models.map((m) => { const w = modelWave(m, d); return { values: w.values, fs: w.fs, color: css(CMP_COLOR[m.key]), label: `${m.label} · ${bpm(w.measured)}` }; }));
+    $("cmp-chart").dataset.h = 60 + 78 * series.length;
+    waveform($("cmp-chart"), series, C.seconds);
+    $("cmp-note").textContent = `${d.label} · ${d.note} · ${C.seconds} s đầu`;
+    const body = $("cmp-table"); body.textContent = "";
+    models.forEach((m) => {
+      const tr = html("tr", null, body);
+      const name = html("td", m.label, tr); name.style.fontWeight = 600; name.style.color = css(CMP_COLOR[m.key]);
+      html("td", GROUP[m.group], tr); html("td", m.trained, tr); html("td", sampling(m, d), tr);
+      html("td", bpm(modelWave(m, d).measured), tr).className = "num";
+    });
+  }
+  segmented($("cmp-data-seg"), C.datasets.map((d) => [d.key, d.real ? d.label : d.label + " (không vẽ)"]), cmpData, (k) => { cmpData = k; drawCompare(); });
+  segmented($("cmp-seg"), [["all", "Tất cả"], ["app", "Trong app"], ["research", "Nghiên cứu"], ["formula", "Công thức"]]
+    .concat(C.models.map((m) => [m.key, m.label])), cmpPick, (k) => { cmpPick = k; drawCompare(); });
+  $("cmp-foot").textContent = `Mỗi đường đã chuẩn hoá về 0–1 và lấy ${C.seconds} s đầu của cửa sổ 30 s; nhịp đo bằng tự tương quan trên cả 30 s. ` +
+    "Dữ liệu thật: cửa sổ v3 (0,5–8 Hz, 40 Hz) của hai người có nhịp gần 75 bpm nhất (±5); ưu tiên người validation, chỉ lấy người train khi validation không đủ; không mở người test. " +
+    "Model nghiên cứu là checkpoint seed 42 của từng vòng, không có trong app. Gaussian IntelliVue là model công thức của app (thay Classic), kênh IR, 100 Hz, không lọc v3. " +
+    `Đường xám “IntelliVue” là nhịp trung bình của ${C.intellivue.beats} nhịp số hoá từ ảnh màn hình Philips IntelliVue, lặp lại ở 75 bpm; Gaussian fit với RMSE ${fmt(C.intellivue.fit_rmse, 3)} (độ lệch giữa các nhịp ${fmt(C.intellivue.spread, 3)}). ` +
+    `Tạo bởi scripts/build_compare75.py · commit ${C.commit || "?"}. Đánh giá kỹ thuật về hình dạng sóng, không phải lâm sàng.`;
 
   // ---------- HR explorer ----------
   const HR = Object.keys(pm.strips.bidmc).map(Number).sort((a, b) => a - b);
@@ -428,7 +466,7 @@
     location.reload();  // charts take their colours when drawn
   });
   function drawAll() {
-    drawCompare(cmpPick); drawHr(); drawControl(); drawReal(realDomain); drawRounds(); drawTraining(); drawBars(metric); drawRx();
+    drawCompare(); drawHr(); drawControl(); drawReal(realDomain); drawRounds(); drawTraining(); drawBars(metric); drawRx();
   }
   let pending = null;
   window.addEventListener("resize", () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(drawAll); });

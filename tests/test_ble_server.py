@@ -173,7 +173,7 @@ def test_delta_merge_only_applies_present_keys(handler):
     assert applied == {"hr": 90}
     p = handler.engine.ppg_params
     assert p.heart_rate == 90
-    assert p.spo2 == 98.0 and p.resp_rate == 16.0  # defaults untouched
+    assert p.spo2 == 99.0 and p.resp_rate == 16.0  # defaults untouched
     assert handler.engine.started == 0  # T6: commands never auto-start; RUN is explicit
 
 

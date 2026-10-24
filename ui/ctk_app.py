@@ -213,15 +213,19 @@ class CTkApp(ctk.CTk):
         self.language_menu.grid(row=0, column=1, padx=(0, 10), pady=8)
         self.language_hint = T.label(language_bar, text(self.language, "language_hint"), 10, text_color=T.MUTED, anchor="w")
         self.language_hint.grid(row=0, column=2, sticky="ew", padx=(0, 12), pady=8)
-        panel = AdvancedFrame(window, fg_color="transparent")
-        panel.grid(row=1, column=0, sticky="nsew",
-                   padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_window = window
-        self.signal_setup_panel = panel
+        panel = self._build_signal_setup_panel()
         self.signal_setup_visible = True
         self.signal_setup_bubble.set_active(True)
         panel.on_show()
         window.after_idle(window.lift)
+
+    def _build_signal_setup_panel(self):
+        panel = AdvancedFrame(self.signal_setup_window, language=self.language, fg_color="transparent")
+        panel.grid(row=1, column=0, sticky="nsew",
+                   padx=self.layout.outer_pad, pady=self.layout.outer_pady)
+        self.signal_setup_panel = panel
+        return panel
 
     def _set_language_from_label(self, label):
         code = next((key for key, value in LANGUAGES.items() if value == label), "en")
@@ -252,6 +256,10 @@ class CTkApp(ctk.CTk):
             self.language_label.configure(text=text(language, "language"))
             self.language_menu.set(LANGUAGES[language])
             self.language_hint.configure(text=text(language, "language_hint"))
+            # Tab names and every form label are built in the panel's language: rebuild it (unapplied edits on
+            # the form are dropped; Apply is still required for values).
+            self.signal_setup_panel.destroy()
+            self._build_signal_setup_panel().on_show()
             self.signal_setup_panel.status.configure(text=text(language, "language_applied"), text_color=T.ACCENT)
         self._save_language()
 

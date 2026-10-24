@@ -106,7 +106,7 @@
   <div class="tablewrap"><table>
     <thead><tr><th>Thành phần</th><th>Loại</th><th>Nhận vào</th><th>Trả ra</th><th>Học từ</th><th>Điều khiển</th></tr></thead>
     <tbody>
-      <tr><td><b>Classic</b><br><span class="small muted">models/ppg_model.py</span></td><td><span class="tag rule">công thức</span></td><td>HR, PI, SpO₂, nhịp thở, nhiễu, điều kiện sinh lý</td><td>2 kênh IR/RED, 100 Hz, liên tục</td><td>Không học; tham số từ tài liệu</td><td>Đầy đủ (HR, hô hấp, SpO₂ theo công thức tỉ số R)</td></tr>
+      <tr><td><b>Gaussian IntelliVue</b> <span class="tag rule">thay Classic</span><br><span class="small muted">models/ppg_model.py · assets/gaussian/intellivue_fit.json</span></td><td><span class="tag rule">công thức</span></td><td>HR, PI, SpO₂, nhịp thở, nhiễu, điều kiện sinh lý; mặc định HR 75, SpO₂ 99, RR 16</td><td>2 kênh IR/RED, 100 Hz, liên tục</td><td>Không học; dạng xung fit vào nhịp trung bình của 5 nhịp Pleth trên ảnh màn hình Philips IntelliVue (RMSE 0,020)</td><td>Đầy đủ (HR, hô hấp, SpO₂ theo công thức tỉ số R)</td></tr>
       <tr><td><b>Gaussian đã fit</b><br><span class="small muted">models/waveform.py</span></td><td><span class="tag rule">công thức</span></td><td>HR, kiểu “có/không notch”</td><td>Một xung lặp lại, 100 Hz</td><td>Fit 25 684 xung của 32 người BIDMC</td><td>HR; hình dáng cố định</td></tr>
       <tr><td><b>LSM-GAN v2</b><br><span class="small muted">lsm_generator.ts</span></td><td><span class="tag ai">AI · GAN</span></td><td>1 200 số ngẫu nhiên</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>BIDMC: 32 người ICU</td><td>Không (chỉ đổi “seed”)</td></tr>
       <tr><td><b>PhysioMix</b> <span class="tag ai">đang dùng</span><br><span class="small muted" id="pm-variant">physiomix_generator.ts</span></td><td><span class="tag ai">AI · GAN có điều kiện</span></td><td>1 200 số ngẫu nhiên + điều kiện (tập dữ liệu, HR, độ bất thường, độ lớn)</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, <span id="pm-people">…</span> người train</td><td>HR 40–180, độ bất thường, tập dữ liệu/trạng thái</td></tr>
@@ -116,9 +116,17 @@
   </table></div>
   <p class="small muted">Còn có cWGAN-GP và TCN-FiLM từ các vòng nghiên cứu trước; chúng được giữ để đối chiếu, không chọn được trong app.</p>
   <h3>Cùng 75 bpm, các nguồn trông thế nào</h3>
+  <p class="small muted" style="margin:0 0 6px">Bộ dữ liệu thật</p>
+  <div class="controls"><div class="seg" id="cmp-data-seg"></div></div>
+  <p class="small muted" style="margin:10px 0 6px">Model</p>
   <div class="controls"><div class="seg" id="cmp-seg"></div><span class="readout" id="cmp-note"></span></div>
+  <div class="callout info" id="cmp-blocked" hidden></div>
   <div class="card"><svg class="chart" id="cmp-chart" viewBox="0 0 900 220"></svg></div>
-  <p class="small muted">Mỗi đường đã chuẩn hoá về 0–1 và lấy 10 s đầu. “Thật” là một cửa sổ BIDMC đã lọc từ tập train.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Model</th><th>Loại</th><th>Học từ</th><th>Cách lấy mẫu 75 bpm</th><th class="num">Nhịp đo được (bộ đang chọn)</th></tr></thead>
+    <tbody id="cmp-table"></tbody>
+  </table></div>
+  <p class="small muted" id="cmp-foot"></p>
 </section>
 
 <section id="architectures">
@@ -1152,6 +1160,7 @@
 </div>
 <div class="tip" id="tip"></div>
 <script src="data.js"></script>
+<script src="compare75.js"></script>
 <script src="report.js"></script>
 </body>
 </html>

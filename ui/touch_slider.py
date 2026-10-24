@@ -6,10 +6,11 @@ from ui import theme as T
 
 class TouchSlider(ctk.CTkFrame):
     def __init__(self, master, minimum, maximum, step=1, value=None,
-                 optional=False, command=None, width=230, inline=False, **kwargs):
+                 optional=False, command=None, width=230, inline=False, auto_label="Auto", **kwargs):
         super().__init__(master, fg_color="transparent", width=width, **kwargs)
         self.minimum, self.maximum, self.step = minimum, maximum, step
         self.command, self.optional = command, optional
+        self.auto_label = auto_label
         self._value = minimum if value is None else value
         self._auto = optional and value is None
         self._disabled = False
@@ -36,7 +37,7 @@ class TouchSlider(ctk.CTkFrame):
             self.slider.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(u(4), 0))
         if optional:
             self.auto_var = ctk.BooleanVar(value=self._auto)
-            self.auto = ctk.CTkCheckBox(self, text="Auto", variable=self.auto_var, font=T.font(u(12)),
+            self.auto = ctk.CTkCheckBox(self, text=auto_label, variable=self.auto_var, font=T.font(u(12)),
                                        command=self._toggle_auto, height=u(28))
             self.auto.grid(row=2, column=0, columnspan=3, sticky="w")
         self.set(value)
@@ -71,7 +72,7 @@ class TouchSlider(ctk.CTkFrame):
     def _refresh(self):
         # Every CustomTkinter configure redraws the widget; a slider drag calls this per motion
         # event, so only what changed is pushed to the widgets.
-        shown = "Auto" if self._auto else f"{self._value:g}"
+        shown = self.auto_label if self._auto else f"{self._value:g}"
         if shown != self.readout.cget("text"):
             self.readout.configure(text=shown)
         if self.slider.get() != self._value:

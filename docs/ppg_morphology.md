@@ -95,8 +95,41 @@ Model integration tests cover dual-channel shape propagation and nominal AC
 and ratio preservation with dynamics disabled.
 
 These are mathematical/software guarantees, **not clinical validation**. The
-default times, component widths and amplitude ratios have not been fitted to
-a held-out real PPG cohort. No new physiological feature timing range is
+default times, component widths and amplitude ratios are fitted to one monitor
+trace (see below), not to a held-out real PPG cohort. No new physiological feature timing range is
 enforced. Timing remains phase-scaled with HR; the model still runs at 100 Hz
 before DAC interpolation. Hardware reproduction, optical calibration and
 GAN validation require separate measurements.
+
+## Default preset: IntelliVue reference screen (2026-10-25)
+
+The default pulse (models/ppg_model.py `PPG_*`, models/waveform.py
+`PulseMorphology` defaults) replaces the former 150/300/400 ms, d=0.25 preset.
+`scripts/fit_intellivue_gaussian.py` digitised the Pleth trace of a photographed
+Philips IntelliVue screen (normal rhythm, 75 bpm, SpO2 99 %, RR 16; photo
+supplied by the user, not stored), averaged its 5 complete beats foot to foot,
+and fitted all eight `PulseMorphology` fields by global least squares with the
+production `PulseShaper`. Result, in `assets/gaussian/intellivue_fit.json`:
+
+| Field | Value | | Field | Value |
+|---|---|---|---|---|
+| SP / DN / DP at 60 bpm | 240 / 257 / 536 ms | | widths sys / notch / dia | 0.0837 / 0.1072 / 0.1807 |
+| diastolic ratio | 0.1557 | | local attenuation d | 0.65 |
+
+Fit RMSE 0.020 of the 0-1 beat; the five beats differ from their mean by an RMS
+SD of 0.025, so the fit is within the photo's own beat-to-beat spread. The app
+rounds the times to 1 ms and d to 0.01 (RMSE to the unrounded fit 0.002,
+`tests/test_intellivue_shape.py`).
+
+Two consequences of the formula: the DN field is the local-attenuation centre,
+placed just after the systolic centre to give the steep systolic fall, not the
+visible notch (the fitted beat's plateau is near 0.55 of the cycle). Pinning DN
+to the visible notch (0.40-0.55) limits the fit to RMSE 0.043. The condition
+presets keep their former diastolic ratio relative to normal (x 0.1557/0.4).
+
+Run defaults are HR 75 bpm, SpO2 99 %, RR 16 /min, condition Normal, in
+`PPGParameters`, `config_store._DEFAULTS` and the saved `config.json`.
+
+Limits: a monitor Pleth is the monitor's own filtered, auto-gained display, and
+a photo adds perspective and line-width quantisation; this is one patient's
+displayed shape, not a raw photodiode signal or a population reference.
