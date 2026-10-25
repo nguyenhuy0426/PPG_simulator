@@ -132,8 +132,9 @@ def test_r_pack_must_come_from_the_v3_pack(tmp_path):
         data_r.load_r(tmp_path, dict(windows_sha256="0"*64))
 
 
-def test_r_round_freezes_its_rule_then_judges_validation_before_test_on_cpu(tmp_path, monkeypatch):
-    from ml.kaggle_multidomain import experiment_flow, experiment_r
+def r_round_input(tmp_path, monkeypatch):
+    """A tiny v3 pack, its R pack and app bundle with judges and training cut to a few steps."""
+    from ml.kaggle_multidomain import experiment_flow
     from ml.kaggle_multidomain import strict_judge as sj
     from tests.test_flowgan import flow_bundle
     for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
@@ -149,9 +150,23 @@ def test_r_round_freezes_its_rule_then_judges_validation_before_test_on_cpu(tmp_
     save_v3(root/"pack", pack)
     save_r(root/"r", pack, recs)
     flow_bundle(root/"app", {k: v[pack["split"] != "external"] for k, v in pack.items()})
+    return root
+
+
+R_ROUND_ARGS = ["--allow-cpu", "--steps", "2", "--interval", "2", "--eval-samples", "12", "--seeds", "42", "123",
+                "--judge-seeds", "0"]
+
+
+def test_r_round_freezes_its_rule_then_judges_validation_before_test_on_cpu(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_r
+    root = r_round_input(tmp_path, monkeypatch)
+    # A 2-step judge's null is noise; open the gate so the whole round runs.
+    monkeypatch.setattr(experiment_r, "VALID_RANGE", (0., 1.))
     out = tmp_path/"round"
-    summary = experiment_r.main(["--input-root", str(root), "--output", str(out), "--allow-cpu", "--steps", "2",
-                                 "--interval", "2", "--eval-samples", "12", "--seeds", "42", "123", "--judge-seeds", "0"])
+    summary = experiment_r.main(["--input-root", str(root), "--output", str(out), *R_ROUND_ARGS])
+    gate = json.loads((out/"NULL_R.json").read_text())
+    assert gate["passed"] and set(gate["auc"]) == {"r_pipeline", "real_other_people"}
+    assert (out/"NULL_R.json").stat().st_mtime <= (out/"training_execution.json").stat().st_mtime
     frozen = json.loads((out/"FROZEN_R.json").read_text())
     assert frozen["rule_sha256"] == experiment_r.rule_sha256()
     assert (out/"FROZEN_R.json").stat().st_mtime <= (out/"DECISION_R.json").stat().st_mtime \
@@ -161,6 +176,17 @@ def test_r_round_freezes_its_rule_then_judges_validation_before_test_on_cpu(tmp_
     decision = summary["decision"]
     assert set(decision["checks"]) == {"null_valid", "pipeline_valid", "eligible", "auc_gain", "c_ok"}
     assert decision["targets"]["pooled"]["target"] == .75 and "wrist" in decision["targets"]
+
+
+def test_r_round_stops_before_training_when_the_null_gate_fails(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_r
+    root = r_round_input(tmp_path, monkeypatch)
+    monkeypatch.setattr(experiment_r, "VALID_RANGE", (2., 3.))
+    out = tmp_path/"round"
+    summary = experiment_r.main(["--input-root", str(root), "--output", str(out), *R_ROUND_ARGS])
+    assert summary["decision"] is None and not summary["null_gate"]["passed"]
+    assert json.loads((out/"COMPLETE.json").read_text())["status"] == "stopped_at_null_gate"
+    assert not (out/"benchmark").exists() and not (out/"DECISION_R.json").exists()
 
 
 def r1_teacher(folder, pack, recs, steps=2):

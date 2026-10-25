@@ -37,12 +37,16 @@ JUDGE = "strict"
 INCUMBENT = "physioflow_app"
 C_LIMIT = .10
 TARGET_POOLED, TARGET_LARGE, TARGET_SMALL = .75, .75, .60
+VALID_RANGE = (.40, .60)
+KERNEL_HOURS, JUDGE_RESERVE_HOURS = 12., 3.
 LARGE_DOMAINS = ("perform_large", "gxu_finger")
 SMALL_DOMAINS = ("bidmc", "perform_af", "perform_non_af", "wrist")
 RULE = ("PhysioFlow-R round rule (P1), fixed before training; validation people only. Sources judged by the strict "
         "judge (judge seeds 0-2 + offset): the app's PhysioFlow (incumbent), R1_flowr seeds 42/123/2026, r_pipeline "
         "(real R windows of the prompted people through flow_r.RView) and real_other_people. Validity: the "
-        "real_other_people null and the r_pipeline mean AUC both lie in [0.40, 0.60]; otherwise no claim. R1 wins if "
+        "real_other_people null and the r_pipeline mean AUC both lie in [0.40, 0.60]; otherwise no claim. Null gate: "
+        "before training the same judge and seeds judge r_pipeline and real_other_people on the validation people "
+        "(NULL_R.json); if either mean AUC is outside [0.40, 0.60] the round stops there and makes no claim. R1 wins if "
         "the round is valid, every seed passes the round-9 gates (eligible), its mean AUC over seeds is below the "
         "incumbent's by more than max(0.02, seed SD) and its mean fresh-seed C is at most 0.10. The ship seed is the "
         "eligible seed with the lowest validation AUC. Targets (reported, not part of the win): pooled AUC <= 0.75; "
@@ -53,6 +57,15 @@ RULE = ("PhysioFlow-R round rule (P1), fixed before training; validation people 
 
 def rule_sha256():
     return hashlib.sha256(RULE.encode()).hexdigest()
+
+
+def null_gate(rows):
+    """NULL_R.json: the pre-training check that the view and the null control are valid before any GPU training."""
+    auc = {name: mean_auc(rows, JUDGE, name) for name in ("r_pipeline", "real_other_people")}
+    per_domain = {name: domain_means(rows, JUDGE, name) for name in auc}
+    valid = {name: bool(VALID_RANGE[0] <= v <= VALID_RANGE[1]) for name, v in auc.items()}
+    return dict(rule_sha256=rule_sha256(), judge=JUDGE, range=VALID_RANGE, auc=auc, per_domain=per_domain, valid=valid,
+                passed=all(valid.values()))
 
 
 def train_one(device, seed, input_root, output, steps, interval, n, deadline):
@@ -122,7 +135,7 @@ def main(argv=None):
     parser.add_argument("--input-root", required=True, help="v3 pack, R pack and the app model files")
     parser.add_argument("--output", required=True)
     parser.add_argument("--steps", type=int, default=8000)
-    parser.add_argument("--hours", type=float, default=6., help="Training deadline after the start")
+    parser.add_argument("--hours", type=float, default=6., help="Training deadline after the null gate")
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
     parser.add_argument("--judge-seeds", nargs="+", type=int, default=[0, 1, 2])
     parser.add_argument("--interval", type=int, default=500)
@@ -139,7 +152,7 @@ def main(argv=None):
     devices = ["cpu"] if a.allow_cpu else ["cuda:0", "cuda:1"]
     output = Path(a.output)
     output.mkdir(parents=True, exist_ok=False)
-    started, deadline = time.monotonic(), time.time()+3600*a.hours
+    started, kernel_start = time.monotonic(), time.time()
     pack, manifest = load_input(a.input_root, PROTOCOL)
     check_pack(pack, manifest, a.allow_cpu)
     r, r_manifest = load_r(a.input_root, manifest)
@@ -149,6 +162,21 @@ def main(argv=None):
                                            r_sha256=r_manifest["windows_sha256"]))
     save_json(output/"configuration.json", dict(args=vars(a), python=platform.python_version(), torch=torch.__version__,
                                                 allocated_gpus=names, cpu_count=os.cpu_count()))
+    pack = {k: v[pack["split"] != "external"] for k, v in pack.items()}
+    keep = np.flatnonzero(np.isin(pack["split"], ["train", "validation"]))
+    bank = sj.ConditionsView(conditions_for({k: v[keep] for k, v in pack.items()}, "v2"), keep)
+    gate = null_gate(judge_family(pack, bank, {"r_pipeline": r_pipeline_source(r, pack)}, "validation", sj.DOMAINS,
+                                  [JUDGE], a.judge_seeds, devices, output/"null_check"))
+    save_json(output/"NULL_R.json", gate)
+    print("NULL GATE", json.dumps(dict(auc=gate["auc"], passed=gate["passed"])), f"{time.monotonic()-started:.0f}s",
+          flush=True)
+    if not gate["passed"]:
+        save_json(output/"COMPLETE.json", dict(status="stopped_at_null_gate", winner=None, null_gate=gate,
+                                               wall_seconds=time.monotonic()-started, deployment="research_only"))
+        print("COMPLETE", flush=True)
+        return dict(judge=JUDGE, null_gate=gate, decision=None)
+    # Training gets its hours after the gate, but must leave the judges their reserve inside the kernel's limit.
+    deadline = min(time.time()+3600*a.hours, kernel_start+3600*(KERNEL_HOURS-JUDGE_RESERVE_HOURS))
     (output/"benchmark").mkdir()
     training = train_all(a.seeds, devices, a.input_root, output/"benchmark", a.steps, a.interval, a.eval_samples,
                          deadline)
@@ -156,9 +184,6 @@ def main(argv=None):
     print("TRAINING DONE", f"{time.monotonic()-started:.0f}s", flush=True)
 
     TEACHER_ROOTS[:] = [a.input_root]
-    pack = {k: v[pack["split"] != "external"] for k, v in pack.items()}
-    keep = np.flatnonzero(np.isin(pack["split"], ["train", "validation"]))
-    bank = sj.ConditionsView(conditions_for({k: v[keep] for k, v in pack.items()}, "v2"), keep)
     bundle = next(p.parent for p in Path(a.input_root).rglob("manifest.json") if (p.parent/"physiomix_generator.ts").exists())
     apps = app_sources(bundle, bank, devices[0])
     sources = {INCUMBENT: apps[INCUMBENT], "r_pipeline": r_pipeline_source(r, pack)}
@@ -177,7 +202,7 @@ def main(argv=None):
         shutil.copy2(output/"benchmark"/f"{ARM}_seed{decision['ship_seed']}"/"generator_cpu.ts",
                      ship/"physioflow_r_generator.ts")
     names = [f"{ARM}_seed{s}" for s in a.seeds]
-    summary = dict(judge=JUDGE, decision=decision,
+    summary = dict(judge=JUDGE, null_gate=gate, decision=decision,
                    validation={k: indistinguishable(val, k) for k in kinds},
                    test={k: indistinguishable(test, k) for k in kinds},
                    test_targets=targets(test, JUDGE, names), wall_seconds=time.monotonic()-started)
