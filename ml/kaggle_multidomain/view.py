@@ -22,12 +22,21 @@ def describe(view):
             f"{spec['low']}-{spec['high']} Hz sosfiltfilt; per-window minmax")
 
 
+def resample_only(raw, up, down):
+    """The v3 view before its band-pass: record mean removed, resample_poly with linear edge padding."""
+    return resample_poly(raw-np.mean(raw), up, down, padtype="line")
+
+
+def view_filter(wave, view="v3"):
+    """The v3 view's zero-phase band-pass of a resampled record."""
+    spec = VIEWS[view]
+    sos = butter(spec["order"], [spec["low"], spec["high"]], "bandpass", fs=FS, output="sos")
+    return sosfiltfilt(sos, wave)
+
+
 def resample_filter(raw, up, down, view="v1"):
     if view not in VIEWS:
         raise ValueError(f"Unknown view: {view}")
     if view == "v1":
         return bandpass(resample_poly(raw, up, down))
-    spec = VIEWS[view]
-    wave = resample_poly(raw-np.mean(raw), up, down, padtype="line")
-    sos = butter(spec["order"], [spec["low"], spec["high"]], "bandpass", fs=FS, output="sos")
-    return sosfiltfilt(sos, wave)
+    return view_filter(resample_only(raw, up, down), view)

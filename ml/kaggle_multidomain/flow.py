@@ -75,9 +75,11 @@ def phase_from_peaks(times, length=LENGTH):
     return np.interp(np.arange(length), knots, np.arange(len(knots))-len(before)).astype(np.float32)
 
 
-def real_scaffolds(signal, rate, rate_known):
-    """(phase cycles (n, L) float32, usable (n,) bool) for real windows, judged against their rate labels."""
-    phase = np.zeros(signal.shape, np.float32)
+def real_scaffolds(signal, rate, rate_known, offset=0, length=None):
+    """(phase cycles (n, L) float32, usable (n,) bool) for real windows, judged against their rate labels.
+    offset/length: the phase on a longer grid holding each window at sample offset (the R pack's 40 s context)."""
+    length = signal.shape[1] if length is None else int(length)
+    phase = np.zeros((len(signal), length), np.float32)
     usable = np.zeros(len(signal), bool)
     for i, row in enumerate(signal):
         if not rate_known[i]:
@@ -88,7 +90,7 @@ def real_scaffolds(signal, rate, rate_known):
         bpm = 60*FS/np.median(np.diff(times))
         if abs(bpm-rate[i]) > max(RATE_TOLERANCE[0], RATE_TOLERANCE[1]*rate[i]):
             continue
-        phase[i], usable[i] = phase_from_peaks(times, signal.shape[1]), True
+        phase[i], usable[i] = phase_from_peaks(times+offset, length), True
     return phase, usable
 
 
@@ -251,7 +253,7 @@ def stop_band_weight(view="v3"):
 
 
 def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=.15, deriv=0., t_dist="logit",
-              spectral=0., spectral_stop=False, input_noise=0.):
+              spectral=0., spectral_stop=False, input_noise=0., prescaled=False):
     """Rectified-flow velocity MSE; deriv adds an x0 first-difference term weighted towards low noise (the
     derivative C2ST probe reads exactly these differences).
 
@@ -265,8 +267,10 @@ def flow_loss(net, real, phase, present, condition, cond_drop=.1, scaffold_drop=
     input_noise (gamma) perturbs the network input with extra noise gamma*t*xi while the targets stay those of the
     unperturbed path (input perturbation against exposure bias, Ning et al. 2023): sampling trajectories leave the
     training marginal (wrist: the 12-20 Hz residual grows from the high-noise steps on), and with the x0 terms the
-    network learns to return a clean estimate from a slightly noisier input than its time label says."""
-    x0 = standardize(real)
+    network learns to return a clean estimate from a slightly noisier input than its time label says.
+
+    prescaled: real is already on the flow's scale (flow_r.r_targets); only its mean is removed."""
+    x0 = real-real.mean(-1, keepdim=True) if prescaled else standardize(real)
     n = len(x0)
     t = flow_times(n, x0.device, t_dist)
     noise = torch.randn_like(x0)

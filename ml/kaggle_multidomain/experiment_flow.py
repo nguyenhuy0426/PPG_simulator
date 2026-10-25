@@ -79,8 +79,9 @@ def base_of(arm):
     return next(b for b in FLOW_BASES if arm == b or arm.startswith(b+"_s"))
 
 
-def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, device, frozen=None):
-    """Train one flow arm; checkpoint on S_real + 0.5C of the EMA weights under the arm's own sampler."""
+def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, device, frozen=None, deadline=None):
+    """Train one flow arm; checkpoint on S_real + 0.5C of the EMA weights under the arm's own sampler.
+    deadline: optional epoch time (s); past it the step being run is the last, evaluated and checkpointed."""
     cfg = config(arm)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -89,6 +90,13 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         torch.cuda.reset_peak_memory_stats(device)
     conditions = conditions_for(pack, cfg["version"])
     g, _ = build(cfg, conditions)
+    if cfg.get("r"):
+        if cfg["wrist_slow"]:
+            raise ValueError("R arms have no wrist slowing")
+        from ml.kaggle_multidomain import flow_r
+        from ml.kaggle_multidomain.experiment_v3 import TEACHER_ROOTS
+        r_signal, r_context = flow_r.training_rows(pack, conditions.ids, TEACHER_ROOTS)
+        g.choice.set_table(*flow_r.context_table(r_context, pack["domain"][conditions.ids], conditions.domains))
     g.to(device)
     ema = ema_model(g)
     optimizer = torch.optim.AdamW(g.net.parameters(), lr=cfg["lr"], betas=(.9, .99), weight_decay=.01)
@@ -98,7 +106,12 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     save_json(run_dir/"conditions.json", conditions.metadata())
     rows_of = conditions.lookup
     signal = pack["signal"][conditions.ids]
-    phase, usable = real_scaffolds(signal, conditions.raw[:, 0], conditions.known[:, 0] > 0)
+    if cfg.get("r"):
+        # Rhythm scaffolds from the v3 windows' peaks, on the 40 s grid; the targets are the R windows.
+        phase, usable = real_scaffolds(signal, conditions.raw[:, 0], conditions.known[:, 0] > 0, flow_r.CONTEXT,
+                                       flow_r.R_LENGTH)
+    else:
+        phase, usable = real_scaffolds(signal, conditions.raw[:, 0], conditions.known[:, 0] > 0)
     domain_of = pack["domain"][conditions.ids]
     scaffold_share = {d: float(usable[domain_of == d].mean()) for d in conditions.domains}
     band = torch.tensor(view_mask(VIEW, signal.shape[-1]+2*FINISH_PAD))
@@ -107,6 +120,8 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
     slow_info = None if slow is None else dict(copies=int(len(slow[2])), sources=sorted({int(i) for i in slow[3]}),
                                                  target_bpm=sorted({float(t) for t in slow[2]}))
     save_json(run_dir/"scaffolds.json", dict(usable_share=scaffold_share, windows=int(len(usable)), wrist_slow=slow_info))
+    if cfg.get("r"):
+        signal = flow_r.r_targets(r_signal, r_context)
     signal = torch.tensor(signal[:, None], device=device)
     phase, usable = torch.tensor(phase, device=device), torch.tensor(usable, device=device)
     bank = torch.tensor(conditions.bank, device=device)
@@ -132,7 +147,7 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         with torch.autocast("cuda", enabled=cuda):
             loss = flow_loss(g.net, x, ph, usable[rows], cond, deriv=cfg["deriv"],
                              t_dist=cfg["t_dist"], spectral=cfg["spectral"], spectral_stop=cfg["spectral_stop"],
-                             input_noise=cfg["input_noise"])
+                             input_noise=cfg["input_noise"], prescaled=bool(cfg.get("r")))
         if not torch.isfinite(loss):
             stability["nonfinite_losses"] += 1
             if stability["nonfinite_losses"] > max(10, .01*steps):
@@ -147,7 +162,10 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         scaler.update()
         update_ema(ema, g, min(.999, (1+step)/(10+step)))
         snapshots.maybe(step, steps, ema)
-        if (step >= min(2*interval, steps) and step % interval == 0) or step == steps:
+        late = deadline is not None and time.time() > deadline
+        if late:
+            stability["stopped_at_step"] = step
+        if (step >= min(2*interval, steps) and step % interval == 0) or step == steps or late:
             ema.eval()
             run = sampler(ema, cfg, device)
             real_score = evaluator.s_real(run, conditions, seed+10000)
@@ -167,6 +185,8 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
             save_json(run_dir/"history.json", history)
             print(arm, seed, json.dumps({k: row[k] for k in ("step", "checkpoint_score", "S_real", "C", "rho")}),
                   flush=True)
+        if late:
+            break
     torch.save(dict(generator=g.state_dict(), ema=ema.state_dict(), arm=arm, seed=seed, step=steps),
                run_dir/"last_training_state.pt")
     result = dict(arm=arm, seed=seed, best_step=best_step, checkpoint_score=best, config=cfg,

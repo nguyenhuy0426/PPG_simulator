@@ -13,6 +13,7 @@ OWNER = "charlesday2612"
 DATA_PACK = "ml/runs/physio3-data-v1/physio3_data"
 INCUMBENT_RUN = "ml/runs/physiomix9-motion-dom-result-v1/physiomix9"
 GALAXY_URL = "https://zenodo.org/records/14635823/files/GalaxyPPG.zip?download=1"
+R_DATASET = "ppg-physioflow-r-data-v1"
 APP_MODELS = ("manifest.json", "physiomix_generator.ts", "physioflow_generator.ts", "lsm_generator.ts")
 
 
@@ -47,11 +48,14 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     # Flow-GAN round: the PhysioFlow U-Net as a GAN generator against the strict critic for both app slots, trained and
     # judged by the strict judge in one T4x2 kernel.
     flowgan = mode == "flowgan_round"
+    # PhysioFlow-R round (P1): PhysioFlow on the resample-only R pack ending in the record-context v3 view, trained and
+    # judged (with the pipeline null) in one T4x2 kernel.
+    r_round = mode == "r_round"
     # Report figures: per-window strict-judge scores and judge weights for the GAN report (both finished rounds mounted).
     figures = mode == "report_figures"
     # Spectral-finish round: the app's generators with the spectral_finish low-pass, judged only (no training).
     finish = mode in ("finish_round", "finish_round2")
-    flow = dual or red13 or strict or strict_round or flowgan or figures or finish or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    flow = dual or red13 or strict or strict_round or flowgan or r_round or figures or finish or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -85,8 +89,11 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_e.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
-    if strict or strict_round or flowgan or figures or finish:
+    if strict or strict_round or flowgan or r_round or figures or finish:
         sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/strict_judge.py"]
+    if r_round:
+        sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("experiment_strict", "data_r", "flow_r",
+                                                                     "experiment_r")]
     if finish:
         sources += ["ml/kaggle_multidomain/experiment_strict.py", "ml/kaggle_multidomain/spectral_finish.py",
                     "ml/kaggle_multidomain/experiment_finish.py"]
@@ -242,6 +249,10 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     if flowgan:
         entry = ("from ml.kaggle_multidomain.experiment_flowgan import main\n"
                  f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/flowgan_round', '--steps', "
+                 f"'{steps}'])")
+    if r_round:
+        entry = ("from ml.kaggle_multidomain.experiment_r import main\n"
+                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/r_round', '--steps', "
                  f"'{steps}'])")
     if finish:
         entry = ("from ml.kaggle_multidomain.experiment_finish import main\n"
@@ -402,6 +413,11 @@ sys.path.insert(0, str(root))
     if flowgan:
         metadata.update(id=f"{owner}/ppg-flowgan-round-v1", title="PPG Flowgan Round v1", machine_shape="NvidiaTeslaT4",
                         kernel_sources=[], dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
+    if r_round:
+        metadata.update(id=f"{owner}/ppg-physioflow-r-round-v1", title="PPG PhysioFlow R Round v1",
+                        machine_shape="NvidiaTeslaT4", kernel_sources=[],
+                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1",
+                                         f"{owner}/{R_DATASET}"])
     if finish:
         version = 2 if mode == "finish_round2" else 1
         metadata.update(id=f"{owner}/ppg-finish-round-v{version}", title=f"PPG Finish Round v{version}", machine_shape="NvidiaTeslaT4",
@@ -446,6 +462,17 @@ def stage_datasets(output, owner):
     return data, incumbent
 
 
+def stage_r_pack(output, owner, r_pack):
+    """Private dataset folder with the R pack (data_r.py output: r_windows.npz and its manifest)."""
+    folder = Path(output)/R_DATASET
+    folder.mkdir(parents=True)
+    for name in ("r_windows.npz", "manifest.json"):
+        shutil.copy2(Path(r_pack)/name, folder/name)
+    meta = dict(title="PPG PhysioFlow R Data v1", id=f"{owner}/{R_DATASET}", licenses=[dict(name="other")])
+    (folder/"dataset-metadata.json").write_text(json.dumps(meta, indent=2)+"\n")
+    return folder
+
+
 def stage_app_models(output, owner):
     """Private dataset folder with the exact model files the app ships (checked against the manifest on load)."""
     root, folder = Path(__file__).resolve().parents[2], Path(output)/"ppg-app-models-v1"
@@ -467,7 +494,8 @@ if __name__ == "__main__":
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
                                       "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13", "lsm_multi",
                                       "strict_judge", "strict_train_physiomix", "strict_train_lsm",
-                                      "strict_judge_round", "flowgan_round", "report_figures", "finish_round", "finish_round2"),
+                                      "strict_judge_round", "flowgan_round", "r_round", "report_figures", "finish_round",
+                                      "finish_round2"),
                    required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
@@ -475,6 +503,7 @@ if __name__ == "__main__":
     p.add_argument("--owner", default=OWNER, help="Kaggle account that runs the loop-7 kernels")
     p.add_argument("--datasets", action="store_true", help="Stage that account's private dataset folders instead")
     p.add_argument("--app-models", action="store_true", help="Stage the app model files as a private dataset folder")
+    p.add_argument("--r-pack", help="Stage this R pack (data_r.py output) as a private dataset folder instead")
     a = p.parse_args()
     default = {"physio_train": 6000, "physio3_final": 6000, "physio3_pilot": 3000, "physio4": 20000,
                "physio5": 20000, "physio6": 20000,
@@ -483,6 +512,9 @@ if __name__ == "__main__":
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
                "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000, "dual": 20000, "dual12": 32000,
                "strict_train_physiomix": 20000, "strict_train_lsm": 20000, "strict_judge_round": 20000,
-               "flowgan_round": 4000}.get(a.mode, 2000)
+               "flowgan_round": 4000, "r_round": 8000}.get(a.mode, 2000)
+    if a.r_pack:
+        print(stage_r_pack(a.output, a.owner, a.r_pack))
+        raise SystemExit
     print(stage_app_models(a.output, a.owner) if a.app_models else stage_datasets(a.output, a.owner) if a.datasets else
           stage(a.output, a.mode, a.steps or default, a.seeds, a.arm, a.owner))

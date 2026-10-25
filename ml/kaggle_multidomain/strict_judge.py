@@ -31,6 +31,7 @@ from pathlib import Path
 import time
 
 import numpy as np
+from scipy.signal import butter, sosfreqz
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -222,14 +223,49 @@ class CriticAcf(nn.Module):
         return self.net(acf[:, 1:]/acf[:, :1].clamp_min(1e-8))
 
 
+class CriticBand(nn.Module):
+    """Beat-locked 8-12 Hz view the other critic views miss: the window and a fixed zero-phase 7-14 Hz band-pass of it
+    (Butterworth order 4 magnitude squared, as sosfiltfilt) times GAIN, side by side so the convolutions can place the
+    band's energy against the pulse foot; dilated residual CNN, mean/max/std pooling. CriticSpectral's -30 dB relative
+    floor sits above real 8-10 Hz power (validation STFT median 6e-4 vs floor 2.5e-3), so it sees nothing above 8 Hz.
+    The input is a linear map of x with a fixed gain, so the input gradient stays bounded (the reason for that floor).
+    GAIN 32: real validation windows have 7-14 Hz SD 6.7e-3 against window SD 0.22."""
+    LOW, HIGH, ORDER, GAIN = 7., 14., 4, 32.
+
+    def __init__(self, width):
+        super().__init__()
+        widths, layers = (width, 2*width, 4*width, 4*width), [sn(nn.Conv1d(2, width, 7, padding=3))]
+        previous = width
+        for i, w in enumerate(widths):
+            layers += [CriticBlock(previous, w, 1, 1 if i == 0 else 2), CriticBlock(w, w, 2)]
+            previous = w
+        self.net, self.size = nn.Sequential(*layers, nn.LeakyReLU(.2)), 3*previous
+        self.masks = {}
+
+    def mask(self, n, device):
+        if (n, device) not in self.masks:
+            sos = butter(self.ORDER, [self.LOW, self.HIGH], "bandpass", fs=FS, output="sos")
+            freq = np.fft.rfftfreq(n, 1/FS)
+            self.masks[n, device] = torch.tensor(np.abs(sosfreqz(sos, worN=freq, fs=FS)[1])**2, dtype=torch.float32,
+                                                 device=device)
+        return self.masks[n, device]
+
+    def forward(self, x):
+        x = (x[:, 0]-x[:, 0].mean(-1, keepdim=True)).float()
+        n = x.shape[-1]
+        band = torch.fft.irfft(torch.fft.rfft(x)*self.mask(n, x.device), n=n)
+        return pooled(self.net(torch.stack((x, self.GAIN*band), 1)))
+
+
 class StrictCritic(nn.Module):
     """GAN critic with the judge's three views (spectral-normalised, see CriticBlock): one hinge logit per view, plus a
     projection term on the condition (size > 0), plus a minibatch-std feature (minibatch_std) against mode collapse.
-    In training mode every window is randomly cropped to 25.6 s, real and generated alike (augmentation of the critic's
-    view only)."""
-    def __init__(self, size=0, width=32, minibatch_std=False):
+    band=True adds CriticBand as a fourth view. In training mode every window is randomly cropped to 25.6 s, real and
+    generated alike (augmentation of the critic's view only)."""
+    def __init__(self, size=0, width=32, minibatch_std=False, band=False):
         super().__init__()
-        self.branches = nn.ModuleList([CriticTime(width), CriticSpectral(2*width), CriticAcf()])
+        views = [CriticTime(width), CriticSpectral(2*width), CriticAcf()]+([CriticBand(width)] if band else [])
+        self.branches = nn.ModuleList(views)
         self.minibatch_std = minibatch_std
         extra = int(minibatch_std)
         self.heads = nn.ModuleList([sn(nn.Linear(b.size+extra, 1)) for b in self.branches])

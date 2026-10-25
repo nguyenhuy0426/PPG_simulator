@@ -133,6 +133,12 @@ ARMS.update({"L3_rel_beat_lr_crop_r1w_motion_dom_strict": dict(ARMS["L3_rel_beat
 # scaled by the interval) to keep a step near the cost of the student's own 7 passes forward and backward.
 FLOWGAN = dict(version="v2", flowgan=True, critic="strict", d_clip=30., lr=2e-4, g_lr=2e-5, distill=100.,
                distill_every=4, flowgan_sensor=True, student_steps=4, latency_limit_ms=5000.)
+# P4 (after P1): R1 as a 4-step GAN generator (flow_r.FlowGANR), no sensor term (P3), against the strict critic with
+# the beat-locked 7-14 Hz view (P2, strict_judge.CriticBand); distillation anchor to the frozen 16-step R1.
+# PhysioFlow-R round (experiment_r, P1): the app's PhysioFlow recipe (F6, 16 Heun steps) trained on the R pack's 40 s
+# resample-only windows and ending in the v3 band-pass applied once with the record's own context (flow_r.RView).
+ARMS["R1_flowr"] = dict(FLOW_BASES["F6_flow_flag_deriv_unif"], r=True, sample_steps=16, guidance=1.)
+ARMS["G3_flowgan_r"] = dict(FLOWGAN, flowgan_r=True, flowgan_sensor=False, critic_band=True)
 ARMS.update({"G1_flowgan": FLOWGAN,
              "G2_flowgan_lsm_bidmc": dict(FLOWGAN, lsm_loss=True, train_domains=("bidmc",))})
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
@@ -186,11 +192,22 @@ def conditions_for(pack, version):
 
 def build(cfg, conditions):
     size = conditions.bank.shape[1]
+    if cfg.get("flowgan_r"):
+        from ml.kaggle_multidomain.flow_r import FlowGANR
+        from ml.kaggle_multidomain.strict_judge import StrictCritic
+        return (FlowGANR(size, conditions.center, conditions.scale, len(conditions.domains), cfg["student_steps"],
+                         cfg["width"]),
+                StrictCritic(size, band=cfg.get("critic_band", False)))
     if cfg.get("flowgan"):
         from ml.kaggle_multidomain.flow_gan import FlowGAN
         from ml.kaggle_multidomain.strict_judge import StrictCritic
         return FlowGAN(size, conditions.center, conditions.scale, len(conditions.domains), cfg["student_steps"],
                        cfg["flowgan_sensor"]), StrictCritic(size)
+    if cfg.get("r"):
+        from ml.kaggle_multidomain.flow_r import FlowGeneratorR
+        return FlowGeneratorR(size, conditions.center, conditions.scale, len(conditions.domains),
+                              sample_steps=cfg["sample_steps"], guidance=cfg["guidance"], width=cfg["width"],
+                              flag_scaffold=cfg["flag_scaffold"]), None
     if cfg["flow"]:
         return FlowGenerator(size, conditions.center, conditions.scale, cfg["sample_steps"], cfg["guidance"],
                              cfg["width"], cfg["flag_scaffold"], cfg["t_end"], cfg["finish_filter"]), None
@@ -380,7 +397,11 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
     conditions = conditions_for(pack, cfg["version"])
     g, d = build(cfg, conditions)
     teacher = None
-    if cfg.get("flowgan"):
+    if cfg.get("flowgan_r"):
+        from ml.kaggle_multidomain.flow_r import teacher_state_r
+        g.load_teacher(teacher_state_r(TEACHER_ROOTS))
+        teacher = g.teacher().to(device)
+    elif cfg.get("flowgan"):
         from ml.kaggle_multidomain.flow_gan import teacher_state
         g.load_teacher(teacher_state(TEACHER_ROOTS))
         teacher = g.teacher().to(device)
@@ -563,7 +584,8 @@ def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, 
             row = train_one(arm, seed, development, evaluator, Path(output), steps, batch, interval, device)
         elif ARMS.get(arm, {}).get("flow"):
             from ml.kaggle_multidomain.experiment_flow import train_flow
-            row = train_flow(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen)
+            row = train_flow(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen,
+                             deadline)
         else:
             row = train_conditional(arm, seed, development, evaluator, output, steps, batch, interval, device, frozen,
                                     deadline)
