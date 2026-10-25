@@ -28,12 +28,12 @@ tham số với [build_system.py](build_system.py) của hộp v4.
 - **Lệch trục:** góc giữa trục LED và đường nối tới tâm cảm biến là 3,0° ở
   d thật 24,2 mm, 0° ở 50 mm và 1,4° ở 99,2 mm. Hai LED lệch bằng nhau.
 - **Tấm che (mặt nạ):** cắm từ trên xuống vào khe ở mũi carrier. Lỗ Đỏ luôn Ø3.
-  Lỗ IR có bốn cỡ: Ø3 (`mo`), Ø2, Ø1,5, Ø1. Thứ tự biến thể bằng số khía trên tai
-  cầm: 0, 1, 2, 3.
+  Lỗ IR có ba cỡ: Ø3 (`mo`), Ø2, Ø1,5. Thứ tự biến thể bằng số khía trên tai
+  cầm: 0, 1, 2.
 
 ## Lỗ LED: kích thước theo datasheet
 
-![Lỗ LED và mẫu thử](out/tdm/carrier_bores.png)
+![Lỗ LED](out/tdm/carrier_bores.png)
 
 | | LED Đỏ YSL‑R341R3D‑D2 ([DS](../ds_linhkien/red_led_3.3mm_datasheet.pdf) tr. 2) | LED IR Everlight SIR234 ([DS](../ds_linhkien/IR_led_3.3mm_datasheet.pdf) tr. 5) |
 |---|---|---|
@@ -98,37 +98,24 @@ Thay đổi so với bản trước:
 **Cài đặt in (Bambu Studio, A1):**
 
 - Hồ sơ 0,20 mm Standard, đầu phun 0,4, PLA.
-- Bù lỗ XY = 0 và bù viền XY = 0. Kích thước lỗ đã tính sẵn độ hụt; mẫu thử dùng
-  để chỉnh.
+- Bù lỗ XY = 0 và bù viền XY = 0. Kích thước lỗ đã tính sẵn độ hụt.
 - Không support, không brim.
-- Mẫu thử và carrier **phải in cùng hồ sơ, cùng cuộn nhựa**, vì độ hụt phụ thuộc
-  vật liệu.
+- Độ hụt phụ thuộc vật liệu: nếu đổi cuộn nhựa, hãy thử luồn LED lại.
 - Mối nối (seam) có thể để lại một gờ nhỏ trong lỗ. Nếu LED vướng, xoay nhẹ một
   mũi khoan Ø3,5 bằng tay trong lỗ.
 
-**In mẫu thử trước khi in carrier:** `30_mau_thu_lo_LED.stl` là tấm 46 × 16 × 6 mm,
-in cùng tư thế (lỗ đứng, miệng dưới vát) và mất vài phút. Các lỗ:
-
-- Hàng trên: lỗ thân Ø3,5 / 3,6 / **3,7** / 3,8 / 3,9, đánh dấu bằng 1…5 chấm
-  trên mặt trên. Ba chấm là cỡ đang dùng.
-- Hàng dưới: lỗ vành Ø4,3 / **4,5** / 4,7 (1…3 chấm), và một lỗ Ø3,7 có côn và
-  gờ chặn Ø2,6 ở mặt trên.
-
-Luồn LED **từ mặt dưới** (mặt áp bàn), giống chiều luồn vào carrier:
-
-1. Chọn lỗ **nhỏ nhất** mà LED trượt vào bằng tay, không cần ấn. Thử cả hai LED
-   ở lỗ thân; lỗ vành chỉ thử với LED Đỏ.
-2. Thử lỗ có gờ: chóp phải dừng lại và nhô lên mặt trên.
-3. Dựng lại carrier với cỡ đã chọn, ví dụ:
+**Nếu LED không vừa lỗ khi lắp thử:** luồn LED **từ mặt dưới** (mặt áp bàn). LED
+phải trượt vào bằng tay, không cần ấn. Nếu lỗ in ra chật, đo đường kính lỗ và thân
+LED bằng thước cặp rồi dựng lại carrier với cỡ lỗ mới, ví dụ:
 
 ```bash
-.cad_venv/bin/python docs/system_3d/build_tdm_chamber.py --bore-d 3.6 --flange-bore-d 4.5
+.cad_venv/bin/python docs/system_3d/build_tdm_chamber.py --bore-d 3.8 --flange-bore-d 4.7
 ```
 
 Script chạy lại toàn bộ kiểm tra. Nếu bạn chọn cỡ nhỏ hơn mặc định, các kiểm tra
-dựa trên giả định hụt 0,4 mm có thể báo FAIL. Trường hợp đó kết quả trên mẫu thử
-thật được ưu tiên hơn giả định; STL vẫn được xuất. Nếu có thước cặp, gửi tôi số
-đo thân và vành LED thật cùng đường kính lỗ in ra; tôi sẽ thay giả định bằng số đo.
+dựa trên giả định hụt 0,4 mm có thể báo FAIL; STL vẫn được xuất. Nếu có thước cặp,
+gửi tôi số đo thân và vành LED thật cùng đường kính lỗ in ra; tôi sẽ thay giả định
+bằng số đo.
 
 **Giữ LED cố định:** lỗ có khe hở nên LED không bị ép chặt. Đẩy LED tới khi chóp
 tì gờ, bẻ chân vào hốc dây hai bên hông, rồi cố định phía sau bằng một chấm keo
@@ -147,7 +134,7 @@ sáng hơn LED Đỏ hàng chục lần ở cùng d. Có ba cách cân lại, n�
 
 1. **Mức DAC:** đặt DC và AC riêng cho IR và RED trên giao diện. Cách này không
    cần phần cứng mới, nhưng IR ở mức thấp sẽ mất độ phân giải (MCP4725 ≈ 0,8 mV mỗi bước).
-2. **Tấm che IR** (Ø2 / Ø1,5 / Ø1): giảm ánh sáng IR đi vào làn. Lỗ nằm sát chóp
+2. **Tấm che IR** (Ø3 / Ø2 / Ø1,5): giảm ánh sáng IR đi vào làn. Lỗ nằm sát chóp
    LED, nên mức giảm phụ thuộc giản đồ phát của LED thật. **Phải đo; không suy ra
    từ tỉ lệ diện tích lỗ.**
 3. **Điện trở R_sense của kênh IR** trên board driver: đổi giá trị linh kiện,
@@ -158,14 +145,20 @@ sáng hơn LED Đỏ hàng chục lần ở cùng d. Có ba cách cân lại, n�
 
 **In mới:** [out/tdm/print_bambu_180/](out/tdm/print_bambu_180/)
 
-| File | SL | Kích thước in X × Y × Z (mm) |
-|---|---:|---|
-| `25_carrier_2LED_TDM.stl` | 1 | 18 × 35 × 26 — **dựng đứng, mặt sau áp bàn** |
-| `26_tam_che_mo.stl` | 1 | 10,4 × 9,6 × 0,8 — Đỏ Ø3, IR Ø3 (cả 4 tấm cùng cỡ) |
-| `27_tam_che_ir2.stl` | 1 | IR Ø2 |
-| `28_tam_che_ir1_5.stl` | 1 | IR Ø1,5 |
-| `29_tam_che_ir1.stl` | 1 | IR Ø1 |
-| `30_mau_thu_lo_LED.stl` | 1 | 46 × 16 × 6 — **in trước** để chọn cỡ lỗ |
+**Một file duy nhất:** `25_carrier_2LED_va_3_tam_che_TDM.stl`, kích thước
+34,4 × 40,8 × 26 mm. Trong file có 4 chi tiết rời, mỗi chi tiết giữ nguyên tư thế
+in và cách nhau 6 mm:
+
+| Chi tiết | Kích thước in X × Y × Z (mm) | Ghi chú |
+|---|---|---|
+| carrier | 18 × 35 × 26 | **dựng đứng, mặt sau áp bàn** |
+| tấm che `mo` | 10,4 × 9,6 × 0,8 | Đỏ Ø3, IR Ø3, không khía |
+| tấm che `ir2` | 10,4 × 9,6 × 0,8 | IR Ø2, 1 khía |
+| tấm che `ir1_5` | 10,4 × 9,6 × 0,8 | IR Ø1,5, 2 khía |
+
+Vị trí từng chi tiết ghi trong [manifest.json](out/tdm/print_bambu_180/manifest.json).
+Nếu chỉ cần một tấm che, xoá hai tấm còn lại trong slicer. Tấm Ø1 (`ir1`) đã bỏ
+khỏi bộ này.
 
 **Dùng lại** từ [out/print_bambu_180/](out/print_bambu_180/):
 
@@ -201,7 +194,7 @@ và góc lệch trục. `out/tdm/stl/` là hệ lắp ráp, chỉ để kiểm t
 
 ## Đã kiểm tra (hình học CAD danh nghĩa)
 
-Chạy `build_tdm_chamber.py`: **51/51 PASS**, xem
+Chạy `build_tdm_chamber.py`: **46/46 PASS**, xem
 [out/tdm/fit_report.json](out/tdm/fit_report.json). Ngưỡng giao nhau 10⁻⁴ mm³,
 riêng các phép quét LED dùng 10⁻³ mm³ vì mặt cầu được chia lưới.
 
@@ -227,7 +220,7 @@ riêng các phép quét LED dùng 10⁻³ mm³ vì mặt cầu được chia lư
 
 **Tấm che, hành trình và đường nhìn**
 
-- Carrier, bốn tấm che và mẫu thử đều kín (watertight) và là một khối liền.
+- Carrier, ba tấm che và file in gộp đều kín (watertight) và là một khối liền.
 - Tấm che trượt vào khe, không chạm chóp LED.
 - Quét d v4 từ 15 đến 90 mm: carrier, thanh đẩy, núm và tấm che không chạm
   thân, nắp, ray hay khẩu độ v4 nào. Ở d nhỏ nhất, carrier không chạm gá H, PCB
@@ -240,7 +233,7 @@ riêng các phép quét LED dùng 10⁻³ mm³ vì mặt cầu được chia lư
 ## Chưa kiểm tra
 
 - **Độ hụt lỗ thật trên A1 của bạn.** Các mức 0,2 mm và 0,4 mm là giả định lấy
-  từ wiki và diễn đàn Bambu; mẫu thử 30 dùng để đo. Bambu không công bố sai số cho A1.
+  từ wiki và diễn đàn Bambu; đo bằng cách thử luồn LED thật. Bambu không công bố sai số cho A1.
 - Độ trượt của carrier trên ray D khi lỗ D in dựng đứng.
 - Đường kính vành LED Đỏ: datasheet không ghi, CAD lấy bao Ø4,0.
 - Chưa in thử carrier. Khe tấm che rộng 1,4 mm và có trần là cầu in; phần nhựa

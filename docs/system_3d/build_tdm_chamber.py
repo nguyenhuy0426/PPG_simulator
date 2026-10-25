@@ -15,18 +15,18 @@ RED / IR / DARK, nên LED Đỏ và IR có thể nằm chung MỘT carrier trong
     nghiêng vào trong để hai trục quang hội tụ tại cửa sổ OPT101 ở khoảng cách
     D_CONV_REAL. Không đổi PCB nào.
   - Hai LED giờ cùng khoảng cách d, nên carrier có khe cắm TẤM CHE phía trước:
-    lỗ Đỏ luôn Ø3, lỗ IR chọn Ø3 / Ø2 / Ø1.5 / Ø1 để giảm sáng IR khi bão hoà.
+    lỗ Đỏ luôn Ø3, lỗ IR chọn Ø3 / Ø2 / Ø1.5 để giảm sáng IR khi bão hoà.
     Mức giảm phụ thuộc giản đồ phát của LED thật — phải đo, không suy ra từ
     diện tích lỗ.
 
-Máy in đích: Bambu Lab A1 (đầu phun 0.4, lớp 0.2). Carrier và mẫu thử in DỰNG
+Máy in đích: Bambu Lab A1 (đầu phun 0.4, lớp 0.2). Carrier in DỰNG
 ĐỨNG trên mặt sau để lỗ LED, lỗ D, lỗ thanh đẩy là lỗ đứng (tròn, bù lỗ XY của
 Bambu Studio có tác dụng); mọi chỗ lỗ LED thu hẹp đi lên là côn ≤ 45°, miệng lỗ
 mặt áp bàn vát 45° để ăn chân voi lớp đầu.
 
 [ASSUME] SOCKET_H = 8.3 mm: mặt PCB thu -> cửa sổ OPT101 trong socket (đo lại).
 [ASSUME] A1_HOLE_SHRINK_NOM/MAX: độ hụt lỗ đứng của A1 lấy từ wiki/forum Bambu,
-chưa đo trên máy của người dùng (mẫu thử 30 dùng để đo).
+chưa đo trên máy của người dùng (đo bằng cách thử luồn LED thật).
 Mọi khe lắp và kiểm tra dưới đây là hình học CAD, CHƯA in thử,
 CHƯA đo rò sáng hay công suất quang.
 
@@ -94,12 +94,12 @@ IR_LEN, IR_LEN_TOL = 5.0, 0.3
 # mặt sau: mọi lỗ dọc trục (2 lỗ LED, lỗ D, lỗ thanh đẩy) thành lỗ đứng, tròn.
 A1_LAYER_H = 0.2
 A1_HOLE_SHRINK_NOM = 0.2               # [ASSUME] lỗ đứng Ø3–5 hụt Ø thường gặp
-A1_HOLE_SHRINK_MAX = 0.4               # [ASSUME] hụt Ø xấu nhất đem kiểm tra (đo bằng mẫu thử 30)
+A1_HOLE_SHRINK_MAX = 0.4               # [ASSUME] hụt Ø xấu nhất đem kiểm tra (đo trên bản in thật)
 A1_OVERHANG_MAX_DEG = 45.0             # mặt treo tự đỡ, không support
 LEAD_IN = 0.5                          # vát 45° ở miệng lỗ: ăn chân voi lớp đầu + dẫn LED
 CONE_DEG = 40.0                        # nửa góc côn thu hẹp trong lỗ LED: 40° + nghiêng 2.86° < 45°
 
-# --- Lỗ LED (đổi bằng --bore-d / --flange-bore-d sau khi thử mẫu 30_mau_thu) --
+# --- Lỗ LED (đổi bằng --bore-d / --flange-bore-d theo số đo thật) --------------
 # Chọn sao cho LED lớn nhất (thân Ø3.2, vành Ø4.0) vẫn lọt khi lỗ hụt
 # A1_HOLE_SHRINK_MAX, và LED danh định không lỏng quá 0.3 mm/bên khi hụt NOM.
 BORE_D = 3.7                           # in ra ~Ø3.5 (NOM) .. Ø3.3 (MAX)
@@ -119,7 +119,7 @@ MASK_SLOT_HZ = 5.5                     # nửa rộng khe (nửa rộng CAD)
 MASK_HZ = 4.8                          # nửa rộng tấm 9.6: lỗ Ø3 ở z=±2.5 còn vành 0.8; khe in hụt 0.4 vẫn hở 0.5/bên
 MASK_BOTTOM_GAP = 0.6                  # đáy tấm cách đáy khe (đáy khe in hụt vẫn không kẹt)
 MASK_TOP = bs.CAR_Y1 - 0.5             # tai cầm nhô trên khối mũi, thấp hơn nóc carrier
-MASK_KINDS = {"mo": 1.5, "ir2": 1.0, "ir1_5": 0.75, "ir1": 0.5}   # bán kính lỗ IR
+MASK_KINDS = {"mo": 1.5, "ir2": 1.0, "ir1_5": 0.75}   # bán kính lỗ IR (3 tấm: Ø3 / Ø2 / Ø1.5)
 MASK_RED_R = 1.5                       # lỗ Đỏ luôn Ø3
 
 D_RANGE_V4 = (bs.D_MIN, bs.D_MAX)      # 15..90 theo thang v4 (cữ chặn của thân v4)
@@ -279,53 +279,8 @@ def led_models(ch, worst=False, shift=0.0):
     return _along_led(ch, led_solid(ch, stop_tip_x(worst) + shift, worst, LED_Z[ch]))
 
 
-COUPON_STEPS = (-0.2, -0.1, 0.0, 0.1, 0.2)            # lỗ thân = BORE_D + bước
-COUPON_FLANGE_STEPS = (-0.2, 0.0, 0.2)                # lỗ vành = FLANGE_BORE_D + bước
-COUPON_T, COUPON_H, COUPON_W = 6.0, 16.0, 46.0        # dày 6 = 30 lớp, ~ đoạn thân trong carrier
-
-
-def coupon_body_d():
-    return tuple(round(BORE_D + s, 2) for s in COUPON_STEPS)
-
-
-def coupon_flange_d():
-    return tuple(round(FLANGE_BORE_D + s, 2) for s in COUPON_FLANGE_STEPS)
-
-
-def build_fit_coupon():
-    """Mẫu thử in CÙNG tư thế với carrier: tấm dày COUPON_T áp bàn, lỗ đứng,
-    miệng dưới vát LEAD_IN như carrier. Mặt trên có lỗ chấm nhận dạng.
-    Hàng trên: lỗ thân BORE_D −0.2 … +0.2 (1…5 chấm, chấm 3 = cỡ đang dùng).
-    Hàng dưới: lỗ vành FLANGE_BORE_D −0.2 / 0 / +0.2 (1…3 chấm) và một lỗ thân
-    BORE_D có côn + gờ chặn Ø LIP_D ở mặt trên (thử chóp dừng đúng, luồn từ dưới)."""
-    m = box(0.0, COUPON_T, 0.0, COUPON_H, 0.0, COUPON_W)
-    k = 1.0 / math.tan(math.radians(CONE_DEG))
-    cuts = []
-
-    def hole(y, z, r):
-        cuts.append(revolve_x([(-0.5, r + LEAD_IN + 0.5), (LEAD_IN, r), (COUPON_T + 0.5, r)], y, z))
-
-    def dots(y, z, n):
-        for j in range(n):
-            cuts.append(cyl_x(COUPON_T - 0.6, COUPON_T + 0.5, y, z + 1.6 * (j - (n - 1) / 2), 0.5, 16))
-
-    for i, d in enumerate(coupon_body_d()):
-        z = 5.0 + 9.0 * i
-        hole(11.5, z, d / 2)
-        dots(14.7, z, i + 1)
-    for i, d in enumerate(coupon_flange_d()):
-        z = 5.0 + 9.0 * i
-        hole(4.5, z, d / 2)
-        dots(1.1, z, i + 1)
-    z_lip, rb, rl = 5.0 + 9.0 * len(COUPON_FLANGE_STEPS) + 2.0, BORE_D / 2, LIP_D / 2
-    xl = COUPON_T - LIP_T
-    cuts.append(revolve_x([(-0.5, rb + LEAD_IN + 0.5), (LEAD_IN, rb), (xl - (rb - rl) * k, rb),
-                           (xl, rl), (COUPON_T + 0.5, rl + LIP_T + 0.5)], 4.5, z_lip))
-    return dif(m, cuts)
-
-
 def orient_back_down(mesh):
-    """Tư thế in A1 cho carrier và mẫu thử: mặt SAU (x nhỏ nhất) áp bàn,
+    """Tư thế in A1 cho carrier: mặt SAU (x nhỏ nhất) áp bàn,
     trục LED (+X) hướng LÊN -> mọi lỗ dọc trục là lỗ đứng."""
     m = mesh.copy()
     m.apply_transform(rotation_matrix(-math.pi / 2, [0, 1, 0]))   # +X -> +Z bàn in
@@ -458,8 +413,7 @@ def run_checks(carrier, masks, v4):
     def check(label, ok, **extra):
         checks.append(dict(label=label, pass_=bool(ok), **extra))
 
-    for name, m in ([("carrier_2led", carrier), ("mau_thu_30", build_fit_coupon())]
-                    + [(f"mask_{k}", v) for k, v in masks.items()]):
+    for name, m in ([("carrier_2led", carrier)] + [(f"mask_{k}", v) for k, v in masks.items()]):
         check(f"{name}: watertight, một khối", m.is_watertight and body_count(m) == 1,
               volume_mm3=round(float(m.volume), 2))
 
@@ -637,22 +591,42 @@ def sha256(path):
         return hashlib.sha256(f.read()).hexdigest()
 
 
+PLATE_GAP = 6.0                        # khoảng cách giữa các chi tiết trên bàn in (như bộ v4)
+
+
+def build_print_plate(carrier, masks):
+    """Một file in: carrier dựng đứng ở góc, 3 tấm che nằm phẳng thành một cột
+    bên phải. Mỗi chi tiết giữ nguyên tư thế in riêng; chỉ tịnh tiến trong mặt bàn."""
+    parts = [("carrier", orient_back_down(carrier))]
+    parts += [(f"mask_{k}", bs._orient_print(m, "lay_flat")) for k, m in masks.items()]
+    meshes, placed = [], []
+    x_mask = parts[0][1].extents[0] + PLATE_GAP
+    y = 0.0
+    for i, (name, m) in enumerate(parts):
+        m = m.copy()
+        x0, y0 = (0.0, 0.0) if i == 0 else (x_mask, y)
+        lo = m.bounds[0]
+        m.apply_translation([x0 - lo[0], y0 - lo[1], -lo[2]])
+        if i:
+            y += m.extents[1] + PLATE_GAP
+        meshes.append(m)
+        placed.append(dict(part=name, origin_xy_mm=[round(x0, 2), round(y0, 2)],
+                           extents_xyz_mm=[round(float(v), 2) for v in m.extents]))
+    return trimesh.util.concatenate(meshes), placed
+
+
 def export(carrier, masks, assembly, checks):
     stl_dir, print_dir = os.path.join(OUT, "stl"), os.path.join(OUT, "print_bambu_180")
     os.makedirs(stl_dir, exist_ok=True)
     os.makedirs(print_dir, exist_ok=True)
     for name, m in assembly.items():
         m.export(os.path.join(stl_dir, f"{name}.stl"))
-    new_parts = {"25_carrier_2LED_TDM.stl": (carrier, "back_down", 1,
-                                           "carrier Đỏ + IR, lỗ nghiêng; in dựng đứng, mặt sau áp bàn")}
-    labels = {"mo": "IR Ø3 (không giảm)", "ir2": "IR Ø2", "ir1_5": "IR Ø1.5", "ir1": "IR Ø1"}
-    for i, k in enumerate(MASK_KINDS):
-        new_parts[f"{26 + i}_tam_che_{k}.stl"] = (masks[k], "lay_flat", 1,
-                                                  f"tấm che: Đỏ Ø3, {labels[k]}; {i} khía trên tai")
-    new_parts["30_mau_thu_lo_LED.stl"] = (
-        build_fit_coupon(), "back_down", 1,
-        f"mẫu thử lỗ đứng: thân Ø{coupon_body_d()[0]:g}–{coupon_body_d()[-1]:g}, "
-        f"vành Ø{coupon_flange_d()[0]:g}–{coupon_flange_d()[-1]:g}, gờ chặn")
+    labels = {"mo": "IR Ø3 (không giảm)", "ir2": "IR Ø2", "ir1_5": "IR Ø1.5"}
+    plate, placed = build_print_plate(carrier, masks)
+    plate_name = "25_carrier_2LED_va_3_tam_che_TDM.stl"
+    new_parts = {plate_name: (plate, 1,
+                              "một bàn in: carrier (dựng đứng) + 3 tấm che " +
+                              ", ".join(f"{k} ({labels[k]}, {i} khía)" for i, k in enumerate(masks)))}
     manifest = {"bed_mm": BED, "printer": "Bambu Lab A1, nozzle 0.4, layer 0.2",
                 "hole_shrink_assumed_mm": {"nominal": A1_HOLE_SHRINK_NOM, "max": A1_HOLE_SHRINK_MAX},
                 "socket_h_mm_assumed": SOCKET_H, "led_pitch_mm": LED_PITCH,
@@ -663,14 +637,17 @@ def export(carrier, masks, assembly, checks):
                 "off_axis_deg": {f"{dr:.1f}": {ch: round(off_axis_deg(ch, dr), 2)
                                                for ch in ("red", "ir")} for dr in d_list()},
                 "new_parts": [], "reused_parts": []}
-    for fname, (mesh, mode, qty, desc) in new_parts.items():
-        printed = orient_back_down(mesh) if mode == "back_down" else bs._orient_print(mesh, mode)
+    for fname, (printed, qty, desc) in new_parts.items():
         path = os.path.join(print_dir, fname)
         printed.export(path)
         ext = [round(float(v), 2) for v in printed.extents]
         manifest["new_parts"].append(dict(file=fname, quantity=qty, description=desc,
                                           extents_xyz_mm=ext, sha256=sha256(path),
-                                          fits_bed=bool(max(ext[:2]) <= BED - 2 * BED_MARGIN)))
+                                          fits_bed=bool(max(ext[:2]) <= BED - 2 * BED_MARGIN),
+                                          instances=placed))
+    for fn in sorted(os.listdir(print_dir)):                 # bỏ file bản trước (tách lẻ)
+        if fn.endswith(".stl") and fn not in new_parts:
+            os.remove(os.path.join(print_dir, fn))
     for fname, qty, desc in REUSED:
         src = os.path.join(V4_PRINT, fname)
         manifest["reused_parts"].append(dict(
@@ -757,7 +734,7 @@ def render_layout(carrier, masks, v4, path):
 
 
 def render_bores(carrier, path):
-    """Mặt cắt lỗ LED (ngang + nhìn từ trước) và mặt lỗ của mẫu thử."""
+    """Mặt cắt lỗ LED: cắt ngang và nhìn từ trước."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -767,7 +744,7 @@ def render_bores(carrier, path):
             ax.plot(s[:, 2], s[:, 1], color=color, lw=lw) if front else \
                 ax.plot(s[:, 0], s[:, 2], color=color, lw=lw)
 
-    fig, ax = plt.subplots(1, 3, figsize=(17, 5.5))
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5.5))
     cut(ax[0], carrier, [0, 1, 0], [0, Y_S, 0], "#5d4037")
     for ch, col in (("red", "#c62828"), ("ir", "#4527a0")):
         cut(ax[0], led_models(ch), [0, 1, 0], [0, Y_S, 0], col, 0.9)
@@ -779,10 +756,6 @@ def render_bores(carrier, path):
     ax[1].set_ylim(Y_S - 6, Y_S + 6)
     ax[1].set_title(f"Nhìn từ trước: lỗ thân Ø{BORE_D:g} (nâu), lỗ vành Ø{FLANGE_BORE_D:g} (cam)",
                     fontsize=10)
-    cut(ax[2], build_fit_coupon(), [1, 0, 0], [COUPON_T / 2, 0, 0], "#37474f", front=True)
-    cd, fd = coupon_body_d(), coupon_flange_d()
-    ax[2].set_title(f"Mẫu thử 30: trên Ø{cd[0]:g}…{cd[-1]:g} (1…5 chấm); "
-                    f"dưới Ø{fd[0]:g}/{fd[1]:g}/{fd[2]:g} + gờ", fontsize=10)
     for a in ax:
         a.set_aspect("equal")
         a.grid(alpha=0.3)
@@ -797,7 +770,7 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--no-checks", action="store_true", help="chỉ xuất STL, bỏ kiểm tra")
     ap.add_argument("--bore-d", type=float, default=BORE_D,
-                    help="Ø lỗ thân LED trong CAD (chọn theo mẫu thử 30, mặc định %(default)s)")
+                    help="Ø lỗ thân LED trong CAD (mặc định %(default)s)")
     ap.add_argument("--flange-bore-d", type=float, default=FLANGE_BORE_D,
                     help="Ø lỗ vành LED Đỏ trong CAD (mặc định %(default)s)")
     args = ap.parse_args()

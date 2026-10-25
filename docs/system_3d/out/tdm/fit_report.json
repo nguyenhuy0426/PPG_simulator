@@ -1,17 +1,12 @@
 {
-  "passed": 51,
-  "total": 51,
+  "passed": 46,
+  "total": 46,
   "tolerance_mm3": 0.0001,
   "checks": [
     {
       "label": "carrier_2led: watertight, một khối",
       "pass_": true,
       "volume_mm3": 11393.24
-    },
-    {
-      "label": "mau_thu_30: watertight, một khối",
-      "pass_": true,
-      "volume_mm3": 3721.12
     },
     {
       "label": "mask_mo: watertight, một khối",
@@ -27,11 +22,6 @@
       "label": "mask_ir1_5: watertight, một khối",
       "pass_": true,
       "volume_mm3": 71.56
-    },
-    {
-      "label": "mask_ir1: watertight, một khối",
-      "pass_": true,
-      "volume_mm3": 71.7
     },
     {
       "label": "vách nhựa giữa hai lỗ LED ở đoạn vành Ø4.5 ≥ 0.8 mm",
@@ -166,16 +156,6 @@
       "intersection_mm3": 0.0
     },
     {
-      "label": "tấm che ir1 trượt vào khe không cấn",
-      "pass_": true,
-      "intersection_mm3": 0.0
-    },
-    {
-      "label": "tấm che ir1 không chạm chóp LED",
-      "pass_": true,
-      "intersection_mm3": 0.0
-    },
-    {
       "label": "A1: tấm che dày 0.8 vào khe 1.4 mm, hở ≥ 0.2 mm mỗi mặt",
       "pass_": true,
       "gap_per_face_mm": 0.3
@@ -251,11 +231,6 @@
     },
     {
       "label": "tấm che ir1_5: tia chính hai LED → tâm OPT101 không bị chắn",
-      "pass_": true,
-      "worst_mm3": 0.0
-    },
-    {
-      "label": "tấm che ir1: tia chính hai LED → tâm OPT101 không bị chắn",
       "pass_": true,
       "worst_mm3": 0.0
     },
