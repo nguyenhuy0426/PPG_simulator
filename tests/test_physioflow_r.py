@@ -286,3 +286,19 @@ def test_r_round_trains_with_one_worker_per_gpu(tmp_path, monkeypatch):
     rows = experiment_r.train_all([42, 123, 2026], ["cuda:0", "cuda:1"], "in", tmp_path, 2, 2, 4, None)
     assert calls == [("workers", 2), ("cuda:0", [42, 2026]), ("cuda:1", [123])]
     assert sorted(r["seed"] for r in rows) == [42, 123, 2026]
+
+
+def test_deployment_gates_compare_without_an_autograd_graph(tmp_path, monkeypatch):
+    # A graph through every sampler step held ~10 GB of host RAM for 5 samples and killed the P1 scoring workers.
+    pack, recs = records(v3_pack())
+    g, c = r1_teacher(tmp_path/"teacher", pack, recs)
+    seen = []
+    compare = torch.testing.assert_close
+
+    def check(a, b, **kwargs):
+        seen.append((a.requires_grad, b.requires_grad))
+        compare(a, b, **kwargs)
+
+    monkeypatch.setattr(torch.testing, "assert_close", check)
+    experiment_v3.deployment_gates(g, c)
+    assert len(seen) >= 3 and not any(a or b for a, b in seen)

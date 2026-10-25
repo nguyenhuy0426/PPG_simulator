@@ -370,10 +370,13 @@ def deployment_gates(model, conditions):
     z, c = torch.randn(2, LENGTH), torch.tensor(conditions.prompt(conditions.domains[0], 75., .02, 2))
     # Flows export a scripted sampler around one traced network pass; tracing them would unroll every step.
     traced = model.export(z, c) if hasattr(model, "export") else torch.jit.trace(model, (z, c))
-    for n, bpm, sigma in ((1, 45., .02), (2, 130., .2), (5, 175., .1)):
-        z = torch.randn(n, LENGTH)
-        c = torch.tensor(conditions.prompt(conditions.domains[-1], bpm, sigma, n))
-        torch.testing.assert_close(traced(z, c), model(z, c))
+    # No autograd: a graph through every sampler step held ~10 GB of host RAM for 5 PhysioFlow-R samples and lost
+    # the P1 worker pools (BrokenProcessPool) while scoring.
+    with torch.no_grad():
+        for n, bpm, sigma in ((1, 45., .02), (2, 130., .2), (5, 175., .1)):
+            z = torch.randn(n, LENGTH)
+            c = torch.tensor(conditions.prompt(conditions.domains[-1], bpm, sigma, n))
+            torch.testing.assert_close(traced(z, c), model(z, c))
     torch.set_num_threads(1)
     z, c = torch.randn(1, LENGTH), torch.tensor(conditions.prompt(conditions.domains[0], 80., .02, 1))
     with torch.no_grad():
