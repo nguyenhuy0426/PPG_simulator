@@ -244,3 +244,18 @@ def test_g3_arm_trains_adversarially_and_exports_on_cpu(tmp_path, monkeypatch):
     assert scripted(torch.randn(2, LENGTH), torch.tensor(experiment_v3.conditions_for(
         {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}, "v2").bank[:2])).shape == \
         (2, 1, LENGTH)
+
+
+def test_scoring_slot_admits_one_worker_at_a_time(tmp_path):
+    import subprocess
+    import sys
+    probe = ("import fcntl, sys\n"
+             "with open(sys.argv[1], 'w') as f:\n"
+             "    try:\n"
+             "        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+             "    except BlockingIOError:\n"
+             "        sys.exit(3)\n")
+    lock = str(tmp_path/".scoring.lock")
+    with experiment_v3.scoring_slot(tmp_path):
+        assert subprocess.run([sys.executable, "-c", probe, lock]).returncode == 3
+    assert subprocess.run([sys.executable, "-c", probe, lock]).returncode == 0

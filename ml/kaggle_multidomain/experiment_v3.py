@@ -6,6 +6,9 @@ opens the sealed GXU finger test exactly once. Workers only ever receive train+v
 """
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import contextmanager
+import fcntl
+import gc
 import hashlib
 import json
 import math
@@ -536,8 +539,29 @@ def load_best(arm, run_dir, conditions, frozen, device):
     return model.to(device).eval(), cfg
 
 
+@contextmanager
+def scoring_slot(folder):
+    """One worker scores at a time. In the P1 round the two workers that scored at once were terminated abruptly
+    (BrokenProcessPool, no Python error; host memory is the likely cause, not proven) while the worker that scored
+    alone finished. Training runs stay parallel."""
+    with open(Path(folder)/".scoring.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
-    """Fresh-seed arm score at the chosen checkpoint plus every hard gate (validation only)."""
+    """Fresh-seed arm score at the chosen checkpoint plus every hard gate (validation only); one worker at a time."""
+    with scoring_slot(Path(run_dir).parent):
+        return _score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps)
+
+
+def _score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
     cfg = config(arm, frozen)
     conditions = conditions_for(pack, cfg["version"])
     model, cfg = load_best(arm, run_dir, conditions, frozen, device)
