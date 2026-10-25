@@ -259,3 +259,30 @@ def test_scoring_slot_admits_one_worker_at_a_time(tmp_path):
     with experiment_v3.scoring_slot(tmp_path):
         assert subprocess.run([sys.executable, "-c", probe, lock]).returncode == 3
     assert subprocess.run([sys.executable, "-c", probe, lock]).returncode == 0
+
+
+def test_r_round_trains_with_one_worker_per_gpu(tmp_path, monkeypatch):
+    from concurrent.futures import Future
+    from ml.kaggle_multidomain import experiment_r
+    calls = []
+
+    class Pool:
+        def __init__(self, workers, mp_context=None):
+            calls.append(("workers", workers))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def submit(self, fn, device, seeds, *args):
+            calls.append((device, list(seeds)))
+            future = Future()
+            future.set_result([dict(seed=s) for s in seeds])
+            return future
+
+    monkeypatch.setattr(experiment_r, "ProcessPoolExecutor", Pool)
+    rows = experiment_r.train_all([42, 123, 2026], ["cuda:0", "cuda:1"], "in", tmp_path, 2, 2, 4, None)
+    assert calls == [("workers", 2), ("cuda:0", [42, 2026]), ("cuda:1", [123])]
+    assert sorted(r["seed"] for r in rows) == [42, 123, 2026]

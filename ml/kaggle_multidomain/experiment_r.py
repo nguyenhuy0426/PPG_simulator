@@ -68,21 +68,26 @@ def null_gate(rows):
                 passed=all(valid.values()))
 
 
-def train_one(device, seed, input_root, output, steps, interval, n, deadline):
+def train_seeds(device, seeds, input_root, output, steps, interval, n, deadline):
     from ml.kaggle_multidomain import experiment_v3
-    return experiment_v3.worker(device, [(ARM, seed)], input_root, output, steps, 32, interval, n, None, 2, deadline)[0]
+    return experiment_v3.worker(device, [(ARM, s) for s in seeds], input_root, output, steps, 32, interval, n, None, 2,
+                                deadline)
 
 
 def train_all(seeds, devices, input_root, output, steps, interval, n, deadline):
+    """One worker per GPU (experiment_flow.final_devices): worker i trains seeds i, i+2, ... in turn. Three workers,
+    two on one GPU, lost the pool while scoring in round 10 and in both P1 kernels (v1, v2)."""
     if devices == ["cpu"]:
-        return [train_one("cpu", s, input_root, output, steps, interval, n, deadline) for s in seeds]
+        return train_seeds("cpu", seeds, input_root, output, steps, interval, n, deadline)
     rows = []
-    with ProcessPoolExecutor(len(seeds), mp_context=multiprocessing.get_context("spawn")) as pool:
-        futures = [pool.submit(train_one, devices[i % len(devices)], s, input_root, output, steps, interval, n,
-                               deadline) for i, s in enumerate(seeds)]
+    with ProcessPoolExecutor(len(devices), mp_context=multiprocessing.get_context("spawn")) as pool:
+        futures = [pool.submit(train_seeds, d, seeds[i::len(devices)], input_root, output, steps, interval, n, deadline)
+                   for i, d in enumerate(devices)]
         for future in as_completed(futures):
-            rows.append(future.result())
+            rows.extend(future.result())
             save_json(Path(output)/"training_progress.json", rows)
+    if sorted(r["seed"] for r in rows) != sorted(seeds):
+        raise RuntimeError("Missing or duplicate training runs")
     return rows
 
 

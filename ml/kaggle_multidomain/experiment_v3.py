@@ -541,9 +541,9 @@ def load_best(arm, run_dir, conditions, frozen, device):
 
 @contextmanager
 def scoring_slot(folder):
-    """One worker scores at a time. In the P1 round the two workers that scored at once were terminated abruptly
-    (BrokenProcessPool, no Python error; host memory is the likely cause, not proven) while the worker that scored
-    alone finished. Training runs stay parallel."""
+    """One worker scores at a time, a guard for runs with more workers than GPUs. It did not save P1 kernel v2: with
+    three workers (two on cuda:0) the pool still died while one of them scored; one worker per GPU is the fix
+    (experiment_r.train_all, experiment_flow.final_devices)."""
     with open(Path(folder)/".scoring.lock", "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
