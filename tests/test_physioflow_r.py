@@ -370,3 +370,24 @@ def test_p4_trains_one_worker_per_gpu_each_seed_with_its_own_hours(tmp_path, mon
     calls.clear()
     experiment_p4.train_seeds("cuda:1", [123], "in", tmp_path, 2, 2, 4, .1, now+7200, "teacher")
     assert calls[0][2] <= time.time()+360+1                      # 0.1 h for the seed, well before the deadline
+
+
+def test_p4_diagnosis_judges_teacher_and_g3_weights_at_each_step_count_on_cpu(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_p4, experiment_p4_diag
+    root = r_round_input(tmp_path, monkeypatch)
+    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
+                                                                 width=.25, distill_every=1))
+    p1_output(root/"p1", *records(v3_pack()))
+    experiment_p4.main(["--input-root", str(root), "--output", str(root/"p4"), *R_ROUND_ARGS[:-2], "--seeds", "42",
+                        "123", "--judge-seeds", "0"])
+    out = tmp_path/"diag"
+    result = experiment_p4_diag.main(["--input-root", str(root), "--output", str(out), "--allow-cpu",
+                                      "--judge-seeds", "0"])
+    frozen = json.loads((out/"FROZEN_DIAG.json").read_text())
+    assert frozen["rule_sha256"] == experiment_p4_diag.rule_sha256()
+    assert (out/"FROZEN_DIAG.json").stat().st_mtime <= (out/"DIAGNOSIS_P4.json").stat().st_mtime
+    assert set(result["auc"]) == {*experiment_p4_diag.SOURCES, "real_other_people"}
+    assert set(result["reproduced"]) == {"r1_s16", "g3_s4"}
+    assert not (out/"test").exists()
+    for name in ("step_effect", "gan_effect", "gan_effect_16"):
+        assert result[name]["threshold"] >= .02
