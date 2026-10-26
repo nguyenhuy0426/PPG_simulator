@@ -302,3 +302,71 @@ def test_deployment_gates_compare_without_an_autograd_graph(tmp_path, monkeypatc
     monkeypatch.setattr(torch.testing, "assert_close", check)
     experiment_v3.deployment_gates(g, c)
     assert len(seen) >= 3 and not any(a or b for a, b in seen)
+
+
+def p1_output(folder, pack, recs, ship_seed=42, winner=None):
+    """The P1 round's output as P4 mounts it: DECISION_R.json and the ship seed's export (an untrained R1)."""
+    from ml.kaggle_multidomain import experiment_r
+    run = folder/"benchmark"/f"{experiment_r.ARM}_seed{ship_seed}"
+    r1_teacher(run, pack, recs)
+    (run/flow_r.TEACHER_R_FILE).rename(run/"generator_cpu.ts")
+    (folder/"DECISION_R.json").write_text(json.dumps(dict(
+        ship_seed=ship_seed, winner=winner, rule_sha256=experiment_r.rule_sha256(), auc_by_seed={"42": .9}, C=.2)))
+    return run/"generator_cpu.ts"
+
+
+def test_p4_round_fine_tunes_the_p1_ship_seed_and_judges_validation_before_test_on_cpu(tmp_path, monkeypatch):
+    import hashlib
+    from ml.kaggle_multidomain import experiment_p4
+    root = r_round_input(tmp_path, monkeypatch)
+    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
+                                                                 width=.25, distill_every=1))
+    pack = {k: v for k, v in np.load(root/"pack"/"windows.npz", allow_pickle=False).items()}
+    teacher = p1_output(root/"p1", *records(v3_pack()))
+    assert np.array_equal(pack["signal"], records(v3_pack())[0]["signal"])
+    out = tmp_path/"round"
+    summary = experiment_p4.main(["--input-root", str(root), "--output", str(out), *R_ROUND_ARGS])
+    frozen = json.loads((out/"FROZEN_P4.json").read_text())
+    assert frozen["rule_sha256"] == experiment_p4.rule_sha256() and frozen["teacher"]["seed"] == 42
+    assert frozen["teacher"]["sha256"] == hashlib.sha256(teacher.read_bytes()).hexdigest()
+    assert (out/"FROZEN_P4.json").stat().st_mtime <= (out/"training_execution.json").stat().st_mtime \
+        <= (out/"DECISION_P4.json").stat().st_mtime <= (out/"test"/"judges.json").stat().st_mtime
+    assert set(summary["validation"]["strict"]) == {"physiomix_app", "physioflow_app", "r1_teacher",
+                                                   "real_other_people", "G3_flowgan_r_seed42", "G3_flowgan_r_seed123"}
+    decision = summary["decision"]
+    assert set(decision["checks"]) == {"null_valid", "eligible", "auc_gain", "c_ok"}
+    assert decision["best_reference"] == min(decision["references"].values())
+
+
+def test_p4_needs_an_eligible_p1_seed_and_its_own_ship_file(tmp_path):
+    from ml.kaggle_multidomain import experiment_p4
+    pack, recs = records(v3_pack())
+    (tmp_path/"a").mkdir()
+    (tmp_path/"a"/"DECISION_R.json").write_text(json.dumps(dict(ship_seed=None)))
+    with pytest.raises(ValueError, match="no eligible seed"):
+        experiment_p4.resolve_teacher(tmp_path/"a", tmp_path/"ta")
+    p1_output(tmp_path/"b", pack, recs, winner="R1_flowr")
+    (tmp_path/"b"/"ship").mkdir()
+    (tmp_path/"b"/"ship"/flow_r.TEACHER_R_FILE).write_bytes(b"other")
+    with pytest.raises(ValueError, match="not its ship seed"):
+        experiment_p4.resolve_teacher(tmp_path/"b", tmp_path/"tb")
+
+
+def test_p4_trains_one_worker_per_gpu_each_seed_with_its_own_hours(tmp_path, monkeypatch):
+    import time
+    from ml.kaggle_multidomain import experiment_p4
+    calls = []
+
+    def fake_worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads, deadline,
+                    teacher_roots):
+        calls.append((device, jobs[0][1], deadline, teacher_roots))
+        return [dict(seed=jobs[0][1])]
+    monkeypatch.setattr(experiment_v3, "worker", fake_worker)
+    now = time.time()
+    rows = experiment_p4.train_seeds("cuda:0", [42, 2026], "in", tmp_path, 2, 2, 4, 1., now+1800, "teacher")
+    assert [r["seed"] for r in rows] == [42, 2026]
+    assert [c[1] for c in calls] == [42, 2026] and all(c[3] == ["teacher"] for c in calls)
+    assert all(c[2] <= now+1800+1 for c in calls)               # the kernel deadline caps a seed's own hours
+    calls.clear()
+    experiment_p4.train_seeds("cuda:1", [123], "in", tmp_path, 2, 2, 4, .1, now+7200, "teacher")
+    assert calls[0][2] <= time.time()+360+1                      # 0.1 h for the seed, well before the deadline

@@ -596,9 +596,11 @@ def _score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
                 gates=gates, eligible=bool(eligible), latency=latency)
 
 
-def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2, deadline=None):
+def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2, deadline=None,
+           teacher_roots=None):
+    """teacher_roots: where flow-GAN arms find their teacher (default: the input root)."""
     torch.set_num_threads(threads)
-    TEACHER_ROOTS[:] = [input_root]
+    TEACHER_ROOTS[:] = list(teacher_roots or [input_root])
     if device.startswith("cuda"):
         torch.cuda.set_device(device)
     pack, _ = load_input(input_root, PROTOCOL)
