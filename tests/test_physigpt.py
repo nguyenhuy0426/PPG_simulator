@@ -253,3 +253,17 @@ def test_a_shard_without_held_out_windows_fails_before_training(tmp_path):
     with pytest.raises(ValueError, match="held-out"):
         tr.main(["--data", str(root), "--output", str(tmp_path/"out"), "--config", "tiny", "--batch", "4", "--cpu"])
     assert not (tmp_path/"out"/"metrics.jsonl").exists()
+
+
+def test_tpu_kernels_run_on_the_v3_8_after_a_smoke_run(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    smoke = st.stage(tmp_path/"smoke", "tpu", smoke_only=True)
+    meta = json.loads((smoke/"kernel-metadata.json").read_text())
+    assert meta["machine_shape"] == "Tpu1VmV38" and meta["enable_tpu"] and not meta["enable_gpu"]
+    assert meta["kernel_sources"] == [] and meta["id"].endswith("/ppg-physigpt-tpu-smoke-v1")
+    assert "main(args)" not in (smoke/"run.py").read_text()
+    full = st.stage(tmp_path/"full", "tpu", stage=0, shards=(0,))
+    meta, script = json.loads((full/"kernel-metadata.json").read_text()), (full/"run.py").read_text()
+    assert meta["kernel_sources"] == ["charlesday2612/ppg-physigpt-mimic3-shard0-v1"]
+    assert script.index("versions()") < script.index("smoke(") < script.index("main(args)")
+    assert "/kaggle/input/ppg-physigpt-mimic3-shard0-v1" in script

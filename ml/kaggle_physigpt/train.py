@@ -93,6 +93,11 @@ def plan_steps(windows, epochs, batch, replay_share, decay_frac):
     return total, total-max(1, round(decay_frac*total))
 
 
+def stage_identity(data, seed, config):
+    """Same shards, seed and size give the same stage on any device, so last.pt resumes across devices."""
+    return hashlib.sha256(json.dumps([s["chunks"] for s in data.shards]+[seed, config]).encode()).hexdigest()[:16]
+
+
 def evaluate(model, data, device, amp):
     index = data.valid[np.linspace(0, len(data.valid)-1, min(VALID_WINDOWS, len(data.valid))).astype(int)]
     generator = torch.Generator(device).manual_seed(20261027)
@@ -151,8 +156,7 @@ def worker(rank, world, args):
     data = Windows(args.data+args.replay)
     if not len(data.valid):
         raise ValueError(f"no held-out windows under {args.data+args.replay}: too few records for the 2% split")
-    stage_id = hashlib.sha256(json.dumps([s["chunks"] for s in data.shards]+[args.seed, args.config]).encode()
-                              ).hexdigest()[:16]
+    stage_id = stage_identity(data, args.seed, args.config)
     # New rows are the train rows of the shards under --data; the rest of the union is the replay pool.
     new_paths = {s["path"] for s in Windows(args.data).shards}
     shard_of = np.repeat(np.arange(len(data.shards), dtype=np.int16).repeat([len(s["chunks"]) for s in data.shards]),
@@ -172,7 +176,8 @@ def worker(rank, world, args):
             raise ValueError(f"checkpoint config {state['config']} != {args.config}")
         model.load_state_dict(state["model"])
         optimizer.load_state_dict(state["optimizer"])
-        scaler.load_state_dict(state["scaler"])
+        if state["scaler"]:   # a TPU (bf16) state has no gradient scaler; the T4 one then starts fresh
+            scaler.load_state_dict(state["scaler"])
         if state["stage_id"] == stage_id:   # same stage after a stop: continue its step and plan
             step, (total, decay_start) = state["step"], state["plan"]
         warmup = 0                          # a new stage from stable.pt stays at the peak rate
