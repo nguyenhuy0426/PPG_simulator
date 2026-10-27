@@ -233,6 +233,19 @@ def process_record(name, cap, fetch=http_fetch, base=BASE):
     return signal, [r for block in rows for r in block], counts
 
 
+def perform_record_names(fix):
+    """7-digit waveform record names of one PERFORM record: the AF/non-AF sets keep a segment list in `files`
+    (subj_id is a pNNNNNN clinical ID), the Large sets keep `mimic_details` with one `file` and a 7-digit rec_id."""
+    fix = fix.get("mimic_details", fix)
+    names = set()
+    for key in ("files", "file", "rec_id", "subj_id"):
+        for value in np.atleast_1d(fix.get(key, [])):
+            base = str(value).split("_")[0]
+            if re.fullmatch(r"\d{7}", base):
+                names.add(base)
+    return names
+
+
 def perform_exclusions(cache):
     """7-digit MIMIC-III waveform record names behind the project's MIMIC PERFORM sets (data.SOURCES)."""
     from scipy.io import loadmat
@@ -244,14 +257,7 @@ def perform_exclusions(cache):
         path = download(url, Path(cache)/url.rsplit("/", 1)[1], algorithm, expected)
         rows = loadmat(path, simplify_cells=True)["data"]
         for rec in [rows] if isinstance(rows, dict) else rows:
-            fix = rec["fix"].get("mimic_details", rec["fix"])
-            for file in np.atleast_1d(rec["fix"]["files"]):
-                base = str(file).split("_")[0]
-                if re.fullmatch(r"\d{7}", base):
-                    names.add(base)
-            raw = str(fix.get("subj_id", ""))
-            if re.fullmatch(r"\d{7}", raw):
-                names.add(raw)
+            names.update(perform_record_names(rec["fix"]))
         print("perform exclusions after", domain, len(names), flush=True)
     return sorted(names)
 

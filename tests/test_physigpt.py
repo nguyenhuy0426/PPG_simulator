@@ -209,3 +209,14 @@ def test_two_process_ddp_stage_runs_and_releases(tmp_path):
     lines = [json.loads(l) for l in (tmp_path/"ddp"/"metrics.jsonl").read_text().splitlines()]
     assert [l["step"] for l in lines] == [1, 2, 3, 4] and (tmp_path/"ddp"/"release.pt").exists()
     assert json.loads((tmp_path/"ddp"/"run_config.json").read_text())["world"] == 2
+
+
+def test_perform_record_names_read_both_set_layouts():
+    af = {"subj_id": "p000946", "rec_id": "p000946-2120-05-14-08-08", "files": np.array(["3462211_0001", "3462211_0002"],
+                                                                                         dtype=object)}
+    single = {"subj_id": "p004829", "files": "3690110_0001"}
+    large = {"mimic_perform_details": {"rec_no": 1}, "mimic_details": {"subj_id": "3000086", "rec_id": "3000086",
+                                                                       "file": "3000086_0003m", "group": "a"}}
+    assert mw.perform_record_names(af) == {"3462211"}
+    assert mw.perform_record_names(single) == {"3690110"}
+    assert mw.perform_record_names(large) == {"3000086"}

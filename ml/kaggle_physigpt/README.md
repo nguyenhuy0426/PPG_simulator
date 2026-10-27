@@ -11,7 +11,7 @@ GPT-PPG pretrained on more than 200 million 30 s strips (40 Hz, min-max) from UC
 200-million-strip hospital set is available to this project.
 
 The open substitute is the MIMIC-III Waveform Database v1.0 (PhysioNet, ODbL 1.0, open access, 125 Hz,
-6.7 TB, 67,830 record sets of ~30,000 ICU patients, PLETH in many records; `RECORDS-adults` lists 23,206
+6.7 TB, 67,830 record sets of ~30,000 ICU patients, PLETH in many records; `RECORDS-adults` lists 59,344
 adult records). `mimic_wdb.py` builds shards from it:
 
 - only the bytes of chosen windows are fetched (HTTP Range on the multiplexed `.dat`, formats 80 and 16);
@@ -26,7 +26,8 @@ adult records). `mimic_wdb.py` builds shards from it:
 Format 80 PLETH rails at byte 0 on troughs, so there only a run of byte 0 of 1 s or more counts as a dropout;
 shorter runs fall under the 5% clipping rule of the project's packs.
 
-Checked on real records (from this machine, 2 records, cap 20): 17 and 20 windows extracted. The windows per
+Checked on real records (from this machine, 2 records, cap 20): 17 and 20 windows extracted; the full shard CLI
+(PERFORM exclusions, 715 record names, then 4 records, cap 6) wrote 18 windows. The windows per
 hour on Kaggle and the PLETH yield of the whole database are not measured yet; the first shard kernel logs both
 (`manifest.json`: `windows_per_hour`, `counts`).
 
@@ -69,7 +70,7 @@ capped higher) and many shard kernels; whether the database holds that many usab
 ## Kernels (`stage.py`)
 
 ```
-python3 -m ml.kaggle_physigpt.stage <dir> data --shard 0 --start 0 --stop 23206 --target 5000000
+python3 -m ml.kaggle_physigpt.stage <dir> data --shard 0 --start 0 --target 5000000
 python3 -m ml.kaggle_physigpt.stage <dir> train --stage 0 --shards 0
 python3 -m ml.kaggle_physigpt.stage <dir> train --stage 1 --shards 0 1      # resumes stage 0's stable.pt
 ```
