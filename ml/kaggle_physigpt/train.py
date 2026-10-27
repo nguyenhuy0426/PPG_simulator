@@ -24,8 +24,8 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-from ml.kaggle_lsm.train_lsm import LENGTH, save_json
-from ml.kaggle_physigpt.mimic_wdb import PROTOCOL, rate_features
+from ml.kaggle_lsm.train_lsm import FS, LENGTH, save_json
+from ml.kaggle_physigpt.mimic_wdb import PROTOCOL, ShardWriter, rate_features
 from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
 
 VALID_WINDOWS = 8192
@@ -161,7 +161,9 @@ def worker(rank, world, args):
                                     args.decay_frac)
     if args.steps:
         total, decay_start = args.steps, args.steps-max(1, round(args.decay_frac*args.steps))
-    step, warmup = 0, args.warmup
+    # A short stage (a small first shard) warms up over at most a tenth of its planned steps; the plan, not the
+    # budget-shortened length, sets it, so a resumed stage gets the same warmup.
+    step, warmup = 0, min(args.warmup, max(1, total//10))
     if args.resume:
         state = torch.load(args.resume, map_location=device, weights_only=False)
         if state["config"] != args.config:
@@ -265,6 +267,31 @@ def worker(rank, world, args):
         log.close()
     if world > 1:
         dist.destroy_process_group()
+
+
+def synthetic_shard(root, n=4096, seed=0):
+    """Sine windows in the shard format, a sixteenth of them held out; for the device smoke run only."""
+    rng = np.random.default_rng(seed)
+    t = np.arange(LENGTH)/FS
+    x = .5+.5*np.sin(2*np.pi*rng.uniform(.8, 2.5, (n, 1))*t+rng.uniform(0, 6, (n, 1)))
+    writer = ShardWriter(root)
+    for valid in (False, True):
+        part = x[n//16:] if not valid else x[:n//16]
+        writer.add(part, 3999999 if valid else 3000000, [("s", i) for i in range(len(part))], valid,
+                   *rate_features(part))
+    writer.flush()
+    save_json(Path(root)/"manifest.json", dict(protocol=PROTOCOL, record_range=[0, 0], windows=n, synthetic=True,
+                                               chunks=writer.chunks))
+
+
+def smoke(root, config="base", steps=60):
+    """Minutes on synthetic windows through the real device path (DDP, fp16, stable/last/release, sampling) before
+    a kernel spends hours fetching data. It proves the code runs on the GPUs, nothing about the model."""
+    root = Path(root)
+    synthetic_shard(root/"shard")
+    main(["--data", str(root/"shard"), "--output", str(root/"run"), "--config", config, "--steps", str(steps),
+          "--log-every", "10", "--eval-every", "30", "--sample-steps", "4", "--port", "29519"])
+    return json.loads((root/"run"/"stage_summary.json").read_text())
 
 
 def main(argv=None):

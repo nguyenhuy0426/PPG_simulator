@@ -3,6 +3,9 @@
 data shard k (CPU, internet): mimic_wdb over the record range [start, stop) -> /kaggle/working/shard
 train stage k (T4 x2): train.py on the mounted shards; stage k > 0 mounts stage k-1's output and starts from its
 stable.pt, with the earlier shards as replay.
+solo k (T4 x2, internet): one kernel that needs no finished data kernel: a GPU smoke run on synthetic windows, then
+mimic_wdb for --hours into /kaggle/working/shard, then stage 0 of train.py on that shard for the rest of the kernel
+budget. Its shard mounts later like any data shard (Windows finds it by manifest.json).
 """
 import argparse
 import base64
@@ -17,6 +20,8 @@ OWNER = "charlesday2612"
 COMMON = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_physigpt/mimic_wdb.py"]
 SOURCES = {"data": COMMON+["ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/view.py"],
            "train": COMMON+["ml/kaggle_physigpt/model.py", "ml/kaggle_physigpt/train.py"]}
+SOURCES["solo"] = SOURCES["data"]+SOURCES["train"][len(COMMON):]
+KERNEL_HOURS = 11.5   # Kaggle stops a GPU kernel at 12 h; the rest is train.py's own reserve plus packing
 
 
 def shard_slug(k):
@@ -27,12 +32,29 @@ def stage_slug(k):
     return f"ppg-physigpt-stage{k}-v1"
 
 
+def solo_slug(k):
+    return f"ppg-physigpt-solo{k}-v1"
+
+
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
               config="base", epochs=4., extra=()):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
         return f"from ml.kaggle_physigpt.mimic_wdb import main\nmain({args!r})"
+    if kind == "solo":
+        if hours > KERNEL_HOURS-2:
+            raise ValueError(f"solo: --hours {hours} of data leaves under 2 h of the {KERNEL_HOURS} h kernel to train")
+        data = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
+                "--target", str(target), "--hours", str(hours)]
+        train = ["--data", "/kaggle/working/shard", "--output", "/kaggle/working/stage0", "--config", config,
+                 "--epochs", str(epochs), *extra]
+        return ("import time\nfrom ml.kaggle_physigpt.mimic_wdb import main as build\n"
+                "from ml.kaggle_physigpt.train import main as train, smoke\nbegin = time.time()\n"
+                f"print('smoke', json.dumps(smoke('/tmp/physigpt_smoke', {config!r})), flush=True)\n"
+                f"build({data!r})\n"
+                f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
+                f"train({train!r} + ['--hours', f'{{left:.3f}}'])")
     new, replay = shards[-1:], shards[:-1]
     args = ["--data", *[f"/kaggle/input/{shard_slug(k)}" for k in new],
             "--replay", *[f"/kaggle/input/{shard_slug(k)}" for k in replay],
@@ -73,10 +95,14 @@ def stage(output, kind, owner=OWNER, **kw):
         k = kw.get("shard", 0)
         meta = dict(id=f"{owner}/{shard_slug(k)}", title=f"PPG physiGPT MIMIC3 Shard{k} v1", enable_gpu=False,
                     kernel_sources=[])
+    elif kind == "solo":
+        k = kw.get("shard", 0)
+        meta = dict(id=f"{owner}/{solo_slug(k)}", title=f"PPG physiGPT Solo{k} v1", enable_gpu=True,
+                    machine_shape="NvidiaTeslaT4", kernel_sources=[])
     else:
         k = kw.get("stage", 0)
         meta = dict(id=f"{owner}/{stage_slug(k)}", title=f"PPG physiGPT Stage{k} v1", enable_gpu=True,
-                    kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
                     + ([f"{owner}/{stage_slug(k-1)}"] if k > 0 else []))
     meta.update(code_file="run.py", language="python", kernel_type="script", is_private=True, enable_tpu=False,
                 enable_internet=True, dataset_sources=[], competition_sources=[], model_sources=[])
@@ -104,9 +130,9 @@ def main(argv=None):
     parser.add_argument("--config", default="base")
     parser.add_argument("--epochs", type=float, default=4.)
     args = parser.parse_args(argv)
-    kw = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours) \
-        if args.kind == "data" else dict(stage=args.stage, shards=tuple(args.shards), config=args.config,
-                                         epochs=args.epochs)
+    data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
+    train = dict(stage=args.stage, shards=tuple(args.shards), config=args.config, epochs=args.epochs)
+    kw = dict(data=data, train=train, solo=dict(data, config=args.config, epochs=args.epochs))[args.kind]
     print(stage(args.output, args.kind, args.owner, **kw))
 
 

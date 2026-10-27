@@ -220,3 +220,23 @@ def test_perform_record_names_read_both_set_layouts():
     assert mw.perform_record_names(af) == {"3462211"}
     assert mw.perform_record_names(single) == {"3690110"}
     assert mw.perform_record_names(large) == {"3000086"}
+
+
+def test_smoke_runs_a_whole_stage_on_synthetic_windows(tmp_path):
+    summary = tr.smoke(tmp_path, config="tiny", steps=12)
+    assert summary["steps"] == 12 and np.isfinite(summary["final"]["valid_flow"])
+    assert (tmp_path/"run"/"stable.pt").exists() and (tmp_path/"run"/"release.pt").exists()
+
+
+def test_solo_kernel_builds_data_then_trains_on_two_t4s(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"solo", "solo", shard=9, start=45000, stop=59344, hours=4.5, config="base", epochs=4.)
+    meta = json.loads((out/"kernel-metadata.json").read_text())
+    script = (out/"run.py").read_text()
+    assert meta["machine_shape"] == "NvidiaTeslaT4" and meta["enable_gpu"] and meta["enable_internet"]
+    assert meta["id"].endswith("/ppg-physigpt-solo9-v1")
+    assert script.index("smoke(") < script.index("build(") < script.index("train([")
+    with pytest.raises(ValueError):
+        st.entry_for("solo", hours=10.)
+    train_meta = json.loads((st.stage(tmp_path/"train", "train")/"kernel-metadata.json").read_text())
+    assert train_meta["machine_shape"] == "NvidiaTeslaT4"
