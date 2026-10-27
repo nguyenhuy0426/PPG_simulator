@@ -55,11 +55,13 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     p4_round = mode == "p4_round"
     # P4 diagnosis: the P4 teacher and G3 weights at 16/8/4 sampler steps, judged on validation only (P4 kernel source).
     p4_diag = mode == "p4_diag"
+    # P5 round: PhysioGAN-R (from-scratch GAN, physiogan_r) against the R1 family from the P1 ship seed (P1 kernel source).
+    p5_round = mode == "p5_round"
     # Report figures: per-window strict-judge scores and judge weights for the GAN report (both finished rounds mounted).
     figures = mode == "report_figures"
     # Spectral-finish round: the app's generators with the spectral_finish low-pass, judged only (no training).
     finish = mode in ("finish_round", "finish_round2")
-    flow = dual or red13 or strict or strict_round or flowgan or r_round or p4_round or p4_diag or figures or finish or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    flow = dual or red13 or strict or strict_round or flowgan or r_round or p4_round or p4_diag or p5_round or figures or finish or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -93,15 +95,17 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_e.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
-    if strict or strict_round or flowgan or r_round or p4_round or p4_diag or figures or finish:
+    if strict or strict_round or flowgan or r_round or p4_round or p4_diag or p5_round or figures or finish:
         sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/strict_judge.py"]
-    if r_round or p4_round or p4_diag:
+    if r_round or p4_round or p4_diag or p5_round:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("experiment_strict", "data_r", "flow_r",
                                                                      "experiment_r")]
-    if p4_round or p4_diag:
+    if p4_round or p4_diag or p5_round:
         sources += ["ml/kaggle_multidomain/flow_gan.py", "ml/kaggle_multidomain/experiment_p4.py"]
     if p4_diag:
         sources.append("ml/kaggle_multidomain/experiment_p4_diag.py")
+    if p5_round:
+        sources += ["ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/experiment_p5.py"]
     if finish:
         sources += ["ml/kaggle_multidomain/experiment_strict.py", "ml/kaggle_multidomain/spectral_finish.py",
                     "ml/kaggle_multidomain/experiment_finish.py"]
@@ -265,6 +269,10 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     if p4_round:
         entry = ("from ml.kaggle_multidomain.experiment_p4 import main\n"
                  f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/p4_round', '--steps', "
+                 f"'{steps}'])")
+    if p5_round:
+        entry = ("from ml.kaggle_multidomain.experiment_p5 import main\n"
+                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/p5_round', '--steps', "
                  f"'{steps}'])")
     if p4_diag:
         entry = ("from ml.kaggle_multidomain.experiment_p4_diag import main\n"
@@ -442,6 +450,10 @@ sys.path.insert(0, str(root))
         metadata.update(id=f"{owner}/ppg-physioflow-r-p4-diag-v1", title="PPG PhysioFlow R P4 Diag v1",
                         machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/ppg-physioflow-r-p4-round-v1"],
                         dataset_sources=[f"{owner}/ppg-physio3-data-v1"])
+    if p5_round:
+        metadata.update(id=f"{owner}/ppg-physiogan-r-p5-round-v1", title="PPG PhysioGAN R P5 Round v1",
+                        machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/ppg-physioflow-r-round-v1"],
+                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/{R_DATASET}"])
     if finish:
         version = 2 if mode == "finish_round2" else 1
         metadata.update(id=f"{owner}/ppg-finish-round-v{version}", title=f"PPG Finish Round v{version}", machine_shape="NvidiaTeslaT4",
@@ -518,7 +530,7 @@ if __name__ == "__main__":
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
                                       "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13", "lsm_multi",
                                       "strict_judge", "strict_train_physiomix", "strict_train_lsm",
-                                      "strict_judge_round", "flowgan_round", "r_round", "p4_round", "p4_diag", "report_figures", "finish_round",
+                                      "strict_judge_round", "flowgan_round", "r_round", "p4_round", "p4_diag", "p5_round", "report_figures", "finish_round",
                                       "finish_round2"),
                    required=True)
     p.add_argument("--steps", type=int)
@@ -536,7 +548,8 @@ if __name__ == "__main__":
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
                "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000, "dual": 20000, "dual12": 32000,
                "strict_train_physiomix": 20000, "strict_train_lsm": 20000, "strict_judge_round": 20000,
-               "flowgan_round": 4000, "r_round": 8000, "p4_round": 3000}.get(a.mode, 2000)
+               "flowgan_round": 4000, "r_round": 8000, "p4_round": 3000,
+               "p5_round": 6000}.get(a.mode, 2000)
     if a.r_pack:
         print(stage_r_pack(a.output, a.owner, a.r_pack))
         raise SystemExit

@@ -97,6 +97,9 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
         from ml.kaggle_multidomain.experiment_v3 import TEACHER_ROOTS
         r_signal, r_context = flow_r.training_rows(pack, conditions.ids, TEACHER_ROOTS)
         g.choice.set_table(*flow_r.context_table(r_context, pack["domain"][conditions.ids], conditions.domains))
+        if cfg.get("init_r1"):
+            # experiment_p5 passes [input root, teacher folder]: the R pack comes from the first, the weights the last.
+            g.net.load_state_dict(flow_r.teacher_state_r(TEACHER_ROOTS[-1:])["net"])
     g.to(device)
     ema = ema_model(g)
     optimizer = torch.optim.AdamW(g.net.parameters(), lr=cfg["lr"], betas=(.9, .99), weight_decay=.01)
@@ -170,7 +173,7 @@ def train_flow(arm, seed, pack, evaluator, output, steps, batch, interval, devic
             run = sampler(ema, cfg, device)
             real_score = evaluator.s_real(run, conditions, seed+10000)
             ctrl = control.controllability(run, conditions, CONTROL_N)
-            value = real_score["S_real"]+.5*ctrl["C"]
+            value = real_score["S_real"]+(0 if cfg.get("select_s_real") else .5*ctrl["C"])
             row = dict(step=step, loss=float(loss.detach()), checkpoint_score=value, S_real=real_score["S_real"],
                        rho=real_score["rho"], C=ctrl["C"],
                        control={k: ctrl[k] for k in ("mae_in", "mae_ext", "spearman", "auc_irr", "lock_rate")},

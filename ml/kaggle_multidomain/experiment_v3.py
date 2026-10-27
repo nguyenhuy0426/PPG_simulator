@@ -142,6 +142,11 @@ FLOWGAN = dict(version="v2", flowgan=True, critic="strict", d_clip=30., lr=2e-4,
 # resample-only windows and ending in the v3 band-pass applied once with the record's own context (flow_r.RView).
 ARMS["R1_flowr"] = dict(FLOW_BASES["F6_flow_flag_deriv_unif"], r=True, sample_steps=16, guidance=1.)
 ARMS["G3_flowgan_r"] = dict(FLOWGAN, flowgan_r=True, flowgan_sensor=False, critic_band=True)
+# P5 (experiment_p5): the P1 ship seed's R1 trained further with its own flow loss (init_r1: U-Net from the teacher
+# file, the last teacher root), cosine from a quarter of R1's rate; checkpoints on S_real alone (select_s_real), since
+# the round sets heart-rate control aside. Judged at 64 Heun steps.
+ARMS["R1F_flowr_ft"] = dict(ARMS["R1_flowr"], init_r1=True, select_s_real=True, schedule="cosine",
+                            lr=ARMS["R1_flowr"].get("lr", 2e-4)/4)
 ARMS.update({"G1_flowgan": FLOWGAN,
              "G2_flowgan_lsm_bidmc": dict(FLOWGAN, lsm_loss=True, train_domains=("bidmc",))})
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
