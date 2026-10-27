@@ -53,6 +53,7 @@ INVALID = {"80": 0, "16": -32768}     # raw byte 0 is sample -128, WFDB's invali
 DROPOUT_RUN = SRC_FS
 CLIP_LIMIT = .05
 CHUNK = 65536
+LOG_EVERY = 25  # records between progress lines
 SOS = butter(4, [.5, 8.], "bandpass", fs=FS, output="sos")
 RATE_LAGS = (int(.3*FS), int(2.*FS))  # 30-200 bpm
 
@@ -300,7 +301,7 @@ def build_shard(output, start, stop, cap, target, hours, workers=16, records=Non
     stop = min(stop, len(order))
     excluded = set(exclude)
     writer, done, failed, totals = ShardWriter(output), [], {}, {}
-    pending, cursor, downloaded = {}, start, 0
+    pending, cursor, downloaded, next_log = {}, start, 0, LOG_EVERY
 
     def submit(pool):
         nonlocal cursor
@@ -333,7 +334,8 @@ def build_shard(output, start, stop, cap, target, hours, workers=16, records=Non
             elapsed = (time.time()-begin)/3600
             if writer.windows+sum(len(b) for b in writer.buffer) >= target or elapsed >= hours:
                 stop = cursor  # submit nothing more; in-flight records finish
-            if len(done) % 200 == 0 and finished:
+            if len(done)+len(failed) >= next_log:   # several records can finish in one wait: test a threshold
+                next_log += LOG_EVERY
                 print(f"records {len(done)} windows {writer.windows+sum(len(b) for b in writer.buffer)} "
                       f"failed {len(failed)} hours {elapsed:.2f}", flush=True)
             submit(pool)
