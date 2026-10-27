@@ -29,6 +29,7 @@
     <a href="#summary">0. Tóm tắt và quyết định</a>
     <a href="#models-kept">Mô hình giữ / đã loại</a>
     <a href="#p5-sec">P5 · PhysioGAN-R (đang train)</a>
+    <a href="#physigpt-sec">PPG-physiGPT (chưa train)</a>
     <a href="#g-fig1">Hình 1 · Quy trình</a>
     <a href="#table1-sec">Bảng I · Dữ liệu</a>
     <a href="#fig2-sec">Hình 2 · Ví dụ tín hiệu</a>
@@ -80,6 +81,7 @@
       <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
       <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
       <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
+      <tr><td>PPG-physiGPT (kiểu GPT-PPG)</td><td>chưa có</td><td><span class="tag ai">mới</span></td><td>Đang tải dữ liệu shard 0; chưa train GPU (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
       <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
       <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
       <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
@@ -103,8 +105,8 @@
   hay autoregressive, và chỉ điều kiện theo miền dữ liệu. Mục tiêu là AUC của giám khảo nghiêm ≤ 0,55, gần mức thật-so-với-thật.
   Mục này chưa có số liệu kết quả. Số liệu sẽ được thêm sau khi kernel chạy xong và đã qua bước duyệt sóng.</p>
 
-  <div class="callout info"><b>Trạng thái kernel</b> (kiểm tra lúc 07:28 UTC, 27/10/2026)<br>
-  <code>halovie2412/ppg-physiogan-r-p5-train-v1</code>: <b>RUNNING</b>, đã chạy khoảng 2 giờ 06 phút (push lúc khoảng 05:22 UTC).
+  <div class="callout info"><b>Trạng thái kernel</b> (kiểm tra lúc 11:44 UTC, 27/10/2026)<br>
+  <code>halovie2412/ppg-physiogan-r-p5-train-v1</code>: <b>RUNNING</b>, đã chạy khoảng 6 giờ 22 phút (push lúc khoảng 05:22 UTC).
   Log training chưa đọc được trong lúc kernel chạy, vì Kaggle chỉ trả log khi kernel kết thúc. Dự kiến xong khoảng 15:30–16:30 UTC
   (22:30–23:30 giờ Việt Nam).<br>
   Lần chạy v1 hỏng sau 68 giây do lỗi CUDA <code>grid_sampler_2d_backward</code>. Lỗi đã được sửa bằng phép giãn thời gian
@@ -182,6 +184,160 @@
   </ul>
   <div class="paperref">Đây là đánh giá kỹ thuật về hình dạng PPG 30 s đã chuẩn hoá. Nó không phải kiểm định lâm sàng, và chưa
   được đo trên Pi/DAC/OPT101.</div>
+</section>
+
+<section id="physigpt-sec">
+  <h2>PPG-physiGPT: transformer theo kiến trúc GPT-PPG <span class="tag off">chưa train, chưa có AUC</span></h2>
+  <p class="lead">PPG-physiGPT là mô hình sinh kiểu GPT. Nó đọc cửa sổ PPG 30 s, 40 Hz thành 30 patch, mỗi patch 1 giây, và sinh lần lượt từng patch.
+  Kiến trúc dựa theo GPT-PPG (Chen et al. 2025, arXiv 2503.08015). Mục tiêu là pretrain trên rất nhiều PPG bệnh viện bằng
+  2 GPU T4 trên Kaggle, rồi học tiếp liên tục từng đợt dữ liệu.
+  <b>Tính đến 11:44 UTC ngày 27/10/2026, mô hình chưa được train trên GPU và chưa được giám khảo nghiêm chấm. Mục này chưa có AUC.</b></p>
+
+  <div class="callout info"><b>Trạng thái</b> (kiểm tra lúc 11:44 UTC, 27/10/2026)<br>
+  Bước 1, tải dữ liệu shard 0 (<code>charlesday2612/ppg-physigpt-mimic3-shard0-v1</code>):
+  <ul class="small">
+    <li><b>Bản v1: ERROR</b> ngay khi bắt đầu, chưa tải cửa sổ nào. Nguyên nhân là <code>KeyError: 'files'</code>: tập MIMIC PERFORM Large lưu
+    tên bản ghi ở <code>mimic_details.file</code>, còn tập AF/non-AF lưu ở <code>files</code>. Đã sửa ở commit <code>73910b24</code> và có test hồi quy.</li>
+    <li>Trên file PERFORM thật, bản sửa lấy ra 715 tên bản ghi cần loại.</li>
+    <li>Toàn bộ CLI đã chạy thử trên máy này với 4 bản ghi thật và cho 18 cửa sổ.</li>
+    <li><b>Bản v2: RUNNING</b>, push lúc khoảng 11:40 UTC. Kernel dừng khi đủ 5 triệu cửa sổ hoặc hết 10,5 giờ.</li>
+  </ul>
+  Bước 2, train stage 0 trên GPU T4×2: <b>chưa push</b>. Bước này cần <code>manifest.json</code> của shard 0.<br>
+  Bước 3, giám khảo nghiêm: <b>chưa có</b>. Bước này cần fine-tune trên dữ liệu người của dự án trước.</div>
+
+  <h3>Dữ liệu: GPT-PPG dùng gì, dự án dùng gì</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>GPT-PPG</th><th>PPG-physiGPT</th></tr></thead>
+    <tbody>
+      <tr><td>Nguồn</td><td>ICU UCSF 2013–2018, hơn 24.100 bệnh nhân, hơn 200 triệu đoạn 30 s</td>
+      <td>MIMIC-III Waveform Database v1.0 (PhysioNet, ODbL 1.0, mở). <code>RECORDS-adults</code> có 59.344 bản ghi ICU người lớn, 125 Hz</td></tr>
+      <tr><td>Truy cập</td><td>Thỏa thuận dữ liệu UCSF–Emory, không công khai</td><td>Tải công khai. Chỉ tải đúng các byte của cửa sổ được chọn (HTTP Range)</td></tr>
+      <tr><td>Khuôn</td><td>30 s, 40 Hz, min-max</td><td>30 s, 40 Hz, khuôn v3 của dự án (band-pass 0,5–8 Hz, min-max), lưu uint16</td></tr>
+      <tr><td>Chống rò rỉ</td><td>(không áp dụng)</td><td>Loại 715 bản ghi gốc của MIMIC PERFORM (người mà giám khảo dùng). Các shard không chung bản ghi;
+      2 % bản ghi để riêng làm validation. BIDMC (MIMIC-II) không ánh xạ được, nên rủi ro trùng còn lại do kiểm tra sao chép xử lý</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">Dự án không có bộ 200 triệu đoạn bệnh viện. Chưa đo được MIMIC-III cho bao nhiêu cửa sổ PLETH dùng được.
+  Lần chạy thử trên máy này tải được khoảng 345 cửa sổ/giờ, nhưng mạng ở đây chỉ khoảng 5,7 KB/s. Tốc độ trên Kaggle sẽ đọc từ manifest của shard 0.</p>
+
+  <h3>(a) Kiến trúc</h3>
+  <div class="card arch-card"><div class="arch-diagram-wrap">
+    <svg class="gs-svg" viewBox="0 0 1000 400" role="img" aria-label="Kiến trúc PPG-physiGPT: patch, start theo miền, 8 khối transformer nhân quả, head flow-matching và head logit-Laplace">
+      <defs>
+        <marker id="pg-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="gs-hd" d="M0,1 L9,5 L0,9 z"/></marker>
+        <marker id="pg-art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="gs-hdt" d="M0,1 L9,5 L0,9 z"/></marker>
+      </defs>
+      <text class="gs-k" x="16" y="24">A · Train: dự đoán patch i từ miền và các patch &lt; i</text>
+      <rect class="gs-io" x="16" y="40" width="190" height="96" rx="8"/>
+      <text class="gs-t12" x="28" y="60">Cửa sổ 30 s · 1200 mẫu</text>
+      <path class="gs-wave" d="M28,110 q8,-34 16,-6 t16,4 q8,-34 16,-6 t16,4 q8,-34 16,-6 t16,4 q8,-34 16,-6 t16,4 q8,-34 16,-6 t16,4 q8,-34 16,-6 t10,2"/>
+      <path class="gs-pair" d="M60,72 V124 M92,72 V124 M124,72 V124 M156,72 V124"/>
+      <text class="gs-s" x="28" y="130">30 patch × 40 mẫu (1 s)</text>
+      <path class="gs-a" d="M206,88 H236" marker-end="url(#pg-ar)"/>
+      <rect class="gs-cat" x="240" y="40" width="160" height="44" rx="8"/>
+      <text class="gs-t12 gs-mid gs-tcat" x="320" y="58">start theo miền</text><text class="gs-s10 gs-mid" x="320" y="74">embedding, 8 ô (MIMIC-III ICU)</text>
+      <rect class="gs-conv" x="240" y="92" width="160" height="44" rx="8"/>
+      <text class="gs-t12 gs-mid gs-tconv" x="320" y="110">Linear 40 → 512</text><text class="gs-s10 gs-mid" x="320" y="126">patch 1…29, input 2x − 1</text>
+      <path class="gs-a" d="M400,88 H430" marker-end="url(#pg-ar)"/>
+      <rect class="gs-zone" x="434" y="36" width="250" height="160" rx="10"/>
+      <text class="gs-t12" x="446" y="56">8 × khối pre-norm</text>
+      <rect class="gs-norm" x="446" y="66" width="226" height="26" rx="6"/><text class="gs-m gs-mid gs-tnorm" x="559" y="83">RMSNorm</text>
+      <rect class="gs-res" x="446" y="98" width="226" height="30" rx="6"/><text class="gs-m gs-mid gs-tres" x="559" y="117">attention nhân quả · RoPE · 8 head</text>
+      <rect class="gs-norm" x="446" y="134" width="226" height="22" rx="6"/><text class="gs-m gs-mid gs-tnorm" x="559" y="149">RMSNorm</text>
+      <rect class="gs-act" x="446" y="162" width="226" height="26" rx="6"/><text class="gs-m gs-mid gs-tact" x="559" y="179">SwiGLU 512 → 1376 → 512</text>
+      <path class="gs-a" d="M684,116 H714" marker-end="url(#pg-ar)"/>
+      <rect class="gs-norm" x="718" y="96" width="70" height="40" rx="8"/><text class="gs-t12 gs-mid gs-tnorm" x="753" y="114">RMSNorm</text><text class="gs-s10 gs-mid" x="753" y="128">h_i</text>
+      <path class="gs-a" d="M788,108 C810,108 810,64 830,64" marker-end="url(#pg-ar)"/>
+      <path class="gs-at" d="M788,126 C810,126 810,170 830,170" marker-end="url(#pg-art)"/>
+      <rect class="gs-loss" x="834" y="36" width="150" height="60" rx="8"/>
+      <text class="gs-t12 gs-mid gs-tloss" x="909" y="54">Head flow-matching</text><text class="gs-s10 gs-mid" x="909" y="70">MLP AdaLN 3 khối, khởi tạo 0</text><text class="gs-s10 gs-mid" x="909" y="86">loss chính: ‖v − (x₁ − x₀)‖²</text>
+      <rect class="gs-norm gs-only" x="834" y="142" width="150" height="60" rx="8"/>
+      <text class="gs-t12 gs-mid gs-tnorm" x="909" y="160">Head logit-Laplace</text><text class="gs-s10 gs-mid" x="909" y="176">μ, b cho 40 mẫu (GPT-PPG)</text><text class="gs-s10 gs-mid" x="909" y="192">loss phụ × 0,1 (NLL)</text>
+      <text class="gs-s" x="16" y="226">Thời gian flow t ~ logit-normal, 4 lần lặp nhiễu cho mỗi patch. Loss = flow + 0,1 · NLL Laplace. Bản base có 30,7M tham số (backbone 25,3M), bản large 99,9M (backbone 85,0M).</text>
+      <rect class="gs-off" x="8" y="244" width="984" height="148" rx="10"/>
+      <text class="gs-k" x="16" y="266">B · Sinh: tự hồi quy theo patch</text>
+      <rect class="gs-cat" x="24" y="282" width="150" height="44" rx="8"/><text class="gs-t12 gs-mid gs-tcat" x="99" y="300">start(miền)</text><text class="gs-s10 gs-mid" x="99" y="316">→ h₁</text>
+      <path class="gs-a" d="M174,304 H204" marker-end="url(#pg-ar)"/>
+      <rect class="gs-loss" x="208" y="282" width="210" height="44" rx="8"/><text class="gs-t12 gs-mid gs-tloss" x="313" y="300">nhiễu N(0, I₄₀) → patch i</text><text class="gs-s10 gs-mid" x="313" y="316">ODE Heun 32 bước với v(·, t | h_i)</text>
+      <path class="gs-a" d="M418,304 H448" marker-end="url(#pg-ar)"/>
+      <rect class="gs-res" x="452" y="282" width="220" height="44" rx="8"/><text class="gs-t12 gs-mid gs-tres" x="562" y="300">nối patch i vào chuỗi</text><text class="gs-s10 gs-mid" x="562" y="316">transformer → h_{i+1}, lặp 30 lần</text>
+      <path class="gs-ar" d="M562,326 C562,360 313,360 313,330" marker-end="url(#pg-art)"/>
+      <path class="gs-a" d="M672,304 H702" marker-end="url(#pg-ar)"/>
+      <rect class="gs-io" x="706" y="282" width="270" height="44" rx="8"/><text class="gs-t12 gs-mid" x="841" y="300">cửa sổ 1200 mẫu → min-max [0, 1]</text><text class="gs-s10 gs-mid" x="841" y="316">giống khuôn cửa sổ train</text>
+      <text class="gs-s" x="24" y="380">Không có điều kiện nhịp tim hay SpO2 trong pretrain. Thông số được chọn bằng cách tính; tốc độ sinh trên T4 chưa đo.</text>
+    </svg>
+  </div></div>
+  <p class="caption">Head Laplace của GPT-PPG lấy 40 mẫu của một patch độc lập với nhau khi đã biết ngữ cảnh. Vì vậy mẫu sinh ra có nhiễu trắng
+  trong từng patch, và view STFT của giám khảo nghiêm sẽ thấy nhiễu này (đây là suy luận từ cách lấy mẫu, chưa đo). Head flow-matching
+  sinh cả patch cùng lúc (theo Li et al. 2024, tự hồi quy không cần lượng tử hóa). Head Laplace được giữ làm loss phụ để vẫn tính được
+  likelihood như GPT-PPG.</p>
+
+  <h3>Giữ gì và đổi gì so với GPT-PPG</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Phần</th><th>GPT-PPG</th><th>PPG-physiGPT</th></tr></thead>
+    <tbody>
+      <tr><td>Token</td><td>30 patch × 40 mẫu, embedding tuyến tính</td><td>Giống</td></tr>
+      <tr><td>Input đầu</td><td>Một vector start học được</td><td>Mỗi miền một vector start, để fine-tune thêm ngón tay và cổ tay</td></tr>
+      <tr><td>Khối</td><td>Pre-norm RMSNorm, RoPE, attention nhân quả</td><td>Giống, feed-forward SwiGLU</td></tr>
+      <tr><td>Output</td><td>Logit-Laplace (μ, b mỗi mẫu)</td><td>Head flow-matching cho cả patch, cộng logit-Laplace làm loss phụ</td></tr>
+      <tr><td>Cỡ</td><td>19M / 85M / 345M / 1B</td><td>base 30,7M · large 99,9M (backbone 85,0M)</td></tr>
+      <tr><td>Phần cứng, siêu tham số</td><td>Bài báo không nêu</td><td>2 × T4, fp16, DDP, AdamW (0,9; 0,95), wd 0,1, batch 1024, lr 6e-4</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>(b) Train trước vài triệu đoạn, rồi học tiếp liên tục</h3>
+  <p class="small">"Học tăng cường liên tục" ở đây là <b>pretrain tiếp liên tục</b> trên các shard dữ liệu mới, không phải reinforcement learning.</p>
+  <div class="algo card" style="white-space:pre-wrap">Shard k (kernel CPU): bản ghi [next_record của shard k−1, …) → tối đa 5 triệu cửa sổ (≈ 12 GB uint16)
+Stage 0 (T4×2): warmup 1000 bước → giữ lr đỉnh → giảm 1−sqrt ở 15 % bước cuối
+               lưu stable.pt (trước khi giảm) · release.pt (đã giảm, dùng để chấm) · last.pt (để resume)
+Stage k > 0  : nạp stable.pt của stage k−1, chạy tiếp ở lr đỉnh, không warmup lại
+               batch = 75 % shard mới + 25 % shard cũ (chống quên) → lại giảm ở 15 % cuối
+Ngân sách 11 giờ/kernel: đo thời gian mỗi bước sau 50 bước rồi rút ngắn stage nếu cần, vẫn giữ phần giảm lr</div>
+  <p class="caption">Lịch warmup-stable-decay theo Hägele et al. 2024. Batch và nhiễu flow là hàm của (seed, bước), nên resume cho đúng
+  các bước như chạy liền (đã test trên CPU).</p>
+
+  <h3>Đã kiểm chứng và chưa kiểm chứng</h3>
+  <div class="grid2">
+    <div class="card"><b>Đã kiểm chứng</b> <span class="tag ai">CPU, máy này</span>
+      <ul class="small">
+        <li>11/11 test của PPG-physiGPT đạt:
+          <ul>
+            <li>attention nhân quả;</li>
+            <li>Jacobian của Laplace;</li>
+            <li>sinh mẫu có seed;</li>
+            <li>lịch learning rate;</li>
+            <li>resume đúng từng bước;</li>
+            <li>stage 2 từ <code>stable.pt</code> có trộn dữ liệu cũ;</li>
+            <li>DDP 2 tiến trình (gloo);</li>
+            <li>hai dạng file PERFORM.</li>
+          </ul></li>
+        <li>Dữ liệu MIMIC-III thật:
+          <ul>
+            <li>bản ghi 3145294 cho 17 cửa sổ, 3309148 cho 20 cửa sổ;</li>
+            <li>chạy đủ CLI trên 4 bản ghi cho 18 cửa sổ.</li>
+          </ul></li>
+      </ul></div>
+    <div class="card"><b>Chưa kiểm chứng</b> <span class="tag off">chưa đo</span>
+      <ul class="small">
+        <li>fp16 và NCCL trên T4. Máy này không có GPU.</li>
+        <li>Tốc độ train. Ước tính khoảng 5.000 cửa sổ/giây cho bản base, tức 5 triệu cửa sổ × 4 epoch mất khoảng 1–2 giờ. Đây là ước tính từ FLOP.</li>
+        <li>Tốc độ tải trên Kaggle và tổng số cửa sổ PLETH mà MIMIC-III có.</li>
+        <li>Có đạt được 200 triệu cửa sổ hay không.</li>
+        <li>Chất lượng mẫu sinh và AUC của giám khảo.</li>
+      </ul></div>
+  </div>
+
+  <h3>AUC có về được 0,5 không?</h3>
+  <p class="small">Hiện <b>chưa có số đo</b>. Những điều dưới đây là suy luận, chưa phải kết quả:</p>
+  <ul class="small">
+    <li>Pretrain chỉ dạy hình dạng PPG ICU từ MIMIC-III, trong khi giám khảo chấm trên người BIDMC, PERFORM và cổ tay. Vì vậy cần
+    fine-tune trên dữ liệu người của dự án trước khi chấm, rồi chấm bằng đúng giám khảo nghiêm, luật khóa trước và kiểm tra sao chép như P5.</li>
+    <li>Bài GPT-PPG không báo cáo C2ST, nên không có số liệu nào cho thấy kiến trúc này đạt AUC 0,5.</li>
+    <li>Mốc tốt nhất hiện có là PhysioFlow-R, AUC validation trung bình 0,759. Mục tiêu đặt ra vẫn là AUC ≤ 0,55. AUC thật-so-với-thật
+    khoảng 0,44–0,45 là mức thấp nhất có thể kỳ vọng.</li>
+  </ul>
+  <div class="paperref">Đây là đánh giá kỹ thuật về hình dạng PPG 30 s đã chuẩn hóa. Nó không phải kiểm định lâm sàng. Code ở
+  <code>ml/kaggle_physigpt/</code> (commit <code>7e7169d5</code> và <code>73910b24</code>).</div>
 </section>
 
 <section id="g-fig1">
