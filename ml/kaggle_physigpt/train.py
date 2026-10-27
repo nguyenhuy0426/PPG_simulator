@@ -149,6 +149,8 @@ def worker(rank, world, args):
                                    weight_decay=0.)], lr=args.lr, betas=(.9, .95), eps=1e-8)
     scaler = torch.amp.GradScaler("cuda", enabled=cuda)
     data = Windows(args.data+args.replay)
+    if not len(data.valid):
+        raise ValueError(f"no held-out windows under {args.data+args.replay}: too few records for the 2% split")
     stage_id = hashlib.sha256(json.dumps([s["chunks"] for s in data.shards]+[args.seed, args.config]).encode()
                               ).hexdigest()[:16]
     # New rows are the train rows of the shards under --data; the rest of the union is the replay pool.

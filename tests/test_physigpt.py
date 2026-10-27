@@ -240,3 +240,16 @@ def test_solo_kernel_builds_data_then_trains_on_two_t4s(tmp_path):
         st.entry_for("solo", hours=10.)
     train_meta = json.loads((st.stage(tmp_path/"train", "train")/"kernel-metadata.json").read_text())
     assert train_meta["machine_shape"] == "NvidiaTeslaT4"
+
+
+def test_a_shard_without_held_out_windows_fails_before_training(tmp_path):
+    root = tmp_path/"shard"
+    x = np.full((8, mw.LENGTH), .5)
+    writer = mw.ShardWriter(root)
+    writer.add(x, 3000000, [("s", i) for i in range(8)], False, *mw.rate_features(x))
+    writer.flush()
+    (root/"manifest.json").write_text(json.dumps(dict(protocol=mw.PROTOCOL, record_range=[0, 1], windows=8,
+                                                      chunks=writer.chunks)))
+    with pytest.raises(ValueError, match="held-out"):
+        tr.main(["--data", str(root), "--output", str(tmp_path/"out"), "--config", "tiny", "--batch", "4", "--cpu"])
+    assert not (tmp_path/"out"/"metrics.jsonl").exists()
