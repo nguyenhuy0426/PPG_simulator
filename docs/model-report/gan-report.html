@@ -39,7 +39,7 @@
     <a href="#summary">0. Tóm tắt và quyết định</a>
     <a href="#models-kept">Mô hình giữ / đã loại</a>
     <a href="#p5-sec">P5 · PhysioGAN-R (đang train)</a>
-    <a href="#physigpt-sec">PPG-physiGPT (chưa train)</a>
+    <a href="#physigpt-sec">PPG-physiGPT (đang chạy)</a>
     <a href="#g-fig1">Hình 1 · Quy trình</a>
     <a href="#table1-sec">Bảng I · Dữ liệu</a>
     <a href="#fig2-sec">Hình 2 · Ví dụ tín hiệu</a>
@@ -91,7 +91,7 @@
       <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
       <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
       <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
-      <tr><td>PPG-physiGPT (kiểu GPT-PPG)</td><td>chưa có</td><td><span class="tag ai">mới</span></td><td>Đang tải dữ liệu shard 0; chưa train GPU (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
+      <tr><td>PPG-physiGPT (kiểu GPT-PPG)</td><td>chưa có</td><td><span class="tag ai">mới</span></td><td>2 kernel đang chạy: shard 0 (CPU) và solo (tải rồi train, 2 × T4) (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
       <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
       <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
       <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
@@ -197,23 +197,23 @@
 </section>
 
 <section id="physigpt-sec">
-  <h2>PPG-physiGPT <span class="tag off">chưa train · chưa có AUC</span></h2>
+  <h2>PPG-physiGPT <span class="tag off">đang chạy · chưa có AUC</span></h2>
   <p class="lead">Mô hình kiểu GPT (theo GPT-PPG 2025): <b>vẽ sóng PPG 30 s từng giây một</b>, học từ PPG bệnh viện, train trên Kaggle 2 × T4.</p>
 
   <div class="cards">
-    <div class="card stat"><div class="num">Chưa</div><div class="lbl">train trên 2 × T4</div></div>
+    <div class="card stat"><div class="num">Đang chạy</div><div class="lbl">kernel solo trên 2 × T4: tự tải dữ liệu rồi train (từ 12:38 UTC)</div></div>
     <div class="card stat"><div class="num">—</div><div class="lbl">AUC của giám khảo (chưa chấm; mục tiêu ≤ 0,55)</div></div>
-    <div class="card stat"><div class="num">1 / 4</div><div class="lbl">bước đang chạy: tải dữ liệu shard 0</div></div>
+    <div class="card stat"><div class="num">≈ 5 giờ</div><div class="lbl">tới khi có model đầu tiên (4,5 giờ tải + train)</div></div>
   </div>
 
   <h3>Tiến độ</h3>
   <ol class="pg-steps">
     <li class="now"><b>1 · Tải dữ liệu</b><span>MIMIC-III ICU → đoạn 30 s, 40 Hz</span><em>● đang chạy</em></li>
-    <li><b>2 · Train GPU</b><span>2 × T4, vài triệu đoạn mỗi đợt</span><em>○ chờ</em></li>
+    <li class="now"><b>2 · Train GPU</b><span>2 × T4, cùng kernel solo, ngay sau khi tải</span><em>◐ xếp hàng</em></li>
     <li><b>3 · Fine-tune</b><span>trên người của dự án</span><em>○ chờ</em></li>
     <li><b>4 · Giám khảo chấm</b><span>AUC, 0,5 = không tách được</span><em>○ chờ</em></li>
   </ol>
-  <p class="caption">Lần chạy 1 của bước 1 lỗi đọc file ngay từ đầu; đã sửa và chạy lại lúc 11:40 UTC, 27/10/2026.</p>
+  <p class="caption">Kernel solo (27/10/2026, 12:38 UTC): 5 phút chạy thử GPU trên sóng giả → 4,5 giờ tải các record khác shard 0 → train bản base 30,7M, 4 epoch. Kernel shard 0 (từ 11:40 UTC) vẫn tải tiếp cho đợt sau. Đã chạy thử cả chuỗi trên CPU với record thật trước khi push.</p>
 
   <h3>Dữ liệu dùng để học</h3>
   <figure class="card" style="margin:0">
