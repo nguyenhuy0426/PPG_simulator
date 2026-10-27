@@ -457,23 +457,6 @@ def test_round5_runs_end_to_end_on_cpu(tmp_path, monkeypatch):
     assert (out/"FROZEN_ROUND5.json").stat().st_mtime <= (out/"DECISION_ROUND5.json").stat().st_mtime
     assert (out/"benchmark"/"L3_rel_beat_lr_crop_seed42"/"generator_cpu.ts").exists()
     assert (out/"REPORT_ROUND5.md").exists()
-    # The app bundle script rebuilds the cropped generator from source and the app loads its TorchScript.
-    import shutil
-    import sys
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(root/"scripts"))
-    import prepare_physiomix_bundle
-    from core.neural_preview import PhysioMixGenerator
-    assets = tmp_path/"assets"
-    assets.mkdir()
-    shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
-    meta = prepare_physiomix_bundle.prepare(out/"benchmark", "L3_rel_beat_lr_crop", tmp_path/"input"/"pack", assets,
-                                            None, "physiomix_round5_test")
-    assert meta["architecture"]["pad"] == physio.CROP_PAD and meta["hr_support_bpm"] == [40., 180.]
-    app = PhysioMixGenerator(assets)
-    preview = app.generate(7, 95, "gxu_finger", .02)
-    assert len(preview.samples) == 1200 and preview.provenance["measured_rate_bpm"] == pytest.approx(95, abs=5)
 
 
 def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
@@ -499,20 +482,13 @@ def test_round6_scales_the_critic_clip_on_lazy_r1_steps(tmp_path, monkeypatch):
                                   "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final",
                                   "flow10e_pilot", "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
                                   "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e",
-                                  "strict_judge", "strict_train_physiomix", "strict_train_lsm",
-                                  "strict_judge_round"])
+                                  "strict_judge", "r_round", "p5_train", "p5_judge"])
 def test_staged_kernel_carries_its_entry_module(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2)
     manifest = json.loads((out/"source_manifest.json").read_text())
     entry = (out/"run.py").read_text().rsplit("from ml.kaggle_multidomain.", 1)[1].split(" import")[0]
     assert f"ml/kaggle_multidomain/{entry}.py" in manifest["files"]
-    if mode.startswith("strict_") and mode != "strict_judge":
-        meta = json.loads((out/"kernel-metadata.json").read_text())
-        stage = dict(strict_train_physiomix="train_physiomix", strict_train_lsm="train_lsm", strict_judge_round="judge")[mode]
-        assert f"'--stage', '{stage}'" in (out/"run.py").read_text() and meta["machine_shape"] == "NvidiaTeslaT4"
-        trained = {"charlesday2612/ppg-strict-train-physiomix-v1", "charlesday2612/ppg-strict-train-lsm-v1"}
-        assert trained <= set(meta["kernel_sources"]) if mode == "strict_judge_round" else not trained & set(meta["kernel_sources"])
     if mode.startswith(("flow10d_", "flow10e_", "flow10f_")):
         # Loops 5-6 always apply the pre-registered go limits; a final mounts its own loop's pilot and round 9.
         loop = mode.split("_")[0]
@@ -686,15 +662,3 @@ def test_round8_runs_end_to_end_on_cpu(tmp_path, monkeypatch, variant):
     assert frozen["incumbent"]["name"] == "L3_rel_beat_lr_crop_r1w"
     decision = json.loads((out/"DECISION_ROUND5.json").read_text())
     assert decision["target"] == "wrist"
-    import sys
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(root/"scripts"))
-    import prepare_physiomix_bundle
-    import shutil
-    assets = tmp_path/"assets"
-    assets.mkdir()
-    shutil.copy(root/"assets"/"neural"/"manifest.json", assets/"manifest.json")
-    meta = prepare_physiomix_bundle.prepare(out/"benchmark", arm, tmp_path/"input"/"pack",
-                                            assets, None, "physiomix_round8_test")
-    assert meta["architecture"]["motion"]

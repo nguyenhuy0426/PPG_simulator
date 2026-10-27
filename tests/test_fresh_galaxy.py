@@ -51,7 +51,12 @@ def test_participant_without_events_is_kept_but_unlabeled(tmp_path):
 
 
 def test_wrist_prompts_follow_the_app_condition_contract():
-    meta = json.loads(open("assets/neural/manifest.json").read())["physiomix"]
+    # The PhysioMix condition schema as shipped (ppg-app-models-v1); the app no longer carries it.
+    meta = dict(domains=["bidmc", "gxu_finger", "perform_af", "perform_large", "perform_non_af", "wrist"],
+                center=[85.58406066894531, .09509989619255066, .2239082008600235],
+                scale=[19.278717041015625, .09926457703113556, .05219563841819763],
+                domain_defaults=dict(wrist=[.2808372676372528, .14157012104988098]),
+                hr_support_bpm=[40., 180.], condition_version="v2")
     t = np.arange(1200)/40
     signal = np.stack([.5+.5*np.sin(2*np.pi*r/60*t) for r in (60, 150)]).astype(np.float32)
     rows, rates = fg.wrist_prompts(meta, signal, np.array([65., np.nan]))

@@ -27,6 +27,8 @@
   <a class="back" href="chi-tiet.html">← Báo cáo kỹ thuật đầy đủ</a>
   <div class="links">
     <a href="#summary">0. Tóm tắt và quyết định</a>
+    <a href="#models-kept">Mô hình giữ / đã loại</a>
+    <a href="#p5-sec">P5 · PhysioGAN-R (đang train)</a>
     <a href="#g-fig1">Hình 1 · Quy trình</a>
     <a href="#table1-sec">Bảng I · Dữ liệu</a>
     <a href="#fig2-sec">Hình 2 · Ví dụ tín hiệu</a>
@@ -63,6 +65,123 @@
   <div class="grid2" id="decision-box"></div>
   <div class="paperref">Khác với bài báo: bài báo đo chất lượng mẫu gián tiếp (F1 của bộ phát hiện AF train trên dữ liệu đã tăng cường).
   Ở đây đo trực tiếp: giám khảo có tách được thật/giả trên người chưa thấy hay không (C2ST).</div>
+</section>
+
+<section id="models-kept">
+  <h2>Mô hình giữ lại và đã loại <span class="tag rule">27/10/2026</span></h2>
+  <p class="lead">Mô hình nào không cải thiện được AUC của giám khảo nghiêm thì đã gỡ code (khỏi app và khỏi nhánh nghiên cứu).
+  Số liệu của chúng được giữ nguyên trên trang này và trong <code>ml/runs</code> để đưa vào phần đánh giá của nghiên cứu.
+  Code vẫn còn trong lịch sử git. AUC là AUC validation của giám khảo nghiêm, trung bình 3 seed giám khảo, trên người chưa thấy;
+  0,5 nghĩa là không tách được. Đối chứng thật-so-với-thật (người thật khác) đạt khoảng 0,44–0,45.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mô hình</th><th>AUC validation</th><th>Trạng thái</th><th>Lý do</th></tr></thead>
+    <tbody>
+      <tr><td><b>PhysioFlow-R (R1, 16 bước Heun)</b></td><td>0,745 / 0,747 / 0,785 (seed 42 / 123 / 2026), TB 0,759</td>
+      <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
+      <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
+      <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
+      <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
+      <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
+      <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
+      <tr><td>PhysioMix + critic nghiêm (S / SQ)</td><td>0,991–0,999</td><td><span class="tag off">đã loại</span></td><td>Không thấp hơn app</td></tr>
+      <tr><td>LSM-GAN-S (critic nghiêm)</td><td>0,992–0,999</td><td><span class="tag off">đã loại</span></td><td>Không thấp hơn baseline</td></tr>
+      <tr><td>G1 flow-GAN (6 miền)</td><td>0,993–0,995</td><td><span class="tag off">đã loại</span></td><td>Không cải thiện</td></tr>
+      <tr><td>G2 flow-GAN-LSM (BIDMC)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Không cải thiện</td></tr>
+      <tr><td>G3 flow-GAN-R (P4, fine-tune đối kháng R1)</td><td>0,958 (16 bước) – 0,974 (4 bước)</td><td><span class="tag off">đã loại</span></td>
+      <td>Tệ hơn chính R1 làm teacher (0,753)</td></tr>
+      <tr><td>B1 BeatGen</td><td>0,983–0,990</td><td><span class="tag off">đã loại</span></td><td>Không cải thiện</td></tr>
+      <tr><td>PhysioFlow finish (lp9, lp9_5, lp10, lp10_s) và + nhiễu cảm biến</td><td>0,955–1,00</td><td><span class="tag off">đã loại</span></td><td>Không cải thiện</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">Nguồn: <code>summary.json</code> của các vòng strict-judge-round, flowgan-round-v2, finish-round-v2, beat-round,
+  DECISION_R.json (P1) và DIAGNOSIS_P4.json. Đánh giá kỹ thuật về hình dạng PPG 30 s đã chuẩn hoá; không phải kiểm định lâm sàng.</p>
+</section>
+
+<section id="p5-sec">
+  <h2>P5 · PhysioGAN-R: GAN mới train từ đầu <span class="tag off">đang train, chưa có kết quả</span></h2>
+  <p class="lead">Vòng P5 thử một hướng khác hẳn các vòng trước: một GAN thuần sinh cả record 40 s, không dùng flow-matching
+  hay autoregressive, và chỉ điều kiện theo miền dữ liệu. Mục tiêu là AUC của giám khảo nghiêm ≤ 0,55, gần mức thật-so-với-thật.
+  Mục này chưa có số liệu kết quả. Số liệu sẽ được thêm sau khi kernel chạy xong và đã qua bước duyệt sóng.</p>
+
+  <div class="callout info"><b>Trạng thái kernel</b> (kiểm tra lúc 07:28 UTC, 27/10/2026)<br>
+  <code>halovie2412/ppg-physiogan-r-p5-train-v1</code>: <b>RUNNING</b>, đã chạy khoảng 2 giờ 06 phút (push lúc khoảng 05:22 UTC).
+  Log training chưa đọc được trong lúc kernel chạy, vì Kaggle chỉ trả log khi kernel kết thúc. Dự kiến xong khoảng 15:30–16:30 UTC
+  (22:30–23:30 giờ Việt Nam).<br>
+  Lần chạy v1 hỏng sau 68 giây do lỗi CUDA <code>grid_sampler_2d_backward</code>. Lỗi đã được sửa bằng phép giãn thời gian
+  dùng <code>gather</code>, có đạo hàm bậc hai.<br>
+  Kernel cũ <code>charlesday2612/ppg-physiogan-r-p5-round-v1</code>: <b>CANCEL_ACKNOWLEDGED</b> (đã dừng).</div>
+
+  <h3>Quy trình hai giai đoạn</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Bước</th><th>Nội dung</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+      <tr><td>1. p5_train</td><td>GPU0: GAN seed 42 và 2026. GPU1: GAN seed 123, rồi R1F (R1 train tiếp). Mỗi
+      20 phút một C2ST nhỏ chọn checkpoint tốt nhất.</td><td><span class="tag ai">đang chạy</span></td></tr>
+      <tr><td>2. Preview</td><td>Sinh sóng PPG và so trực tiếp với dataset, ngay trong kernel train: log-PSD dải mạch 0,5–8 Hz và
+      dải chặn 8–20 Hz, ACF đến 5 s, 9 đặc trưng hình thái, KS của giá trị mẫu, và kiểm tra sao chép. Mỗi khoảng cách
+      được đặt cạnh khoảng cách thật-so-với-thật.</td><td><span class="tag off">chờ</span></td></tr>
+      <tr><td>3. Duyệt chung</td><td>Bạn và Claude xem SIMILARITY_P5.json, hình sóng và balance.json, rồi quyết định sửa hay giữ.</td>
+      <td><span class="tag off">chờ</span></td></tr>
+      <tr><td>4. p5_judge</td><td>Giám khảo nghiêm chấm trên người validation, sau đó mở test một lần. Chỉ push sau khi đã duyệt ở bước 3.</td>
+      <td><span class="tag off">chưa push</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>(a) Generator PhysioGAN-R (7,19M tham số)</h3>
+  <div class="algo card" style="white-space:pre-wrap">z (128) ⊕ điều kiện [miền one-hot, context trái/phải / CONTEXT]
+  → mapping MLP 4 lớp → style w (256)
+  → Linear → tensor gốc 384 kênh × 25 mẫu
+  → 6 × GenBlock: upsample tuyến tính ×2 → conv k5 → FiLM(w) + nhiễu theo mẫu → conv k5 (khởi tạo 0) + skip
+     (độ rộng kênh 384 → 384 → 256 → 256 → 192 → 128 → 64; 25 → 1600 mẫu)
+  → conv k5 → record thô 40 s (1600 mẫu, 40 Hz)
+  → RView: band-pass v3 (sosfiltfilt) theo context của record → cửa sổ 30 s → min-max [0, 1]</div>
+  <p class="caption">RView áp đúng bộ lọc mà cửa sổ thật đã qua. Nhờ vậy mạng không phải tự học cách tạo dải chặn −95 dB.
+  Không có điều kiện nhịp tim, SpO2 hay nhịp không đều, nên chỉ số C (độ khớp điều kiện) không được đo trong vòng này.</p>
+
+  <h3>Khác gì so với các mô hình trước</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mô hình</th><th>Loại</th><th>Điểm chính</th></tr></thead>
+    <tbody>
+      <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>GAN</td><td>Topology của tác giả, giữ nguyên làm baseline</td></tr>
+      <tr><td>PhysioMix</td><td>GAN</td><td>Hinge loss, sinh thẳng cửa sổ v3, có điều kiện nhịp tim</td></tr>
+      <tr><td>G3 PhysioFlow-GAN</td><td>Flow student</td><td>Student 4 bước bị kéo về một teacher đã đóng băng</td></tr>
+      <tr><td>R1 / R1F</td><td>Flow-matching</td><td>Không phải GAN, đóng vai fallback của vòng này</td></tr>
+      <tr><td><b>P5 PhysioGAN-R</b></td><td><b>GAN train từ đầu</b></td><td>Sinh record 40 s trước khi lọc; loss relativistic
+      pairing kèm R1/R2; điều kiện chỉ gồm miền và context</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>(b) Discriminator: critic thay đổi, giám khảo giữ nguyên</h3>
+  <div class="grid2">
+    <div class="card"><b>Critic lúc train: đã thay đổi</b> <span class="tag rule">cân bằng</span>
+      <ul class="small">
+        <li>Vẫn là <code>StrictCritic</code> với 4 view: time, log-STFT, ACF và band 7–14 Hz.</li>
+        <li>Width tăng từ 32 lên 48 (3,56M tham số), thêm minibatch-std chống mode collapse, chiếu điều kiện theo miền và context.</li>
+        <li>Loss <code>softplus(D(fake) − D(real))</code> với penalty R1/R2 (γ = 1, lazy 4) theo Huang et al. 2024, thay cho hinge.</li>
+        <li>lr của critic bằng một nửa generator (1e-4 so với 2e-4), Adam với β = (0; 0,99).</li>
+        <li>ADA (Karras et al. 2020): augment mọi cửa sổ critic nhìn thấy (gain/offset, giãn thời gian ±10 %, nhiễu 0,02) với
+        xác suất p. p tự điều chỉnh để giữ r<sub>t</sub> = E[sign(D(real) − D(fake))] ở mức 0,6, với p tối đa 0,8.</li>
+      </ul></div>
+    <div class="card"><b>Giám khảo nghiêm: giữ nguyên hoàn toàn</b> <span class="tag hw">không đổi</span>
+      <ul class="small">
+        <li><code>StrictJudge</code> (time + spectral + ACF), 3000 bước, seed giám khảo 0–2.</li>
+        <li>Train lại từ đầu cho mỗi nguồn, chấm trên người validation, rồi mở test một lần.</li>
+        <li>Không tham gia train và không bị làm yếu. Việc cân bằng chỉ nằm ở critic.</li>
+        <li>Đối chứng null (người thật khác) phải có AUC trong [0,40; 0,60] thì vòng mới hợp lệ.</li>
+      </ul></div>
+  </div>
+
+  <h3>Luật quyết định P5 (ghi trước khi train, có mã băm)</h3>
+  <ul class="small">
+    <li>Các nguồn được chấm: real_other_people, r_pipeline, r1_s16 (seed ship của P1, 16 bước Heun), r1_s32, r1_s64, r1f_s64 và
+    3 seed GAN.</li>
+    <li>best_r1 = r1_s16, trừ khi một biến thể khác thấp hơn nó quá max(0,02; SD).</li>
+    <li>GAN chỉ được giữ khi mọi seed đều qua kiểm tra sao chép (≤ 5 % cửa sổ gần dữ liệu train hơn phân vị 1 % của khoảng cách
+    thật-thật) <b>và</b> thấp hơn best_r1 quá max(0,02; SD giữa các seed). Nếu không, quay về nhánh R1.</li>
+    <li>Đạt mục tiêu khi AUC ≤ 0,55. Test chỉ chấm một lần.</li>
+  </ul>
+  <div class="paperref">Đây là đánh giá kỹ thuật về hình dạng PPG 30 s đã chuẩn hoá. Nó không phải kiểm định lâm sàng, và chưa
+  được đo trên Pi/DAC/OPT101.</div>
 </section>
 
 <section id="g-fig1">

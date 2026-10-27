@@ -24,7 +24,7 @@ from scipy.stats import wasserstein_distance
 import torch
 from torch.nn import functional as F
 
-from ml.kaggle_lsm.train_lsm import LENGTH, mmd2, prepare_discriminator_for_generator, save_json, spectral_loss
+from ml.kaggle_lsm.train_lsm import LENGTH, mmd2, prepare_discriminator_for_generator, save_json
 from ml.kaggle_multidomain import control
 from ml.kaggle_multidomain.benchmark import MORPH_NAMES, cpu_latency, sample
 from ml.kaggle_multidomain.data import balanced_indices, balanced_pool
@@ -117,38 +117,14 @@ FLOW_BASES = {"F1_flow": FLOW, "F2_flow_deriv": dict(FLOW, deriv=1.),
                                             spectral_stop=True, wrist_slow=.5),
               "F12_flow_stop01_wslow": dict(FLOW, deriv=1., flag_scaffold=True, t_dist="uniform", spectral=.1,
                                             spectral_stop=True, wrist_slow=.5)}
-# Strict round (experiment_strict): the shipped round-9 recipe with the critic replaced by the strict judge's three views
-# (strict_judge.StrictCritic, spectral-normalised, ~0.87 M parameters vs ~0.23 M) with random 25.6 s crops of real and
-# generated alike. Its parameter-gradient norm runs ~3x the round-9 critic's in the tail (CPU, first 640 steps: p99 12.8
-# vs 4.8; 3% of steps above 10), so its clip limit is 30 (x16 on lazy-R1 steps) and the round-3 gate (clipped on at
-# most 1% of steps) is kept at that limit. The quiet arm adds physio.PhysioMixR's quiet trunk noise and sensor term.
-STRICT_CRITIC = dict(critic="strict", d_clip=30.)
-ARMS.update({"L3_rel_beat_lr_crop_r1w_motion_dom_strict": dict(ARMS["L3_rel_beat_lr_crop_r1w_motion_dom"],
-                                                                **STRICT_CRITIC),
-             "L3_rel_beat_lr_crop_r1w_motion_dom_strict_quiet": dict(ARMS["L3_rel_beat_lr_crop_r1w_motion_dom"],
-                                                                      **STRICT_CRITIC, quiet=True, sensor=True)})
-# Flow-GAN round (experiment_flowgan): the app's PhysioFlow U-Net as a 4-step GAN generator against the strict critic
-# (flow_gan.FlowGAN). Fine-tuning a pretrained generator: its learning rate is a tenth of the critic's, constant.
-# distill: weight of the MSE anchor to the frozen 16-step PhysioFlow. The LSM arm trains on BIDMC windows only with the
-# LSM-GAN log-spectral matching loss, and its checkpoints are chosen on the BIDMC pool alone.
-# The 4-step student starts at MSE ~4e-4 from the teacher (CPU, 8 windows), so weight 100 starts the anchor at ~0.04
-# against a hinge term ~1; the teacher's 16 Heun steps (32 U-Net passes) run every distill_every steps (lazy, weight
-# scaled by the interval) to keep a step near the cost of the student's own 7 passes forward and backward.
-FLOWGAN = dict(version="v2", flowgan=True, critic="strict", d_clip=30., lr=2e-4, g_lr=2e-5, distill=100.,
-               distill_every=4, flowgan_sensor=True, student_steps=4, latency_limit_ms=5000.)
-# P4 (after P1): R1 as a 4-step GAN generator (flow_r.FlowGANR), no sensor term (P3), against the strict critic with
-# the beat-locked 7-14 Hz view (P2, strict_judge.CriticBand); distillation anchor to the frozen 16-step R1.
 # PhysioFlow-R round (experiment_r, P1): the app's PhysioFlow recipe (F6, 16 Heun steps) trained on the R pack's 40 s
 # resample-only windows and ending in the v3 band-pass applied once with the record's own context (flow_r.RView).
 ARMS["R1_flowr"] = dict(FLOW_BASES["F6_flow_flag_deriv_unif"], r=True, sample_steps=16, guidance=1.)
-ARMS["G3_flowgan_r"] = dict(FLOWGAN, flowgan_r=True, flowgan_sensor=False, critic_band=True)
 # P5 (experiment_p5): the P1 ship seed's R1 trained further with its own flow loss (init_r1: U-Net from the teacher
 # file, the last teacher root), cosine from a quarter of R1's rate; checkpoints on S_real alone (select_s_real), since
 # the round sets heart-rate control aside. Judged at 64 Heun steps.
 ARMS["R1F_flowr_ft"] = dict(ARMS["R1_flowr"], init_r1=True, select_s_real=True, schedule="cosine",
                             lr=ARMS["R1_flowr"].get("lr", 2e-4)/4)
-ARMS.update({"G1_flowgan": FLOWGAN,
-             "G2_flowgan_lsm_bidmc": dict(FLOWGAN, lsm_loss=True, train_domains=("bidmc",))})
 FLOW_SAMPLERS = ((8, 1.), (8, 1.5), (16, 1.), (16, 1.5))
 # Finishing: stop at t=0.04 and apply the data-view filter on a reflection-padded window (loop-3 local probe).
 FLOW_FINISHES = {"": dict(t_end=0., finish_filter=False), "_f04": dict(t_end=.04, finish_filter=True)}
@@ -200,17 +176,6 @@ def conditions_for(pack, version):
 
 def build(cfg, conditions):
     size = conditions.bank.shape[1]
-    if cfg.get("flowgan_r"):
-        from ml.kaggle_multidomain.flow_r import FlowGANR
-        from ml.kaggle_multidomain.strict_judge import StrictCritic
-        return (FlowGANR(size, conditions.center, conditions.scale, len(conditions.domains), cfg["student_steps"],
-                         cfg["width"]),
-                StrictCritic(size, band=cfg.get("critic_band", False)))
-    if cfg.get("flowgan"):
-        from ml.kaggle_multidomain.flow_gan import FlowGAN
-        from ml.kaggle_multidomain.strict_judge import StrictCritic
-        return FlowGAN(size, conditions.center, conditions.scale, len(conditions.domains), cfg["student_steps"],
-                       cfg["flowgan_sensor"]), StrictCritic(size)
     if cfg.get("r"):
         from ml.kaggle_multidomain.flow_r import FlowGeneratorR
         return FlowGeneratorR(size, conditions.center, conditions.scale, len(conditions.domains),
@@ -227,9 +192,6 @@ def build(cfg, conditions):
                                sensor=cfg.get("sensor", False))
     else:
         generator = (PhysioMixH if cfg["osc"] else PhysioMix)(size, conditions.center, conditions.scale, view=VIEW)
-    if cfg["critic"] == "strict":
-        from ml.kaggle_multidomain.strict_judge import StrictCritic
-        return generator, StrictCritic(size)
     return generator, (DerivCritic if cfg["dc"] else ConditionedCritic)(size)
 
 
@@ -407,21 +369,11 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
         torch.cuda.reset_peak_memory_stats(device)
     conditions = conditions_for(pack, cfg["version"])
     g, d = build(cfg, conditions)
-    teacher = None
-    if cfg.get("flowgan_r"):
-        from ml.kaggle_multidomain.flow_r import teacher_state_r
-        g.load_teacher(teacher_state_r(TEACHER_ROOTS))
-        teacher = g.teacher().to(device)
-    elif cfg.get("flowgan"):
-        from ml.kaggle_multidomain.flow_gan import teacher_state
-        g.load_teacher(teacher_state(TEACHER_ROOTS))
-        teacher = g.teacher().to(device)
     g.to(device)
     if d is not None:
         d.to(device)
     ema, diffusion = ema_model(g), cfg["diffusion"]
-    g_ratio = cfg.get("g_lr", cfg["lr"])/cfg["lr"]
-    optg = torch.optim.Adam(g.parameters(), lr=cfg["lr"]*g_ratio, betas=(0., .99))
+    optg = torch.optim.Adam(g.parameters(), lr=cfg["lr"], betas=(0., .99))
     optd = torch.optim.Adam(d.parameters(), lr=cfg["lr"], betas=(0., .99)) if d is not None else None
     run_dir = Path(output)/f"{arm}_seed{seed}"
     run_dir.mkdir()
@@ -440,9 +392,9 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             stability["stopped_at_step"] = step-1
             break
         g.train()
-        for optimizer, ratio in ((optg, g_ratio), (optd, 1.)):
+        for optimizer in (optg, optd):
             for group in getattr(optimizer, "param_groups", ()):
-                group["lr"] = learning_rate(cfg, step-1, steps)*ratio
+                group["lr"] = learning_rate(cfg, step-1, steps)
         chosen = rng.choice(ids, batch, p=weights)
         real = torch.tensor(pack["signal"][chosen, None], device=device)
         c = torch.tensor(conditions.for_ids(chosen), device=device)
@@ -453,7 +405,7 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
         else:
             d.train().requires_grad_(True)
             z = torch.randn(batch, LENGTH, device=device)
-            fake, clean = g.parts(z, c) if teacher is not None else (g(z, c), None)
+            fake = g(z, c)
             optd.zero_grad(set_to_none=True)
             regularize = step % 16 == 0
             real.requires_grad_(regularize)
@@ -489,13 +441,6 @@ def train_conditional(arm, seed, pack, evaluator, output, steps, batch, interval
             lg = -d(fake, c).mean()+.5*distribution_loss(fake, real)
             if cfg.get("domloss"):
                 lg = lg+.5*domain_distribution_loss(fake, real, c[:, :domains].argmax(1))
-            if teacher is not None and step % cfg["distill_every"] == 0:
-                with torch.no_grad():
-                    target = teacher(z, c)
-                lg = lg+cfg["distill_every"]*cfg["distill"]*F.mse_loss(clean, target)
-            if cfg.get("lsm_loss"):
-                matching, consistency = spectral_loss(fake, real, pairing="all_pairs")
-                lg = lg+matching+consistency
         if not torch.isfinite(lg+ld):
             raise RuntimeError(f"Nonfinite objective: {arm}/{seed}/{step}")
         lg.backward()
@@ -603,7 +548,7 @@ def _score_arm(arm, seed, pack, evaluator, run_dir, device, frozen, steps):
 
 def worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads=2, deadline=None,
            teacher_roots=None):
-    """teacher_roots: where flow-GAN arms find their teacher (default: the input root)."""
+    """teacher_roots: where the R arms find the R pack and R1F its R1 teacher (default: the input root)."""
     torch.set_num_threads(threads)
     TEACHER_ROOTS[:] = list(teacher_roots or [input_root])
     if device.startswith("cuda"):

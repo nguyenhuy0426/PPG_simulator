@@ -286,7 +286,7 @@ def main(argv=None):
     from ml.kaggle_multidomain import physiogan_r
     from ml.kaggle_multidomain.data_gxu import load_input
     from ml.kaggle_multidomain.data_r import load_r
-    from ml.kaggle_multidomain.experiment_p4 import resolve_teacher
+    from ml.kaggle_multidomain.experiment_r import resolve_teacher
     from ml.kaggle_multidomain.experiment_v3 import ARMS, PROTOCOL, check_pack, conditions_for
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     if not a.allow_cpu and len(names) != 2:

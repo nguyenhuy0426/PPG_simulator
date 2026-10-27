@@ -59,6 +59,28 @@ def rule_sha256():
     return hashlib.sha256(RULE.encode()).hexdigest()
 
 
+def resolve_teacher(input_root, folder):
+    """Copy the P1 ship seed's export (under input_root, the P1 round's output) to folder as the R1 teacher file."""
+    from ml.kaggle_multidomain.flow_r import TEACHER_R_FILE
+    decisions = sorted(Path(input_root).rglob("DECISION_R.json"))
+    if len(decisions) != 1:
+        raise ValueError(f"Expected one P1 DECISION_R.json, found {len(decisions)}")
+    decision = json.loads(decisions[0].read_text())
+    seed = decision["ship_seed"]
+    if seed is None:
+        raise ValueError("P1 has no eligible seed to fine-tune")
+    source = decisions[0].parent/"benchmark"/f"{ARM}_seed{seed}"/"generator_cpu.ts"
+    folder = Path(folder)
+    folder.mkdir(parents=True)
+    shutil.copy2(source, folder/TEACHER_R_FILE)
+    sha = hashlib.sha256((folder/TEACHER_R_FILE).read_bytes()).hexdigest()
+    shipped = decisions[0].parent/"ship"/TEACHER_R_FILE
+    if shipped.exists() and hashlib.sha256(shipped.read_bytes()).hexdigest() != sha:
+        raise ValueError("P1 ship/ file is not its ship seed's export")
+    return dict(seed=seed, sha256=sha, p1_winner=decision["winner"], p1_rule_sha256=decision["rule_sha256"],
+                p1_auc_by_seed=decision["auc_by_seed"], p1_C=decision["C"], source=str(source))
+
+
 def null_gate(rows):
     """NULL_R.json: the pre-training check that the view and the null control are valid before any GPU training."""
     auc = {name: mean_auc(rows, JUDGE, name) for name in ("r_pipeline", "real_other_people")}

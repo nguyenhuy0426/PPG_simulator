@@ -37,6 +37,7 @@
   <div class="meta" id="hero-meta"></div>
   <div class="cards" style="margin-top:16px" id="hero-cards"></div>
 </header>
+<div class="callout info"><b>Cập nhật 27/10/2026:</b> PhysioMix và PhysioFlow đã được gỡ khỏi app. Giám khảo nghiêm (C2ST, người chưa thấy) vẫn tách được chúng ở AUC 0,99–1,00. Số liệu trên trang này được giữ nguyên làm lịch sử. Trạng thái giữ/loại của từng model ở <a href="gan-report.html#models-kept">báo cáo GAN</a>.</div>
 
 <section id="overview">
   <h2>1. Hệ thống làm gì</h2>
@@ -109,7 +110,7 @@
       <tr><td><b>Gaussian IntelliVue</b> <span class="tag rule">thay Classic</span><br><span class="small muted">models/ppg_model.py · assets/gaussian/intellivue_fit.json</span></td><td><span class="tag rule">công thức</span></td><td>HR, PI, SpO₂, nhịp thở, nhiễu, điều kiện sinh lý; mặc định HR 75, SpO₂ 99, RR 16</td><td>2 kênh IR/RED, 100 Hz, liên tục</td><td>Không học; dạng xung fit vào nhịp trung bình của 5 nhịp Pleth trên ảnh màn hình Philips IntelliVue (RMSE 0,020)</td><td>Đầy đủ (HR, hô hấp, SpO₂ theo công thức tỉ số R)</td></tr>
       <tr><td><b>Gaussian đã fit</b><br><span class="small muted">models/waveform.py</span></td><td><span class="tag rule">công thức</span></td><td>HR, kiểu “có/không notch”</td><td>Một xung lặp lại, 100 Hz</td><td>Fit 25 684 xung của 32 người BIDMC</td><td>HR; hình dáng cố định</td></tr>
       <tr><td><b>LSM-GAN v2</b><br><span class="small muted">lsm_generator.ts</span></td><td><span class="tag ai">AI · GAN</span></td><td>1 200 số ngẫu nhiên</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>BIDMC: 32 người ICU</td><td>Không (chỉ đổi “seed”)</td></tr>
-      <tr><td><b>PhysioMix</b> <span class="tag ai">đang dùng</span><br><span class="small muted" id="pm-variant">physiomix_generator.ts</span></td><td><span class="tag ai">AI · GAN có điều kiện</span></td><td>1 200 số ngẫu nhiên + điều kiện (tập dữ liệu, HR, độ bất thường, độ lớn)</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, <span id="pm-people">…</span> người train</td><td>HR 40–180, độ bất thường, tập dữ liệu/trạng thái</td></tr>
+      <tr><td><b>PhysioMix</b> <span class="tag off">đã gỡ khỏi app</span><br><span class="small muted" id="pm-variant">physiomix_generator.ts</span></td><td><span class="tag ai">AI · GAN có điều kiện</span></td><td>1 200 số ngẫu nhiên + điều kiện (tập dữ liệu, HR, độ bất thường, độ lớn)</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, <span id="pm-people">…</span> người train</td><td>HR 40–180, độ bất thường, tập dữ liệu/trạng thái</td></tr>
       <tr><td><b>PhysioFlow</b> <span class="tag ai" id="pf-tag">mới</span><br><span class="small muted" id="pf-variant">physioflow_generator.ts</span></td><td><span class="tag ai">AI · flow matching có điều kiện</span></td><td>1 200 số ngẫu nhiên + cùng điều kiện như PhysioMix</td><td>30 s, 40 Hz (1 200 mẫu, 0–1)</td><td>6 tập, cùng người train như PhysioMix</td><td>HR 40–180 (khung nhịp dựng sẵn), độ bất thường, tập dữ liệu/trạng thái</td></tr>
       <tr><td><b>Nhịp RX</b><br><span class="small muted">core/rx_heart_rate.py</span></td><td><span class="tag rule">xử lý tín hiệu</span></td><td>Mẫu ADC thật từ OPT101</td><td>Nhịp (bpm) hoặc lý do không đo được</td><td>Không học</td><td>—</td></tr>
     </tbody>

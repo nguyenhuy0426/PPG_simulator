@@ -15,7 +15,9 @@ INCUMBENT_RUN = "ml/runs/physiomix9-motion-dom-result-v1/physiomix9"
 GALAXY_URL = "https://zenodo.org/records/14635823/files/GalaxyPPG.zip?download=1"
 R_DATASET = "ppg-physioflow-r-data-v1"
 P1_DATASET = "ppg-physioflow-r-p1-output-v1"
-APP_MODELS = ("manifest.json", "physiomix_generator.ts", "physioflow_generator.ts", "lsm_generator.ts")
+# The app now ships LSM-GAN only. The ppg-app-models-v1 datasets already on Kaggle keep the PhysioMix/PhysioFlow files
+# the strict judge, finish and P1 rounds judged (P1's incumbent is physioflow_app); restaging gives the current app.
+APP_MODELS = ("manifest.json", "lsm_generator.ts")
 
 
 def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER):
@@ -41,30 +43,14 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     red13 = mode == "red13"
     # Strict judge: a ~3.6 M-parameter real-vs-generated discriminator against the app's models and controls (GPU).
     strict = mode == "strict_judge"
-    # Strict round: PhysioMix with the strict critic and LSM-GAN-S vs the author topology, judged by the strict judge.
-    # Three kernels: the two training stages (T4x2 each, may run at the same time), then the judge stage on both outputs.
-    strict_stages = {"strict_train_physiomix": "train_physiomix", "strict_train_lsm": "train_lsm",
-                     "strict_judge_round": "judge"}
-    strict_round = mode in strict_stages
-    # Flow-GAN round: the PhysioFlow U-Net as a GAN generator against the strict critic for both app slots, trained and
-    # judged by the strict judge in one T4x2 kernel.
-    flowgan = mode == "flowgan_round"
     # PhysioFlow-R round (P1): PhysioFlow on the resample-only R pack ending in the record-context v3 view, trained and
     # judged (with the pipeline null) in one T4x2 kernel.
     r_round = mode == "r_round"
-    # P4 round: PhysioFlow-R fine-tuned as a GAN against the band critic, from the P1 kernel's ship seed (kernel source).
-    p4_round = mode == "p4_round"
-    # P4 diagnosis: the P4 teacher and G3 weights at 16/8/4 sampler steps, judged on validation only (P4 kernel source).
-    p4_diag = mode == "p4_diag"
     # P5 round: PhysioGAN-R (from-scratch GAN, physiogan_r) against the R1 family from the P1 ship seed, in two kernels:
     # p5_train (training, copy check, direct waveform comparison) and, after review, p5_judge (its output mounted).
     p5_stages = {"p5_train": "train", "p5_judge": "judge"}
     p5_round = mode in p5_stages
-    # Report figures: per-window strict-judge scores and judge weights for the GAN report (both finished rounds mounted).
-    figures = mode == "report_figures"
-    # Spectral-finish round: the app's generators with the spectral_finish low-pass, judged only (no training).
-    finish = mode in ("finish_round", "finish_round2")
-    flow = dual or red13 or strict or strict_round or flowgan or r_round or p4_round or p4_diag or p5_round or figures or finish or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
+    flow = dual or red13 or strict or r_round or p5_round or fresh or galaxy_b or lsm_galaxy or galaxy_d or galaxy_e or mode.startswith(("flow10_", "flow10b_", "flow10c_", "flow10d_", "flow10e_", "flow10f_"))
     if mode == "flow10c_resume":
         # The final trained every seed but its worker pool died while scoring two of them.
         mode_args = ["--stage", "final", "--resume-from", "/kaggle/input"]
@@ -98,29 +84,14 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
         sources.append("ml/kaggle_multidomain/experiment_e.py")
     if lsm_galaxy:
         sources.append("ml/kaggle_multidomain/experiment_lsm_galaxy.py")
-    if strict or strict_round or flowgan or r_round or p4_round or p4_diag or p5_round or figures or finish:
+    if strict or r_round or p5_round:
         sources += ["ml/kaggle_multidomain/realism.py", "ml/kaggle_multidomain/strict_judge.py"]
-    if r_round or p4_round or p4_diag or p5_round:
+    if r_round or p5_round:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("experiment_strict", "data_r", "flow_r",
                                                                      "experiment_r")]
-    if p4_round or p4_diag or p5_round:
-        sources += ["ml/kaggle_multidomain/flow_gan.py", "ml/kaggle_multidomain/experiment_p4.py"]
-    if p4_diag:
-        sources.append("ml/kaggle_multidomain/experiment_p4_diag.py")
     if p5_round:
         sources += ["ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/experiment_p5.py",
                     "ml/kaggle_multidomain/waveform_compare.py"]
-    if finish:
-        sources += ["ml/kaggle_multidomain/experiment_strict.py", "ml/kaggle_multidomain/spectral_finish.py",
-                    "ml/kaggle_multidomain/experiment_finish.py"]
-    if flowgan or figures:
-        sources += ["ml/kaggle_multidomain/experiment_strict.py", "ml/kaggle_multidomain/experiment_flowgan.py",
-                    "ml/kaggle_multidomain/flow_gan.py"]
-    if figures:
-        sources += ["ml/kaggle_multidomain/artifact_sqi.py", "ml/kaggle_multidomain/experiment_figures.py"]
-    if strict_round:
-        sources += ["ml/kaggle_multidomain/experiment_strict.py", "ml/kaggle_lsm/lsm_multiset.py",
-                    "ml/kaggle_lsm/lsm_strict.py"]
     if dual or red13:
         sources += [f"ml/kaggle_multidomain/{name}.py" for name in ("data_dual", "flow2", "experiment_dual")]
     if red13:
@@ -258,36 +229,14 @@ def stage(output, mode, steps=2000, seeds=(42, 123, 2026), arm=None, owner=OWNER
     if strict:
         entry = ("from ml.kaggle_multidomain.strict_judge import main\n"
                  "main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/strict_judge'])")
-    if strict_round:
-        entry = ("from ml.kaggle_multidomain.experiment_strict import main\n"
-                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/strict_round', '--stage', "
-                 f"'{strict_stages[mode]}', '--steps', '{steps}'])")
-    if flowgan:
-        entry = ("from ml.kaggle_multidomain.experiment_flowgan import main\n"
-                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/flowgan_round', '--steps', "
-                 f"'{steps}'])")
     if r_round:
         entry = ("from ml.kaggle_multidomain.experiment_r import main\n"
                  f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/r_round', '--steps', "
-                 f"'{steps}'])")
-    if p4_round:
-        entry = ("from ml.kaggle_multidomain.experiment_p4 import main\n"
-                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/p4_round', '--steps', "
                  f"'{steps}'])")
     if p5_round:
         entry = ("from ml.kaggle_multidomain.experiment_p5 import main\n"
                  f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/p5_{p5_stages[mode]}', "
                  f"'--stage', '{p5_stages[mode]}', '--steps', '{steps}'])")
-    if p4_diag:
-        entry = ("from ml.kaggle_multidomain.experiment_p4_diag import main\n"
-                 "main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/p4_diag'])")
-    if finish:
-        entry = ("from ml.kaggle_multidomain.experiment_finish import main\n"
-                 f"main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/finish_round', '--round', "
-                 f"'{'v2' if mode == 'finish_round2' else 'v1'}'])")
-    if figures:
-        entry = ("from ml.kaggle_multidomain.experiment_figures import main\n"
-                 "main(['--input-root', '/kaggle/input', '--output', '/kaggle/working/report_figures'])")
     if lsm_multi:
         entry = ("from ml.kaggle_lsm.lsm_multiset import main\n"
                  "main(['run', '--pack', '/kaggle/input', '--output', '/kaggle/working/lsm_multi'])")
@@ -428,32 +377,11 @@ sys.path.insert(0, str(root))
     if strict:
         metadata.update(id=f"{owner}/ppg-strict-judge-v1", title="PPG Strict Judge v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
-    if strict_round:
-        # The judge kind comes from the strict-judge kernel's SELECTION_JUDGE.json (mounted as a kernel source); the
-        # judge stage also mounts both training kernels' outputs.
-        slug = mode.replace("_", "-")
-        sources = [f"{owner}/ppg-strict-judge-v1"]+(
-            [f"{owner}/ppg-strict-train-physiomix-v1", f"{owner}/ppg-strict-train-lsm-v1"] if mode == "strict_judge_round" else [])
-        metadata.update(id=f"{owner}/ppg-{slug}-v1", title=f"PPG {slug.replace('-', ' ').title()} v1",
-                        machine_shape="NvidiaTeslaT4", kernel_sources=sources,
-                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
-    if flowgan:
-        metadata.update(id=f"{owner}/ppg-flowgan-round-v1", title="PPG Flowgan Round v1", machine_shape="NvidiaTeslaT4",
-                        kernel_sources=[], dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
     if r_round:
         metadata.update(id=f"{owner}/ppg-physioflow-r-round-v1", title="PPG PhysioFlow R Round v1",
                         machine_shape="NvidiaTeslaT4", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1",
                                          f"{owner}/{R_DATASET}"])
-    if p4_round:
-        metadata.update(id=f"{owner}/ppg-physioflow-r-p4-round-v1", title="PPG PhysioFlow R P4 Round v1",
-                        machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/ppg-physioflow-r-round-v1"],
-                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1",
-                                         f"{owner}/{R_DATASET}"])
-    if p4_diag:
-        metadata.update(id=f"{owner}/ppg-physioflow-r-p4-diag-v1", title="PPG PhysioFlow R P4 Diag v1",
-                        machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/ppg-physioflow-r-p4-round-v1"],
-                        dataset_sources=[f"{owner}/ppg-physio3-data-v1"])
     if p5_round:
         # The P1 round's decision and seed exports travel as a dataset (P1_DATASET), so any account can run P5.
         stage_name = p5_stages[mode]
@@ -462,15 +390,6 @@ sys.path.insert(0, str(root))
                         kernel_sources=[] if stage_name == "train" else [f"{owner}/ppg-physiogan-r-p5-train-v1"],
                         dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/{R_DATASET}"]
                         + ([f"{owner}/{P1_DATASET}"] if stage_name == "train" else []))
-    if finish:
-        version = 2 if mode == "finish_round2" else 1
-        metadata.update(id=f"{owner}/ppg-finish-round-v{version}", title=f"PPG Finish Round v{version}", machine_shape="NvidiaTeslaT4",
-                        kernel_sources=[], dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
-    if figures:
-        metadata.update(id=f"{owner}/ppg-report-figures-v1", title="PPG Report Figures v1", machine_shape="NvidiaTeslaT4",
-                        kernel_sources=[f"{owner}/{k}" for k in ("ppg-flowgan-round-v1", "ppg-strict-judge-round-v1",
-                                                                 "ppg-strict-train-physiomix-v1", "ppg-strict-train-lsm-v1")],
-                        dataset_sources=[f"{owner}/ppg-physio3-data-v1", f"{owner}/ppg-app-models-v1"])
     if lsm_galaxy:
         metadata.update(id=f"{owner}/ppg-lsm-galaxy-v1", title="PPG LSM Galaxy v1", kernel_sources=[],
                         dataset_sources=[f"{owner}/ppg-physio3g-data-v1", f"{owner}/ppg-app-models-v1"])
@@ -518,7 +437,7 @@ def stage_r_pack(output, owner, r_pack):
 
 
 def stage_p1_output(output, owner, round_dir):
-    """Private dataset folder with what P5 reads from the P1 round (experiment_p4.resolve_teacher): DECISION_R.json,
+    """Private dataset folder with what P5 reads from the P1 round (experiment_r.resolve_teacher): DECISION_R.json,
     FROZEN_R.json and every R1 seed's generator_cpu.ts, in the round's own layout (upload with --dir-mode zip)."""
     round_dir, folder = Path(round_dir), Path(output)/P1_DATASET/"r_round"
     folder.mkdir(parents=True)
@@ -552,9 +471,7 @@ if __name__ == "__main__":
                                       "flow10c_final", "flow10c_resume", "flow10d_pilot", "flow10d_final", "flow10e_pilot",
                                       "flow10e_final", "flow10f_pilot", "flow10f_final", "fresh_galaxy",
                                       "galaxy_b_pilot", "lsm_galaxy", "galaxy_d_pilot", "galaxy_d_final", "galaxy_e", "dual", "dual12", "red13", "lsm_multi",
-                                      "strict_judge", "strict_train_physiomix", "strict_train_lsm",
-                                      "strict_judge_round", "flowgan_round", "r_round", "p4_round", "p4_diag", "p5_train", "p5_judge", "report_figures", "finish_round",
-                                      "finish_round2"),
+                                      "strict_judge", "r_round", "p5_train", "p5_judge"),
                    required=True)
     p.add_argument("--steps", type=int)
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 2026])
@@ -571,8 +488,7 @@ if __name__ == "__main__":
                "flow10_final": 16000, "flow10b_pilot": 20000, "flow10b_final": 20000, "flow10c_pilot": 20000,
                "flow10c_final": 20000, "flow10d_pilot": 20000, "flow10d_final": 20000, "flow10e_pilot": 20000,
                "flow10e_final": 20000, "flow10f_pilot": 20000, "flow10f_final": 20000, "dual": 20000, "dual12": 32000,
-               "strict_train_physiomix": 20000, "strict_train_lsm": 20000, "strict_judge_round": 20000,
-               "flowgan_round": 4000, "r_round": 8000, "p4_round": 3000,
+               "r_round": 8000,
                "p5_train": 6000, "p5_judge": 6000}.get(a.mode, 2000)
     if a.r_pack:
         print(stage_r_pack(a.output, a.owner, a.r_pack))

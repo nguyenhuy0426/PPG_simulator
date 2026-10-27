@@ -1,16 +1,11 @@
-"""PhysioMix bundle, worker and GXU preparation helpers; no hardware, no downloads."""
-import io
-import json
-import math
-import subprocess
-import sys
+"""Display rate estimate of preview strips and GXU preparation helpers; no hardware, no downloads."""
 import zipfile
 
 import pytest
 
 np = pytest.importorskip("numpy")
 
-from core.neural_preview import DEFAULT_BUNDLE, estimate_rate_bpm, physiomix_metadata
+from core.neural_preview import estimate_rate_bpm
 
 
 def pulse_train(bpm, fs=40, seconds=30, notch=.35):
@@ -42,52 +37,6 @@ def test_rate_estimate_falls_back_to_beats_for_irregular_rhythm():
 def test_rate_estimate_rejects_flat_and_aperiodic_input():
     assert estimate_rate_bpm(np.zeros(1200), 40) is None
     assert estimate_rate_bpm(np.random.default_rng(1).normal(size=1200), 40) is None
-
-
-def test_metadata_does_not_import_torch():
-    subprocess.run([sys.executable, "-c", "import sys, core.neural_preview as n; n.physiomix_metadata(); "
-                    "assert 'torch' not in sys.modules"], check=True)
-
-
-@pytest.fixture(scope="module")
-def generator():
-    pytest.importorskip("torch")
-    if physiomix_metadata() is None:
-        pytest.skip("Run scripts/prepare_physiomix_bundle.py to install the PhysioMix artifact")
-    from core.neural_preview import PhysioMixGenerator
-    return PhysioMixGenerator()
-
-
-def test_generator_is_repeatable_bounded_and_rate_controlled(generator):
-    lo, hi = generator.meta["hr_support_bpm"]
-    first, again = generator.generate(9, 80, "bidmc"), generator.generate(9, 80, "bidmc")
-    assert first.samples == again.samples and first.native_fs == 40 and len(first.samples) == 1200
-    assert all(math.isfinite(v) for row in first.samples for v in row)
-    assert first.provenance["measured_rate_bpm"] == pytest.approx(80, abs=4)
-    with pytest.raises(ValueError):
-        generator.generate(9, lo-1, "bidmc")
-    with pytest.raises(ValueError):
-        generator.generate(9, hi+1, "bidmc")
-    with pytest.raises(ValueError):
-        generator.generate(9, 80, "not_a_domain")
-    with pytest.raises(ValueError):
-        generator.generate(True, 80, "bidmc")
-
-
-def test_worker_emits_one_physiomix_json(generator):
-    out = subprocess.run([sys.executable, "-m", "core.sequence_worker", "11", "--model", "physiomix",
-                          "--hr", "90", "--domain", generator.meta["domains"][0]],
-                         check=True, capture_output=True, text=True).stdout
-    preview = json.loads(out)
-    assert preview["name"] == "PhysioMix" and preview["hr_target"] == 90
-    assert len(preview["samples"]) == 1200 and preview["provenance"]["paired_ir_red"] is False
-
-
-def test_reference_strips_are_train_only(generator):
-    from core.neural_preview import physiomix_reference_preview
-    for domain in generator.meta["domains"]:
-        preview = physiomix_reference_preview(domain)
-        assert preview.provenance["split"] == "train" and len(preview.samples) == 1200
 
 
 gxu = pytest.importorskip("ml.kaggle_multidomain.data_gxu")
@@ -153,15 +102,3 @@ def test_irregular_strip_locked_on_two_beat_lag_reports_the_beat_rate(seed, bpm)
     expected = 60*(k[-1]-k[0])/(onsets[k[-1]]-onsets[k[0]])
     assert _acf_rate_bpm(strip, 40) == pytest.approx(expected/2, rel=.12)
     assert estimate_rate_bpm(strip, 40) == pytest.approx(expected, rel=.05)
-
-
-def test_a_manifest_entry_without_its_model_file_is_not_offered(tmp_path):
-    import json
-    import shutil
-    from pathlib import Path
-    shutil.copy(Path(DEFAULT_BUNDLE)/"manifest.json", tmp_path/"manifest.json")
-    manifest = json.loads((tmp_path/"manifest.json").read_text())
-    assert "physiomix_generator" in manifest["models"]
-    assert physiomix_metadata(tmp_path) is None
-    (tmp_path/manifest["models"]["physiomix_generator"]["file"]).write_bytes(b"x")
-    assert physiomix_metadata(tmp_path) == manifest["physiomix"]

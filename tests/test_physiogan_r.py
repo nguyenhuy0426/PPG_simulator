@@ -237,7 +237,9 @@ def test_p5_kernels_run_on_one_account_with_the_p1_output_as_a_dataset(tmp_path,
     out = stage_kernel.stage(tmp_path/mode, mode, steps=2, owner="halovie2412")
     files = json.loads((out/"source_manifest.json").read_text())["files"]
     assert {"ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/experiment_p5.py",
-            "ml/kaggle_multidomain/waveform_compare.py", "ml/kaggle_multidomain/experiment_p4.py"} <= set(files)
+            "ml/kaggle_multidomain/waveform_compare.py", "ml/kaggle_multidomain/experiment_r.py"} <= set(files)
+    # The removed G3/P4 modules are no longer staged (P5 reads the P1 teacher through experiment_r).
+    assert not {"ml/kaggle_multidomain/flow_gan.py", "ml/kaggle_multidomain/experiment_p4.py"} & set(files)
     meta = json.loads((out/"kernel-metadata.json").read_text())
     sources = meta["kernel_sources"]+meta["dataset_sources"]
     assert all(s.startswith("halovie2412/") for s in sources) and meta["enable_gpu"]
@@ -252,11 +254,11 @@ def test_p5_kernels_run_on_one_account_with_the_p1_output_as_a_dataset(tmp_path,
 
 def test_p1_output_dataset_keeps_the_layout_resolve_teacher_reads(tmp_path):
     import hashlib
-    from ml.kaggle_multidomain import experiment_p4, stage_kernel
+    from ml.kaggle_multidomain import experiment_r, stage_kernel
     pack, recs = records(v3_pack())
     export = p1_output(tmp_path/"r_round", pack, recs)
     (tmp_path/"r_round"/"FROZEN_R.json").write_text("{}")
     folder = stage_kernel.stage_p1_output(tmp_path/"staged", "halovie2412", tmp_path/"r_round")
-    teacher = experiment_p4.resolve_teacher(folder, tmp_path/"teacher")
+    teacher = experiment_r.resolve_teacher(folder, tmp_path/"teacher")
     assert teacher["seed"] == 42 and teacher["sha256"] == hashlib.sha256(export.read_bytes()).hexdigest()
     assert json.loads((folder/"dataset-metadata.json").read_text())["id"] == "halovie2412/ppg-physioflow-r-p1-output-v1"

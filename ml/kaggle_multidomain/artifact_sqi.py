@@ -1,6 +1,6 @@
 """Heuristic artifact mask (signal-quality index) for 30 s, 40 Hz PPG windows without artifact annotations.
 
-The report (scripts/build_gan_report.py) needs an analogue of the artifact proportion of Ding et al. 2023 (share of a 30 s
+The GAN report (docs/model-report/gan-report.html; its builder was removed with the dropped rounds) needed an analogue of the artifact proportion of Ding et al. 2023 (share of a 30 s
 segment marked as artifact, grouped 0%, (0, 20%], (20, 60%], (60, 100%]). The v3 windows have no artifact labels, so
 this marks samples by transparent rules on each min-max normalised window:
 - clipped: runs of CLIP_RUN samples within CLIP_EPS of 0 or 1;

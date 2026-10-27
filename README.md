@@ -66,32 +66,18 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 ### Neural waveform models
 
-`assets/neural/manifest.json` ships three generators of a normalized 30 s PPG strip at 40 Hz (no paired IR/RED, no
-calibrated SpO₂):
+The app's Neural page offers the fitted three-Gaussian shaper and the LSM-GAN sequence (normalized 30 s strip at 40 Hz,
+BIDMC, no rate control, no paired IR/RED, no calibrated SpO₂); `assets/neural/manifest.json` lists the packaged files.
 
-| Model | Inputs → output | Network | Status |
-|---|---|---|---|
-| **PhysioMix** (round 9) | noise + condition (dataset/site, rate, irregularity, amplitude) → 1,200 samples | Conditional GAN: constructed beat sequence, 6-harmonic pulse head, 8 dilated TCN blocks with FiLM, wrist-motion term; 3-scale spectral-norm critic on the signal and its derivatives | App model, selected on validation only |
-| **PhysioFlow** (round 10) | same | Rectified-flow 1-D U-Net (6.9 M parameters), 16 Heun steps from noise; no critic | More realistic on 4 of 6 old datasets, ~100× slower; not selected (wrist guard) |
-| LSM-GAN | noise only | Unconditioned GAN trained on BIDMC | Comparison only; no rate control |
-
-Realism is judged on people never used for training. Three judges are used:
-
-- A person-grouped C2ST with a small derivative CNN.
-- Since step C, the frozen PaPaGei-S PPG foundation model. It ranks the generators like the CNN (Spearman 0.88).
-- Independent physiology features.
-
-On everyday wrist PPG (GalaxyPPG, Empatica E4), every model is still largely detectable. The main giveaway is the
-5–8 Hz texture.
-
-Step D separated everyday wrist from wrist exercise as its own condition. The retrained PhysioFlow kept the old
-validation and reached 24% "indistinguishable" on 12 unseen GalaxyPPG people, against 0.7% for the app. It did not
-clear the pre-registered validation margin, so the app keeps PhysioMix.
-
-Evidence and rules are in [docs/physioflow/REPORT_VI.md](docs/physioflow/REPORT_VI.md). A plain-language page and a client
-presentation page (stage-by-stage generation, GAN critic, PhysioFlow denoising, training videos) are in
-[docs/model-report](docs/model-report/README.md). These are engineering evaluations of waveform shape and rate
-following, not clinical validation, and they were not measured on the Pi/DAC/OPT101.
+PhysioMix (round 9) and PhysioFlow (round 10) were removed from the app with every research generator that did not
+improve on them. A strict real-vs-generated judge retrained per source on unseen people (C2ST, validation AUC; 0.5 =
+indistinguishable, the real-vs-real control is about 0.45) still separated them at 0.99–1.00, as it did PhysioMix with
+the strict critic, LSM-GAN-S, the flow-GANs G1–G3, BeatGen and the spectral-finish variants (0.95–1.00). Kept for
+further work: PhysioFlow-R (R1, mean 0.759 over seeds 0.745–0.785 at 16 Heun steps, the only clear gain), its fine-tune R1F and PhysioGAN-R
+(P5, in training), and the LSM-GAN author topology as the unchanged baseline. The removed models' results stay in
+`ml/runs`, [docs/model-report](docs/model-report/README.md) and [docs/physioflow/REPORT_VI.md](docs/physioflow/REPORT_VI.md);
+their code is in git history. These are engineering evaluations of normalized waveform shape, not clinical
+validation, and they were not measured on the Pi/DAC/OPT101.
 
 #### Earlier models (history)
 

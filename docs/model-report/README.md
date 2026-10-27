@@ -18,17 +18,11 @@ rồi vào http://127.0.0.1:8765.
 
 ## Cập nhật số liệu
 
-`data.js` được tạo bởi `scripts/build_model_report.py` từ các model đang nằm trong `assets/neural` (PhysioMix và
-PhysioFlow), kết quả đánh giá (`ml/runs/realism-v1/realism_round10.json`: PhysioMix, PhysioFlow, LSM-GAN, Gaussian;
-`realism_lsm_narrow.json`: phép đo công bằng cho LSM-GAN), lịch sử train của vòng đang dùng, các vòng lặp PhysioFlow
-(`ml/runs/physioflow10*-result-v1`, `physioflow10c-resume-local-v1`) và dữ liệu đã xử lý (`ml/runs/physio3-data-v1`).
-Bằng chứng từng vòng PhysioFlow cũng được lưu trong git ở `docs/physioflow/`. Các thư mục `ml/runs` không nằm trong git; cần có chúng trên máy để tạo lại:
+`data.js` được tạo bởi `scripts/build_model_report.py` từ PhysioMix và PhysioFlow khi hai model này còn trong app. Hai model
+đã được gỡ khỏi app (strict judge vẫn tách được chúng ở AUC 0,99–1,00), nên script tạo dữ liệu cũng đã gỡ theo; `data.js`
+được giữ nguyên làm số liệu lịch sử. Muốn tạo lại thì lấy script và model từ lịch sử git.
 
-```bash
-.venv/bin/python scripts/build_model_report.py
-```
-
-Khi model trong app đổi vòng, truyền `--run` (lịch sử train), `--realism` và `--app-source` (tên run của model trong app trong file realism) tương ứng. Ảnh
+Ảnh
 `img/app-rx-rate-synthetic.png` chụp app với luồng RX tổng hợp để kiểm tra hiển thị, không phải đo phần cứng.
 
 ## Trang trình bày (`trinh-bay.html`)
@@ -52,14 +46,10 @@ bước B, B-LSM, C, D, E từ `docs/physioflow/loop/galaxy_b_pilot.json`, `lsm_
 
 ## Giám khảo nghiêm và PhysioFlow-GAN (`gan-report.html`)
 
-Bố cục theo bài LSM-GAN (Ding et al., IEEE JBHI 27(3), 2023): Bảng I–IV, Hình 1–9, Thuật toán 1–3. `gan-data.js` được tạo bởi
-`scripts/build_gan_report.py` từ kết quả vòng giám khảo nghiêm (`ml/runs/strict-judge-round-result-v1`), các vòng train
-(`ml/runs/strict-train-*-result-v1`), vòng PhysioFlow-GAN (`ml/runs/flowgan-round-result-v2`, khi đã có), gói dữ liệu v3 và
-model trong `assets/neural`; mẫu sinh cho Hình 2b, 3b, 9 được vẽ lại trên CPU (khoảng 3 phút):
-
-```bash
-python3 scripts/build_gan_report.py
-```
+Bố cục theo bài LSM-GAN (Ding et al., IEEE JBHI 27(3), 2023): Bảng I–IV, Hình 1–9, Thuật toán 1–3. `gan-data.js` được tạo bởi `scripts/build_gan_report.py`
+từ các vòng giám khảo nghiêm, các vòng train (`ml/runs/strict-*-result-v1`) và vòng PhysioFlow-GAN. Các model của những
+vòng đó không cải thiện (AUC 0,95–1,00) nên đã gỡ cùng script tạo dữ liệu. `gan-data.js` và hình được giữ nguyên làm số
+liệu; mục P5 và bảng model giữ/loại trên trang được viết tay.
 
 Tỷ lệ artifact là luật SQI tự viết (`ml/kaggle_multidomain/artifact_sqi.py`), không phải nhãn chuyên gia. Hình 1, 4, 5 và
 các thuật toán viết tay từ mã nguồn (mỗi số có ghi file:line trong trang).

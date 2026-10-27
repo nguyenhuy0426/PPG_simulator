@@ -11,7 +11,6 @@ the window is cut and min-max normalised. The band-pass is applied once.
 The r_pipeline source sends real R windows through this view, with their own context, so the strict judge can test
 the view itself against the pack's v3 windows (a null control for the pipeline).
 """
-import copy
 import hashlib
 from pathlib import Path
 
@@ -234,61 +233,8 @@ def training_rows(pack, ids, roots):
     raise FileNotFoundError("No input root for the R pack")
 
 
-# ---------------------------------------------------------------- P4: PhysioFlow-R as a GAN generator
-STUDENT_STEPS, TEACHER_STEPS = 4, 16
+# ---------------------------------------------------------------- R1 teacher file (P1 ship seed)
 TEACHER_R_FILE = "physioflow_r_generator.ts"
-
-
-class FlowGANR(nn.Module):
-    """flow_gan.FlowGAN on PhysioFlow-R (P3: no sensor term; the 8-20 Hz residual comes from the R view alone).
-
-    The student is a STUDENT_STEPS Heun sampler of the R1 U-Net on the 40 s grid, every U-Net pass under activation
-    checkpointing while gradients are on; its output goes through RView with the drawn context type, so the critic and
-    the distillation anchor (the frozen TEACHER_STEPS R1 sampler, same z and condition) both see v3 windows."""
-    def __init__(self, size, center, scale, domains, steps=STUDENT_STEPS, width=1.):
-        super().__init__()
-        self.gen = FlowGeneratorR(size, center, scale, domains, sample_steps=steps, width=width, flag_scaffold=True)
-
-    @property
-    def flow(self):
-        return self.gen.flow
-
-    def integrate(self, z, condition):
-        from torch.utils.checkpoint import checkpoint
-        flow, choice = self.gen.flow, self.gen.choice
-        ze = choice.extend(z)
-        s = flow.scaffold_of(ze, condition)
-        if torch.is_grad_enabled():
-            velocity = lambda x, t: checkpoint(flow.velocity, x, t, s, condition, use_reentrant=False)
-        else:
-            velocity = lambda x, t: flow.velocity(x, t, s, condition)
-        x, steps = ze[:, None], flow.sample_steps
-        for i in range(steps):
-            t, t_next = 1-i/steps, 1-(i+1)/steps
-            v = velocity(x, t)
-            proposal = x+(t_next-t)*v
-            x = x+(t_next-t)*.5*(v+velocity(proposal, t_next)) if i < steps-1 else proposal
-        return self.gen.view(x, choice.context(z, condition))
-
-    def parts(self, z, condition):
-        y = self.integrate(z, condition)
-        return y, y
-
-    def forward(self, z, condition):
-        return self.integrate(z, condition)
-
-    def export(self, z, condition):
-        return self.gen.export(z, condition)
-
-    def load_teacher(self, state):
-        self.gen.flow.net.load_state_dict(state["net"])
-        self.gen.choice.set_table(state["contexts"], state["cdf"])
-
-    def teacher(self):
-        """Frozen copy at the teacher's step count (call after load_teacher): teacher(z, condition) -> v3 windows."""
-        result = copy.deepcopy(self.gen).eval().requires_grad_(False)
-        result.flow.sample_steps = TEACHER_STEPS
-        return result
 
 
 def teacher_state_r(roots):

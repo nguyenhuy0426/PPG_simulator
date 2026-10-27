@@ -1,4 +1,5 @@
 """P1 PhysioFlow-R: resample-only targets, the exact record-context v3 view, and the R1 arm end to end on CPU."""
+import hashlib
 import json
 
 import numpy as np
@@ -6,8 +7,9 @@ import pytest
 from scipy.signal import sosfiltfilt
 import torch
 
-from ml.kaggle_lsm.train_lsm import LENGTH, normalize
-from ml.kaggle_multidomain import data, data_r, experiment_v3, flow_r
+from ml.kaggle_lsm.train_lsm import LENGTH, make_networks, normalize
+from ml.kaggle_multidomain import data, data_r, experiment_v3, flow_r, physio
+from ml.kaggle_multidomain.flow import FlowGenerator
 from ml.kaggle_multidomain.data_r import CONTEXT, R_LENGTH
 from tests.test_physiomix_v2 import save_v3, v3_pack
 
@@ -132,11 +134,32 @@ def test_r_pack_must_come_from_the_v3_pack(tmp_path):
         data_r.load_r(tmp_path, dict(windows_sha256="0"*64))
 
 
+def flow_bundle(folder, pack):
+    """App-like bundle as the P1 round judged it (PhysioFlow was its incumbent): traced untrained round-9 PhysioMix, untrained author LSM-GAN, an exported untrained PhysioFlow."""
+    folder.mkdir(parents=True)
+    development = {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}
+    c = physio.Conditions(development, "v2")
+    size = c.bank.shape[1]
+    z, rows = torch.randn(2, LENGTH), torch.tensor(c.bank[:2])
+    generator, _ = experiment_v3.build(experiment_v3.config("L3_rel_beat_lr_crop_r1w_motion_dom"), c)
+    torch.jit.trace(generator.eval(), (z, rows)).save(str(folder/"physiomix_generator.ts"))
+    torch.jit.trace(make_networks()[0].eval(), z).save(str(folder/"lsm_generator.ts"))
+    torch.manual_seed(5)
+    flow = FlowGenerator(size, c.center, c.scale, sample_steps=2, flag_scaffold=True).eval()
+    flow.export(z, rows).save(str(folder/"physioflow_generator.ts"))
+    sha = lambda name: hashlib.sha256((folder/name).read_bytes()).hexdigest()
+    schema = dict(domains=c.domains, center=c.center.tolist(), scale=c.scale.tolist())
+    manifest = dict(models={k: dict(file=f"{k}.ts", sha256=sha(f"{k}.ts"))
+                            for k in ("physiomix_generator", "physioflow_generator", "lsm_generator")},
+                    physiomix=schema, physioflow=schema)
+    (folder/"manifest.json").write_text(json.dumps(manifest))
+    return flow
+
+
 def r_round_input(tmp_path, monkeypatch):
     """A tiny v3 pack, its R pack and app bundle with judges and training cut to a few steps."""
     from ml.kaggle_multidomain import experiment_flow
     from ml.kaggle_multidomain import strict_judge as sj
-    from tests.test_flowgan import flow_bundle
     for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
         monkeypatch.setattr(experiment_v3, name, value)
     monkeypatch.setattr(experiment_flow, "CONTROL_N", 1)
@@ -202,48 +225,6 @@ def r1_teacher(folder, pack, recs, steps=2):
     folder.mkdir(parents=True)
     g.export(torch.randn(2, LENGTH), torch.tensor(c.bank[:2])).save(str(folder/flow_r.TEACHER_R_FILE))
     return g, c
-
-
-def test_g3_starts_at_the_r1_teacher_with_the_band_critic(tmp_path, monkeypatch):
-    from ml.kaggle_multidomain import strict_judge as sj
-    pack, recs = records(v3_pack())
-    teacher, c = r1_teacher(tmp_path/"r1", pack, recs)
-    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
-                                                                 width=.25))
-    cfg = experiment_v3.config("G3_flowgan_r")
-    assert cfg["flowgan_r"] and not cfg["flowgan_sensor"] and cfg["critic_band"]
-    g, d = experiment_v3.build(cfg, c)
-    assert isinstance(d, sj.StrictCritic) and len(d.branches) == 4
-    g.load_teacher(flow_r.teacher_state_r([tmp_path]))
-    assert torch.equal(g.gen.choice.cdf, teacher.choice.cdf)
-    z, rows = torch.randn(4, LENGTH), torch.tensor(c.bank[:4])
-    with torch.no_grad():
-        fake, clean = g.parts(z, rows)
-        torch.testing.assert_close(fake, teacher(z, rows))       # same steps: the student is the teacher
-        assert fake is clean
-    student_teacher = g.teacher()
-    assert student_teacher.flow.sample_steps == flow_r.TEACHER_STEPS
-    fake = g(z, rows)
-    fake.mean().backward()                                         # through the checkpointed passes and RView
-    assert all(p.grad is not None for p in g.gen.flow.net.parameters() if p.requires_grad)
-
-
-def test_g3_arm_trains_adversarially_and_exports_on_cpu(tmp_path, monkeypatch):
-    for name, value in (("CONTROL_N", 1), ("C2ST_TRAIN", 20), ("C2ST_VALID", 10), ("C2ST_STEPS", 3)):
-        monkeypatch.setattr(experiment_v3, name, value)
-    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
-                                                                 width=.25, distill_every=1))
-    pack, recs = records(v3_pack())
-    root = tmp_path/"input"
-    save_v3(root/"pack", pack)
-    r1_teacher(root/"r1", pack, recs)
-    (tmp_path/"out").mkdir()
-    row = experiment_v3.worker("cpu", [("G3_flowgan_r", 42)], str(root), tmp_path/"out", 2, 4, 2, 12, None)[0]
-    assert row["gates"]["trace_ok"] and row["gates"]["finite"] and not row["gates"]["flat"]
-    scripted = torch.jit.load(str(tmp_path/"out"/"G3_flowgan_r_seed42"/"generator_cpu.ts"))
-    assert scripted(torch.randn(2, LENGTH), torch.tensor(experiment_v3.conditions_for(
-        {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}, "v2").bank[:2])).shape == \
-        (2, 1, LENGTH)
 
 
 def test_scoring_slot_admits_one_worker_at_a_time(tmp_path):
@@ -315,79 +296,15 @@ def p1_output(folder, pack, recs, ship_seed=42, winner=None):
     return run/"generator_cpu.ts"
 
 
-def test_p4_round_fine_tunes_the_p1_ship_seed_and_judges_validation_before_test_on_cpu(tmp_path, monkeypatch):
-    import hashlib
-    from ml.kaggle_multidomain import experiment_p4
-    root = r_round_input(tmp_path, monkeypatch)
-    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
-                                                                 width=.25, distill_every=1))
-    pack = {k: v for k, v in np.load(root/"pack"/"windows.npz", allow_pickle=False).items()}
-    teacher = p1_output(root/"p1", *records(v3_pack()))
-    assert np.array_equal(pack["signal"], records(v3_pack())[0]["signal"])
-    out = tmp_path/"round"
-    summary = experiment_p4.main(["--input-root", str(root), "--output", str(out), *R_ROUND_ARGS])
-    frozen = json.loads((out/"FROZEN_P4.json").read_text())
-    assert frozen["rule_sha256"] == experiment_p4.rule_sha256() and frozen["teacher"]["seed"] == 42
-    assert frozen["teacher"]["sha256"] == hashlib.sha256(teacher.read_bytes()).hexdigest()
-    assert (out/"FROZEN_P4.json").stat().st_mtime <= (out/"training_execution.json").stat().st_mtime \
-        <= (out/"DECISION_P4.json").stat().st_mtime <= (out/"test"/"judges.json").stat().st_mtime
-    assert set(summary["validation"]["strict"]) == {"physiomix_app", "physioflow_app", "r1_teacher",
-                                                   "real_other_people", "G3_flowgan_r_seed42", "G3_flowgan_r_seed123"}
-    decision = summary["decision"]
-    assert set(decision["checks"]) == {"null_valid", "eligible", "auc_gain", "c_ok"}
-    assert decision["best_reference"] == min(decision["references"].values())
-
-
-def test_p4_needs_an_eligible_p1_seed_and_its_own_ship_file(tmp_path):
-    from ml.kaggle_multidomain import experiment_p4
+def test_resolve_teacher_needs_an_eligible_p1_seed_and_its_own_ship_file(tmp_path):
+    from ml.kaggle_multidomain import experiment_r
     pack, recs = records(v3_pack())
     (tmp_path/"a").mkdir()
     (tmp_path/"a"/"DECISION_R.json").write_text(json.dumps(dict(ship_seed=None)))
     with pytest.raises(ValueError, match="no eligible seed"):
-        experiment_p4.resolve_teacher(tmp_path/"a", tmp_path/"ta")
+        experiment_r.resolve_teacher(tmp_path/"a", tmp_path/"ta")
     p1_output(tmp_path/"b", pack, recs, winner="R1_flowr")
     (tmp_path/"b"/"ship").mkdir()
     (tmp_path/"b"/"ship"/flow_r.TEACHER_R_FILE).write_bytes(b"other")
     with pytest.raises(ValueError, match="not its ship seed"):
-        experiment_p4.resolve_teacher(tmp_path/"b", tmp_path/"tb")
-
-
-def test_p4_trains_one_worker_per_gpu_each_seed_with_its_own_hours(tmp_path, monkeypatch):
-    import time
-    from ml.kaggle_multidomain import experiment_p4
-    calls = []
-
-    def fake_worker(device, jobs, input_root, output, steps, batch, interval, n, frozen, threads, deadline,
-                    teacher_roots):
-        calls.append((device, jobs[0][1], deadline, teacher_roots))
-        return [dict(seed=jobs[0][1])]
-    monkeypatch.setattr(experiment_v3, "worker", fake_worker)
-    now = time.time()
-    rows = experiment_p4.train_seeds("cuda:0", [42, 2026], "in", tmp_path, 2, 2, 4, 1., now+1800, "teacher")
-    assert [r["seed"] for r in rows] == [42, 2026]
-    assert [c[1] for c in calls] == [42, 2026] and all(c[3] == ["teacher"] for c in calls)
-    assert all(c[2] <= now+1800+1 for c in calls)               # the kernel deadline caps a seed's own hours
-    calls.clear()
-    experiment_p4.train_seeds("cuda:1", [123], "in", tmp_path, 2, 2, 4, .1, now+7200, "teacher")
-    assert calls[0][2] <= time.time()+360+1                      # 0.1 h for the seed, well before the deadline
-
-
-def test_p4_diagnosis_judges_teacher_and_g3_weights_at_each_step_count_on_cpu(tmp_path, monkeypatch):
-    from ml.kaggle_multidomain import experiment_p4, experiment_p4_diag
-    root = r_round_input(tmp_path, monkeypatch)
-    monkeypatch.setitem(experiment_v3.ARMS, "G3_flowgan_r", dict(experiment_v3.ARMS["G3_flowgan_r"], student_steps=2,
-                                                                 width=.25, distill_every=1))
-    p1_output(root/"p1", *records(v3_pack()))
-    experiment_p4.main(["--input-root", str(root), "--output", str(root/"p4"), *R_ROUND_ARGS[:-2], "--seeds", "42",
-                        "123", "--judge-seeds", "0"])
-    out = tmp_path/"diag"
-    result = experiment_p4_diag.main(["--input-root", str(root), "--output", str(out), "--allow-cpu",
-                                      "--judge-seeds", "0"])
-    frozen = json.loads((out/"FROZEN_DIAG.json").read_text())
-    assert frozen["rule_sha256"] == experiment_p4_diag.rule_sha256()
-    assert (out/"FROZEN_DIAG.json").stat().st_mtime <= (out/"DIAGNOSIS_P4.json").stat().st_mtime
-    assert set(result["auc"]) == {*experiment_p4_diag.SOURCES, "real_other_people"}
-    assert set(result["reproduced"]) == {"r1_s16", "g3_s4"}
-    assert not (out/"test").exists()
-    for name in ("step_effect", "gan_effect", "gan_effect_16"):
-        assert result[name]["threshold"] >= .02
+        experiment_r.resolve_teacher(tmp_path/"b", tmp_path/"tb")

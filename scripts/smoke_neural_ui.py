@@ -15,6 +15,21 @@ from core.signal_engine import SignalEngine
 from ui.ctk_app import CTkApp
 
 
+def xwd_window(window_id):
+    """Read one X window through xwd (ZPixmap, 24/32 bpp) without extra Python packages."""
+    import struct
+    from PIL import Image
+    data = subprocess.run(['xwd', '-silent', '-id', str(window_id)], capture_output=True, check=True).stdout
+    header = struct.unpack('>25I', data[:100])
+    size, width, height, bpp, line = header[0], header[4], header[5], header[11], header[12]
+    colors = header[19]
+    if bpp not in (24, 32):
+        raise OSError(f'Unsupported xwd depth {bpp}')
+    offset = size+12*colors
+    order = 'BGRX' if header[7] == 0 else 'XRGB'
+    return Image.frombuffer('RGBX', (width, height), data[offset:offset+line*height], 'raw', order, line, 1).convert('RGB')
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=Path('docs/ui/touch-output'))
@@ -33,7 +48,6 @@ def main():
             image=ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height()))
         except OSError:
             # XWayland refuses root-window reads; the app's own window can still be read.
-            from smoke_physiomix_ui import xwd_window
             try:
                 image=xwd_window(app.winfo_id())
             except (OSError,subprocess.CalledProcessError) as exc:
