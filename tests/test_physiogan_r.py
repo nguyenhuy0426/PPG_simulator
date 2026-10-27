@@ -1,6 +1,7 @@
 """P5 PhysioGAN-R: the record generator through the v3 view, the relativistic loss and penalties, the copy gate,
 the round's decision rule and the round end to end on CPU."""
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -127,15 +128,49 @@ def test_r1f_starts_from_the_teacher_and_checkpoints_on_s_real_alone():
         {k: v for k, v in r1.items() if k not in ("lr", "schedule")}
 
 
-def test_p5_round_trains_judges_validation_before_test_and_ships_on_cpu(tmp_path, monkeypatch):
-    from ml.kaggle_multidomain import experiment_flow, experiment_p5 as p5
+def test_ada_augment_is_identity_at_zero_and_p_follows_the_critic():
+    aug = physiogan_r.Augment()
+    x = torch.rand(8, 1, 64, requires_grad=True)
+    assert torch.equal(aug(x), x)
+    aug.adjust(1., 50_000)                                    # the critic always ranks the pair: more augmentation
+    assert float(aug.p) == pytest.approx(.5)
+    aug.adjust(1., 10**6)
+    assert float(aug.p) == pytest.approx(physiogan_r.ADA_MAX)
+    torch.manual_seed(0)
+    y = aug(x)
+    assert y.shape == x.shape and not torch.equal(y, x)
+    y.sum().backward()                                        # differentiable for the generated windows
+    assert x.grad.abs().sum() > 0
+    aug.adjust(-1., 10**7)
+    assert float(aug.p) == 0.
+
+
+def test_direct_comparison_reports_each_distance_next_to_real_vs_real():
+    from ml.kaggle_multidomain import waveform_compare
+    rng = np.random.default_rng(0)
+    t = np.arange(LENGTH)/40
+    real = lambda n, hz: np.array([np.sin(2*np.pi*(hz+.1*rng.standard_normal())*t)+.05*rng.standard_normal(LENGTH)
+                                   for _ in range(n)])
+    norm = lambda x: ((x-x.min(1, keepdims=True))/np.ptp(x, 1, keepdims=True)).astype(np.float32)
+    target, reference = norm(real(20, 1.2)), norm(real(20, 1.2))
+    close, far = norm(real(20, 1.2)), norm(real(20, 2.5))
+    dom = np.array(["bidmc"]*20)
+    out = waveform_compare.compare(dict(close=(close, dom), far=(far, dom)), target, dom, reference, dom)
+    s = out["summary"]
+    assert set(s) == {"real_train_people", "close", "far"}
+    assert s["far"]["psd_pulse"] > s["close"]["psd_pulse"] and s["far"]["acf"] > s["close"]["acf"]
+    assert s["far"]["ratio_to_real"]["acf"] > 2
+
+
+def test_p5_train_stage_previews_then_the_judge_stage_judges_validation_before_test_on_cpu(tmp_path, monkeypatch):
+    from ml.kaggle_multidomain import experiment_p5 as p5
     root = r_round_input(tmp_path, monkeypatch)
     monkeypatch.setitem(experiment_v3.ARMS, "R1F_flowr_ft", dict(experiment_v3.ARMS["R1_flowr"], init_r1=True,
                                                                  select_s_real=True))
     monkeypatch.setattr(physiogan_r, "CONFIG", TINY)
     monkeypatch.setattr(physiogan_r, "CRITIC", dict(physiogan_r.CRITIC, width=4))
-    monkeypatch.setattr(physiogan_r, "TRAIN", dict(physiogan_r.TRAIN, max_steps=3, lazy=2, batch=4, warmup_ema=2,
-                                                   select_every_s=0.))
+    monkeypatch.setattr(physiogan_r, "TRAIN", dict(physiogan_r.TRAIN, max_steps=4, lazy=2, batch=4, warmup_ema=2,
+                                                   select_every_s=0., log_every=2))
     monkeypatch.setattr(physiogan_r, "SELECT", dict(physiogan_r.SELECT, steps=2, batch=4))
     monkeypatch.setattr(physiogan_r, "SELECT_SIZES", dict(fit=4, inner=2, eval=2))
     monkeypatch.setattr(p5, "R1_SOURCES", {"r1_s16": ("r1", 2), "r1_s32": ("r1", 3), "r1_s64": ("r1", 4),
@@ -146,21 +181,29 @@ def test_p5_round_trains_judges_validation_before_test_and_ships_on_cpu(tmp_path
     real_state = flow_r.teacher_state_r
     monkeypatch.setattr(flow_r, "teacher_state_r", lambda roots: loaded.append(list(roots)) or real_state(roots))
     teacher = p1_output(root/"p1", *records(v3_pack()))
-    out = tmp_path/"round"
+    train = root/"p5_train"
     args = ["--allow-cpu", "--steps", "2", "--interval", "2", "--eval-samples", "12", "--seeds", "42", "123",
             "--judge-seeds", "0"]
-    summary = p5.main(["--input-root", str(root), "--output", str(out), *args])
-    frozen = json.loads((out/"FROZEN_P5.json").read_text())
+    with pytest.raises(ValueError, match="Expected one FROZEN_P5"):
+        p5.main(["--input-root", str(root), "--output", str(tmp_path/"early"), "--stage", "judge", *args])
+    result = p5.main(["--input-root", str(root), "--output", str(train), "--stage", "train", *args])
+    frozen = json.loads((train/"FROZEN_P5.json").read_text())
     assert frozen["rule_sha256"] == p5.rule_sha256() and frozen["teacher"]["seed"] == 42
-    # R1F loaded its U-Net from the teacher folder (the last root), not from the input root.
-    assert [str(out/"teacher")] in loaded
-    for a, b in (("FROZEN_P5.json", "training_execution.json"), ("training_execution.json", "COPY_P5.json"),
-                 ("COPY_P5.json", "DECISION_P5.json"), ("DECISION_P5.json", "test/judges.json")):
+    assert [str(train/"teacher")] in loaded          # R1F's U-Net from the teacher folder, not the input root
+    assert not (train/"validation").exists() and not (train/"DECISION_P5.json").exists()   # no judge before review
+    names = {*p5.R1_SOURCES, f"{p5.GAN}_seed42", f"{p5.GAN}_seed123"}
+    assert set(result["summary"]) == {"real_train_people", *names} and set(result["copy"]) == names
+    assert all(Path(f).exists() for f in result["figures"]) and (train/"preview"/"samples.npz").exists()
+    balance = json.loads((train/"benchmark"/f"{p5.GAN}_seed42"/"balance.json").read_text())
+    assert balance and {"rt", "p", "loss_d", "loss_g", "margin"} <= set(balance[-1])
+    assert json.loads((train/"COMPLETE.json").read_text())["status"] == "train_complete"
+
+    out = tmp_path/"judge"
+    summary = p5.main(["--input-root", str(root), "--output", str(out), "--stage", "judge", *args])
+    for a, b in (("FROZEN_P5.json", "DECISION_P5.json"), ("DECISION_P5.json", "test/judges.json")):
         assert (out/a).stat().st_mtime <= (out/b).stat().st_mtime
-    expected = {"real_other_people", "r_pipeline", *p5.R1_SOURCES, f"{p5.GAN}_seed42", f"{p5.GAN}_seed123"}
+    expected = {"real_other_people", "r_pipeline", *names}
     assert set(summary["validation"]) == expected and set(summary["test"]) == expected
-    copies = json.loads((out/"COPY_P5.json").read_text())
-    assert set(copies) >= {"validation_people", *p5.R1_SOURCES, f"{p5.GAN}_seed42"}
     d = summary["decision"]
     assert set(d["checks"]) == {"valid", "copy_gate", "auc_gain"} and d["kept"] in (p5.GAN, *p5.R1_SOURCES)
     info = json.loads((out/"ship"/"SHIP.json").read_text())
@@ -169,13 +212,32 @@ def test_p5_round_trains_judges_validation_before_test_and_ships_on_cpu(tmp_path
     assert teacher.exists()
 
 
-def test_p5_kernel_carries_physiogan_r_and_mounts_the_p1_round(tmp_path):
+@pytest.mark.parametrize("mode", ["p5_train", "p5_judge"])
+def test_p5_kernels_run_on_one_account_with_the_p1_output_as_a_dataset(tmp_path, mode):
     from ml.kaggle_multidomain import stage_kernel
-    out = stage_kernel.stage(tmp_path/"p5", "p5_round", steps=2)
+    out = stage_kernel.stage(tmp_path/mode, mode, steps=2, owner="halovie2412")
     files = json.loads((out/"source_manifest.json").read_text())["files"]
     assert {"ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/experiment_p5.py",
-            "ml/kaggle_multidomain/experiment_p4.py", "ml/kaggle_multidomain/flow_r.py"} <= set(files)
+            "ml/kaggle_multidomain/waveform_compare.py", "ml/kaggle_multidomain/experiment_p4.py"} <= set(files)
     meta = json.loads((out/"kernel-metadata.json").read_text())
-    assert meta["kernel_sources"] == ["charlesday2612/ppg-physioflow-r-round-v1"] and meta["enable_gpu"]
-    assert meta["machine_shape"] == "NvidiaTeslaT4" and "charlesday2612/ppg-physioflow-r-data-v1" in meta["dataset_sources"]
-    assert "experiment_p5 import main" in (out/"run.py").read_text()
+    sources = meta["kernel_sources"]+meta["dataset_sources"]
+    assert all(s.startswith("halovie2412/") for s in sources) and meta["enable_gpu"]
+    assert meta["machine_shape"] == "NvidiaTeslaT4" and "halovie2412/ppg-physioflow-r-data-v1" in sources
+    stage = mode.split("_")[1]
+    assert f"'--stage', '{stage}'" in (out/"run.py").read_text()
+    if stage == "train":
+        assert meta["kernel_sources"] == [] and "halovie2412/ppg-physioflow-r-p1-output-v1" in sources
+    else:
+        assert meta["kernel_sources"] == ["halovie2412/ppg-physiogan-r-p5-train-v1"]
+
+
+def test_p1_output_dataset_keeps_the_layout_resolve_teacher_reads(tmp_path):
+    import hashlib
+    from ml.kaggle_multidomain import experiment_p4, stage_kernel
+    pack, recs = records(v3_pack())
+    export = p1_output(tmp_path/"r_round", pack, recs)
+    (tmp_path/"r_round"/"FROZEN_R.json").write_text("{}")
+    folder = stage_kernel.stage_p1_output(tmp_path/"staged", "halovie2412", tmp_path/"r_round")
+    teacher = experiment_p4.resolve_teacher(folder, tmp_path/"teacher")
+    assert teacher["seed"] == 42 and teacher["sha256"] == hashlib.sha256(export.read_bytes()).hexdigest()
+    assert json.loads((folder/"dataset-metadata.json").read_text())["id"] == "halovie2412/ppg-physioflow-r-p1-output-v1"

@@ -9,6 +9,10 @@ author topology; G3: a 4-step flow student pulled to a frozen teacher):
   it has dropped without the hinge's flat regions;
 - the critic is strict_judge.StrictCritic with the judge's views (time, log-STFT, ACF) and the 7-14 Hz band view, a
   minibatch-std feature against mode collapse, conditioned by projection on domain and record context only;
+- the critic is kept in balance with the generator (P5 v2, after the user's request): it learns at half the
+  generator's rate, and adaptive augmentation (ADA, Karras et al. 2020) of everything it sees (gain/offset, time
+  stretch, instance noise, each with probability p) raises p while the critic wins too easily: p moves to keep
+  r_t = E[sign(D(real) - D(generated))] at ADA_TARGET (0: the critic cannot rank the pair; 1: it always can);
 - conditions are the domain and the record context (left/right seconds of record around the window); no heart rate,
   SpO2 or irregularity, so C is not measured;
 - checkpoints are chosen by a selection C2ST: a fresh strict-judge network trained on training people (fit share) and
@@ -35,8 +39,9 @@ ARM = "G4_physiogan_r"
 BASE = 25                                   # R_LENGTH / 2**6
 CONFIG = dict(latent=128, wdim=256, channels=(384, 384, 256, 256, 192, 128, 64))
 CRITIC = dict(width=48, minibatch_std=True, band=True)
-TRAIN = dict(lr=2e-4, betas=(0., .99), batch=32, gamma=1., lazy=4, ema=.999, max_steps=10**6, warmup_ema=2000,
-             select_every_s=1200., clip=10.)
+TRAIN = dict(lr=2e-4, d_lr=1e-4, betas=(0., .99), batch=32, gamma=1., lazy=4, ema=.999, max_steps=10**6,
+             warmup_ema=2000, select_every_s=1200., clip=10., log_every=200)
+ADA_TARGET, ADA_IMAGES, ADA_MAX = .6, 100_000, .8     # p can cross 0..1 in ADA_IMAGES critic windows
 # The selection judge: the strict kind's network and recipe at a third of its steps, on training people only.
 SELECT = dict(branches=("time", "spectral", "acf"), steps=1000, batch=64, lr=3e-4)
 SELECT_SIZES, SELECT_SEED = dict(fit=256, inner=64, eval=128), 31337
@@ -142,6 +147,50 @@ def generator(run_dir, device):
     return generate
 
 
+# ---------------------------------------------------------------- critic balance (ADA)
+class Augment(nn.Module):
+    """Differentiable augmentation of (n, 1, L) windows, each part applied to a window with probability p: gain and
+    offset, a time stretch of +-10% about the centre (linear interpolation, edge held), white instance noise (SD 0.02).
+    All three leave the critic a way to tell the classes apart only through what real and generated windows differ in
+    (they are applied alike to both), and are invertible in distribution for p < 1 (non-leaking, ADA)."""
+    def __init__(self):
+        super().__init__()
+        self.register_buffer("p", torch.zeros(()))
+
+    def forward(self, x):
+        p = float(self.p)
+        if p <= 0:
+            return x
+        n, _, length = x.shape
+        pick = lambda: (torch.rand(n, 1, 1, device=x.device) < p).to(x.dtype)
+        m = pick()
+        gain, offset = torch.exp(.2*torch.randn(n, 1, 1, device=x.device)), .1*torch.randn(n, 1, 1, device=x.device)
+        x = m*(x*gain+offset)+(1-m)*x
+        m = pick()
+        stretch = torch.exp(.1*(2*torch.rand(n, 1, 1, device=x.device)-1))
+        position = torch.linspace(-1, 1, length, device=x.device)[None, None]*stretch*m+(1-m)*torch.linspace(
+            -1, 1, length, device=x.device)[None, None]
+        grid = torch.stack((position.clamp(-1, 1), torch.zeros_like(position)), -1)
+        x = F.grid_sample(x[:, :, None], grid, mode="bilinear", padding_mode="border", align_corners=True)[:, :, 0]
+        m = pick()
+        return x+m*.02*torch.randn_like(x)
+
+    @torch.no_grad()
+    def adjust(self, rt, images):
+        """p += sign(r_t - target) * images / ADA_IMAGES, within [0, ADA_MAX]."""
+        self.p.add_(float(np.sign(rt-ADA_TARGET))*images/ADA_IMAGES).clamp_(0, ADA_MAX)
+
+
+class Balanced(nn.Module):
+    """The critic behind its augmentation: what training and the penalties call."""
+    def __init__(self, critic):
+        super().__init__()
+        self.critic, self.augment = critic, Augment()
+
+    def forward(self, x, condition):
+        return self.critic(self.augment(x), condition)
+
+
 # ---------------------------------------------------------------- loss
 def critic_terms(d, real, fake, c):
     """Per-view logits of paired real and generated windows (n, views)."""
@@ -233,14 +282,15 @@ def train(seed, input_root, output, device, deadline, config=None, spec=None):
     real_all = torch.tensor(pack["signal"][:, None], device=device)
     cond_all, ctx_all = torch.tensor(condition, device=device), torch.tensor(context, device=device)
     g = PhysioGANR(len(domains), **config).to(device)
-    d = sj.StrictCritic(len(domains)+2, **CRITIC).to(device)
+    d = Balanced(sj.StrictCritic(len(domains)+2, **CRITIC)).to(device)
     ema = ema_model(g)
     optg = torch.optim.Adam(g.parameters(), lr=spec["lr"], betas=spec["betas"])
-    optd = torch.optim.Adam(d.parameters(), lr=spec["lr"], betas=spec["betas"])
+    optd = torch.optim.Adam(d.parameters(), lr=spec["d_lr"], betas=spec["betas"])
     run_dir = Path(output)/f"{ARM}_seed{seed}"
     run_dir.mkdir(parents=True)
     best, best_step, history = float("inf"), 0, []
     stability = dict(nonfinite_losses=0, d_clipped=0, g_clipped=0, max_d_grad_norm=0., max_g_grad_norm=0.)
+    balance, signs = [], []
     start = last_select = time.monotonic()
     batch = spec["batch"]
 
@@ -274,6 +324,9 @@ def train(seed, input_root, output, device, deadline, config=None, spec=None):
         optd.zero_grad(set_to_none=True)
         loss_d.backward()
         update(d, optd, spec["clip"], stability, "d")
+        signs.append(float(torch.sign(rl-fl).detach().mean()))
+        if step % spec["lazy"] == 0:
+            d.augment.adjust(float(np.mean(signs[-spec["lazy"]:])), spec["lazy"]*batch)
         # Generator: the same pairing with the roles swapped, against the updated critic (its weights frozen here).
         d.requires_grad_(False)
         rl_g, fl_g = critic_terms(d, real, fake, c)
@@ -285,9 +338,14 @@ def train(seed, input_root, output, device, deadline, config=None, spec=None):
         loss_g.backward()
         update(g, optg, spec["clip"], stability, "g")
         update_ema(ema, g, min(spec["ema"], step/spec["warmup_ema"]))
+        if step % spec["log_every"] == 0:
+            # Balance trace: r_t over the interval, ADA p, both losses and the per-view real-minus-generated margin.
+            balance.append(dict(step=step, rt=float(np.mean(signs)), p=float(d.augment.p), loss_d=float(loss_d.detach()),
+                                loss_g=float(loss_g.detach()), margin=(rl-fl).detach().mean(0).tolist()))
+            signs.clear()
+            save_json(run_dir/"balance.json", balance)
         late = time.time() > deadline
         if time.monotonic()-last_select > spec["select_every_s"] or late:
-            history.append(dict(step=step, loss_d=float(loss_d.detach()), loss_g=float(loss_g.detach())))
             select(step)
             last_select = time.monotonic()
         if late:
@@ -296,9 +354,11 @@ def train(seed, input_root, output, device, deadline, config=None, spec=None):
     if not (run_dir/"best.pt").exists():
         select(step)
     result = dict(arm=ARM, seed=seed, best_step=best_step, selection_auc=best, config=config, critic=CRITIC,
-                  train=spec, select=SELECT, steps=step,
+                  train=spec, select=SELECT, steps=step, ada=dict(target=ADA_TARGET, images=ADA_IMAGES, max=ADA_MAX,
+                                                                 final_p=float(d.augment.p)),
+                  final_balance=balance[-1] if balance else None,
                   generator_parameters=sum(p.numel() for p in g.parameters()),
-                  critic_parameters=sum(p.numel() for p in d.parameters()), training_seconds=time.monotonic()-start,
+                  critic_parameters=sum(p.numel() for p in d.critic.parameters()), training_seconds=time.monotonic()-start,
                   training_device=str(device), worker_pid=os.getpid(), stability=stability,
                   peak_cuda_bytes=torch.cuda.max_memory_allocated(device) if cuda else 0)
     save_json(run_dir/"training_result.json", result)

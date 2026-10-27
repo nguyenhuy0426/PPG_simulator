@@ -10,7 +10,9 @@ checkpoints were chosen on S_real + 0.5C, not realism. P5 keeps the strict judge
   more Heun steps; the P4 diagnosis measured 0.90 / 0.82 / 0.75 at 4 / 8 / 16 steps) and r1f_s64 (R1 trained further
   with its own flow loss, checkpoint on S_real alone, experiment_v3 R1F_flowr_ft, judged at 64 steps).
 A copy gate guards the way a generator can pass a C2ST without generalising: replaying training windows.
-Every source, the real_other_people null and the r_pipeline null are judged by the strict judge from scratch, on the
+Two kernels (P5 v2): the train stage trains, runs the copy check and the direct waveform comparison
+(waveform_compare: PREVIEW_P5.json, figures, samples) and stops; the user and the agent review it; only then does the
+judge stage (mounting the train stage's output) run the judges. Every source, the real_other_people null and the r_pipeline null are judged by the strict judge from scratch, on the
 validation people for the decision and once on the test people after DECISION_P5.json.
 Engineering evaluation of normalised 30 s PPG shape; not clinical validation, not measured on the Pi/DAC/OPT101.
 """
@@ -40,14 +42,16 @@ INCUMBENT = "r1_s16"
 VALID_RANGE = (.40, .60)
 TARGET = .55
 COPY_LIMIT, COPY_PER_DOMAIN, COPY_SEED = .05, 128, 20261027
-KERNEL_HOURS, JUDGE_RESERVE_HOURS = 12., 5.
+KERNEL_HOURS, PREVIEW_RESERVE_HOURS = 12., 1.5
 RULE = ("P5 round rule, fixed before training; validation people only. Goal: strict-judge AUC near the real-vs-real "
         "level; target AUC <= 0.55. Sources judged by the strict judge (judge seeds 0-2 + offset): real_other_people, "
         "r_pipeline, r1_s16 (the P1 ship seed, sha256 in FROZEN_P5.json, 16 Heun steps), r1_s32 and r1_s64 (same "
         "weights, 32 / 64 steps), r1f_s64 (that R1 trained further with its own flow loss, checkpoint on S_real alone, "
         "64 steps) and G4_physiogan_r seeds 42/123/2026 (PhysioGAN-R: one-pass GAN generator of the R record through "
         "the record-context v3 view, relativistic pairing loss with R1/R2 penalties, the judge's views plus the 7-14 Hz "
-        "band as critic, domain and record context only, checkpoint on a selection C2ST of training people). "
+        "band as critic at half the generator's learning rate behind adaptive augmentation (ADA, r_t target 0.6), "
+        "domain and record context only, checkpoint on a selection C2ST of training people). The strict judge is "
+        "not changed. The judge stage runs after a review of the train stage's direct waveform comparison. "
         "Validity: the "
         "real_other_people and r_pipeline mean AUC both lie in [0.40, 0.60]; otherwise no claim. Copy gate: a source "
         "passes if at most 5% of its windows (128 per domain, prompted by training windows) lie closer (RMS, v3 view) "
@@ -138,8 +142,9 @@ def r1_sources(teacher_root, run_dir, bank, device):
 
 
 def copy_check(pack, bank, sources, seed=COPY_SEED):
-    """COPY_P5.json: every source's copy rate on windows prompted by training windows (COPY_PER_DOMAIN per domain),
-    and the validation people's real windows as the reference (a real held-out set copies nothing)."""
+    """(COPY_P5.json, {source: (windows, domains)}): every source's copy rate on windows prompted by training windows
+    (COPY_PER_DOMAIN per domain), and the validation people's real windows as the reference (a real held-out set
+    copies nothing). The windows are the preview's samples."""
     from ml.kaggle_multidomain.physiogan_r import copy_rate
     rng = np.random.default_rng(seed)
     train = np.flatnonzero((pack["split"] == "train") & np.isin(pack["domain"], sj.DOMAINS))
@@ -149,11 +154,13 @@ def copy_check(pack, bank, sources, seed=COPY_SEED):
     base = (pack["signal"][train], pack["domain"][train], pack["record"][train])
     out = dict(limit=COPY_LIMIT, per_domain=COPY_PER_DOMAIN,
                validation_people=copy_rate(pack["signal"][reference], pack["domain"][reference], *base))
+    windows = {}
     for g, (name, generate) in enumerate(sources.items()):
-        out[name] = copy_rate(generate(ids, bank, seed+g), pack["domain"][ids], *base)
+        windows[name] = (generate(ids, bank, seed+g), pack["domain"][ids])
+        out[name] = copy_rate(*windows[name], *base)
         out[name]["passed"] = bool(out[name]["rate"] <= COPY_LIMIT)
         print("copy", name, f"{out[name]['rate']:.3f}", flush=True)
-    return out
+    return out, windows
 
 
 # ---------------------------------------------------------------- decision
@@ -213,12 +220,63 @@ def ship(decision, output, run_dir, weights, bank):
     return info
 
 
+def frozen_round(input_root):
+    """The P5 train stage's output under input_root (its FROZEN_P5.json), checked against this rule."""
+    paths = sorted(Path(input_root).rglob("FROZEN_P5.json"))
+    if len(paths) != 1:
+        raise ValueError(f"Expected one FROZEN_P5.json, found {len(paths)}")
+    frozen = json.loads(paths[0].read_text())
+    if frozen["rule_sha256"] != rule_sha256():
+        raise ValueError("The train stage froze another P5 rule")
+    if not (paths[0].parent/"PREVIEW_P5.json").exists():
+        raise ValueError("The train stage did not finish its preview")
+    return paths[0].parent, frozen
+
+
+def preview(output, pack, bank, sources, run_dir):
+    """Before any judge: the copy check and the direct waveform comparison (waveform_compare) of every source
+    against the validation people's real windows, with training people's real windows as the real-vs-real row."""
+    from ml.kaggle_multidomain import waveform_compare
+    copies, windows = copy_check(pack, bank, {k: v for k, v in sources.items() if k != "r_pipeline"})
+    save_json(output/"COPY_P5.json", copies)
+    rng = np.random.default_rng(COPY_SEED+1)
+    train = np.flatnonzero((pack["split"] == "train") & np.isin(pack["domain"], sj.DOMAINS))
+    held = np.flatnonzero((pack["split"] == "validation") & np.isin(pack["domain"], sj.DOMAINS))
+    target = sj.sample(pack, held, COPY_PER_DOMAIN, rng, replace=False)
+    reference = sj.sample(pack, train, COPY_PER_DOMAIN, rng, replace=False)
+    nearest = {n: float(np.median([v["median"] for v in c["per_domain"].values()])) for n, c in copies.items()
+               if n in windows}
+    result = waveform_compare.report(output/"preview", windows, pack["signal"][target], pack["domain"][target],
+                                     pack["signal"][reference], pack["domain"][reference], nearest)
+    balance = {}
+    for path in sorted(Path(run_dir).glob(f"{GAN}_seed*/balance.json")):
+        trace = json.loads(path.read_text())
+        balance[path.parent.name] = dict(last=trace[-1] if trace else None, steps=len(trace))
+    out = dict(rule_sha256=rule_sha256(), summary=result["summary"], copy={n: c["rate"] for n, c in copies.items()
+                                                                           if n in windows},
+               balance=balance, figures=result["figures"], note="descriptive; the judge stage runs only after review")
+    save_json(output/"PREVIEW_P5.json", out)
+    return out
+
+
+def sources_for(round_dir, r, pack, bank, seeds, device):
+    from ml.kaggle_multidomain import physiogan_r
+    from ml.kaggle_multidomain.flow_r import r_pipeline_source
+    run_dir = Path(round_dir)/"benchmark"
+    r1, weights = r1_sources(Path(round_dir)/"teacher", run_dir/f"{R1F}_seed{R1F_SEED}", bank, device)
+    sources = {"r_pipeline": r_pipeline_source(r, pack), **r1}
+    sources.update({f"{GAN}_seed{s}": physiogan_r.generator(run_dir/f"{GAN}_seed{s}", device) for s in seeds})
+    return sources, weights
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-root", required=True, help="v3 pack, R pack and the P1 round's output")
+    parser.add_argument("--input-root", required=True,
+                        help="v3 pack, R pack and the P1 round's output (train); also the train stage's output (judge)")
     parser.add_argument("--output", required=True)
+    parser.add_argument("--stage", choices=("train", "judge"), required=True)
     parser.add_argument("--steps", type=int, default=6000, help="R1F training steps")
-    parser.add_argument("--job-hours", type=float, default=2.25, help="Training time of each job")
+    parser.add_argument("--job-hours", type=float, default=4.5, help="Training time of each job")
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 123, 2026])
     parser.add_argument("--judge-seeds", nargs="+", type=int, default=[0, 1, 2])
     parser.add_argument("--interval", type=int, default=500)
@@ -230,7 +288,6 @@ def main(argv=None):
     from ml.kaggle_multidomain.data_r import load_r
     from ml.kaggle_multidomain.experiment_p4 import resolve_teacher
     from ml.kaggle_multidomain.experiment_v3 import ARMS, PROTOCOL, check_pack, conditions_for
-    from ml.kaggle_multidomain.flow_r import r_pipeline_source
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     if not a.allow_cpu and len(names) != 2:
         raise RuntimeError(f"Two GPUs required, allocated {names}")
@@ -241,47 +298,58 @@ def main(argv=None):
     pack, manifest = load_input(a.input_root, PROTOCOL)
     check_pack(pack, manifest, a.allow_cpu)
     r, r_manifest = load_r(a.input_root, manifest)
-    teacher = resolve_teacher(a.input_root, output/"teacher")
-    save_json(output/"FROZEN_P5.json", dict(rule=RULE, rule_sha256=rule_sha256(), judge=JUDGE,
-                                            judge_spec=sj.JUDGES[JUDGE], seeds=a.seeds, judge_seeds=a.judge_seeds,
-                                            physiogan=dict(config=physiogan_r.CONFIG, critic=physiogan_r.CRITIC,
-                                                           train=physiogan_r.TRAIN, select=physiogan_r.SELECT,
-                                                           select_sizes=physiogan_r.SELECT_SIZES),
-                                            r1f=dict(arm=ARMS[R1F], seed=R1F_SEED, steps=a.steps),
-                                            r1_sources=R1_SOURCES, job_hours=a.job_hours, teacher=teacher,
-                                            data_sha256=manifest["windows_sha256"],
-                                            r_sha256=r_manifest["windows_sha256"]))
     save_json(output/"configuration.json", dict(args=vars(a), python=platform.python_version(), torch=torch.__version__,
                                                 allocated_gpus=names, cpu_count=os.cpu_count()))
-    print("TEACHER", json.dumps({k: teacher[k] for k in ("seed", "sha256", "p1_winner")}), flush=True)
-    deadline = kernel_start+3600*(KERNEL_HOURS-JUDGE_RESERVE_HOURS)
-    run_dir = output/"benchmark"
-    run_dir.mkdir()
-    training = train_all(a.seeds, devices, a.input_root, run_dir, a.job_hours, deadline, a.steps, a.interval,
-                         a.eval_samples, str(output/"teacher"))
-    save_json(output/"training_execution.json", training)
-    print("TRAINING DONE", f"{time.monotonic()-started:.0f}s", flush=True)
+    view = {k: v[pack["split"] != "external"] for k, v in pack.items()}
+    keep = np.flatnonzero(np.isin(view["split"], ["train", "validation"]))
+    bank = sj.ConditionsView(conditions_for({k: v[keep] for k, v in view.items()}, "v2"), keep)
+    if a.stage == "train":
+        teacher = resolve_teacher(a.input_root, output/"teacher")
+        save_json(output/"FROZEN_P5.json", dict(
+            rule=RULE, rule_sha256=rule_sha256(), judge=JUDGE, judge_spec=sj.JUDGES[JUDGE], seeds=a.seeds,
+            judge_seeds=a.judge_seeds,
+            physiogan=dict(config=physiogan_r.CONFIG, critic=physiogan_r.CRITIC, train=physiogan_r.TRAIN,
+                           select=physiogan_r.SELECT, select_sizes=physiogan_r.SELECT_SIZES,
+                           ada=dict(target=physiogan_r.ADA_TARGET, images=physiogan_r.ADA_IMAGES,
+                                    max=physiogan_r.ADA_MAX)),
+            r1f=dict(arm=ARMS[R1F], seed=R1F_SEED, steps=a.steps), r1_sources=R1_SOURCES, job_hours=a.job_hours,
+            teacher=teacher, data_sha256=manifest["windows_sha256"], r_sha256=r_manifest["windows_sha256"]))
+        print("TEACHER", json.dumps({k: teacher[k] for k in ("seed", "sha256", "p1_winner")}), flush=True)
+        deadline = kernel_start+3600*(KERNEL_HOURS-PREVIEW_RESERVE_HOURS)
+        (output/"benchmark").mkdir()
+        training = train_all(a.seeds, devices, a.input_root, output/"benchmark", a.job_hours, deadline, a.steps,
+                             a.interval, a.eval_samples, str(output/"teacher"))
+        save_json(output/"training_execution.json", training)
+        print("TRAINING DONE", f"{time.monotonic()-started:.0f}s", flush=True)
+        sources, _ = sources_for(output, r, view, bank, a.seeds, devices[0])
+        result = preview(output, view, bank, sources, output/"benchmark")
+        print("PREVIEW", json.dumps(dict(copy=result["copy"], balance=result["balance"])), flush=True)
+        save_json(output/"COMPLETE.json", dict(status="train_complete", next="review, then the judge stage",
+                                               wall_seconds=time.monotonic()-started, deployment="research_only"))
+        print("COMPLETE", flush=True)
+        return result
 
-    pack = {k: v[pack["split"] != "external"] for k, v in pack.items()}
-    keep = np.flatnonzero(np.isin(pack["split"], ["train", "validation"]))
-    bank = sj.ConditionsView(conditions_for({k: v[keep] for k, v in pack.items()}, "v2"), keep)
-    r1, weights = r1_sources(output/"teacher", run_dir/f"{R1F}_seed{R1F_SEED}", bank, devices[0])
-    sources = {"r_pipeline": r_pipeline_source(r, pack), **r1}
-    sources.update({f"{GAN}_seed{s}": physiogan_r.generator(run_dir/f"{GAN}_seed{s}", devices[0]) for s in a.seeds})
-    copies = copy_check(pack, bank, {k: v for k, v in sources.items() if k != "r_pipeline"})
-    save_json(output/"COPY_P5.json", copies)
-    val = judge_family(pack, bank, sources, "validation", sj.DOMAINS, [JUDGE], a.judge_seeds, devices,
+    round_dir, frozen = frozen_round(a.input_root)
+    if frozen["data_sha256"] != manifest["windows_sha256"] or frozen["r_sha256"] != r_manifest["windows_sha256"]:
+        raise ValueError("The judge stage's packs differ from the train stage's")
+    seeds = frozen["seeds"]
+    for name in ("FROZEN_P5.json", "COPY_P5.json", "PREVIEW_P5.json"):
+        shutil.copy2(round_dir/name, output/name)
+    copies = json.loads((round_dir/"COPY_P5.json").read_text())
+    sources, weights = sources_for(round_dir, r, view, bank, seeds, devices[0])
+    val = judge_family(view, bank, sources, "validation", sj.DOMAINS, [JUDGE], frozen["judge_seeds"], devices,
                        output/"validation")
-    decision = decide(val, copies, a.seeds)
+    decision = decide(val, copies, seeds)
     save_json(output/"DECISION_P5.json", decision)
     print("DECISION", json.dumps({k: decision[k] for k in ("kept", "kept_auc", "target_met", "checks", "best_r1")}),
           flush=True)
-    test = judge_family(pack, bank, sources, "test", sj.DOMAINS, [JUDGE], a.judge_seeds, devices, output/"test")
-    shipped = ship(decision, output, run_dir, weights, bank)
+    test = judge_family(view, bank, sources, "test", sj.DOMAINS, [JUDGE], frozen["judge_seeds"], devices,
+                        output/"test")
+    shipped = ship(decision, output, round_dir/"benchmark", weights, bank)
     test_auc = {n: mean_auc(test, JUDGE, n) for n in [*sources, "real_other_people"]}
-    kept_test = float(np.mean([test_auc[n] for n in gan_names(a.seeds)])) if decision["kept"] == GAN \
+    kept_test = float(np.mean([test_auc[n] for n in gan_names(seeds)])) if decision["kept"] == GAN \
         else test_auc[decision["kept"]]
-    summary = dict(judge=JUDGE, teacher=teacher, decision=decision, ship=shipped,
+    summary = dict(judge=JUDGE, teacher=frozen["teacher"], decision=decision, ship=shipped,
                    validation=indistinguishable(val, JUDGE), test=indistinguishable(test, JUDGE), test_auc=test_auc,
                    kept_test_auc=kept_test, target_met_test=bool(kept_test <= TARGET),
                    copy={k: v["rate"] for k, v in copies.items() if isinstance(v, dict) and "rate" in v},
