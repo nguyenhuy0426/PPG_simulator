@@ -7,9 +7,12 @@ it at the peak rate with no new warmup, so adding data never restarts training. 
 stage hands to evaluation. last.pt (every --save-minutes) resumes the same stage after a kernel stops.
 The batch of every step is a pure function of (seed, step), and so is the flow noise, so a resumed stage continues
 exactly. The kernel time budget shortens a stage (measured step time) instead of cutting its decay; with --plateau,
-a stage planned for many epochs over a small shard starts its decay once the held-out flow loss stops improving.
+a stage planned for many epochs over a small shard starts its decay once the held-out flow loss stops improving,
+or, when that loss has risen above its best (overfitting, which a decay only deepens), ends at the best state.
+best.pt is the state with the lowest held-out flow loss so far.
 Validation is the held-out records of every mounted shard (fixed subset, fixed noise). Next-patch NLL and flow loss
-measure fit only; whether samples are realistic is the strict judge's job in a later round.
+measure fit only; best.pt and --plateau choose states on those records, so they are not a test set. Whether
+samples are realistic is the strict judge's job in a later round, on people kept out of training and selection.
 """
 import argparse
 import functools
@@ -54,6 +57,10 @@ class Windows:
                 metas.append(np.load(path.parent/f"{chunk['stem']}_meta.npy"))
             self.shards.append(dict(path=str(path.parent), record_range=manifest["record_range"],
                                     windows=manifest["windows"], chunks=[c["sha256"] for c in manifest["chunks"]]))
+        spans = sorted(tuple(s["record_range"]) for s in self.shards if s["record_range"][0] < s["record_range"][1])
+        for (a, b), (c, d) in zip(spans, spans[1:]):
+            if c < b:   # the same record twice: duplicated windows, maybe on both sides of the held-out split
+                raise ValueError(f"shards share records: record ranges [{a}, {b}) and [{c}, {d}) overlap")
         self.offsets = np.cumsum([0]+[len(s) for s in self.signal])
         valid = np.concatenate([m["valid"] for m in metas]).astype(bool)
         self.train, self.valid = np.flatnonzero(~valid), np.flatnonzero(valid)
@@ -142,10 +149,10 @@ def release_samples(model, data, output, device, steps=32):
     return stats
 
 
-def save_state(path, model, optimizer, scaler, step, plan, args, stage_id):
+def save_state(path, model, optimizer, scaler, step, plan, args, stage_id, **extra):
     tmp = Path(str(path)+".partial")
     torch.save(dict(model=model.state_dict(), optimizer=optimizer.state_dict(), scaler=scaler.state_dict(),
-                    step=step, plan=plan, config=args.config, stage_id=stage_id), tmp)
+                    step=step, plan=plan, config=args.config, stage_id=stage_id, **extra), tmp)
     tmp.replace(path)
 
 
@@ -186,6 +193,7 @@ def worker(rank, world, args):
     # A short stage (a small first shard) warms up over at most a tenth of its planned steps; the plan, not the
     # budget-shortened length, sets it, so a resumed stage gets the same warmup.
     step, warmup = 0, min(args.warmup, max(1, total//10))
+    best_flow, best_step, best_path = math.inf, None, output/"best.pt"
     if args.resume:
         state = torch.load(args.resume, map_location=device, weights_only=False)
         if state["config"] != args.config:
@@ -196,6 +204,12 @@ def worker(rank, world, args):
             scaler.load_state_dict(state["scaler"])
         if state["stage_id"] == stage_id:   # same stage after a stop: continue its step and plan
             step, (total, decay_start) = state["step"], state["plan"]
+            kept = Path(args.resume).with_name("best.pt")   # and its best state so far
+            if kept.exists():
+                kept_state = torch.load(kept, map_location="cpu", weights_only=False)
+                if kept_state["stage_id"] == stage_id:
+                    best_flow, best_step, best_path = kept_state["valid_flow"], kept_state["step"], kept
+                del kept_state
         warmup = 0                          # a new stage from stable.pt stays at the peak rate
     if args.compile:
         # Per block, in place: the state_dict keys stay those of the eager model, and flow_loss's seeded noise
@@ -230,7 +244,7 @@ def worker(rank, world, args):
     threading.Thread(target=produce, args=(step,), daemon=True).start()
     last_save, log = time.time(), (output/"metrics.jsonl").open("a") if rank == 0 else None
     domain = torch.zeros(local, dtype=torch.long, device=device)
-    measured, tick, paused, best, stale, first = None, None, 0., math.inf, 0, step
+    measured, tick, paused, best, stale, first, rewind = None, None, 0., math.inf, 0, step, False
     while True:
         item = feed.get()
         if item is None:
@@ -276,6 +290,10 @@ def worker(rank, world, args):
                           **{k: float(v) for k, v in parts.items()})
             if evaluating:
                 record.update(evaluate(model, data, device, cuda))
+                if record["valid_flow"] < best_flow:
+                    best_flow, best_step, best_path = record["valid_flow"], step, output/"best.pt"
+                    save_state(best_path, model, optimizer, scaler, step, [total, decay_start], args, stage_id,
+                               valid_flow=best_flow)
                 if args.plateau and warmup <= step < decay_start:
                     # Stable phase until the held-out flow loss stops improving, then the decay. On a small shard
                     # this, not the time budget, ends the stage; a resumed stage restarts the patience count.
@@ -283,7 +301,13 @@ def worker(rank, world, args):
                         best, stale = record["valid_flow"], 0
                     else:
                         stale += 1
-                    if stale >= args.plateau:
+                    if stale >= args.plateau and record["valid_flow"] > best_flow*(1+args.plateau_delta):
+                        # Held-out loss risen above its best while the train loss falls: overfitting, which the
+                        # decay only deepens. The stage ends now and hands on best.pt instead.
+                        total = decay_start = step
+                        rewind = True
+                        record.update(plateau="best", best_step=best_step, plan=[total, decay_start])
+                    elif stale >= args.plateau:
                         total = min(total, step+max(1, round(step*args.decay_frac/(1-args.decay_frac))))
                         decay_start = step
                         record.update(plateau=True, plan=[total, decay_start])
@@ -295,7 +319,7 @@ def worker(rank, world, args):
             plan = torch.tensor([total, decay_start], device=device)
             dist.broadcast(plan, 0)
             total, decay_start = (int(v) for v in plan)
-        if step == decay_start and rank == 0:
+        if step == decay_start and rank == 0 and not rewind:
             held = time.time()
             save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
             paused += time.time()-held
@@ -316,6 +340,13 @@ def worker(rank, world, args):
             dist.destroy_process_group()
         return
     if rank == 0:
+        if rewind:   # the stage's states and release are the best one, at the peak rate, not the last one
+            state = torch.load(best_path, map_location=device, weights_only=False)
+            model.load_state_dict(state["model"])
+            optimizer.load_state_dict(state["optimizer"])
+            if state["scaler"]:
+                scaler.load_state_dict(state["scaler"])
+            step = total = decay_start = state["step"]
         if decay_start >= total:   # a stage shortened past its decay start still leaves a stable state
             save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
         save_state(output/"last.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
@@ -324,9 +355,11 @@ def worker(rank, world, args):
         summary = dict(stage_id=stage_id, steps=step, plan=[total, decay_start], hours=(time.time()-begin)/3600,
                        step_seconds=measured, windows_per_second=measured and args.batch/measured,
                        max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30 if cuda else None,
-                       compile=args.compile, final=evaluate(model, data, device, cuda),
+                       compile=args.compile, best=dict(step=best_step, valid_flow=best_flow), stopped_at_best=rewind,
+                       final=evaluate(model, data, device, cuda),
                        samples=release_samples(model, data, output, device, args.sample_steps),
-                       note="fit and sanity statistics only; realism is judged by the strict judge in a later round")
+                       note="fit and sanity statistics only, on held-out records that also chose best.pt and the "
+                            "plateau; realism is judged by the strict judge on separate people in a later round")
         save_json(output/"stage_summary.json", summary)
         log.close()
     if world > 1:
@@ -399,7 +432,8 @@ def main(argv=None):
     parser.add_argument("--sample-steps", type=int, default=32)
     parser.add_argument("--stop-at", type=int, default=-1, help="end this run at that step, keeping the plan")
     parser.add_argument("--plateau", type=int, default=0,
-                        help="start the decay after this many evaluations without a better valid_flow (0: off)")
+                        help="after this many evaluations without a better valid_flow, start the decay, or end at "
+                             "best.pt if valid_flow has risen above its best (0: off)")
     parser.add_argument("--plateau-delta", type=float, default=.005, help="relative valid_flow gain that counts")
     parser.add_argument("--compile", action="store_true", help="torch.compile each block and the flow head")
     parser.add_argument("--seed", type=int, default=42)

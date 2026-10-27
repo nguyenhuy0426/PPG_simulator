@@ -1,8 +1,10 @@
 """Package PPG-physiGPT kernels (same payload format as ml/kaggle_multidomain/stage_kernel.py).
 
 data shard k (CPU, internet): mimic_wdb over the record range [start, stop) -> /kaggle/working/shard
-train stage k (T4 x2): train.py on the mounted shards; stage k > 0 mounts stage k-1's output and starts from its
-stable.pt, with the earlier shards as replay.
+train stage k (T4 x2): train.py on the mounted shards (and solo outputs, --solos) after smoke runs that measure
+eager against torch.compile; stage 0 trains on all of them as new data, stage k > 0 mounts stage k-1's output and
+starts from its stable.pt, with the earlier shards as replay. Kaggle mounts a kernel's output at
+/kaggle/input/notebooks/<owner>/<slug> (seen in solotrain 0); the script also accepts /kaggle/input/<slug>.
 tpu stage k (TPU v3-8): train_tpu.py, the same stage as train k on the Kaggle TPU, after a smoke run on synthetic
 windows that also logs the torch/torch_xla versions of the TPU image.
 solo k (T4 x2, internet): one kernel that needs no finished data kernel: a GPU smoke run on synthetic windows, then
@@ -52,8 +54,17 @@ def solotrain_slug(k):
     return f"ppg-physigpt-solo{k}-train-v1"
 
 
+def mount_lookup(owner):
+    """Run-time lookup of a mounted kernel output, failing before any GPU time is spent."""
+    return ("def mounted(slug):\n"
+            "    for path in (pathlib.Path('/kaggle/input')/slug,\n"
+            f"                 pathlib.Path('/kaggle/input/notebooks/{owner}')/slug):\n"
+            "        if path.is_dir():\n            return str(path)\n"
+            "    raise FileNotFoundError(f'{slug} is not mounted under /kaggle/input')\n")
+
+
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
-              config="base", epochs=4., extra=(), smoke_only=False):
+              config="base", epochs=4., extra=(), smoke_only=False, solos=(), owner=OWNER):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
@@ -81,28 +92,30 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 "print('smoke', json.dumps(report), flush=True)\n"
                 f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
                 f"train({train!r} + (['--compile'] if use else []) + ['--hours', f'{{left:.3f}}'])")
-    new, replay = shards[-1:], shards[:-1]
-    args = ["--data", *[f"/kaggle/input/{shard_slug(k)}" for k in new],
-            "--replay", *[f"/kaggle/input/{shard_slug(k)}" for k in replay],
-            "--output", f"/kaggle/working/stage{stage}", "--config", config, "--epochs", str(epochs),
-            "--hours", str(TPU_HOURS if kind == "tpu" else 11.0), *extra]
+    new, replay = (shards, ()) if stage == 0 else (shards[-1:], shards[:-1])
+    new, replay = [shard_slug(k) for k in new]+[solo_slug(k) for k in solos], [shard_slug(k) for k in replay]
+    args = (f"args = ['--data', *map(mounted, {new!r}), '--replay', *map(mounted, {replay!r}), '--output', "
+            f"'/kaggle/working/stage{stage}', '--config', {config!r}, '--epochs', {str(epochs)!r}, *{list(extra)!r}]\n")
     if kind == "tpu":
         text = ("import time\nfrom ml.kaggle_physigpt.train_tpu import main, smoke, versions\nbegin = time.time()\n"
                 "print('versions', json.dumps(versions()), flush=True)\n"
-                f"print('smoke', json.dumps(smoke('/tmp/physigpt_smoke', {config!r})), flush=True)\n"
-                f"args = {args!r}\n"
-                f"args[args.index('--hours')+1] = f'{{{TPU_HOURS} - (time.time()-begin)/3600:.3f}}'\n")
+                f"print('smoke', json.dumps(smoke('/tmp/physigpt_smoke', {config!r})), flush=True)\n")
         if smoke_only:
             return text+"print('smoke only: no stage trained')"
         if stage > 0:
             raise NotImplementedError("tpu: a later stage mounts the previous stage as in train; not wired yet")
-        return text+"main(args)"
-    text = f"from ml.kaggle_physigpt.train import main\nargs = {args!r}\n"
+        return (text+mount_lookup(owner)+args
+                + f"main(args + ['--hours', f'{{{TPU_HOURS} - (time.time()-begin)/3600:.3f}}'])")
+    text = ("import time\nfrom ml.kaggle_physigpt.train import main as train, pick_compile\nbegin = time.time()\n"
+            + mount_lookup(owner)+args)
     if stage > 0:
-        text += (f"stable = sorted(pathlib.Path('/kaggle/input/{stage_slug(stage-1)}').rglob('stable.pt'))\n"
+        text += (f"stable = sorted(pathlib.Path(mounted({stage_slug(stage-1)!r})).rglob('stable.pt'))\n"
                  "if len(stable) != 1:\n    raise FileNotFoundError(f'expected one stable.pt, found {stable}')\n"
                  "args += ['--resume', str(stable[0])]\n")
-    return text+"main(args)"
+    return (text+f"use, report = pick_compile('/tmp/physigpt_smoke', {config!r})\n"
+            "print('smoke', json.dumps(report), flush=True)\n"
+            f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
+            "train(args + (['--compile'] if use else []) + ['--hours', f'{left:.3f}'])")
 
 
 def stage(output, kind, owner=OWNER, **kw):
@@ -113,7 +126,7 @@ def stage(output, kind, owner=OWNER, **kw):
     files = {name: (root/name).read_text() for name in SOURCES[kind]}
     hashes = {p: hashlib.sha256(text.encode()).hexdigest() for p, text in files.items()}
     payload = base64.b64encode(zlib.compress(json.dumps(files).encode())).decode()
-    entry = entry_for(kind, **kw)
+    entry = entry_for(kind, owner=owner, **kw)
     for module in re.findall(r"from (ml\.[\w.]+) import", entry):
         if module.replace(".", "/")+".py" not in files:
             raise RuntimeError(f"{kind}: entry imports {module}, which is not staged")
@@ -146,11 +159,13 @@ def stage(output, kind, owner=OWNER, **kw):
         meta = dict(id=f"{owner}/{'ppg-physigpt-tpu-smoke-v1' if smoke_only else tpu_slug(k)}",
                     title="PPG physiGPT TPU Smoke v1" if smoke_only else f"PPG physiGPT TPU Stage{k} v1",
                     enable_gpu=False, machine_shape="Tpu1VmV38",
-                    kernel_sources=[] if smoke_only else [f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))])
+                    kernel_sources=[] if smoke_only else [f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())])
     else:
         k = kw.get("stage", 0)
         meta = dict(id=f"{owner}/{stage_slug(k)}", title=f"PPG physiGPT Stage{k} v1", enable_gpu=True,
                     machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
                     + ([f"{owner}/{stage_slug(k-1)}"] if k > 0 else []))
     meta.update(code_file="run.py", language="python", kernel_type="script", is_private=True, enable_tpu=kind == "tpu",
                 enable_internet=True, dataset_sources=[], competition_sources=[], model_sources=[])
@@ -175,6 +190,7 @@ def main(argv=None):
     parser.add_argument("--hours", type=float, default=10.5)
     parser.add_argument("--stage", type=int, default=0)
     parser.add_argument("--shards", type=int, nargs="+", default=[0])
+    parser.add_argument("--solos", type=int, nargs="*", default=[], help="solo k outputs mounted as new data too")
     parser.add_argument("--config", default="base")
     parser.add_argument("--epochs", type=float, default=4.)
     parser.add_argument("--smoke-only", action="store_true", help="tpu: versions and the synthetic smoke run only")
@@ -182,7 +198,8 @@ def main(argv=None):
     parser.add_argument("--eval-every", type=int, default=0, help="train.py --eval-every (0: its default)")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
-    train = dict(stage=args.stage, shards=tuple(args.shards), config=args.config, epochs=args.epochs)
+    train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
+                 epochs=args.epochs)
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else []))
     train["extra"] = tuple(extra)

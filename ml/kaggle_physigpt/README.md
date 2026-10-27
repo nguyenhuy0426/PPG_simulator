@@ -75,5 +75,16 @@ python3 -m ml.kaggle_physigpt.stage <dir> train --stage 0 --shards 0
 python3 -m ml.kaggle_physigpt.stage <dir> train --stage 1 --shards 0 1      # resumes stage 0's stable.pt
 ```
 
-The next data shard starts at the previous shard's `next_record`. Realism is not claimed from NLL or flow loss:
+The next data shard starts at the previous shard's `next_record`; shards built in parallel take fixed disjoint
+`--start`/`--stop` ranges instead (train.py refuses mounted shards whose record ranges overlap). Stage 0 trains on
+every mounted shard, and on solo outputs given with `--solos`, as new data:
+
+```
+python3 -m ml.kaggle_physigpt.stage <dir> data --owner halovie2412 --shard 1 --start 5000 --stop 10000
+python3 -m ml.kaggle_physigpt.stage <dir> train --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
+    --epochs 300 --plateau 4 --eval-every 500
+```
+
+With `--plateau`, a stage whose held-out flow loss has risen above its best (overfitting) ends at `best.pt`
+instead of decaying; on solo 0 alone (87 k windows) the held-out loss was lowest at step 2000 and rose after. Realism is not claimed from NLL or flow loss:
 a later round fine-tunes on the project's people and goes through the strict judge with its copy gate.

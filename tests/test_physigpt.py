@@ -160,7 +160,7 @@ def _shard(root, n=48, seed=0):
     writer.add(x, 3000000+seed, rows, False, *mw.rate_features(x))
     writer.add(x[:8], 3999999, rows[:8], True, *mw.rate_features(x[:8]))
     writer.flush()
-    (root/"manifest.json").write_text(json.dumps(dict(protocol=mw.PROTOCOL, record_range=[0, 1], windows=n+8,
+    (root/"manifest.json").write_text(json.dumps(dict(protocol=mw.PROTOCOL, record_range=[seed, seed+1], windows=n+8,
                                                       chunks=writer.chunks)))
 
 
@@ -261,12 +261,43 @@ def test_tpu_kernels_run_on_the_v3_8_after_a_smoke_run(tmp_path):
     meta = json.loads((smoke/"kernel-metadata.json").read_text())
     assert meta["machine_shape"] == "Tpu1VmV38" and meta["enable_tpu"] and not meta["enable_gpu"]
     assert meta["kernel_sources"] == [] and meta["id"].endswith("/ppg-physigpt-tpu-smoke-v1")
-    assert "main(args)" not in (smoke/"run.py").read_text()
+    assert "main(args" not in (smoke/"run.py").read_text()
     full = st.stage(tmp_path/"full", "tpu", stage=0, shards=(0,))
     meta, script = json.loads((full/"kernel-metadata.json").read_text()), (full/"run.py").read_text()
     assert meta["kernel_sources"] == ["charlesday2612/ppg-physigpt-mimic3-shard0-v1"]
-    assert script.index("versions()") < script.index("smoke(") < script.index("main(args)")
-    assert "/kaggle/input/ppg-physigpt-mimic3-shard0-v1" in script
+    assert script.index("versions()") < script.index("smoke(") < script.index("main(args")
+    assert "*map(mounted, ['ppg-physigpt-mimic3-shard0-v1'])" in script
+    assert script.index("smoke(") < script.index("def mounted(") < script.index("main(args")
+
+
+def test_stage_0_trains_on_every_mounted_shard_and_solo_output_as_new_data(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"k", "train", owner="halovie2412", stage=0, shards=(1, 2), solos=(0,), epochs=300.,
+                   extra=("--plateau", "4"))
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-stage0-v1" and meta["kernel_sources"] == [
+        "halovie2412/ppg-physigpt-mimic3-shard1-v1", "halovie2412/ppg-physigpt-mimic3-shard2-v1",
+        "halovie2412/ppg-physigpt-solo0-v1"]
+    assert ("'--data', *map(mounted, ['ppg-physigpt-mimic3-shard1-v1', 'ppg-physigpt-mimic3-shard2-v1', "
+            "'ppg-physigpt-solo0-v1']), '--replay', *map(mounted, [])") in script
+    # The mounts are looked up before the compile smoke runs spend GPU time; a missing one stops the kernel.
+    assert script.index("args = [") < script.index("pick_compile(") < script.index("train(args")
+    assert "/kaggle/input/notebooks/halovie2412" in script
+    namespace = dict(pathlib=__import__("pathlib"))
+    exec(st.mount_lookup("halovie2412"), namespace)
+    with pytest.raises(FileNotFoundError, match="not mounted"):
+        namespace["mounted"]("ppg-physigpt-mimic3-shard77-v1")
+    later = (st.stage(tmp_path/"k1", "train", owner="halovie2412", stage=1, shards=(1, 2))/"run.py").read_text()
+    assert ("*map(mounted, ['ppg-physigpt-mimic3-shard2-v1']), '--replay', "
+            "*map(mounted, ['ppg-physigpt-mimic3-shard1-v1'])") in later and "mounted('ppg-physigpt-stage0-v1')" in later
+
+
+def test_shards_sharing_records_are_refused(tmp_path):
+    _shard(tmp_path/"a", seed=0)
+    _shard(tmp_path/"b", seed=0)
+    with pytest.raises(ValueError, match="overlap"):
+        tr.Windows([str(tmp_path/"a"), str(tmp_path/"b")])
+    assert len(tr.Windows([str(tmp_path/"a")]).train) == 48
 
 
 def test_plateau_starts_the_decay_on_every_rank_and_leaves_a_stable_state(tmp_path):
@@ -282,6 +313,42 @@ def test_plateau_starts_the_decay_on_every_rank_and_leaves_a_stable_state(tmp_pa
     assert lines[-1]["step"] == 5 and lines[-1]["plan"] == [5, 4]
     assert torch.load(tmp_path/"run"/"stable.pt", weights_only=False)["step"] == 4
     assert json.loads((tmp_path/"run"/"stage_summary.json").read_text())["plan"] == [5, 4]
+
+
+def test_plateau_on_a_rising_held_out_loss_ends_the_stage_at_the_best_state(tmp_path, monkeypatch):
+    _shard(tmp_path/"shard0")
+    # Scripted held-out losses (evaluation every 3 steps): best at step 6, then rising, so the plateau at step 12
+    # is overfitting and the stage ends there with the step-6 state instead of decaying the step-12 one.
+    flows = iter([.5, .3, .4, .45])
+    monkeypatch.setattr(tr, "evaluate", lambda *a: dict(valid_flow=next(flows, .3), valid_laplace_nll=0.))
+    tr.main(["--data", str(tmp_path/"shard0"), "--config", "tiny", "--batch", "8", "--steps", "30", "--warmup", "2",
+             "--decay-frac", ".34", "--cpu", "--log-every", "1", "--eval-every", "3", "--sample-steps", "2",
+             "--plateau", "2", "--output", str(tmp_path/"run")])
+    lines = [json.loads(l) for l in (tmp_path/"run"/"metrics.jsonl").read_text().splitlines()]
+    assert lines[-1]["step"] == 12 and lines[-1]["plateau"] == "best" and lines[-1]["best_step"] == 6
+    best = torch.load(tmp_path/"run"/"best.pt", weights_only=False)
+    assert best["step"] == 6 and best["valid_flow"] == .3
+    for name in ("stable.pt", "last.pt"):
+        state = torch.load(tmp_path/"run"/name, weights_only=False)
+        assert state["step"] == 6 and state["plan"] == [6, 6]
+        assert all(torch.equal(state["model"][k], best["model"][k]) for k in best["model"])
+    release = torch.load(tmp_path/"run"/"release.pt", weights_only=False)
+    assert release["step"] == 6 and all(torch.equal(release["model"][k], best["model"][k]) for k in best["model"])
+    summary = json.loads((tmp_path/"run"/"stage_summary.json").read_text())
+    assert summary["stopped_at_best"] and summary["best"] == dict(step=6, valid_flow=.3) and summary["steps"] == 6
+
+
+def test_a_flat_held_out_loss_still_decays_and_keeps_the_best_state(tmp_path, monkeypatch):
+    _shard(tmp_path/"shard0")
+    flows = iter([.5, .3, .3, .3])   # no gain, no rise: the usual decay from step 12
+    monkeypatch.setattr(tr, "evaluate", lambda *a: dict(valid_flow=next(flows, .3), valid_laplace_nll=0.))
+    tr.main(["--data", str(tmp_path/"shard0"), "--config", "tiny", "--batch", "8", "--steps", "30", "--warmup", "2",
+             "--decay-frac", ".34", "--cpu", "--log-every", "1", "--eval-every", "3", "--sample-steps", "2",
+             "--plateau", "2", "--output", str(tmp_path/"run")])
+    summary = json.loads((tmp_path/"run"/"stage_summary.json").read_text())
+    assert not summary["stopped_at_best"] and summary["plan"] == [18, 12] and summary["steps"] == 18
+    assert torch.load(tmp_path/"run"/"stable.pt", weights_only=False)["step"] == 12
+    assert torch.load(tmp_path/"run"/"best.pt", weights_only=False)["step"] == 6
 
 
 def test_compile_is_measured_against_eager_and_keeps_the_checkpoint_format(tmp_path):
