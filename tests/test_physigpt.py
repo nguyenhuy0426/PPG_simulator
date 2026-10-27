@@ -267,3 +267,40 @@ def test_tpu_kernels_run_on_the_v3_8_after_a_smoke_run(tmp_path):
     assert meta["kernel_sources"] == ["charlesday2612/ppg-physigpt-mimic3-shard0-v1"]
     assert script.index("versions()") < script.index("smoke(") < script.index("main(args)")
     assert "/kaggle/input/ppg-physigpt-mimic3-shard0-v1" in script
+
+
+def test_plateau_starts_the_decay_on_every_rank_and_leaves_a_stable_state(tmp_path):
+    _shard(tmp_path/"shard0")
+    # delta .99: only the first evaluation counts as a gain, so the second (step 4) ends the stable phase.
+    tr.main(["--data", str(tmp_path/"shard0"), "--config", "tiny", "--batch", "8", "--epochs", "50", "--warmup", "1",
+             "--cpu", "--cpu-world", "2", "--port", "29533", "--log-every", "1", "--eval-every", "2",
+             "--plateau", "1", "--plateau-delta", ".99", "--decay-frac", ".2", "--sample-steps", "2",
+             "--output", str(tmp_path/"run")])
+    lines = [json.loads(l) for l in (tmp_path/"run"/"metrics.jsonl").read_text().splitlines()]
+    assert [l["step"] for l in lines if l.get("plateau")] == [4]
+    # Rank 1 ends at step 5 too (a rank still on the 300-step plan would hang in its next all-reduce).
+    assert lines[-1]["step"] == 5 and lines[-1]["plan"] == [5, 4]
+    assert torch.load(tmp_path/"run"/"stable.pt", weights_only=False)["step"] == 4
+    assert json.loads((tmp_path/"run"/"stage_summary.json").read_text())["plan"] == [5, 4]
+
+
+def test_compile_is_measured_against_eager_and_keeps_the_checkpoint_format(tmp_path):
+    use, report = tr.pick_compile(tmp_path, config="tiny")
+    assert report["eager"]["step_seconds"] > 0 and report["eager"]["windows_per_second"] > 0
+    assert "step_seconds" in report["compiled"], report["compiled"]
+    assert use == (report["compiled"]["step_seconds"] < tr.COMPILE_GAIN*report["eager"]["step_seconds"])
+    eager = torch.load(tmp_path/"run"/"release.pt", weights_only=False)["model"]
+    compiled = torch.load(tmp_path/"run_compile"/"release.pt", weights_only=False)["model"]
+    assert eager.keys() == compiled.keys()
+    assert all(torch.allclose(eager[k], compiled[k], atol=1e-3) for k in eager)
+
+
+def test_solotrain_kernel_retrains_on_the_solo_shard_after_measuring_compile(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"k", "solotrain", owner="halovie2412", shard=0, config="base", epochs=300.,
+                   extra=("--plateau", "4", "--eval-every", "250"))
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-solo0-train-v1" and meta["machine_shape"] == "NvidiaTeslaT4"
+    assert meta["kernel_sources"] == ["halovie2412/ppg-physigpt-solo0-v1"] and meta["enable_gpu"]
+    assert script.index("pick_compile(") < script.index("train([")
+    assert "'--plateau', '4'" in script and "'--epochs', '300.0'" in script and "'/kaggle/input'" in script

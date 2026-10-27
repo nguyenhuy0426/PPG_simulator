@@ -6,11 +6,13 @@ and ends with a short 1-sqrt decay to zero. stable.pt is the state right before 
 it at the peak rate with no new warmup, so adding data never restarts training. release.pt is the decayed model a
 stage hands to evaluation. last.pt (every --save-minutes) resumes the same stage after a kernel stops.
 The batch of every step is a pure function of (seed, step), and so is the flow noise, so a resumed stage continues
-exactly. The kernel time budget shortens a stage (measured step time) instead of cutting its decay.
+exactly. The kernel time budget shortens a stage (measured step time) instead of cutting its decay; with --plateau,
+a stage planned for many epochs over a small shard starts its decay once the held-out flow loss stops improving.
 Validation is the held-out records of every mounted shard (fixed subset, fixed noise). Next-patch NLL and flow loss
 measure fit only; whether samples are realistic is the strict judge's job in a later round.
 """
 import argparse
+import functools
 import hashlib
 import json
 import math
@@ -30,6 +32,10 @@ from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
 
 VALID_WINDOWS = 8192
 SAMPLE_WINDOWS = 1024
+# Step time is measured over steps MEASURE_FROM..MEASURE_FROM+MEASURE_STEPS (after compilation and allocator warmup),
+# without the time rank 0 spends evaluating or saving.
+MEASURE_FROM, MEASURE_STEPS = 10, 50
+COMPILE_GAIN = .95   # --compile is kept only if the measured step is at least 5 % faster than eager
 
 
 class Windows:
@@ -65,6 +71,15 @@ class Windows:
         return out
 
 
+@functools.lru_cache(maxsize=2)
+def epoch_order(n, seed, epoch):
+    """The permutation of one epoch; cached, because every step of the epoch slices the same one (a 5 M window
+    permutation costs tens of milliseconds per step otherwise)."""
+    order = np.random.default_rng([seed, epoch]).permutation(n)
+    order.flags.writeable = False
+    return order
+
+
 def batch_index(new, replay, step, batch, replay_share, seed):
     """Global batch rows of `step`: an epoch-wise permutation of the new windows plus replay drawn with replacement."""
     n_replay = round(batch*replay_share) if len(replay) else 0
@@ -72,7 +87,7 @@ def batch_index(new, replay, step, batch, replay_share, seed):
     first, last = step*n_new, (step+1)*n_new
     parts = []
     for epoch in range(first//len(new), (last-1)//len(new)+1):
-        perm = np.random.default_rng([seed, epoch]).permutation(len(new))
+        perm = epoch_order(len(new), seed, epoch)
         lo, hi = max(first, epoch*len(new))-epoch*len(new), min(last, (epoch+1)*len(new))-epoch*len(new)
         parts.append(new[perm[lo:hi]])
     if n_replay:
@@ -150,8 +165,9 @@ def worker(rank, world, args):
     decay, no_decay = [], []
     for name, p in model.named_parameters():
         (decay if p.dim() == 2 and "start" not in name else no_decay).append(p)
+    # fused: one CUDA kernel for the whole update instead of a few per parameter tensor
     optimizer = torch.optim.AdamW([dict(params=decay, weight_decay=args.weight_decay), dict(params=no_decay,
-                                   weight_decay=0.)], lr=args.lr, betas=(.9, .95), eps=1e-8)
+                                   weight_decay=0.)], lr=args.lr, betas=(.9, .95), eps=1e-8, fused=cuda or None)
     scaler = torch.amp.GradScaler("cuda", enabled=cuda)
     data = Windows(args.data+args.replay)
     if not len(data.valid):
@@ -181,7 +197,14 @@ def worker(rank, world, args):
         if state["stage_id"] == stage_id:   # same stage after a stop: continue its step and plan
             step, (total, decay_start) = state["step"], state["plan"]
         warmup = 0                          # a new stage from stable.pt stays at the peak rate
-    net = torch.nn.parallel.DistributedDataParallel(model, [rank] if cuda else None) if world > 1 else model
+    if args.compile:
+        # Per block, in place: the state_dict keys stay those of the eager model, and flow_loss's seeded noise
+        # (a torch.Generator, which dynamo does not trace) stays outside the compiled graphs.
+        for block in model.blocks:
+            block.compile()
+        model.flow.compile()
+    net = (torch.nn.parallel.DistributedDataParallel(model, [rank] if cuda else None, gradient_as_bucket_view=True)
+           if world > 1 else model)
     local = args.batch//world
     if args.batch % world:
         raise ValueError("batch must divide by the number of devices")
@@ -194,25 +217,30 @@ def worker(rank, world, args):
     feed = queue.Queue(maxsize=4)
 
     def produce(first):
+        # Gathering, scaling and pinning run here, off the training thread; a pinned batch copies to the GPU
+        # asynchronously. The device is set first so that pinning does not open a context on cuda:0 from rank 1.
+        if cuda:
+            torch.cuda.set_device(device)
         for s in range(first, total):
             rows = batch_index(new_rows, replay_rows, s, args.batch, args.replay_share, args.seed)
-            feed.put((s, data.rows(rows[rank*local:(rank+1)*local])))
+            x = torch.from_numpy(data.rows(rows[rank*local:(rank+1)*local]).astype(np.float32)/65535)
+            feed.put((s, x.pin_memory() if cuda else x))
         feed.put(None)
 
     threading.Thread(target=produce, args=(step,), daemon=True).start()
-    last_save, tick, seen, log = time.time(), time.time(), 0, (output/"metrics.jsonl").open("a") if rank == 0 else None
+    last_save, log = time.time(), (output/"metrics.jsonl").open("a") if rank == 0 else None
     domain = torch.zeros(local, dtype=torch.long, device=device)
-    measured = None
+    measured, tick, paused, best, stale, first = None, None, 0., math.inf, 0, step
     while True:
         item = feed.get()
         if item is None:
             break
-        s, rows = item
+        s, x = item
         if s >= total:
             continue
         for group in optimizer.param_groups:
             group["lr"] = lr_at(s, total, decay_start, args.lr, warmup)
-        x = torch.from_numpy(rows.astype(np.float32)/65535).to(device, non_blocking=True)
+        x = x.to(device, non_blocking=True)
         generator = torch.Generator(device).manual_seed(args.seed*1_000_003+s*world+rank)
         with torch.autocast("cuda", torch.float16, enabled=cuda):
             loss, parts = net(x, domain, aux=args.aux, repeats=args.repeats, generator=generator)
@@ -222,33 +250,60 @@ def worker(rank, world, args):
         grad = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         scaler.step(optimizer)
         scaler.update()
-        step, seen = s+1, seen+args.batch
-        if step == decay_start and rank == 0:
-            save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
-        if measured is None and seen >= 50*args.batch:
-            # The time budget shortens the stage once, from the measured step time, keeping the decay share.
-            seconds = (time.time()-tick)/50
-            left = args.hours*3600-(time.time()-begin)-args.reserve_minutes*60
-            fit = torch.tensor([step+int(left/seconds)], device=device)
-            if world > 1:
-                dist.broadcast(fit, 0)
-            if int(fit) < total:
-                total = max(step+1, int(fit))
-                decay_start = max(step, min(decay_start, total-max(1, round(args.decay_frac*total))))
-            measured = seconds
-        if rank == 0 and (step % args.log_every == 0 or step == total):
-            record = dict(step=step, lr=optimizer.param_groups[0]["lr"], loss=float(loss), grad_norm=float(grad),
-                          scale=float(scaler.get_scale()), plan=[total, decay_start],
+        step = s+1
+        if step-first in (MEASURE_FROM, MEASURE_FROM+MEASURE_STEPS) and measured is None:
+            if cuda:
+                torch.cuda.synchronize(device)
+            if tick is None:
+                tick, paused = time.time(), 0.
+            else:
+                # The time budget shortens the stage once, from the measured step time, keeping the decay share.
+                seconds = (time.time()-tick-paused)/MEASURE_STEPS
+                left = args.hours*3600-(time.time()-begin)-args.reserve_minutes*60
+                fit = torch.tensor([step+int(left/seconds)], device=device)
+                if world > 1:
+                    dist.broadcast(fit, 0)
+                if int(fit) < total:
+                    total = max(step+1, int(fit))
+                    decay_start = max(step, min(decay_start, total-max(1, round(args.decay_frac*total))))
+                measured = seconds
+        evaluating = step % args.eval_every == 0 or step == total
+        if rank == 0 and (step % args.log_every == 0 or evaluating):
+            held = time.time()
+            record = dict(step=step, lr=optimizer.param_groups[0]["lr"], loss=float(loss.detach()),
+                          grad_norm=float(grad), scale=float(scaler.get_scale()), plan=[total, decay_start],
                           hours=round((time.time()-begin)/3600, 4), step_seconds=measured,
                           **{k: float(v) for k, v in parts.items()})
-            if step % args.eval_every == 0 or step == total:
+            if evaluating:
                 record.update(evaluate(model, data, device, cuda))
+                if args.plateau and warmup <= step < decay_start:
+                    # Stable phase until the held-out flow loss stops improving, then the decay. On a small shard
+                    # this, not the time budget, ends the stage; a resumed stage restarts the patience count.
+                    if record["valid_flow"] < best*(1-args.plateau_delta):
+                        best, stale = record["valid_flow"], 0
+                    else:
+                        stale += 1
+                    if stale >= args.plateau:
+                        total = min(total, step+max(1, round(step*args.decay_frac/(1-args.decay_frac))))
+                        decay_start = step
+                        record.update(plateau=True, plan=[total, decay_start])
             log.write(json.dumps(record)+"\n")
             log.flush()
             print(json.dumps(record), flush=True)
+            paused += time.time()-held
+        if args.plateau and evaluating and world > 1:
+            plan = torch.tensor([total, decay_start], device=device)
+            dist.broadcast(plan, 0)
+            total, decay_start = (int(v) for v in plan)
+        if step == decay_start and rank == 0:
+            held = time.time()
+            save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+            paused += time.time()-held
         if rank == 0 and time.time()-last_save > args.save_minutes*60:
+            held = time.time()
             save_state(output/"last.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
             last_save = time.time()
+            paused += last_save-held
         if step >= total or step == args.stop_at:
             break
     if world > 1:
@@ -267,7 +322,9 @@ def worker(rank, world, args):
         torch.save(dict(model=model.state_dict(), config=args.config, describe=describe(model), stage_id=stage_id,
                         step=step), output/"release.pt")
         summary = dict(stage_id=stage_id, steps=step, plan=[total, decay_start], hours=(time.time()-begin)/3600,
-                       final=evaluate(model, data, device, cuda),
+                       step_seconds=measured, windows_per_second=measured and args.batch/measured,
+                       max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30 if cuda else None,
+                       compile=args.compile, final=evaluate(model, data, device, cuda),
                        samples=release_samples(model, data, output, device, args.sample_steps),
                        note="fit and sanity statistics only; realism is judged by the strict judge in a later round")
         save_json(output/"stage_summary.json", summary)
@@ -291,14 +348,29 @@ def synthetic_shard(root, n=4096, seed=0):
                                                chunks=writer.chunks))
 
 
-def smoke(root, config="base", steps=60):
+def smoke(root, config="base", steps=60, extra=()):
     """Minutes on synthetic windows through the real device path (DDP, fp16, stable/last/release, sampling) before
     a kernel spends hours fetching data. It proves the code runs on the GPUs, nothing about the model."""
     root = Path(root)
-    synthetic_shard(root/"shard")
-    main(["--data", str(root/"shard"), "--output", str(root/"run"), "--config", config, "--steps", str(steps),
-          "--log-every", "10", "--eval-every", "30", "--sample-steps", "4", "--port", "29519"])
-    return json.loads((root/"run"/"stage_summary.json").read_text())
+    if not (root/"shard"/"manifest.json").exists():
+        synthetic_shard(root/"shard")
+    run = f"run{'_'.join(['']+[a.strip('-') for a in extra])}"
+    main(["--data", str(root/"shard"), "--output", str(root/run), "--config", config, "--steps", str(steps),
+          "--log-every", "10", "--eval-every", "30", "--sample-steps", "4", "--port", "29519", *extra])
+    return json.loads((root/run/"stage_summary.json").read_text())
+
+
+def pick_compile(root, config="base", steps=MEASURE_FROM+MEASURE_STEPS):
+    """Smoke runs eager and with --compile on the kernel's own GPUs; --compile is used only if it ran and its
+    measured step is COMPILE_GAIN faster. Whether inductor's kernels help on a T4 (sm_75) is measured, not assumed."""
+    report = dict(eager=smoke(root, config, steps))
+    try:
+        report["compiled"] = smoke(root, config, steps, ["--compile"])
+    except Exception as error:   # no Triton for this GPU, a dynamo failure...: train eager, and say why
+        report["compiled"] = dict(error=f"{type(error).__name__}: {error}"[:500])
+    eager, compiled = report["eager"]["step_seconds"], report["compiled"].get("step_seconds")
+    report["use_compile"] = bool(eager and compiled and compiled < COMPILE_GAIN*eager)
+    return report["use_compile"], report
 
 
 def main(argv=None):
@@ -326,6 +398,10 @@ def main(argv=None):
     parser.add_argument("--eval-every", type=int, default=1000)
     parser.add_argument("--sample-steps", type=int, default=32)
     parser.add_argument("--stop-at", type=int, default=-1, help="end this run at that step, keeping the plan")
+    parser.add_argument("--plateau", type=int, default=0,
+                        help="start the decay after this many evaluations without a better valid_flow (0: off)")
+    parser.add_argument("--plateau-delta", type=float, default=.005, help="relative valid_flow gain that counts")
+    parser.add_argument("--compile", action="store_true", help="torch.compile each block and the flow head")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--port", type=int, default=29517)
     parser.add_argument("--cpu", action="store_true")

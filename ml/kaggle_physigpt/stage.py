@@ -8,6 +8,9 @@ windows that also logs the torch/torch_xla versions of the TPU image.
 solo k (T4 x2, internet): one kernel that needs no finished data kernel: a GPU smoke run on synthetic windows, then
 mimic_wdb for --hours into /kaggle/working/shard, then stage 0 of train.py on that shard for the rest of the kernel
 budget. Its shard mounts later like any data shard (Windows finds it by manifest.json).
+solotrain k (T4 x2): stage 0 again on solo k's shard (its output mounted), after smoke runs that measure eager
+against torch.compile on the same GPUs; planned for many epochs and ended by --plateau, since solo's own 4-epoch
+plan over a small shard is a few hundred steps.
 """
 import argparse
 import base64
@@ -24,6 +27,7 @@ SOURCES = {"data": COMMON+["ml/kaggle_multidomain/data.py", "ml/kaggle_multidoma
            "train": COMMON+["ml/kaggle_physigpt/model.py", "ml/kaggle_physigpt/train.py"]}
 SOURCES["solo"] = SOURCES["data"]+SOURCES["train"][len(COMMON):]
 SOURCES["tpu"] = SOURCES["train"]+["ml/kaggle_physigpt/train_tpu.py"]
+SOURCES["solotrain"] = SOURCES["train"]
 TPU_HOURS = 8.3       # Kaggle's TPU session limit is taken as 9 h (not confirmed from a document)
 KERNEL_HOURS = 11.5   # Kaggle stops a GPU kernel at 12 h; the rest is train.py's own reserve plus packing
 
@@ -42,6 +46,10 @@ def solo_slug(k):
 
 def tpu_slug(k):
     return f"ppg-physigpt-tpu-stage{k}-v1"
+
+
+def solotrain_slug(k):
+    return f"ppg-physigpt-solo{k}-train-v1"
 
 
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
@@ -63,6 +71,16 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 f"build({data!r})\n"
                 f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
                 f"train({train!r} + ['--hours', f'{{left:.3f}}'])")
+    if kind == "solotrain":
+        # The mounted solo output holds shard/ (with manifest.json) and its short stage0/ (none), so the input
+        # root finds exactly its shard wherever Kaggle mounts it.
+        train = ["--data", "/kaggle/input", "--output", "/kaggle/working/stage0", "--config", config,
+                 "--epochs", str(epochs), *extra]
+        return ("import time\nfrom ml.kaggle_physigpt.train import main as train, pick_compile\nbegin = time.time()\n"
+                f"use, report = pick_compile('/tmp/physigpt_smoke', {config!r})\n"
+                "print('smoke', json.dumps(report), flush=True)\n"
+                f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
+                f"train({train!r} + (['--compile'] if use else []) + ['--hours', f'{{left:.3f}}'])")
     new, replay = shards[-1:], shards[:-1]
     args = ["--data", *[f"/kaggle/input/{shard_slug(k)}" for k in new],
             "--replay", *[f"/kaggle/input/{shard_slug(k)}" for k in replay],
@@ -118,6 +136,10 @@ def stage(output, kind, owner=OWNER, **kw):
         k = kw.get("shard", 0)
         meta = dict(id=f"{owner}/{solo_slug(k)}", title=f"PPG physiGPT Solo{k} v1", enable_gpu=True,
                     machine_shape="NvidiaTeslaT4", kernel_sources=[])
+    elif kind == "solotrain":
+        k = kw.get("shard", 0)
+        meta = dict(id=f"{owner}/{solotrain_slug(k)}", title=f"PPG physiGPT Solo{k} Train v1", enable_gpu=True,
+                    machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{solo_slug(k)}"])
     elif kind == "tpu":
         k = kw.get("stage", 0)
         smoke_only = kw.get("smoke_only", False)
@@ -156,10 +178,17 @@ def main(argv=None):
     parser.add_argument("--config", default="base")
     parser.add_argument("--epochs", type=float, default=4.)
     parser.add_argument("--smoke-only", action="store_true", help="tpu: versions and the synthetic smoke run only")
+    parser.add_argument("--plateau", type=int, default=0, help="train.py --plateau (evaluations of patience)")
+    parser.add_argument("--eval-every", type=int, default=0, help="train.py --eval-every (0: its default)")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), config=args.config, epochs=args.epochs)
-    kw = dict(data=data, train=train, tpu=dict(train, smoke_only=args.smoke_only), solo=dict(data, config=args.config, epochs=args.epochs))[args.kind]
+    extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
+             + (["--eval-every", str(args.eval_every)] if args.eval_every else []))
+    train["extra"] = tuple(extra)
+    kw = dict(data=data, train=train, tpu=dict(train, smoke_only=args.smoke_only),
+              solo=dict(data, config=args.config, epochs=args.epochs, extra=tuple(extra)),
+              solotrain=dict(shard=args.shard, config=args.config, epochs=args.epochs, extra=tuple(extra)))[args.kind]
     print(stage(args.output, args.kind, args.owner, **kw))
 
 
