@@ -1,0 +1,308 @@
+"""PPG-physiGPT pretraining on two T4s (DDP, fp16 autocast), in continual stages.
+
+A stage trains on its new shards (mimic_wdb output) plus a replay share of the earlier shards, with a
+warmup-stable-decay schedule (Hägele et al. 2024): the first stage warms up, every stage holds the peak learning rate
+and ends with a short 1-sqrt decay to zero. stable.pt is the state right before the decay; the next stage starts from
+it at the peak rate with no new warmup, so adding data never restarts training. release.pt is the decayed model a
+stage hands to evaluation. last.pt (every --save-minutes) resumes the same stage after a kernel stops.
+The batch of every step is a pure function of (seed, step), and so is the flow noise, so a resumed stage continues
+exactly. The kernel time budget shortens a stage (measured step time) instead of cutting its decay.
+Validation is the held-out records of every mounted shard (fixed subset, fixed noise). Next-patch NLL and flow loss
+measure fit only; whether samples are realistic is the strict judge's job in a later round.
+"""
+import argparse
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import queue
+import threading
+import time
+
+import numpy as np
+import torch
+import torch.distributed as dist
+
+from ml.kaggle_lsm.train_lsm import LENGTH, save_json
+from ml.kaggle_physigpt.mimic_wdb import PROTOCOL, rate_features
+from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
+
+VALID_WINDOWS = 8192
+SAMPLE_WINDOWS = 1024
+
+
+class Windows:
+    """Memory-mapped windows of every shard found under the given roots, split by the shard's validation flag."""
+
+    def __init__(self, roots):
+        manifests = sorted({p for root in roots for p in Path(root).rglob("manifest.json")
+                            if json.loads(p.read_text()).get("protocol") == PROTOCOL})
+        if not manifests:
+            raise FileNotFoundError(f"No {PROTOCOL} shard under {roots}")
+        self.signal, self.shards, metas = [], [], []
+        for path in manifests:
+            manifest = json.loads(path.read_text())
+            for chunk in manifest["chunks"]:
+                self.signal.append(np.load(path.parent/f"{chunk['stem']}_signal.npy", mmap_mode="r"))
+                metas.append(np.load(path.parent/f"{chunk['stem']}_meta.npy"))
+            self.shards.append(dict(path=str(path.parent), record_range=manifest["record_range"],
+                                    windows=manifest["windows"], chunks=[c["sha256"] for c in manifest["chunks"]]))
+        self.offsets = np.cumsum([0]+[len(s) for s in self.signal])
+        valid = np.concatenate([m["valid"] for m in metas]).astype(bool)
+        self.train, self.valid = np.flatnonzero(~valid), np.flatnonzero(valid)
+
+    def rows(self, index):
+        """uint16 [len(index), LENGTH] in the order of index."""
+        index = np.asarray(index)
+        out = np.empty((len(index), LENGTH), np.uint16)
+        chunk = np.searchsorted(self.offsets, index, side="right")-1
+        for c in np.unique(chunk):
+            where = np.flatnonzero(chunk == c)
+            local = index[where]-self.offsets[c]
+            order = np.argsort(local)
+            out[where[order]] = self.signal[c][local[order]]
+        return out
+
+
+def batch_index(new, replay, step, batch, replay_share, seed):
+    """Global batch rows of `step`: an epoch-wise permutation of the new windows plus replay drawn with replacement."""
+    n_replay = round(batch*replay_share) if len(replay) else 0
+    n_new = batch-n_replay
+    first, last = step*n_new, (step+1)*n_new
+    parts = []
+    for epoch in range(first//len(new), (last-1)//len(new)+1):
+        perm = np.random.default_rng([seed, epoch]).permutation(len(new))
+        lo, hi = max(first, epoch*len(new))-epoch*len(new), min(last, (epoch+1)*len(new))-epoch*len(new)
+        parts.append(new[perm[lo:hi]])
+    if n_replay:
+        parts.append(replay[np.random.default_rng([seed, 1 << 20, step]).integers(len(replay), size=n_replay)])
+    return np.concatenate(parts)
+
+
+def lr_at(step, total, decay_start, peak, warmup):
+    if step < warmup:
+        return peak*(step+1)/warmup
+    if step < decay_start:
+        return peak
+    return peak*(1-math.sqrt((step-decay_start)/max(1, total-decay_start)))
+
+
+def plan_steps(windows, epochs, batch, replay_share, decay_frac):
+    total = max(1, math.ceil(epochs*windows/(batch-round(batch*replay_share))))
+    return total, total-max(1, round(decay_frac*total))
+
+
+def evaluate(model, data, device, amp):
+    index = data.valid[np.linspace(0, len(data.valid)-1, min(VALID_WINDOWS, len(data.valid))).astype(int)]
+    generator = torch.Generator(device).manual_seed(20261027)
+    totals, count = dict(flow=0., laplace_nll=0.), 0
+    model.eval()
+    with torch.no_grad():
+        for part in np.array_split(index, max(1, len(index)//512)):
+            x = torch.from_numpy(data.rows(part).astype(np.float32)/65535).to(device)
+            with torch.autocast("cuda", torch.float16, enabled=amp):
+                _, parts = model(x, torch.zeros(len(x), dtype=torch.long, device=device), generator=generator)
+            for k in totals:
+                totals[k] += float(parts[k])*len(x)
+            count += len(x)
+    model.train()
+    return {f"valid_{k}": v/max(count, 1) for k, v in totals.items()}
+
+
+def release_samples(model, data, output, device, steps=32):
+    x = model.generate(SAMPLE_WINDOWS, steps=steps, seed=0, device=device).float().cpu().numpy()
+    real = data.rows(data.valid[:SAMPLE_WINDOWS]).astype(np.float32)/65535
+    np.save(output/"release_samples.npy", x.astype(np.float16))
+    stats = {}
+    for name, w in (("generated", x), ("valid_real", real)):
+        acf, rate = rate_features(w)
+        stats[name] = dict(acf_peak_mean=float(acf.mean()), rate_bpm_quartiles=np.percentile(rate, [25, 50, 75]).tolist(),
+                           diff_std=float(np.diff(w, axis=1).std()))
+    return stats
+
+
+def save_state(path, model, optimizer, scaler, step, plan, args, stage_id):
+    tmp = Path(str(path)+".partial")
+    torch.save(dict(model=model.state_dict(), optimizer=optimizer.state_dict(), scaler=scaler.state_dict(),
+                    step=step, plan=plan, config=args.config, stage_id=stage_id), tmp)
+    tmp.replace(path)
+
+
+def worker(rank, world, args):
+    cuda = torch.cuda.is_available() and not args.cpu
+    if world > 1:
+        dist.init_process_group("nccl" if cuda else "gloo", init_method=f"tcp://127.0.0.1:{args.port}", rank=rank,
+                                world_size=world)
+    device = torch.device(f"cuda:{rank}" if cuda else "cpu")
+    if cuda:
+        torch.cuda.set_device(device)
+        torch.backends.cuda.matmul.allow_tf32 = True
+    output = Path(args.output)
+    begin = time.time()
+    torch.manual_seed(args.seed)
+    model = PhysiGPT(CONFIGS[args.config]).to(device)
+    decay, no_decay = [], []
+    for name, p in model.named_parameters():
+        (decay if p.dim() == 2 and "start" not in name else no_decay).append(p)
+    optimizer = torch.optim.AdamW([dict(params=decay, weight_decay=args.weight_decay), dict(params=no_decay,
+                                   weight_decay=0.)], lr=args.lr, betas=(.9, .95), eps=1e-8)
+    scaler = torch.amp.GradScaler("cuda", enabled=cuda)
+    data = Windows(args.data+args.replay)
+    stage_id = hashlib.sha256(json.dumps([s["chunks"] for s in data.shards]+[args.seed, args.config]).encode()
+                              ).hexdigest()[:16]
+    # New rows are the train rows of the shards under --data; the rest of the union is the replay pool.
+    new_paths = {s["path"] for s in Windows(args.data).shards}
+    shard_of = np.repeat(np.arange(len(data.shards), dtype=np.int16).repeat([len(s["chunks"]) for s in data.shards]),
+                         np.diff(data.offsets))
+    is_new = np.isin(shard_of, [i for i, s in enumerate(data.shards) if s["path"] in new_paths])
+    new_rows, replay_rows = data.train[is_new[data.train]], data.train[~is_new[data.train]]
+    total, decay_start = plan_steps(len(new_rows), args.epochs, args.batch, args.replay_share if len(replay_rows) else 0,
+                                    args.decay_frac)
+    if args.steps:
+        total, decay_start = args.steps, args.steps-max(1, round(args.decay_frac*args.steps))
+    step, warmup = 0, args.warmup
+    if args.resume:
+        state = torch.load(args.resume, map_location=device, weights_only=False)
+        if state["config"] != args.config:
+            raise ValueError(f"checkpoint config {state['config']} != {args.config}")
+        model.load_state_dict(state["model"])
+        optimizer.load_state_dict(state["optimizer"])
+        scaler.load_state_dict(state["scaler"])
+        if state["stage_id"] == stage_id:   # same stage after a stop: continue its step and plan
+            step, (total, decay_start) = state["step"], state["plan"]
+        warmup = 0                          # a new stage from stable.pt stays at the peak rate
+    net = torch.nn.parallel.DistributedDataParallel(model, [rank] if cuda else None) if world > 1 else model
+    local = args.batch//world
+    if args.batch % world:
+        raise ValueError("batch must divide by the number of devices")
+    if rank == 0:
+        output.mkdir(parents=True, exist_ok=True)
+        save_json(output/"run_config.json", dict(vars(args), stage_id=stage_id, world=world, model=describe(model),
+                                                 new_windows=int(len(new_rows)), replay_windows=int(len(replay_rows)),
+                                                 valid_windows=int(len(data.valid)), shards=data.shards,
+                                                 plan=[total, decay_start], start_step=step))
+    feed = queue.Queue(maxsize=4)
+
+    def produce(first):
+        for s in range(first, total):
+            rows = batch_index(new_rows, replay_rows, s, args.batch, args.replay_share, args.seed)
+            feed.put((s, data.rows(rows[rank*local:(rank+1)*local])))
+        feed.put(None)
+
+    threading.Thread(target=produce, args=(step,), daemon=True).start()
+    last_save, tick, seen, log = time.time(), time.time(), 0, (output/"metrics.jsonl").open("a") if rank == 0 else None
+    domain = torch.zeros(local, dtype=torch.long, device=device)
+    measured = None
+    while True:
+        item = feed.get()
+        if item is None:
+            break
+        s, rows = item
+        if s >= total:
+            continue
+        for group in optimizer.param_groups:
+            group["lr"] = lr_at(s, total, decay_start, args.lr, warmup)
+        x = torch.from_numpy(rows.astype(np.float32)/65535).to(device, non_blocking=True)
+        generator = torch.Generator(device).manual_seed(args.seed*1_000_003+s*world+rank)
+        with torch.autocast("cuda", torch.float16, enabled=cuda):
+            loss, parts = net(x, domain, aux=args.aux, repeats=args.repeats, generator=generator)
+        optimizer.zero_grad(set_to_none=True)
+        scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
+        grad = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        scaler.step(optimizer)
+        scaler.update()
+        step, seen = s+1, seen+args.batch
+        if step == decay_start and rank == 0:
+            save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+        if measured is None and seen >= 50*args.batch:
+            # The time budget shortens the stage once, from the measured step time, keeping the decay share.
+            seconds = (time.time()-tick)/50
+            left = args.hours*3600-(time.time()-begin)-args.reserve_minutes*60
+            fit = torch.tensor([step+int(left/seconds)], device=device)
+            if world > 1:
+                dist.broadcast(fit, 0)
+            if int(fit) < total:
+                total = max(step+1, int(fit))
+                decay_start = max(step, min(decay_start, total-max(1, round(args.decay_frac*total))))
+            measured = seconds
+        if rank == 0 and (step % args.log_every == 0 or step == total):
+            record = dict(step=step, lr=optimizer.param_groups[0]["lr"], loss=float(loss), grad_norm=float(grad),
+                          scale=float(scaler.get_scale()), plan=[total, decay_start],
+                          hours=round((time.time()-begin)/3600, 4), step_seconds=measured,
+                          **{k: float(v) for k, v in parts.items()})
+            if step % args.eval_every == 0 or step == total:
+                record.update(evaluate(model, data, device, cuda))
+            log.write(json.dumps(record)+"\n")
+            log.flush()
+            print(json.dumps(record), flush=True)
+        if rank == 0 and time.time()-last_save > args.save_minutes*60:
+            save_state(output/"last.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+            last_save = time.time()
+        if step >= total or step == args.stop_at:
+            break
+    if world > 1:
+        dist.barrier()
+    if step < total:   # stopped on request: keep the resumable state only
+        if rank == 0:
+            save_state(output/"last.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+            log.close()
+        if world > 1:
+            dist.destroy_process_group()
+        return
+    if rank == 0:
+        if decay_start >= total:   # a stage shortened past its decay start still leaves a stable state
+            save_state(output/"stable.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+        save_state(output/"last.pt", model, optimizer, scaler, step, [total, decay_start], args, stage_id)
+        torch.save(dict(model=model.state_dict(), config=args.config, describe=describe(model), stage_id=stage_id,
+                        step=step), output/"release.pt")
+        summary = dict(stage_id=stage_id, steps=step, plan=[total, decay_start], hours=(time.time()-begin)/3600,
+                       final=evaluate(model, data, device, cuda),
+                       samples=release_samples(model, data, output, device, args.sample_steps),
+                       note="fit and sanity statistics only; realism is judged by the strict judge in a later round")
+        save_json(output/"stage_summary.json", summary)
+        log.close()
+    if world > 1:
+        dist.destroy_process_group()
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data", nargs="+", required=True, help="roots holding this stage's new shards")
+    parser.add_argument("--replay", nargs="*", default=[], help="roots holding earlier shards")
+    parser.add_argument("--replay-share", type=float, default=.25)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--config", default="base", choices=sorted(CONFIGS))
+    parser.add_argument("--resume", default=None, help="stable.pt of the previous stage, or last.pt of this one")
+    parser.add_argument("--epochs", type=float, default=4.)
+    parser.add_argument("--steps", type=int, default=0, help="override the planned stage length")
+    parser.add_argument("--batch", type=int, default=1024)
+    parser.add_argument("--lr", type=float, default=6e-4)
+    parser.add_argument("--warmup", type=int, default=1000)
+    parser.add_argument("--decay-frac", type=float, default=.15)
+    parser.add_argument("--weight-decay", type=float, default=.1)
+    parser.add_argument("--clip", type=float, default=1.)
+    parser.add_argument("--aux", type=float, default=.1, help="weight of the logit-Laplace NLL")
+    parser.add_argument("--repeats", type=int, default=4, help="flow times per patch per step")
+    parser.add_argument("--hours", type=float, default=11.)
+    parser.add_argument("--reserve-minutes", type=float, default=25.)
+    parser.add_argument("--save-minutes", type=float, default=30.)
+    parser.add_argument("--log-every", type=int, default=100)
+    parser.add_argument("--eval-every", type=int, default=1000)
+    parser.add_argument("--sample-steps", type=int, default=32)
+    parser.add_argument("--stop-at", type=int, default=-1, help="end this run at that step, keeping the plan")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--port", type=int, default=29517)
+    parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--cpu-world", type=int, default=1, help="CPU (gloo) processes; checks the DDP path")
+    args = parser.parse_args(argv)
+    world = args.cpu_world if args.cpu or not torch.cuda.is_available() else torch.cuda.device_count()
+    if world > 1:
+        torch.multiprocessing.spawn(worker, args=(world, args), nprocs=world, join=True)
+    else:
+        worker(0, 1, args)
+
+
+if __name__ == "__main__":
+    main()
