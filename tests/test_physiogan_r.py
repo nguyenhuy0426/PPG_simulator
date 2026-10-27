@@ -145,6 +145,25 @@ def test_ada_augment_is_identity_at_zero_and_p_follows_the_critic():
     assert float(aug.p) == 0.
 
 
+def test_penalties_differentiate_twice_through_the_augmentation():
+    # grid_sample's backward has no derivative: the first P5 v2 kernel failed at its first R1 step with p > 0.
+    from ml.kaggle_multidomain import strict_judge as sj
+    d = physiogan_r.Balanced(sj.StrictCritic(8, **dict(physiogan_r.CRITIC, width=4))).train()
+    d.augment.p.fill_(physiogan_r.ADA_MAX)
+    x, c = torch.rand(4, 1, LENGTH), torch.rand(4, 8)
+    value = physiogan_r.penalty(d, x, c)
+    value.backward()
+    assert torch.isfinite(value) and any(p.grad is not None for p in d.critic.parameters())
+
+
+def test_stretch_is_identity_at_one_and_holds_the_centre():
+    x = torch.randn(3, 1, 101)
+    torch.testing.assert_close(physiogan_r.stretch(x, torch.ones(3, 1, 1)), x)
+    y = physiogan_r.stretch(x, torch.full((3, 1, 1), 1.1))
+    torch.testing.assert_close(y[..., 50], x[..., 50])
+    assert torch.equal(y[..., 0], x[..., 0]) and torch.equal(y[..., -1], x[..., -1])
+
+
 def test_direct_comparison_reports_each_distance_next_to_real_vs_real():
     from ml.kaggle_multidomain import waveform_compare
     rng = np.random.default_rng(0)

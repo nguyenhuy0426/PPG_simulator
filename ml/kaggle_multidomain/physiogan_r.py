@@ -148,9 +148,21 @@ def generator(run_dir, device):
 
 
 # ---------------------------------------------------------------- critic balance (ADA)
+def stretch(x, factor):
+    """Time stretch of (n, 1, L) windows about their centre by factor (n, 1, 1), edge samples held: linear
+    interpolation written with gather, so the critic's R1/R2 penalties can differentiate it twice (grid_sample's
+    backward has no derivative)."""
+    length = x.shape[-1]
+    centre = (length-1)/2
+    position = ((torch.arange(length, device=x.device, dtype=x.dtype)[None, None]-centre)*factor+centre).clamp(0, length-1)
+    left = position.floor().long().clamp(max=length-2)
+    w = position-left
+    return x.gather(-1, left)*(1-w)+x.gather(-1, left+1)*w
+
+
 class Augment(nn.Module):
     """Differentiable augmentation of (n, 1, L) windows, each part applied to a window with probability p: gain and
-    offset, a time stretch of +-10% about the centre (linear interpolation, edge held), white instance noise (SD 0.02).
+    offset, a time stretch of +-10% about the centre (stretch), white instance noise (SD 0.02).
     All three leave the critic a way to tell the classes apart only through what real and generated windows differ in
     (they are applied alike to both), and are invertible in distribution for p < 1 (non-leaking, ADA)."""
     def __init__(self):
@@ -167,11 +179,7 @@ class Augment(nn.Module):
         gain, offset = torch.exp(.2*torch.randn(n, 1, 1, device=x.device)), .1*torch.randn(n, 1, 1, device=x.device)
         x = m*(x*gain+offset)+(1-m)*x
         m = pick()
-        stretch = torch.exp(.1*(2*torch.rand(n, 1, 1, device=x.device)-1))
-        position = torch.linspace(-1, 1, length, device=x.device)[None, None]*stretch*m+(1-m)*torch.linspace(
-            -1, 1, length, device=x.device)[None, None]
-        grid = torch.stack((position.clamp(-1, 1), torch.zeros_like(position)), -1)
-        x = F.grid_sample(x[:, :, None], grid, mode="bilinear", padding_mode="border", align_corners=True)[:, :, 0]
+        x = stretch(x, torch.exp(.1*(2*torch.rand(n, 1, 1, device=x.device)-1))*m+(1-m))
         m = pick()
         return x+m*.02*torch.randn_like(x)
 
