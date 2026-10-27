@@ -175,10 +175,46 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 # per channel gives 10x Nyquist margin while adding only ~2 ADC transactions
 # per 10 ms to the shared bus.
 RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR,)  # Only OPT101 on A0 is installed; A2 disabled.
+# (In PPG_RX_MODE=tdm both logical IR and RED lanes are fed from that one A0 sensor.)
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
 RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
 RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disconnected
+
+# ============================================================================
+# RX MODE — "dual" (one OPT101 per LED, separate lanes) or "tdm" (RED and IR
+# share ONE chamber and ONE OPT101, time-multiplexed like the MAX30102)
+# ============================================================================
+# In "tdm" the SignalEngine output thread is the single slot master: it turns
+# one LED on (the other off), waits RX_TDM_READ_DELAY_S for the optical/analog
+# path to settle, reads the shared OPT101 on RX_TDM_ADC_CHANNEL, then moves to
+# the next slot. Slot order: RED, IR and, when enabled, DARK (both LEDs off,
+# measures OPT101 offset + leaked ambient light). Per-channel rate is
+# 1 / (slot × number of slots): 33.3 Hz with the 10 ms / 3-slot default.
+#
+# READ DELAY [INFERENCE — must be measured]: the receiver PCB v1.5 output RC
+# (1 kΩ × 1 µF, τ = 1 ms) needs ~7τ to settle to 12-bit LSB scale, so the
+# default reads 8 ms into a 10 ms slot. The MM32 Grove ADC conversion cadence
+# is not documented; scripts/measure_tdm_settling.py measures the real
+# DAC → LED → OPT101 → ADC step response on the assembled hardware.
+RX_MODE = os.environ.get("PPG_RX_MODE", "dual")
+if RX_MODE not in ("dual", "tdm"):
+    raise ValueError("PPG_RX_MODE must be 'dual' or 'tdm'")
+RX_TDM_ADC_CHANNEL = ADC_CHANNEL_IR   # the single shared OPT101 sits on A0
+RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "10")) / 1000.0
+RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "8")) / 1000.0
+RX_TDM_DARK_SLOT = os.environ.get("PPG_TDM_DARK", "1") == "1"
+# The read delay counts from the END of the LED-switching DAC writes, so it is
+# the real settling time. Two DAC writes (~0.3 ms each) and one Grove read
+# (~0.45 ms) at 100 kHz I2C [INFERENCE, Phase 4 budget] must also fit in the
+# slot; a slot that overruns is counted (tdm_late_slots) and re-based.
+RX_TDM_MIN_READ_DELAY_S = 0.001
+RX_TDM_IO_BUDGET_S = 0.0015
+if not RX_TDM_MIN_READ_DELAY_S <= RX_TDM_READ_DELAY_S <= RX_TDM_SLOT_S - RX_TDM_IO_BUDGET_S:
+    raise ValueError("PPG_TDM_READ_DELAY_MS must be ≥ 1 ms and leave ≥ 1.5 ms of the "
+                     "slot for the DAC writes and the ADC read")
+RX_TDM_SLOTS = ("red", "ir", "dark") if RX_TDM_DARK_SLOT else ("red", "ir")
+RX_TDM_FRAME_S = RX_TDM_SLOT_S * len(RX_TDM_SLOTS)   # one sample per channel per frame
 
 # ============================================================================
 # COLOR PALETTE (RGB tuples for Pygame) matching Android UI
