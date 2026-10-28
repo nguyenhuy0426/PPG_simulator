@@ -371,3 +371,22 @@ def test_solotrain_kernel_retrains_on_the_solo_shard_after_measuring_compile(tmp
     assert meta["kernel_sources"] == ["halovie2412/ppg-physigpt-solo0-v1"] and meta["enable_gpu"]
     assert script.index("pick_compile(") < script.index("train([")
     assert "'--plateau', '4'" in script and "'--epochs', '300.0'" in script and "'/kaggle/input'" in script
+
+
+def test_stage_0_mounts_datasets_as_new_data_and_takes_its_time_budget_from_the_quota(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"k", "train", owner="halovie2412", stage=0, shards=(1,), datasets=("ppg-physigpt-shard0-data-v1",),
+                   kernel_hours=9.5)
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
+    assert "*map(mounted, ['ppg-physigpt-mimic3-shard1-v1', 'ppg-physigpt-shard0-data-v1'])" in script
+    assert "left = 9.5 -" in script
+    # A dataset is found wherever Kaggle mounts it under /kaggle/input (the path is searched, not assumed).
+    namespace = dict(pathlib=__import__("pathlib"))
+    exec(st.mount_lookup("halovie2412").replace("/kaggle/input", str(tmp_path/"input")), namespace)
+    (tmp_path/"input"/"datasets"/"halovie2412"/"ppg-physigpt-shard0-data-v1").mkdir(parents=True)
+    assert namespace["mounted"]("ppg-physigpt-shard0-data-v1").endswith("datasets/halovie2412/ppg-physigpt-shard0-data-v1")
+    (tmp_path/"input"/"x"/"y"/"other").mkdir(parents=True)
+    assert namespace["mounted"]("other").endswith("x/y/other")
+    default = (st.stage(tmp_path/"k2", "train", owner="halovie2412", stage=0, shards=(1,))/"run.py").read_text()
+    assert "left = 11.5 -" in default
