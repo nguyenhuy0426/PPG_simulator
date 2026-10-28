@@ -63,6 +63,7 @@ class Windows:
                 raise ValueError(f"shards share records: record ranges [{a}, {b}) and [{c}, {d}) overlap")
         self.offsets = np.cumsum([0]+[len(s) for s in self.signal])
         valid = np.concatenate([m["valid"] for m in metas]).astype(bool)
+        self.record = np.concatenate([m["record"] for m in metas])   # the person unit of the people-level split
         self.train, self.valid = np.flatnonzero(~valid), np.flatnonzero(valid)
 
     def rows(self, index):

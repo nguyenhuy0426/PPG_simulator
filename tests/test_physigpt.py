@@ -405,3 +405,55 @@ def test_stage_cli_passes_the_plateau_delta_to_the_train_kernel(tmp_path):
              "--plateau-delta", "0.001", "--eval-every", "500"])
     script = (tmp_path/"k"/"run.py").read_text()
     assert "'--plateau', '6', '--plateau-delta', '0.001', '--eval-every', '500'" in script
+
+
+def test_judge_kernel_stages_every_module_the_judge_imports_and_mounts_shards_plus_the_stage_output(tmp_path):
+    import ast
+    from ml.kaggle_physigpt import stage as st
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    staged, todo, seen = set(st.SOURCES["judge"]), ["ml/kaggle_physigpt/judge_physigpt.py"], set()
+    while todo:   # module-level imports only: a lazy import inside a function is not needed to load the judge
+        name = todo.pop()
+        seen.add(name)
+        for node in ast.parse((root/name).read_text()).body:
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("ml"):
+                base = node.module.replace(".", "/")
+                todo += [c for c in [base+".py"]+[f"{base}/{a.name}.py" for a in node.names]
+                         if (root/c).exists() and c not in seen]
+    assert seen <= staged, seen-staged
+    out = st.stage(tmp_path/"k", "judge", owner="halovie2412", shards=(1, 2), solos=(0,), stage=0,
+                   datasets=("ppg-physigpt-shard0-data-v1",))
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge0-v1" and meta["enable_gpu"]
+    assert meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-stage0-v1" and len(meta["kernel_sources"]) == 4
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
+    assert "rglob('release.pt')" in script and "'--mode', mode" in script and "CUDA_VISIBLE_DEVICES" in script
+
+
+def test_judge_scores_generated_windows_and_controls_against_held_out_people(tmp_path):
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    root = tmp_path/"shard"
+    writer = mw.ShardWriter(root)
+    rng = np.random.default_rng(0)
+    t = np.arange(tr.LENGTH)/tr.FS
+    for valid, records in ((False, range(3000000, 3000040)), (True, range(3900000, 3900006))):
+        for record in records:
+            x = .5+.5*np.sin(2*np.pi*rng.uniform(.8, 2.5)*t+rng.uniform(0, 6, (60, 1)))
+            writer.add(x, record, [("s", i) for i in range(60)], valid, *mw.rate_features(x))
+    writer.flush()
+    tr.save_json(root/"manifest.json", dict(protocol=mw.PROTOCOL, record_range=[0, 0], windows=46*60, chunks=writer.chunks))
+    tr.main(["--data", str(root), "--output", str(tmp_path/"run"), "--steps", "4", "--cpu", "--config", "tiny",
+             "--batch", "8", "--warmup", "2", "--decay-frac", ".34", "--log-every", "1", "--eval-every", "3",
+             "--sample-steps", "2"])
+    common = ["--data", str(root), "--sizes", "60", "20", "40", "--steps", "3", "--threads", "2"]
+    jp.main([str(tmp_path/"m"), "--mode", "model", "--checkpoint", str(tmp_path/"run"/"release.pt"), *common])
+    result = json.loads((tmp_path/"m"/"generated_judge.json").read_text())["result"]["runs"][0]
+    assert 0 <= result["auc"] <= 1 and result["tp"]+result["fn"] == 40 and result["fp"]+result["tn"] == 40
+    assert len(np.load(tmp_path/"m"/"generated.npy")) == 120
+    jp.main([str(tmp_path/"f"), "--mode", "features", "--generated", str(tmp_path/"m"/"generated.npy"), *common])
+    features = json.loads((tmp_path/"f"/"features.json").read_text())
+    assert {"rate_bpm", "acf_peak", "power_1.5-3 Hz"} <= set(features)
+    jp.main([str(tmp_path/"c"), "--mode", "controls", "--only", "null", "phase_randomized", *common])
+    controls = json.loads(next((tmp_path/"c").glob("controls_*.json")).read_text())["results"]
+    assert [c["source"] for c in controls] == ["real_other_people", "phase_randomized"]
