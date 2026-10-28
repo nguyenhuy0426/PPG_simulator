@@ -110,6 +110,21 @@ def lr_at(step, total, decay_start, peak, warmup):
     return peak*(1-math.sqrt((step-decay_start)/max(1, total-decay_start)))
 
 
+WARM_BLOCK = 1 << 26
+
+
+def warm_cache(data):
+    """Reads every signal chunk once, sequentially, into the page cache. A Kaggle input that is cold costs one slow
+    page fault per random row (15.9 s/step measured against 0.36 s once warm), and the time budget sizes the stage
+    from the step time of the first steps, so a cold start shrank a 10 h plan to one epoch. Returns the bytes read."""
+    total = 0
+    for signal in data.signal:
+        with open(signal.filename, "rb") as f:
+            while block := f.read(WARM_BLOCK):
+                total += len(block)
+    return total
+
+
 def plan_steps(windows, epochs, batch, replay_share, decay_frac):
     total = max(1, math.ceil(epochs*windows/(batch-round(batch*replay_share))))
     return total, total-max(1, round(decay_frac*total))
@@ -228,6 +243,12 @@ def worker(rank, world, args):
                                                  new_windows=int(len(new_rows)), replay_windows=int(len(replay_rows)),
                                                  valid_windows=int(len(data.valid)), shards=data.shards,
                                                  plan=[total, decay_start], start_step=step))
+    if rank == 0:
+        warm = time.time()
+        gigabytes = warm_cache(data)/2**30
+        print(f"warm cache: {gigabytes:.2f} GB in {time.time()-warm:.0f} s", flush=True)
+    if world > 1:
+        dist.barrier()
     feed = queue.Queue(maxsize=4)
 
     def produce(first):

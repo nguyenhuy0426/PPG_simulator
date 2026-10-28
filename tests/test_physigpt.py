@@ -390,3 +390,10 @@ def test_stage_0_mounts_datasets_as_new_data_and_takes_its_time_budget_from_the_
     assert namespace["mounted"]("other").endswith("x/y/other")
     default = (st.stage(tmp_path/"k2", "train", owner="halovie2412", stage=0, shards=(1,))/"run.py").read_text()
     assert "left = 11.5 -" in default
+
+
+def test_warm_cache_reads_every_signal_chunk_before_the_step_time_is_measured(tmp_path):
+    _shard(tmp_path/"shard0")
+    data = tr.Windows([str(tmp_path/"shard0")])
+    sizes = sum(__import__("os").path.getsize(s.filename) for s in data.signal)
+    assert tr.warm_cache(data) == sizes > 0
