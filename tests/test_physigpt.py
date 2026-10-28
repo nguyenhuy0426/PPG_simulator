@@ -397,3 +397,11 @@ def test_warm_cache_reads_every_signal_chunk_before_the_step_time_is_measured(tm
     data = tr.Windows([str(tmp_path/"shard0")])
     sizes = sum(__import__("os").path.getsize(s.filename) for s in data.signal)
     assert tr.warm_cache(data) == sizes > 0
+
+
+def test_stage_cli_passes_the_plateau_delta_to_the_train_kernel(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    st.main([str(tmp_path/"k"), "train", "--owner", "halovie2412", "--shards", "1", "--plateau", "6",
+             "--plateau-delta", "0.001", "--eval-every", "500"])
+    script = (tmp_path/"k"/"run.py").read_text()
+    assert "'--plateau', '6', '--plateau-delta', '0.001', '--eval-every', '500'" in script

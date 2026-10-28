@@ -205,12 +205,14 @@ def main(argv=None):
     parser.add_argument("--epochs", type=float, default=4.)
     parser.add_argument("--smoke-only", action="store_true", help="tpu: versions and the synthetic smoke run only")
     parser.add_argument("--plateau", type=int, default=0, help="train.py --plateau (evaluations of patience)")
+    parser.add_argument("--plateau-delta", type=float, default=0., help="train.py --plateau-delta (0: its default)")
     parser.add_argument("--eval-every", type=int, default=0, help="train.py --eval-every (0: its default)")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
                  epochs=args.epochs, datasets=tuple(args.datasets), kernel_hours=args.kernel_hours)
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
+             + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else []))
     train["extra"] = tuple(extra)
     kw = dict(data=data, train=train, tpu=dict(train, smoke_only=args.smoke_only),
