@@ -15,6 +15,7 @@ measure fit only; best.pt and --plateau choose states on those records, so they 
 samples are realistic is the strict judge's job in a later round, on people kept out of training and selection.
 """
 import argparse
+import contextlib
 import functools
 import hashlib
 import json
@@ -281,11 +282,21 @@ def worker(rank, world, args):
         for group in optimizer.param_groups:
             group["lr"] = lr_at(s, total, decay_start, args.lr, warmup)
         x = x.to(device, non_blocking=True)
-        generator = torch.Generator(device).manual_seed(args.seed*1_000_003+s*world+rank)
-        with torch.autocast("cuda", torch.float16, enabled=cuda):
-            loss, parts = net(x, domain, aux=args.aux, repeats=args.repeats, generator=generator, diff=args.diff_weight)
         optimizer.zero_grad(set_to_none=True)
-        scaler.scale(loss).backward()
+        # --micro splits this rank's batch into gradient-accumulation chunks (one optimizer step per batch, so the
+        # recipe's batch and rate stay). The first chunk's noise seed is the unsplit step's.
+        chunks = x.split(args.micro) if args.micro else (x,)
+        loss, parts = 0., {}
+        for i, chunk in enumerate(chunks):
+            generator = torch.Generator(device).manual_seed(args.seed*1_000_003+s*world+rank+i*(1 << 24))
+            share = len(chunk)/len(x)
+            with (net.no_sync() if world > 1 and i < len(chunks)-1 else contextlib.nullcontext()):
+                with torch.autocast("cuda", torch.float16, enabled=cuda):
+                    part_loss, part = net(chunk, domain[:len(chunk)], aux=args.aux, repeats=args.repeats,
+                                          generator=generator, diff=args.diff_weight)
+                scaler.scale(part_loss*share).backward()
+            loss = loss+part_loss.detach()*share
+            parts = {k: parts.get(k, 0.)+v*share for k, v in part.items()}
         scaler.unscale_(optimizer)
         grad = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         scaler.step(optimizer)
@@ -443,6 +454,8 @@ def main(argv=None):
     parser.add_argument("--epochs", type=float, default=4.)
     parser.add_argument("--steps", type=int, default=0, help="override the planned stage length")
     parser.add_argument("--batch", type=int, default=1024)
+    parser.add_argument("--micro", type=int, default=0,
+                        help="gradient-accumulation chunk size per device (0: the whole per-device batch at once)")
     parser.add_argument("--lr", type=float, default=6e-4)
     parser.add_argument("--warmup", type=int, default=1000)
     parser.add_argument("--decay-frac", type=float, default=.15)

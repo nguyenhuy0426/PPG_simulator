@@ -582,3 +582,20 @@ def test_judge_kernel_with_no_judge_seeds_only_samples_and_compares_features(tmp
     assert "run('features', '0', '--checkpoint', str(found[0]), '--gen-steps', '32')" in script
     assert "run('model'" not in script and "run('controls'" not in script and "--generated" not in script
     compile(script.replace("\n", "\n"), "judge.py", "exec")
+
+
+def test_micro_batches_accumulate_into_one_optimizer_step_and_match_the_unsplit_step(tmp_path, monkeypatch):
+    _shard(tmp_path/"shard0")
+    # With the noise made independent of the chunk size, a split batch must take the same optimizer step.
+    monkeypatch.setattr(PhysiGPT, "flow_loss", lambda self, h, patches, repeats=4, generator=None, diff=0.: (
+        (self.flow((2*patches.reshape(-1, patches.shape[-1])-1), torch.full((patches.shape[0]*patches.shape[1],), .5), h.reshape(-1, h.shape[-1])).float()
+         - 1.).square().mean(), torch.zeros(())))
+    common = ["--data", str(tmp_path/"shard0"), "--config", "tiny", "--batch", "8", "--steps", "3", "--warmup", "1",
+              "--decay-frac", ".34", "--cpu", "--log-every", "1", "--eval-every", "3", "--sample-steps", "2", "--aux", "0"]
+    tr.main(common+["--output", str(tmp_path/"whole")])
+    tr.main(common+["--micro", "2", "--output", str(tmp_path/"split")])
+    a = torch.load(tmp_path/"whole"/"release.pt", weights_only=False)["model"]
+    b = torch.load(tmp_path/"split"/"release.pt", weights_only=False)["model"]
+    assert all(torch.allclose(a[k], b[k], atol=2e-5) for k in a)
+    lines = [json.loads(l) for l in (tmp_path/"split"/"metrics.jsonl").read_text().splitlines()]
+    assert [l["step"] for l in lines] == [1, 2, 3] and all(np.isfinite(l["loss"]) for l in lines)
