@@ -599,3 +599,30 @@ def test_micro_batches_accumulate_into_one_optimizer_step_and_match_the_unsplit_
     assert all(torch.allclose(a[k], b[k], atol=2e-5) for k in a)
     lines = [json.loads(l) for l in (tmp_path/"split"/"metrics.jsonl").read_text().splitlines()]
     assert [l["step"] for l in lines] == [1, 2, 3] and all(np.isfinite(l["loss"]) for l in lines)
+
+
+def test_colab_supervisor_resumes_on_a_new_vm_from_drive_and_refuses_a_corrupt_copy(tmp_path):
+    from ml.kaggle_physigpt import colab_run as cr
+    import hashlib
+    drive, run = tmp_path/"drive"/"data", tmp_path/"drive"/"run"
+    _shard(drive/"shard0"/"shard"); _shard(drive/"shard1"/"shard", seed=1)
+    (drive/"SHA256SUMS.txt").write_text("".join(f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.relative_to(drive)}\n"
+                                                for f in sorted(drive.rglob("*")) if f.is_file() and f.name != "SHA256SUMS.txt"))
+    train = ["--config", "tiny", "--batch", "8", "--steps", "6", "--warmup", "2", "--decay-frac", ".34", "--cpu",
+             "--log-every", "1", "--eval-every", "3", "--sample-steps", "2"]
+    base = ["--drive-data", str(drive), "--drive-run", str(run), "--sync-seconds", "1"]
+    assert cr.main(base+["--local", str(tmp_path/"vm1"), "--", *train, "--stop-at", "3"]) == 0
+    assert torch.load(run/"last.pt", weights_only=False)["step"] == 3 and not (run/"release.pt").exists()
+    # A new VM (empty disk) continues the same stage from what Drive kept.
+    assert cr.main(base+["--local", str(tmp_path/"vm2"), "--", *train]) == 0
+    assert torch.load(run/"release.pt", weights_only=False)["step"] == 6
+    steps = [json.loads(l)["step"] for l in (run/"metrics.jsonl").read_text().splitlines()]
+    assert steps == [1, 2, 3, 4, 5, 6]
+    # Done on Drive: a third session trains nothing and copies nothing.
+    assert cr.main(base+["--local", str(tmp_path/"vm3"), "--", *train]) == 0 and not (tmp_path/"vm3").exists()
+    victim = next((drive/"shard1"/"shard").glob("chunk_*_signal.npy"))
+    data = bytearray(victim.read_bytes()); data[-1] ^= 1; victim.write_bytes(bytes(data))
+    (run/"release.pt").unlink()
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        cr.main(base+["--local", str(tmp_path/"vm4"), "--", *train])
+    assert not (tmp_path/"vm4"/"data"/"shard1").exists()
