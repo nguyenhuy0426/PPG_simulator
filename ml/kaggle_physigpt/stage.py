@@ -32,6 +32,7 @@ SOURCES = {"data": COMMON+["ml/kaggle_multidomain/data.py", "ml/kaggle_multidoma
 SOURCES["solo"] = SOURCES["data"]+SOURCES["train"][len(COMMON):]
 SOURCES["tpu"] = SOURCES["train"]+["ml/kaggle_physigpt/train_tpu.py"]
 SOURCES["solotrain"] = SOURCES["train"]
+SOURCES["decay"] = SOURCES["train"]
 SOURCES["judge"] = SOURCES["train"]+["ml/kaggle_physigpt/judge_physigpt.py", "ml/kaggle_multidomain/strict_judge.py",
                                       "ml/kaggle_multidomain/physio.py", "ml/kaggle_multidomain/view.py",
                                       "ml/kaggle_multidomain/models.py", "ml/kaggle_multidomain/labels.py",
@@ -43,6 +44,10 @@ KERNEL_HOURS = 11.5   # Kaggle stops a GPU kernel at 12 h; the rest is train.py'
 
 def shard_slug(k):
     return f"ppg-physigpt-mimic3-shard{k}-v1"
+
+
+def decay_slug(k):
+    return f"ppg-physigpt-decay{k}-v1"
 
 
 def stage_slug(k):
@@ -76,7 +81,8 @@ def mount_lookup(owner):
 
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
               config="base", epochs=4., extra=(), smoke_only=False, solos=(), datasets=(), owner=OWNER,
-              kernel_hours=KERNEL_HOURS, checkpoint="release.pt", judge_seeds=3):
+              kernel_hours=KERNEL_HOURS, checkpoint="release.pt", judge_seeds=3, decay_steps=0, from_slug=None,
+              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag=""):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
@@ -106,25 +112,31 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 f"train({train!r} + (['--compile'] if use else []) + ['--hours', f'{{left:.3f}}'])")
     if kind == "judge":
         slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
-        return (mount_lookup(owner)
+        head = (mount_lookup(owner)
                 + "import os, subprocess\n"
                 f"slugs, out = {slugs!r}, '/kaggle/working/eval'\n"
-                f"found = sorted(pathlib.Path(mounted({stage_slug(stage)!r})).rglob({checkpoint!r}))\n"
+                f"found = sorted(pathlib.Path(mounted({from_slug or stage_slug(stage)!r})).rglob({checkpoint!r}))\n"
                 f"if len(found) != 1:\n    raise FileNotFoundError(f'expected one {checkpoint}, found {{found}}')\n"
                 "data = [mounted(slug) for slug in slugs]\n"
                 "def run(mode, gpu, *more):\n"
                 "    env = {**os.environ, 'CUDA_VISIBLE_DEVICES': gpu, 'PYTHONPATH': str(root)}\n"
                 "    argv = [sys.executable, '-m', 'ml.kaggle_physigpt.judge_physigpt', out+'/'+mode, '--data', *data,\n"
                 "            '--mode', mode, '--device', 'cuda', '--threads', '4', *more]\n"
-                "    return subprocess.Popen(argv, env=env)\n"
-                f"seeds = {[str(i) for i in range(judge_seeds)]!r}\n"
-                "model = run('model', '0', '--checkpoint', str(found[0]), '--seeds', *seeds)\n"
-                "controls = run('controls', '1', '--seeds', '0')\n"
-                "codes = [model.wait()]\n"
+                "    return subprocess.Popen(argv, env=env)\n")
+        sampling = f"'--gen-steps', '{gen_steps}'" + (", '--no-clamp'" if no_clamp else "")
+        if judge_seeds == 0:   # the feature tier only: sample, compare features, no strict judge fit
+            return (head+f"codes = [run('features', '0', '--checkpoint', str(found[0]), {sampling}).wait()]\n"
+                    "print('judge exit codes (features):', codes, flush=True)\n"
+                    "if any(codes):\n    raise SystemExit(f'judge failed: {codes}')")
+        return (head
+                + f"seeds = {[str(i) for i in range(judge_seeds)]!r}\n"
+                + f"model = run('model', '0', '--checkpoint', str(found[0]), '--seeds', *seeds, {sampling})\n"
+                + ("controls = None\n" if skip_controls else "controls = run('controls', '1', '--seeds', '0')\n")
+                + "codes = [model.wait()]\n"
                 "if codes[0] == 0:\n"
                 "    codes.append(run('features', '0', '--checkpoint', str(found[0]),\n"
                 "                     '--generated', out+'/model/generated.npy').wait())\n"
-                "codes.append(controls.wait())\n"
+                "if controls:\n    codes.append(controls.wait())\n"
                 "print('judge exit codes (model, features, controls):', codes, flush=True)\n"
                 "if any(codes):\n    raise SystemExit(f'judge failed: {codes}')")
     new, replay = (shards, ()) if stage == 0 else (shards[-1:], shards[:-1])
@@ -144,10 +156,14 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 + f"main(args + ['--hours', f'{{{TPU_HOURS} - (time.time()-begin)/3600:.3f}}'])")
     text = ("import time\nfrom ml.kaggle_physigpt.train import main as train, pick_compile\nbegin = time.time()\n"
             + mount_lookup(owner)+args)
-    if stage > 0:
-        text += (f"stable = sorted(pathlib.Path(mounted({stage_slug(stage-1)!r})).rglob('stable.pt'))\n"
+    if kind == "decay" and decay_steps < 1:
+        raise ValueError("decay: --decay-steps must be at least 1")
+    resume_slug = (from_slug or stage_slug(stage)) if kind == "decay" else stage_slug(stage-1) if stage > 0 else None
+    if resume_slug:
+        text += (f"stable = sorted(pathlib.Path(mounted({resume_slug!r})).rglob('stable.pt'))\n"
                  "if len(stable) != 1:\n    raise FileNotFoundError(f'expected one stable.pt, found {stable}')\n"
-                 "args += ['--resume', str(stable[0])]\n")
+                 "args += ['--resume', str(stable[0])"+(f", '--decay-steps', {str(decay_steps)!r}" + (f", '--hold-steps', {str(hold_steps)!r}" if hold_steps else "")
+                                      if kind == "decay" else "")+"]\n")
     return (text+f"use, report = pick_compile('/tmp/physigpt_smoke', {config!r})\n"
             "print('smoke', json.dumps(report), flush=True)\n"
             f"left = {kernel_hours} - (time.time()-begin)/3600\n"
@@ -177,7 +193,7 @@ def stage(output, kind, owner=OWNER, **kw):
     script = "# Generated by ml/kaggle_physigpt/stage.py\nif __name__ == '__main__':\n" + \
         "\n".join("    "+line for line in body.splitlines())+"\n"
     compile(script, "run.py", "exec")
-    dataset_sources = [f"{owner}/{d}" for d in kw.get("datasets", ())] if kind in ("tpu", "train", "judge") else []
+    dataset_sources = [f"{owner}/{d}" for d in kw.get("datasets", ())] if kind in ("tpu", "train", "judge", "decay") else []
     if kind == "data":
         k = kw.get("shard", 0)
         meta = dict(id=f"{owner}/{shard_slug(k)}", title=f"PPG physiGPT MIMIC3 Shard{k} v1", enable_gpu=False,
@@ -190,11 +206,29 @@ def stage(output, kind, owner=OWNER, **kw):
         k = kw.get("shard", 0)
         meta = dict(id=f"{owner}/{solotrain_slug(k)}", title=f"PPG physiGPT Solo{k} Train v1", enable_gpu=True,
                     machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{solo_slug(k)}"])
+    elif kind == "decay":
+        k = kw.get("stage", 0)
+        name = f"ppg-physigpt-decay{k}-{kw['tag']}-v1" if kw.get("tag") else decay_slug(k)
+        meta = dict(id=f"{owner}/{name}", title=name if kw.get("tag") else f"PPG physiGPT Decay{k} v1", enable_gpu=True,
+                    machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
+                    + [f"{owner}/{kw.get('from_slug') or stage_slug(k)}"])
     elif kind == "judge":
         k = kw.get("stage", 0)
-        meta = dict(id=f"{owner}/ppg-physigpt-judge{k}-v1", title=f"PPG physiGPT Judge{k} v1", enable_gpu=True,
+        source = kw.get("from_slug") or stage_slug(k)
+        own = source == stage_slug(k)
+        judge = f"ppg-physigpt-judge{k}-v1" if own else f"ppg-physigpt-judge-{source.removeprefix('ppg-physigpt-')}"
+        if kw.get("gen_steps", 32) != 32:
+            judge += f"-g{kw['gen_steps']}"
+        if kw.get("no_clamp"):
+            judge += "-noclamp"
+        if kw.get("judge_seeds", 3) == 0:
+            judge += "-fid"
+        # Kaggle takes the kernel's slug from its title, so a title that is not the id's own slug splits them.
+        meta = dict(id=f"{owner}/{judge}", title=f"PPG physiGPT Judge{k} v1" if judge == f"ppg-physigpt-judge{k}-v1" else judge,
+                    enable_gpu=True,
                     machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
-                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())] + [f"{owner}/{stage_slug(k)}"])
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())] + [f"{owner}/{source}"])
     elif kind == "tpu":
         k = kw.get("stage", 0)
         smoke_only = kw.get("smoke_only", False)
@@ -242,18 +276,29 @@ def main(argv=None):
     parser.add_argument("--plateau", type=int, default=0, help="train.py --plateau (evaluations of patience)")
     parser.add_argument("--checkpoint", default="release.pt", help="judge: checkpoint file of the stage output")
     parser.add_argument("--judge-seeds", type=int, default=3, help="judge: judge seeds for the generated source")
+    parser.add_argument("--decay-steps", type=int, default=0,
+                        help="decay: steps of lr decay after the stage's stable.pt (kind decay resumes it)")
+    parser.add_argument("--hold-steps", type=int, default=0, help="decay: steps at the peak rate before the decay")
+    parser.add_argument("--tag", default="", help="decay: suffix of the kernel id, so a variant keeps its own output")
+    parser.add_argument("--diff-weight", type=float, default=0., help="train.py --diff-weight (0: off)")
+    parser.add_argument("--gen-steps", type=int, default=32, help="judge: Heun steps per patch of the generator")
+    parser.add_argument("--no-clamp", action="store_true", help="judge: sample patches without clipping to [0, 1]")
+    parser.add_argument("--skip-controls", action="store_true", help="judge: do not rerun the model-independent controls")
+    parser.add_argument("--from-slug", default=None, help="judge: kernel whose release.pt is judged (default: the stage)")
     parser.add_argument("--plateau-delta", type=float, default=0., help="train.py --plateau-delta (0: its default)")
     parser.add_argument("--eval-every", type=int, default=0, help="train.py --eval-every (0: its default)")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
                  epochs=args.epochs, datasets=tuple(args.datasets), kernel_hours=args.kernel_hours,
-                 checkpoint=args.checkpoint, judge_seeds=args.judge_seeds)
+                 checkpoint=args.checkpoint, judge_seeds=args.judge_seeds, decay_steps=args.decay_steps,
+                 from_slug=args.from_slug, gen_steps=args.gen_steps, skip_controls=args.skip_controls, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag)
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
-             + (["--eval-every", str(args.eval_every)] if args.eval_every else []))
+             + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
+             + (["--diff-weight", str(args.diff_weight)] if args.diff_weight else []))
     train["extra"] = tuple(extra)
-    kw = dict(data=data, train=train, judge=train, tpu=dict(train, smoke_only=args.smoke_only),
+    kw = dict(data=data, train=train, judge=train, decay=train, tpu=dict(train, smoke_only=args.smoke_only),
               solo=dict(data, config=args.config, epochs=args.epochs, extra=tuple(extra)),
               solotrain=dict(shard=args.shard, config=args.config, epochs=args.epochs, extra=tuple(extra)))[args.kind]
     print(stage(args.output, args.kind, args.owner, **kw))

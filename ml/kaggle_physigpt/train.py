@@ -226,6 +226,10 @@ def worker(rank, world, args):
                 if kept_state["stage_id"] == stage_id:
                     best_flow, best_step, best_path = kept_state["valid_flow"], kept_state["step"], kept
                 del kept_state
+        if args.decay_steps:   # the decay a plateau stop skipped: the resumed state's own stage, from its step
+            if state["stage_id"] != stage_id:
+                raise ValueError(f"--decay-steps resumes its own stage {state['stage_id']}, not this data's {stage_id}")
+            total, decay_start = step+args.hold_steps+args.decay_steps, step+args.hold_steps
         warmup = 0                          # a new stage from stable.pt stays at the peak rate
     if args.compile:
         # Per block, in place: the state_dict keys stay those of the eager model, and flow_loss's seeded noise
@@ -279,7 +283,7 @@ def worker(rank, world, args):
         x = x.to(device, non_blocking=True)
         generator = torch.Generator(device).manual_seed(args.seed*1_000_003+s*world+rank)
         with torch.autocast("cuda", torch.float16, enabled=cuda):
-            loss, parts = net(x, domain, aux=args.aux, repeats=args.repeats, generator=generator)
+            loss, parts = net(x, domain, aux=args.aux, repeats=args.repeats, generator=generator, diff=args.diff_weight)
         optimizer.zero_grad(set_to_none=True)
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
@@ -453,6 +457,13 @@ def main(argv=None):
     parser.add_argument("--eval-every", type=int, default=1000)
     parser.add_argument("--sample-steps", type=int, default=32)
     parser.add_argument("--stop-at", type=int, default=-1, help="end this run at that step, keeping the plan")
+    parser.add_argument("--decay-steps", type=int, default=0,
+                        help="with --resume of the same stage: continue it from the resumed step with this many "
+                             "steps of the 1-sqrt decay to zero (the decay a plateau stop at best.pt left out)")
+    parser.add_argument("--hold-steps", type=int, default=0,
+                        help="with --decay-steps: first keep the peak rate for this many steps (more training)")
+    parser.add_argument("--diff-weight", type=float, default=0.,
+                        help="weight of the first/second difference error of the one-step estimate (0: off)")
     parser.add_argument("--plateau", type=int, default=0,
                         help="after this many evaluations without a better valid_flow, start the decay, or end at "
                              "best.pt if valid_flow has risen above its best (0: off)")

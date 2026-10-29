@@ -457,3 +457,128 @@ def test_judge_scores_generated_windows_and_controls_against_held_out_people(tmp
     jp.main([str(tmp_path/"c"), "--mode", "controls", "--only", "null", "phase_randomized", *common])
     controls = json.loads(next((tmp_path/"c").glob("controls_*.json")).read_text())["results"]
     assert [c["source"] for c in controls] == ["real_other_people", "phase_randomized"]
+
+
+def test_decay_steps_give_a_best_state_stop_the_decay_it_skipped_and_refuse_another_stage(tmp_path, monkeypatch):
+    _shard(tmp_path/"shard0")
+    flows = iter([.5, .3, .4, .45])
+    monkeypatch.setattr(tr, "evaluate", lambda *a: dict(valid_flow=next(flows, .3), valid_laplace_nll=0.))
+    common = ["--config", "tiny", "--batch", "8", "--warmup", "2", "--decay-frac", ".34", "--cpu", "--log-every", "1",
+              "--eval-every", "3", "--sample-steps", "2"]
+    tr.main(["--data", str(tmp_path/"shard0"), "--steps", "30", "--plateau", "2", "--output", str(tmp_path/"run"), *common])
+    stable = torch.load(tmp_path/"run"/"stable.pt", weights_only=False)
+    assert stable["step"] == 6 and stable["plan"] == [6, 6]
+    tr.main(["--data", str(tmp_path/"shard0"), "--resume", str(tmp_path/"run"/"stable.pt"), "--decay-steps", "4",
+             "--output", str(tmp_path/"decay"), *common])
+    lines = [json.loads(l) for l in (tmp_path/"decay"/"metrics.jsonl").read_text().splitlines()]
+    assert [l["step"] for l in lines] == [7, 8, 9, 10] and lines[0]["plan"] == [10, 6]
+    assert lines[0]["lr"] == pytest.approx(6e-4) and lines[-1]["lr"] == pytest.approx(6e-4*(1-(3/4)**.5))
+    release = torch.load(tmp_path/"decay"/"release.pt", weights_only=False)
+    assert release["step"] == 10 and not all(torch.equal(release["model"][k], stable["model"][k]) for k in stable["model"])
+    _shard(tmp_path/"shard1", seed=1)
+    with pytest.raises(ValueError, match="own stage"):
+        tr.main(["--data", str(tmp_path/"shard1"), "--resume", str(tmp_path/"run"/"stable.pt"), "--decay-steps", "4",
+                 "--output", str(tmp_path/"other"), *common])
+
+
+def test_decay_kernel_resumes_the_stage_output_and_the_judge_can_judge_it(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    kw = dict(owner="halovie2412", stage=0, shards=(1, 2), solos=(0,), datasets=("ppg-physigpt-shard0-data-v1",))
+    out = st.stage(tmp_path/"d", "decay", decay_steps=3000, epochs=300., **kw)
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-decay0-v1" and meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-stage0-v1"
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
+    assert "mounted('ppg-physigpt-stage0-v1')" in script and "'--resume', str(stable[0]), '--decay-steps', '3000'" in script
+    assert script.index("args = [") < script.index("pick_compile(") < script.index("train(args")
+    with pytest.raises(ValueError, match="at least 1"):
+        st.stage(tmp_path/"d0", "decay", **kw)
+    judge = st.stage(tmp_path/"j", "judge", from_slug="ppg-physigpt-decay0-v1", **kw)
+    meta, script = json.loads((judge/"kernel-metadata.json").read_text()), (judge/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1" and meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-decay0-v1"
+    assert "mounted('ppg-physigpt-decay0-v1')" in script and "mounted('ppg-physigpt-stage0-v1')" not in script
+
+
+def test_judge_kernel_can_sample_with_more_ode_steps_and_skip_the_model_independent_controls(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    kw = dict(owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-v1")
+    plain = (st.stage(tmp_path/"a", "judge", **kw)/"run.py").read_text()
+    assert "'--gen-steps', '32'" in plain and "controls = run('controls'" in plain
+    out = st.stage(tmp_path/"b", "judge", gen_steps=128, skip_controls=True, **kw)
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-g128" and meta["title"] == "ppg-physigpt-judge-decay0-v1-g128"
+    assert "'--gen-steps', '128'" in script and "controls = None" in script and "run('controls'" not in script
+    assert "if controls:" in script
+
+
+def test_unclamped_sampling_keeps_patch_values_the_clip_removed_and_the_judge_kernel_can_request_it(tmp_path):
+    model = PhysiGPT(CONFIGS["tiny"])
+    class Push(torch.nn.Module):   # a flow field that drives every sample far outside [-1, 1]
+        def forward(self, x, t, h):
+            return torch.full_like(x, 5.)
+    model.flow = Push()
+    h = torch.zeros(2, 8)
+    assert model.sample_patch(h, 2).max() <= 1 and model.sample_patch(h, 2, clamp=False).max() > 1.5
+    assert torch.equal(model.sample_patch(h, 2, clamp=True), model.sample_patch(h, 2))   # the default is unchanged
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"j", "judge", owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-v1",
+                   no_clamp=True, skip_controls=True)
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-noclamp" and "'--gen-steps', '32', '--no-clamp')" in script
+    assert "--no-clamp" not in (st.stage(tmp_path/"k", "judge", owner="halovie2412", stage=0, shards=(1,))/"run.py").read_text()
+
+
+def test_sharpness_loss_weights_the_difference_error_and_leaves_the_validation_flow_unchanged():
+    model = PhysiGPT(CONFIGS["tiny"])
+    x, domain = torch.rand(4, 1200), torch.zeros(4, dtype=torch.long)
+    _, plain = model(x, domain, generator=torch.Generator().manual_seed(1))
+    loss, sharp = model(x, domain, generator=torch.Generator().manual_seed(1), diff=2.)
+    assert "sharp" not in plain and sharp["sharp"] > 0 and torch.equal(plain["flow"], sharp["flow"])   # same noise, same flow
+    base, _ = model(x, domain, generator=torch.Generator().manual_seed(1))
+    assert float(loss) == pytest.approx(float(base)+2.*float(sharp["sharp"]), rel=1e-5)
+
+
+def test_hold_steps_train_at_the_peak_rate_before_the_decay_and_the_kernel_passes_them_on(tmp_path):
+    _shard(tmp_path/"shard0")
+    common = ["--config", "tiny", "--batch", "8", "--warmup", "2", "--decay-frac", ".34", "--cpu", "--log-every", "1",
+              "--eval-every", "3", "--sample-steps", "2"]
+    tr.main(["--data", str(tmp_path/"shard0"), "--steps", "6", "--output", str(tmp_path/"run"), *common])
+    tr.main(["--data", str(tmp_path/"shard0"), "--resume", str(tmp_path/"run"/"stable.pt"), "--decay-steps", "3",
+             "--hold-steps", "2", "--diff-weight", ".5", "--output", str(tmp_path/"more"), *common])
+    lines = [json.loads(l) for l in (tmp_path/"more"/"metrics.jsonl").read_text().splitlines()]
+    assert [l["step"] for l in lines] == [5, 6, 7, 8, 9] and lines[0]["plan"] == [9, 6] and lines[0]["sharp"] > 0
+    assert lines[0]["lr"] == lines[1]["lr"] == pytest.approx(6e-4) and lines[-1]["lr"] < 6e-4*.5
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"k", "decay", owner="halovie2412", stage=0, shards=(1,), decay_steps=3000, hold_steps=7000,
+                   from_slug="ppg-physigpt-decay0-more-v1", tag="more2", extra=("--diff-weight", "0.5"))
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-decay0-more2-v1" and meta["title"] == "ppg-physigpt-decay0-more2-v1"
+    assert meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-decay0-more-v1"
+    assert "mounted('ppg-physigpt-decay0-more-v1')" in script and "'--decay-steps', '3000', '--hold-steps', '7000'" in script
+    assert "'--diff-weight', '0.5'" in script
+
+
+def test_fidelity_tier_separates_matching_features_from_shifted_ones_and_keeps_the_people_reference():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    t = np.arange(mw.LENGTH)/mw.FS
+
+    def windows(seed, low, high, n=600):
+        rng = np.random.default_rng(seed)
+        return np.stack([.5+.5*np.sin(2*np.pi*rng.uniform(low, high)*t+rng.uniform(0, 6)) for _ in range(n)]).astype(np.float32)
+    fit, held, other = windows(1, 1, 2), windows(2, 1, 2, 1000), windows(3, 1, 2, 1000)
+    same = jp.fidelity_report(fit, held, other, windows(4, 1, 2), windows(5, 1, 2, 1000))
+    shifted = jp.fidelity_report(fit, held, other, windows(4, 3, 4), windows(5, 3, 4, 1000))
+    assert same["generated"]["mean_similarity"] > .9 and same["generated"]["classifier"]["trees"]["accuracy"] < .62
+    assert same["generated"]["passes"] and not shifted["generated"]["passes"]
+    assert shifted["generated"]["mean_similarity"] < .8 and shifted["generated"]["classifier"]["trees"]["accuracy"] > .9
+    assert same["real_other_people"]["mean_similarity"] > .9 and "passes" not in same["real_other_people"]
+
+
+def test_judge_kernel_with_no_judge_seeds_only_samples_and_compares_features(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    out = st.stage(tmp_path/"j", "judge", owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-sharp8-v1",
+                   judge_seeds=0)
+    meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-sharp8-v1-fid" and meta["title"] == meta["id"].split("/")[1]
+    assert "run('features', '0', '--checkpoint', str(found[0]), '--gen-steps', '32')" in script
+    assert "run('model'" not in script and "run('controls'" not in script and "--generated" not in script
+    compile(script.replace("\n", "\n"), "judge.py", "exec")

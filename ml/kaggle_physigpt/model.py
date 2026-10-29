@@ -162,7 +162,7 @@ class PhysiGPT(nn.Module):
         return ((u-mu).abs()*torch.exp(-log_b)+log_b+math.log(2)+torch.log(y)+torch.log1p(-y)
                 - math.log(LAPLACE_SPAN))
 
-    def flow_loss(self, h, patches, repeats=4, generator=None):
+    def flow_loss(self, h, patches, repeats=4, generator=None, diff=0.):
         b, n, p = patches.shape
         h = h.reshape(b*n, -1).repeat(repeats, 1)
         x1 = (2*patches.reshape(b*n, p)-1).repeat(repeats, 1)
@@ -171,17 +171,27 @@ class PhysiGPT(nn.Module):
         t = torch.sigmoid(torch.randn(len(x1), device=x1.device, generator=generator))
         xt = (1-t[:, None])*x0+t[:, None]*x1
         v = self.flow(xt.to(h.dtype), t, h)
-        return (v.float()-(x1-x0).float()).square().mean()
+        error = v.float()-(x1-x0).float()
+        flow = error.square().mean()
+        if not diff:
+            return flow, flow.new_zeros(())
+        # The velocity error is white, so it under-weights the sharp detail the judge reads. The error of the
+        # one-step estimate x1_hat = xt + (1-t) v, differenced once and twice inside the patch, weights it back.
+        err = (1-t[:, None])*error
+        return flow, (torch.diff(err, 1, -1).square().mean()+torch.diff(err, 2, -1).square().mean())
 
-    def forward(self, signal, domain, aux=.1, repeats=4, generator=None):
+    def forward(self, signal, domain, aux=.1, repeats=4, generator=None, diff=0.):
         patches = signal.view(len(signal), self.cfg.patches, self.cfg.patch)
         h = self.hidden(patches, domain)
         nll = self.laplace_nll(h, patches).mean()
-        flow = self.flow_loss(h, patches, repeats, generator)
-        return flow+aux*nll, dict(flow=flow.detach(), laplace_nll=nll.detach())
+        flow, sharp = self.flow_loss(h, patches, repeats, generator, diff)
+        parts = dict(flow=flow.detach(), laplace_nll=nll.detach())
+        if diff:
+            parts["sharp"] = sharp.detach()
+        return flow+aux*nll+diff*sharp, parts
 
     @torch.no_grad()
-    def sample_patch(self, h, steps, generator=None):
+    def sample_patch(self, h, steps, generator=None, clamp=True):
         x = torch.randn(len(h), self.cfg.patch, device=h.device, generator=generator)
         dt = 1/steps
         for i in range(steps):
@@ -191,17 +201,19 @@ class PhysiGPT(nn.Module):
                 v2 = self.flow((x+dt*v).to(h.dtype), t+dt, h).float()
                 v = (v+v2)/2
             x = x+dt*v
-        return ((x+1)/2).clamp(0, 1)
+        x = (x+1)/2
+        return x.clamp(0, 1) if clamp else x
 
     @torch.no_grad()
-    def generate(self, n, domain=0, steps=32, seed=0, device="cpu"):
-        """n windows [n, 1200], each min-max normalised like the training windows."""
+    def generate(self, n, domain=0, steps=32, seed=0, device="cpu", clamp=True):
+        """n windows [n, 1200], each min-max normalised like the training windows. clamp=False leaves the sampled
+        patches (also the context fed back) unclipped to [0, 1]; the window min-max then sets the range."""
         generator = torch.Generator(device).manual_seed(seed)
         domain = torch.full((n,), domain, dtype=torch.long, device=device)
         patches = torch.zeros(n, 1, self.cfg.patch, device=device)
         for i in range(self.cfg.patches):
             h = self.hidden(patches, domain)[:, i]
-            patches[:, i] = self.sample_patch(h, steps, generator)
+            patches[:, i] = self.sample_patch(h, steps, generator, clamp)
             if i < self.cfg.patches-1:
                 patches = torch.cat((patches, torch.zeros_like(patches[:, :1])), 1)
         x = patches.reshape(n, -1)

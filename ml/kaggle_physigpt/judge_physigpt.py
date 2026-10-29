@@ -163,12 +163,64 @@ def feature_report(real_eval, other_people, generated):
     return {k: dict(generated=distance(r[k], g[k]), real_other_people=distance(r[k], o[k])) for k in r}
 
 
+# ------------------------------------------------------------------ feature fidelity
+# A second, coarser tier next to the strict judge (which is unchanged): do the generated windows have the dataset's
+# signal features? Per feature 1 - KS against held-out real people, and a classifier that sees only those features.
+# Real people against other real people set the reference, since no generator can be closer than that.
+FIDELITY_SIM = .95    # mean over the features of 1 - KS
+FIDELITY_ACC = .60    # accuracy of the feature classifier (0.5 = indistinguishable)
+
+
+def feature_matrix(x):
+    f = signal_features(x)
+    return list(f), np.stack([f[k] for k in f], 1)
+
+
+def fidelity_report(real_fit, real_held, real_other, gen_fit, gen_eval):
+    """Per-feature similarity and feature-only classifiers (train: real_fit vs gen_fit; test: held-out people)."""
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.linear_model import LogisticRegression
+    names, held = feature_matrix(real_held)
+    other, fit, gfit, geval = (feature_matrix(x)[1] for x in (real_other, real_fit, gen_fit, gen_eval))
+
+    def similarity(a, b):
+        return np.array([1-stats.ks_2samp(a[:, j], b[:, j]).statistic for j in range(a.shape[1])])
+
+    def classify(train_real, train_fake, test_real, test_fake):
+        x = np.vstack([train_real, train_fake])
+        y = np.r_[np.zeros(len(train_real)), np.ones(len(train_fake))]
+        mu, sd = x.mean(0), x.std(0)+1e-9
+        yt = np.r_[np.zeros(len(test_real)), np.ones(len(test_fake))]
+        out = {}
+        for name, model in (("logreg", LogisticRegression(max_iter=3000)),
+                            ("trees", HistGradientBoostingClassifier(max_iter=200))):
+            score = model.fit((x-mu)/sd, y).predict_proba((np.vstack([test_real, test_fake])-mu)/sd)[:, 1]
+            order = np.argsort(np.argsort(score))+1
+            pos = yt == 1
+            out[name] = dict(auc=float((order[pos].sum()-pos.sum()*(pos.sum()+1)/2)/(pos.sum()*(~pos).sum())),
+                             accuracy=float(((score > .5) == pos).mean()))
+        return out
+
+    def summary(s, c2st):
+        return dict(similarity=dict(zip(names, s.tolist())), mean_similarity=float(s.mean()),
+                    share_at_least_95=float((s >= FIDELITY_SIM).mean()), classifier=c2st)
+
+    half = len(fit)//2
+    generated = summary(similarity(held, geval), classify(fit, gfit, held, geval))
+    reference = summary(similarity(held, other), classify(fit[:half], fit[half:], held, other))
+    generated["passes"] = bool(generated["mean_similarity"] >= FIDELITY_SIM
+                               and generated["classifier"]["trees"]["accuracy"] <= FIDELITY_ACC)
+    return dict(generated=generated, real_other_people=reference,
+                criteria=dict(mean_similarity_at_least=FIDELITY_SIM, tree_classifier_accuracy_at_most=FIDELITY_ACC))
+
+
 # ------------------------------------------------------------------ generation
-def generate(checkpoint, n, seed, device, batch=250, steps=32):
+def generate(checkpoint, n, seed, device, batch=250, steps=32, clamp=True):
     state = torch.load(checkpoint, map_location="cpu", weights_only=False)
     model = PhysiGPT(CONFIGS[state["config"]]).to(device).eval()
     model.load_state_dict(state["model"])
-    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device).float().cpu().numpy()
+    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device,
+                           clamp=clamp).float().cpu().numpy()
              for i in range(0, n, batch)]
     return np.concatenate(parts)
 
@@ -187,6 +239,8 @@ def main(argv=None):
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--sizes", type=int, nargs=3, metavar=("FIT", "INNER", "EVAL"),
                         help="windows per set (smoke tests only; record it in the report)")
+    parser.add_argument("--no-clamp", action="store_true", help="sample patches without clipping them to [0, 1]")
+    parser.add_argument("--gen-steps", type=int, default=32, help="Heun steps per patch when sampling the generator")
     parser.add_argument("--steps", type=int, help="override judge steps (smoke tests only; record it in the report)")
     args = parser.parse_args(argv)
     torch.set_num_threads(args.threads)
@@ -199,7 +253,8 @@ def main(argv=None):
     real = Real(args.data)
     info = dict(kind=args.kind, parameters=sj.parameters(args.kind), judge_steps=sj.JUDGES[args.kind]["steps"],
                 people={k: real.people(k) for k in ("fit", "inner", "control_train", "control_eval", "held_out")},
-                windows={k: int(len(v)) for k, v in real.rows.items()}, sizes=SIZES, seeds=args.seeds)
+                windows={k: int(len(v)) for k, v in real.rows.items()}, sizes=SIZES, seeds=args.seeds,
+                gen_steps=args.gen_steps, clamp=not args.no_clamp)
     print(json.dumps(info), flush=True)
     if args.mode == "controls":
         results = []
@@ -218,7 +273,8 @@ def main(argv=None):
     if args.generated:
         generated = np.load(args.generated).astype(np.float32)
     else:
-        generated = np.concatenate([generate(args.checkpoint, n, seed, args.device) for n, seed in
+        generated = np.concatenate([generate(args.checkpoint, n, seed, args.device, steps=args.gen_steps,
+                                             clamp=not args.no_clamp) for n, seed in
                                     ((SIZES["fit"], 1_000_000), (SIZES["inner"], 2_000_000),
                                      (SIZES["eval"], 3_000_000))])
         np.save(output/"generated.npy", generated.astype(np.float16))
@@ -228,6 +284,9 @@ def main(argv=None):
         real_eval = real.draw("held_out", SIZES["eval"])
         report = feature_report(real_eval, real.draw("control_eval", SIZES["eval"]), fakes[2])
         (output/"features.json").write_text(json.dumps(report, indent=1))
+        fidelity = fidelity_report(real.draw("fit", SIZES["fit"]), real_eval, real.draw("control_eval", SIZES["eval"]),
+                                   fakes[0], fakes[2])
+        (output/"fidelity.json").write_text(json.dumps(fidelity, indent=1))
         return
     result = judge_source("generated", real, fakes, args.kind, args.seeds, args.device, output)
     (output/"generated_judge.json").write_text(json.dumps(dict(info=info, result=result)))
