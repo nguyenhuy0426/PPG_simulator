@@ -430,12 +430,13 @@ def smoke(root, config="base", steps=60, extra=()):
     return json.loads((root/run/"stage_summary.json").read_text())
 
 
-def pick_compile(root, config="base", steps=MEASURE_FROM+MEASURE_STEPS):
+def pick_compile(root, config="base", steps=MEASURE_FROM+MEASURE_STEPS, extra=()):
     """Smoke runs eager and with --compile on the kernel's own GPUs; --compile is used only if it ran and its
-    measured step is COMPILE_GAIN faster. Whether inductor's kernels help on a T4 (sm_75) is measured, not assumed."""
-    report = dict(eager=smoke(root, config, steps))
+    measured step is COMPILE_GAIN faster. Whether inductor's kernels help on a T4 (sm_75) is measured, not assumed.
+    extra goes to both runs (--micro: the large config does not fit a whole 512-window device batch on a T4)."""
+    report = dict(eager=smoke(root, config, steps, list(extra)))
     try:
-        report["compiled"] = smoke(root, config, steps, ["--compile"])
+        report["compiled"] = smoke(root, config, steps, [*extra, "--compile"])
     except Exception as error:   # no Triton for this GPU, a dynamo failure...: train eager, and say why
         report["compiled"] = dict(error=f"{type(error).__name__}: {error}"[:500])
     eager, compiled = report["eager"]["step_seconds"], report["compiled"].get("step_seconds")

@@ -164,7 +164,8 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                  "if len(stable) != 1:\n    raise FileNotFoundError(f'expected one stable.pt, found {stable}')\n"
                  "args += ['--resume', str(stable[0])"+(f", '--decay-steps', {str(decay_steps)!r}" + (f", '--hold-steps', {str(hold_steps)!r}" if hold_steps else "")
                                       if kind == "decay" else "")+"]\n")
-    return (text+f"use, report = pick_compile('/tmp/physigpt_smoke', {config!r})\n"
+    micro = list(extra[extra.index("--micro"):extra.index("--micro")+2]) if "--micro" in extra else []
+    return (text+f"use, report = pick_compile('/tmp/physigpt_smoke', {config!r}, extra={micro!r})\n"
             "print('smoke', json.dumps(report), flush=True)\n"
             f"left = {kernel_hours} - (time.time()-begin)/3600\n"
             "train(args + (['--compile'] if use else []) + ['--hours', f'{left:.3f}'])")
@@ -239,7 +240,9 @@ def stage(output, kind, owner=OWNER, **kw):
                     + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())])
     else:
         k = kw.get("stage", 0)
-        meta = dict(id=f"{owner}/{stage_slug(k)}", title=f"PPG physiGPT Stage{k} v1", enable_gpu=True,
+        # A tagged stage (another config on the same data) keeps its own output; the title is the id's own slug.
+        name = f"ppg-physigpt-stage{k}-{kw['tag']}-v1" if kw.get("tag") else stage_slug(k)
+        meta = dict(id=f"{owner}/{name}", title=name if kw.get("tag") else f"PPG physiGPT Stage{k} v1", enable_gpu=True,
                     machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
                     + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
                     + ([f"{owner}/{stage_slug(k-1)}"] if k > 0 else []))
@@ -279,7 +282,9 @@ def main(argv=None):
     parser.add_argument("--decay-steps", type=int, default=0,
                         help="decay: steps of lr decay after the stage's stable.pt (kind decay resumes it)")
     parser.add_argument("--hold-steps", type=int, default=0, help="decay: steps at the peak rate before the decay")
-    parser.add_argument("--tag", default="", help="decay: suffix of the kernel id, so a variant keeps its own output")
+    parser.add_argument("--tag", default="", help="train/decay: suffix of the kernel id, so a variant keeps its own output")
+    parser.add_argument("--micro", type=int, default=0, help="train.py --micro, also for the smoke runs (0: off)")
+    parser.add_argument("--lr", type=float, default=0., help="train.py --lr (0: its default)")
     parser.add_argument("--diff-weight", type=float, default=0., help="train.py --diff-weight (0: off)")
     parser.add_argument("--gen-steps", type=int, default=32, help="judge: Heun steps per patch of the generator")
     parser.add_argument("--no-clamp", action="store_true", help="judge: sample patches without clipping to [0, 1]")
@@ -296,7 +301,9 @@ def main(argv=None):
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
-             + (["--diff-weight", str(args.diff_weight)] if args.diff_weight else []))
+             + (["--diff-weight", str(args.diff_weight)] if args.diff_weight else [])
+             + (["--micro", str(args.micro)] if args.micro else [])
+             + (["--lr", str(args.lr)] if args.lr else []))
     train["extra"] = tuple(extra)
     kw = dict(data=data, train=train, judge=train, decay=train, tpu=dict(train, smoke_only=args.smoke_only),
               solo=dict(data, config=args.config, epochs=args.epochs, extra=tuple(extra)),

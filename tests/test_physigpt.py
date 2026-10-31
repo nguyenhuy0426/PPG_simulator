@@ -626,3 +626,16 @@ def test_colab_supervisor_resumes_on_a_new_vm_from_drive_and_refuses_a_corrupt_c
     with pytest.raises(ValueError, match="checksum mismatch"):
         cr.main(base+["--local", str(tmp_path/"vm4"), "--", *train])
     assert not (tmp_path/"vm4"/"data"/"shard1").exists()
+
+
+def test_tagged_large_stage_keeps_its_own_output_and_smokes_with_its_micro_batch(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    st.main([str(tmp_path/"k"), "train", "--owner", "halovie2412", "--shards", "1", "--config", "large", "--tag", "large",
+             "--micro", "256", "--lr", "0.0004", "--plateau", "6"])
+    meta, script = json.loads((tmp_path/"k"/"kernel-metadata.json").read_text()), (tmp_path/"k"/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-stage0-large-v1" and meta["title"] == "ppg-physigpt-stage0-large-v1"
+    assert "'--plateau', '6', '--micro', '256', '--lr', '0.0004'" in script
+    assert "pick_compile('/tmp/physigpt_smoke', 'large', extra=['--micro', '256'])" in script
+    untagged = st.stage(tmp_path/"k2", "train", owner="halovie2412", stage=0, shards=(1,))
+    assert json.loads((untagged/"kernel-metadata.json").read_text())["id"] == "halovie2412/ppg-physigpt-stage0-v1"
+    assert "pick_compile('/tmp/physigpt_smoke', 'base', extra=[])" in (untagged/"run.py").read_text()
