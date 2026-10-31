@@ -1,61 +1,47 @@
 # Báo cáo mô hình (trang web chạy local)
 
-Trang tĩnh giải thích các mô hình tạo tín hiệu PPG trong hệ thống: kiến trúc, nguyên lý, đầu vào/đầu ra,
-dữ liệu train, kết quả, kèm sơ đồ và đồ thị tương tác. Không cần Internet, không dùng thư viện ngoài.
+Hai trang tĩnh, không cần Internet, không dùng thư viện ngoài:
 
-`index.html` là bản tóm tắt dễ hiểu (viết tay, số liệu lấy từ `ml/runs/realism-v1/realism_round10.json` và
-`docs/physioflow/loop`); `trinh-bay.html` là trang trình bày cho khách hàng (mạng nơ-ron vẽ sóng từng bước, GAN và giám
-khảo, PhysioFlow từ nhiễu ra sóng, video train, bước C, D và E); `chi-tiet.html` là báo cáo kỹ thuật đầy đủ, vẽ từ `data.js`
-(riêng mục 9, bài thi GalaxyPPG và các bước A–E, viết tay từ file bằng chứng; xem cuối trang này).
+| Trang | Dành cho | Nội dung |
+|---|---|---|
+| `trinh-bay.html` | Khách hàng | Ít chữ, nhiều hình: hệ thống, cách tạo sóng, điều khiển nhịp tim, độ giống thật, video train, PPG-physiGPT V1, lộ trình, giới hạn |
+| `gan-report.html` | Kỹ thuật | Giám khảo nghiêm, PhysioFlow-GAN và PPG-physiGPT theo bố cục bài LSM-GAN (Ding et al., IEEE JBHI 27(3), 2023) |
 
-Mở trực tiếp `index.html` bằng trình duyệt, hoặc chạy:
-
-```bash
-python3 -m http.server 8765 --bind 127.0.0.1 --directory docs/model-report
-```
-
-rồi vào http://127.0.0.1:8765.
-
-## Cập nhật số liệu
-
-`data.js` được tạo bởi `scripts/build_model_report.py` từ PhysioMix và PhysioFlow khi hai model này còn trong app. Hai model
-đã được gỡ khỏi app (strict judge vẫn tách được chúng ở AUC 0,99–1,00), nên script tạo dữ liệu cũng đã gỡ theo; `data.js`
-được giữ nguyên làm số liệu lịch sử. Muốn tạo lại thì lấy script và model từ lịch sử git.
-
-Ảnh
-`img/app-rx-rate-synthetic.png` chụp app với luồng RX tổng hợp để kiểm tra hiển thị, không phải đo phần cứng.
-
-## Trang trình bày (`trinh-bay.html`)
-
-Hình tương tác đọc `media/presentation.js`; video MP4 và hình PNG nằm trong `media/`. Tất cả được tạo từ checkpoint
-thật (mã băm khớp `assets/neural/manifest.json`) và dữ liệu thật bởi:
+Trang khách hàng lấy hình từ `../paper/figures` và `../system_3d/out`, nên cần phục vụ cả thư mục `docs`:
 
 ```bash
-.venv/bin/python scripts/build_presentation_media.py --snapshots PhysioMix=ml/runs/galaxy-d-pilot-result-v1/daily_d/physiomix_d_seed42 --snapshots PhysioFlow=ml/runs/galaxy-d-pilot-result-v1/daily_d/physioflow_d_seed42
+python3 -m http.server 8766 --bind 127.0.0.1 --directory docs
 ```
 
-Cần `ffmpeg` (libx264) và các thư mục `ml/runs` tương ứng. Số liệu bước C/D/E trên trang viết tay từ
-`docs/physioflow/loop/judges_c.json`, `galaxy_d_pilot.json` và `galaxy_e.json`.
+rồi vào http://127.0.0.1:8766/model-report/trinh-bay.html.
 
-## Mục 9 của `chi-tiet.html` (GalaxyPPG, bước A–E)
+Các trang cũ `index.html` (tóm tắt) và `chi-tiet.html` (báo cáo kỹ thuật đầy đủ, kèm `data.js`, `compare75.js`,
+`report.js`) đã được gỡ ngày 01/11/2026. Chúng vẫn còn trong lịch sử git.
 
-Số liệu viết tay, không qua `data.js`: bước A từ `ml/runs/fresh-galaxy-result-v1/fresh_galaxy.json` (không nằm trong git),
-bước B, B-LSM, C, D, E từ `docs/physioflow/loop/galaxy_b_pilot.json`, `lsm_galaxy.json`, `judges_c.json`,
-`galaxy_d_pilot.json`, `galaxy_e.json`; luật ở `docs/physioflow/rules/`. Khi có bước mới, cập nhật mục này cùng
-`index.html`, `trinh-bay.html` và `docs/physioflow/REPORT_VI.md`.
+## Trang khách hàng (`trinh-bay.html`)
 
-## Giám khảo nghiêm và PhysioFlow-GAN (`gan-report.html`)
+- Hình 01–05 là hình của bài báo (`docs/paper/figures`, tạo bởi `docs/paper/make_figures.py` từ bản ghi đánh giá),
+  ảnh app (`docs/ui`) và bản dựng 3D (`docs/system_3d/out`).
+- Video trong `media/` (`train-PhysioMix.mp4`, `train-PhysioFlow.mp4`, `physioflow-tu-nhieu-thanh-song.mp4`) được tạo
+  bởi `scripts/build_presentation_media.py` từ checkpoint thật; script đó còn ghi `media/presentation.js` và
+  `media/physiomix-7-buoc.png` cho trang cũ, trang mới không dùng hai file này.
+- Mục PPG-physiGPT V1 vẽ bằng `trinh-bay.js` từ `media/report-data.js`, tạo bởi `scripts/build_customer_report.py`
+  từ `docs/physigpt/results.json` và bản ghi kernel trong `docs/physigpt/evidence/`. Video
+  `media/physigpt-hoc-tung-patch.mp4` tạo bởi `scripts/build_physigpt_media.py`.
 
-Bố cục theo bài LSM-GAN (Ding et al., IEEE JBHI 27(3), 2023): Bảng I–IV, Hình 1–9, Thuật toán 1–3. `gan-data.js` được tạo bởi `scripts/build_gan_report.py`
-từ các vòng giám khảo nghiêm, các vòng train (`ml/runs/strict-*-result-v1`) và vòng PhysioFlow-GAN. Các model của những
-vòng đó không cải thiện (AUC 0,95–1,00) nên đã gỡ cùng script tạo dữ liệu. `gan-data.js` và hình được giữ nguyên làm số
-liệu; mục P5 và bảng model giữ/loại trên trang được viết tay.
+## Báo cáo kỹ thuật (`gan-report.html`)
+
+`gan-data.js` được tạo bởi `scripts/build_gan_report.py` từ các vòng giám khảo nghiêm, các vòng train
+(`ml/runs/strict-*-result-v1`) và vòng PhysioFlow-GAN. Các model của những vòng đó không cải thiện (AUC 0,95–1,00) nên đã
+gỡ cùng script tạo dữ liệu. `gan-data.js` và hình được giữ nguyên làm số liệu; mục P5 và bảng model giữ/loại trên trang
+được viết tay.
 
 Tỷ lệ artifact là luật SQI tự viết (`ml/kaggle_multidomain/artifact_sqi.py`), không phải nhãn chuyên gia. Hình 1, 4, 5 và
 các thuật toán viết tay từ mã nguồn (mỗi số có ghi file:line trong trang).
 
-## Mục PPG-physiGPT của `gan-report.html`
+Mục PPG-physiGPT viết tay từ `docs/physigpt/results.json` (tạo bởi `docs/physigpt/build_results.py` từ bản ghi kernel
+Kaggle trong `docs/physigpt/evidence/`): giám khảo nghiêm (AUC, d′ từ điểm thô) và tầng đặc trưng (1 − KS, bộ phân loại
+chỉ nhìn đặc trưng; V1 theo ngưỡng tương đối, V2 theo ngưỡng tuyệt đối). Khi có lần chạy mới, chép bản ghi vào
+`evidence/`, thêm biến thể vào `build_results.py`, chạy lại `build_customer_report.py` rồi cập nhật mục này.
 
-Viết tay từ `docs/physigpt/results.json` (tạo bởi `docs/physigpt/build_results.py` từ bản ghi kernel Kaggle trong
-`docs/physigpt/evidence/`): giám khảo nghiêm (AUC, d′ từ điểm thô) và tầng đặc trưng (1 − KS, bộ phân loại chỉ nhìn đặc
-trưng). Khi có lần chạy mới, chép bản ghi vào `evidence/`, thêm biến thể vào `build_results.py` rồi cập nhật mục này.
+Đây là đánh giá kỹ thuật về dáng sóng PPG đã chuẩn hoá, không phải kiểm định lâm sàng, và chưa đo trên Pi/DAC/OPT101.
