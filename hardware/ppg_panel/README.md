@@ -7,7 +7,7 @@ Mở `ppg_panel.kicad_pro` / `ppg_panel.kicad_pcb` bằng KiCad 10.
 |---|---|---|
 | Y = 0–20 mm | OPT101 receiver v1.5 | 70 × 20 mm |
 | Y = 20–40 mm | BPW34 receiver v1.4 | 70 × 20 mm |
-| Y = 40–80 mm | LED/IR driver v1.9 | 70 × 40 mm |
+| Y = 40–80 mm | LED/IR driver v2.0 | 70 × 40 mm |
 
 Hai đường V-cut ở **Y = 20 và 40 mm**, chạy thẳng hết chiều ngang 70 mm.
 Tọa độ trong file KiCad: góc trên trái (50,50); các đường cắt Y=70 và 90.
@@ -60,3 +60,13 @@ Trục quang danh nghĩa và khoảng cách hai kênh 38,5 mm được giữ ngu
 ## Layout 45°
 
 Ba board và panel đã vát góc rẽ dây 45°. Xem [đánh giá bố trí hai mặt và V-score](LAYOUT_REVIEW.md).
+
+## Driver v2.0 trong panel (2026-10-31)
+
+Board driver nay có cổng I²C riêng cho từng module MCP4725 (TX_J8 IR, TX_J9 RED),
+bốn điện trở 100 Ω 0805 (TX_R11–R14) và bốn jumper hàn 3 pad (TX_JP1–JP4, mặc
+định hở). Panel sinh lại bằng `build_panel.py`: DRC 0 vi phạm, 0 kết nối thiếu;
+`verify_panel.py` đạt 648 kiểm tra; đồng cách tâm V-cut tối thiểu 1,500 mm, bao
+R/C cách V-cut tối thiểu 2,095 mm (không đổi). Lỗ PTH tăng từ 108 lên 116
+(+4 via, +8 lỗ J8/J9, −4 lỗ nhóm I²C cũ của J2). Hồ sơ hàn dán cập nhật trong
+`assembly/`. Chưa đo trên board v2.0 thật.

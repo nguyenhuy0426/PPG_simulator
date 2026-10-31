@@ -42,6 +42,10 @@ def compact(input_path=FILE):
         'R8': (149.81, 127), 'R9': (161, 132.5),
         'C2': (127, 130.5), 'C4': (143, 130.5),
         'C5': (144, 121.5), 'C7': (134.3, 116.35),
+        # v2.0 per-channel I2C: header, 100R and 3-pad bypass jumper columns.
+        'J8': (129, 111.5), 'J9': (168.3, 111.5),
+        'JP1': (134.5, 111.5), 'R11': (134.5, 114.0), 'JP2': (134.5, 116.6), 'R12': (134.5, 119.1),
+        'JP3': (163.9, 111.5), 'R13': (163.9, 114.0), 'JP4': (163.9, 116.6), 'R14': (163.9, 119.1),
     }
     nets = {}
     for net in src.GetNetsByNetcode().values():
@@ -118,6 +122,10 @@ def compact(input_path=FILE):
     trace('/SENSE_RED',[(148,135),(159.45,135),(159.45,134.5)],p.B_Cu,.28)
     via('/SENSE_RED',(159.45,134.5))
     trace('/SENSE_RED',[(159.45,134.5),(159.45,132.5)],p.F_Cu,.25)
+    # Layer changes for the v2.0 I2C routes in routing_paths.json.
+    for net,pos in (('/SCL_H_IR',(131.1,111.5)),('/SDA_H_IR',(130.9,117.8)),
+                    ('/3V3_RED',(160.4,116.2)),('/GNDI2C_RED',(160.4,118.2))):
+        via(net,pos)
 
     def line(a, b, layer, width=.05):
         shape = p.PCB_SHAPE()
@@ -128,26 +136,40 @@ def compact(input_path=FILE):
         shape.SetWidth(mm(width))
         board.Add(shape)
 
-    def silk(value,x,y,size=.8,back=False):
+    def silk(value,x,y,size=.8,back=False,angle=0):
         label=p.PCB_TEXT(board)
         label.SetText(value);label.SetPosition(vec(x,y));label.SetTextSize(vec(size,size))
         label.SetTextThickness(mm(.1));label.SetLayer(p.B_SilkS if back else p.F_SilkS)
-        label.SetMirrored(back);board.Add(label)
+        label.SetMirrored(back);label.SetTextAngle(p.EDA_ANGLE(angle,p.DEGREES_T));board.Add(label)
 
-    silk('PPG LED/IR TX 70x40',135,101.5,.8)
+    silk('PPG LED/IR TX 70x40 v2.0',135,101.5,.8)
     silk('IR',119,101.5,.8)
     silk('RED',151,101.5,.8)
     silk('DATN: PPG-Simulator',135,101.4,.8,True)
     silk('Nguyen Nhat Huy - Pham Thanh Vy',135,102.9,.8,True)
     for ref,x in (('J1',110.7),('J2',125.0),('J3',143.7),('J4',165.5)):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
-        names={'J1':('IR','GND','SCL','SDA','3V3','GND'),
-               'J2':('IR','GND','SCL','SDA','3V3','GND'),
-               'J3':('RED','GND','SCL','SDA','3V3','GND'),
+        names={'J1':('IR','GND','SCL','SDA','3V3','I2CGND'),
+               'J2':('IR','GND'),
+               'J3':('RED','GND','SCL','SDA','3V3','I2CGND'),
                'J4':('RED','GND')}[ref]
         for number,name in enumerate(names,1):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
+    # v2.0 I2C headers (Grove order) and jumper/resistor columns.
+    for ref,x in (('J8',126.3),('J9',165.5)):
+        f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
+        for number,name in enumerate(('SCL','SDA','3V3','GND'),1):
+            pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
+            silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
+    for x,top,bottom in ((134.5,'JP1/R11 SCL','JP2/R12 SDA'),(163.9,'JP3/R13 SCL','JP4/R14 SDA')):
+        silk(top,x,110.0,.8,True); silk(bottom,x,120.75,.8,True)
+    silk('I2C',129,109.6,.8); silk('I2C',168.3,109.6,.8)
+    # Pad 1 (BYP) and pad 3 (100R) sides of each jumper; signal name beside its R.
+    for byp_x,res_x,ys in ((131.3,137.6,(111.5,116.6)),(166.57,160.9,(111.5,116.6))):
+        for y,sig in zip(ys,('SCL','SDA')):
+            silk('BYP',byp_x,y,.8,angle=90); silk('100R',res_x,y,.8,angle=90)
+            silk(sig,byp_x,y+2.5,.8,angle=90)
     for ref,names in (('J5',('5V','IR-')),('J6',('5V','RED-')),('J7',('5V','GND'))):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
         for number,name in enumerate(names,1):

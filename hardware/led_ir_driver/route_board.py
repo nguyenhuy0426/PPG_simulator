@@ -1,6 +1,7 @@
 """Explicit, reviewable routing: coordinates in mm from board top-left.
 
-Signals 0.35 mm; 3V3 bus 0.6 mm; 5V branches 0.6/0.8 mm.
+Signals 0.35 mm; 5V branches 0.6/0.8 mm. The v2.0 per-channel I2C nets
+(SCL/SDA/3V3/GNDI2C) are routed on the compact board in routing_paths.json.
 Feedback is a separate branch ending on the sense resistor's upper pad.
 The bottom GND pour supplies the return path without routing LED return
 current through the receiver board.
@@ -13,10 +14,6 @@ def route_board(b, parts):
     def trace(net,pts,layer=p.F_Cu,width=.35):
         for a,c in zip(pts,pts[1:]):
             t=p.PCB_TRACK(b); t.SetStart(vec(*a)); t.SetEnd(vec(*c)); t.SetLayer(layer); t.SetWidth(p.FromMM(width)); t.SetNet(nets[net]); b.Add(t)
-    # Straight parallel buses in the module area; no zig-zag between headers.
-    for net,y,width in [('SCL',15.08,.35),('SDA',17.62,.35),('3V3',20.16,.6)]:
-        target={'SCL':16.5,'SDA':18.5,'3V3':20.5}[net]
-        trace(net,[(7,y),(26,y),(26,target),(29,target),(31,target),(31,y),(40,y)],width=width)
     trace('DAC_IR',[(7,10),(29,10)],p.B_Cu)
     trace('DAC_IR',[(7,10),(5,12),(5,23),(9,27)],p.B_Cu)
     trace('DAC_RED',[(40,10),(62,10)],p.B_Cu)
@@ -67,7 +64,7 @@ def route_board(b, parts):
     fps={f.GetReference():f for f in b.GetFootprints()}
     original_tracks=list(b.GetTracks())
     for d in parts:
-        if d['kind'] not in ('R','C','CP'): continue
+        if d['kind'] not in ('R','C','CP') or not d['anchor']: continue
         pitch={'R':7.62,'C':2.5,'CP':2.0}[d['kind']]
         angle=math.radians(d['angle'])
         for pad in fps[d['ref']].Pads():

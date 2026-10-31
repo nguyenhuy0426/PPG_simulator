@@ -8,6 +8,8 @@ Panel 70 × 80 mm chứa OPT101 70 × 20 mm, BPW34 70 × 20 mm và driver 70 × 
 - `opt101_receiver_kicad/opt101_receiver/`, `bpw34_receiver/`, `led_ir_driver/`: schematic/PCB nguồn và gá mới.
 - Ba file ZIP board lẻ giữ cùng phiên bản mới nhất để xem/chỉnh hoặc in riêng; không trộn Gerber của chúng vào đơn hàng panel.
 
+Driver hiện là **v2.0**: mỗi module MCP4725 có cổng I²C riêng (J8 IR, J9 RED) qua 100 Ω hoặc jumper bỏ qua, mặc định hở; xem `led_ir_driver/README.md`.
+
 Đã kiểm tra ERC/DRC và parity ba nguồn; panel đối chiếu net/pad/track và lỗ/V-cut. Kết quả CAD không thay cho đo điện, nhiễu, ổn định vòng driver và thử lắp module thực. Xem `ppg_panel/ELECTRICAL_REVIEW.md`.
 
 ## Layout 45°

@@ -1,29 +1,81 @@
 {
   "kicad_version": "10.0.6",
-  "passed": 228,
+  "passed": 486,
   "checks": [
     {
-      "check": "J1/J2 pin 1: DAC_IR",
+      "check": "J1 pin 1: DAC_IR",
       "pass": true
     },
     {
-      "check": "J1/J2 pin 2: GND",
+      "check": "J1 pin 2: GND",
       "pass": true
     },
     {
-      "check": "J1/J2 pin 3: SCL",
+      "check": "J1 pin 3: SCL_IR",
       "pass": true
     },
     {
-      "check": "J1/J2 pin 4: SDA",
+      "check": "J1 pin 4: SDA_IR",
       "pass": true
     },
     {
-      "check": "J1/J2 pin 5: 3V3",
+      "check": "J1 pin 5: 3V3_IR",
       "pass": true
     },
     {
-      "check": "J1/J2 pin 6: GND",
+      "check": "J1 pin 6: GNDI2C_IR",
+      "pass": true
+    },
+    {
+      "check": "J2 pins 1/2: DAC_IR/GND",
+      "pass": true
+    },
+    {
+      "check": "J8 pin 1: SCL_H_IR",
+      "pass": true
+    },
+    {
+      "check": "J8 pin 2: SDA_H_IR",
+      "pass": true
+    },
+    {
+      "check": "J8 pin 3: 3V3_IR",
+      "pass": true
+    },
+    {
+      "check": "J8 pin 4: GNDI2C_IR",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR only J8.3 -> J1.5",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR only J8.4 -> J1.6",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR: header, R pad 1, JP pad 1",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR: R pad 2, JP pad 3",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR: JP pad 2 -> J1.3 only",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR: header, R pad 1, JP pad 1",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR: R pad 2, JP pad 3",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR: JP pad 2 -> J1.4 only",
       "pass": true
     },
     {
@@ -59,19 +111,71 @@
       "pass": true
     },
     {
-      "check": "J3 pin 3: SCL",
+      "check": "J3 pin 3: SCL_RED",
       "pass": true
     },
     {
-      "check": "J3 pin 4: SDA",
+      "check": "J3 pin 4: SDA_RED",
       "pass": true
     },
     {
-      "check": "J3 pin 5: 3V3",
+      "check": "J3 pin 5: 3V3_RED",
       "pass": true
     },
     {
-      "check": "J3 pin 6: GND",
+      "check": "J3 pin 6: GNDI2C_RED",
+      "pass": true
+    },
+    {
+      "check": "J4 pins 1/2: DAC_RED/GND",
+      "pass": true
+    },
+    {
+      "check": "J9 pin 1: SCL_H_RED",
+      "pass": true
+    },
+    {
+      "check": "J9 pin 2: SDA_H_RED",
+      "pass": true
+    },
+    {
+      "check": "J9 pin 3: 3V3_RED",
+      "pass": true
+    },
+    {
+      "check": "J9 pin 4: GNDI2C_RED",
+      "pass": true
+    },
+    {
+      "check": "3V3_RED only J9.3 -> J3.5",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_RED only J9.4 -> J3.6",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED: header, R pad 1, JP pad 1",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED: R pad 2, JP pad 3",
+      "pass": true
+    },
+    {
+      "check": "SCL_RED: JP pad 2 -> J3.3 only",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED: header, R pad 1, JP pad 1",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_RED: R pad 2, JP pad 3",
+      "pass": true
+    },
+    {
+      "check": "SDA_RED: JP pad 2 -> J3.4 only",
       "pass": true
     },
     {
@@ -103,35 +207,19 @@
       "pass": true
     },
     {
-      "check": "3V3 only module/cable supply",
+      "check": "No shared v1.x I2C bus nets remain",
       "pass": true
     },
     {
-      "check": "I2C SDA shared on pin4",
+      "check": "3V3_IR and 3V3_RED are separate nets",
       "pass": true
     },
     {
-      "check": "I2C SCL shared on pin3",
-      "pass": true
-    },
-    {
-      "check": "Ground exact pin set",
-      "pass": true
-    },
-    {
-      "check": "GND and 3V3 have no shared pins",
+      "check": "Ground exact pin set (socket pin 6 excluded)",
       "pass": true
     },
     {
       "check": "GND and 5V have no shared pins",
-      "pass": true
-    },
-    {
-      "check": "GND and SCL have no shared pins",
-      "pass": true
-    },
-    {
-      "check": "GND and SDA have no shared pins",
       "pass": true
     },
     {
@@ -143,31 +231,67 @@
       "pass": true
     },
     {
-      "check": "3V3 and 5V have no shared pins",
+      "check": "GND and SCL_H_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "3V3 and SCL have no shared pins",
+      "check": "GND and SDA_H_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "3V3 and SDA have no shared pins",
+      "check": "GND and SCL_R_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "3V3 and DAC_IR have no shared pins",
+      "check": "GND and SDA_R_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "3V3 and DAC_RED have no shared pins",
+      "check": "GND and SCL_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "5V and SCL have no shared pins",
+      "check": "GND and SDA_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "5V and SDA have no shared pins",
+      "check": "GND and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GND and GNDI2C_RED have no shared pins",
       "pass": true
     },
     {
@@ -179,23 +303,67 @@
       "pass": true
     },
     {
-      "check": "SCL and SDA have no shared pins",
+      "check": "5V and SCL_H_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "SCL and DAC_IR have no shared pins",
+      "check": "5V and SDA_H_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "SCL and DAC_RED have no shared pins",
+      "check": "5V and SCL_R_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "SDA and DAC_IR have no shared pins",
+      "check": "5V and SDA_R_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "SDA and DAC_RED have no shared pins",
+      "check": "5V and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "5V and GNDI2C_RED have no shared pins",
       "pass": true
     },
     {
@@ -203,11 +371,615 @@
       "pass": true
     },
     {
-      "check": "J4 is RED output and ground only",
+      "check": "DAC_IR and SCL_H_IR have no shared pins",
       "pass": true
     },
     {
-      "check": "Four-wire cable maps to J2 pads 3..6",
+      "check": "DAC_IR and SDA_H_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SCL_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SDA_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_H_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_H_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "DAC_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_H_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SCL_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SCL_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SDA_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SDA_R_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SCL_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SDA_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and 3V3_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and GNDI2C_IR have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SCL_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C_IR and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and SDA_H_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_H_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and SCL_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_H_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED and SDA_R_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_R_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_RED and SCL_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_R_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_RED and SDA_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SCL_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_RED and 3V3_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "SDA_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "3V3_RED and GNDI2C_RED have no shared pins",
+      "pass": true
+    },
+    {
+      "check": "J4 is RED output and ground only",
       "pass": true
     },
     {
@@ -263,78 +1035,6 @@
       "pass": true
     },
     {
-      "check": "R7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R9.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R9.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R3.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.3 PCB/netlist match",
-      "pass": true
-    },
-    {
       "check": "C5.1 PCB/netlist match",
       "pass": true
     },
@@ -343,83 +1043,11 @@
       "pass": true
     },
     {
-      "check": "J3.1 PCB/netlist match",
+      "check": "J6.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.5 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.6 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.5 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J2.6 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R1.2 PCB/netlist match",
+      "check": "J6.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -455,14 +1083,6 @@
       "pass": true
     },
     {
-      "check": "J4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
       "check": "R2.1 PCB/netlist match",
       "pass": true
     },
@@ -471,11 +1091,79 @@
       "pass": true
     },
     {
-      "check": "J6.1 PCB/netlist match",
+      "check": "J5.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J6.2 PCB/netlist match",
+      "check": "J5.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.5 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.6 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP4.3 PCB/netlist match",
       "pass": true
     },
     {
@@ -484,6 +1172,158 @@
     },
     {
       "check": "R8.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R13.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R13.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP3.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R14.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R14.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R9.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R9.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R11.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R11.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R12.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R12.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -511,6 +1351,34 @@
       "pass": true
     },
     {
+      "check": "J8.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J8.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J8.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J8.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.3 PCB/netlist match",
+      "pass": true
+    },
+    {
       "check": "C7.1 PCB/netlist match",
       "pass": true
     },
@@ -523,7 +1391,7 @@
       "pass": true
     },
     {
-      "check": "J1 has six holes",
+      "check": "J1 has 6 holes",
       "pass": true
     },
     {
@@ -547,31 +1415,7 @@
       "pass": true
     },
     {
-      "check": "J2 has six holes",
-      "pass": true
-    },
-    {
-      "check": "J2 pitch 1",
-      "pass": true
-    },
-    {
-      "check": "J2 pitch 2",
-      "pass": true
-    },
-    {
-      "check": "J2 pitch 3",
-      "pass": true
-    },
-    {
-      "check": "J2 pitch 4",
-      "pass": true
-    },
-    {
-      "check": "J2 pitch 5",
-      "pass": true
-    },
-    {
-      "check": "J3 has six holes",
+      "check": "J3 has 6 holes",
       "pass": true
     },
     {
@@ -595,6 +1439,94 @@
       "pass": true
     },
     {
+      "check": "J2 has 2 holes",
+      "pass": true
+    },
+    {
+      "check": "J2 pitch 1",
+      "pass": true
+    },
+    {
+      "check": "J8 has 4 holes",
+      "pass": true
+    },
+    {
+      "check": "J8 pitch 1",
+      "pass": true
+    },
+    {
+      "check": "J8 pitch 2",
+      "pass": true
+    },
+    {
+      "check": "J8 pitch 3",
+      "pass": true
+    },
+    {
+      "check": "J9 has 4 holes",
+      "pass": true
+    },
+    {
+      "check": "J9 pitch 1",
+      "pass": true
+    },
+    {
+      "check": "J9 pitch 2",
+      "pass": true
+    },
+    {
+      "check": "J9 pitch 3",
+      "pass": true
+    },
+    {
+      "check": "R11 100R 1% fitted SMD",
+      "pass": true
+    },
+    {
+      "check": "R12 100R 1% fitted SMD",
+      "pass": true
+    },
+    {
+      "check": "R13 100R 1% fitted SMD",
+      "pass": true
+    },
+    {
+      "check": "R14 100R 1% fitted SMD",
+      "pass": true
+    },
+    {
+      "check": "JP1 three SMD pads, open (three distinct nets)",
+      "pass": true
+    },
+    {
+      "check": "JP1 not under a module body",
+      "pass": true
+    },
+    {
+      "check": "JP2 three SMD pads, open (three distinct nets)",
+      "pass": true
+    },
+    {
+      "check": "JP2 not under a module body",
+      "pass": true
+    },
+    {
+      "check": "JP3 three SMD pads, open (three distinct nets)",
+      "pass": true
+    },
+    {
+      "check": "JP3 not under a module body",
+      "pass": true
+    },
+    {
+      "check": "JP4 three SMD pads, open (three distinct nets)",
+      "pass": true
+    },
+    {
+      "check": "JP4 not under a module body",
+      "pass": true
+    },
+    {
       "check": "Q1 physical pin order 1=E,2=B,3=C",
       "pass": true
     },
@@ -611,7 +1543,7 @@
       "pass": true
     },
     {
-      "check": "Only eight fitted resistors",
+      "check": "Twelve fitted resistors (eight driver + four I2C 100R)",
       "pass": true
     },
     {
@@ -627,11 +1559,43 @@
       "pass": true
     },
     {
-      "check": "I2C buses stay in upper module region",
+      "check": "I2C nets stay in upper module region",
       "pass": true
     },
     {
       "check": "Bottom GND plane present",
+      "pass": true
+    },
+    {
+      "check": "Copper zones are GND only (no GNDI2C pour)",
+      "pass": true
+    },
+    {
+      "check": "GNDI2C pads: J1.6, J3.6, J8.4, J9.4",
+      "pass": true
+    },
+    {
+      "check": "GND fill on F.Cu reaches J1.2 (test control)",
+      "pass": true
+    },
+    {
+      "check": "GND fill on F.Cu does not touch GNDI2C copper",
+      "pass": true
+    },
+    {
+      "check": "GND fill on B.Cu reaches J1.2 (test control)",
+      "pass": true
+    },
+    {
+      "check": "GND fill on B.Cu does not touch GNDI2C copper",
+      "pass": true
+    },
+    {
+      "check": "5V >= 2 mm from new I2C/3V3 nets on F.Cu",
+      "pass": true
+    },
+    {
+      "check": "5V >= 2 mm from new I2C/3V3 nets on B.Cu",
       "pass": true
     },
     {
@@ -695,6 +1659,10 @@
       "pass": true
     },
     {
+      "check": "Rear marking: I2CGND",
+      "pass": true
+    },
+    {
       "check": "Rear marking: IR-",
       "pass": true
     },
@@ -743,6 +1711,22 @@
       "pass": true
     },
     {
+      "check": "Rear marking: JP1/R11 SCL",
+      "pass": true
+    },
+    {
+      "check": "Rear marking: JP2/R12 SDA",
+      "pass": true
+    },
+    {
+      "check": "Rear marking: JP3/R13 SCL",
+      "pass": true
+    },
+    {
+      "check": "Rear marking: JP4/R14 SDA",
+      "pass": true
+    },
+    {
       "check": "Rear pin label has no numeric prefix: IR",
       "pass": true
     },
@@ -763,7 +1747,7 @@
       "pass": true
     },
     {
-      "check": "Rear pin label has no numeric prefix: GND",
+      "check": "Rear pin label has no numeric prefix: I2CGND",
       "pass": true
     },
     {
@@ -791,6 +1775,10 @@
       "pass": true
     },
     {
+      "check": "Rear pin label has no numeric prefix: IR-",
+      "pass": true
+    },
+    {
       "check": "Rear pin label has no numeric prefix: SCL",
       "pass": true
     },
@@ -804,10 +1792,6 @@
     },
     {
       "check": "Rear pin label has no numeric prefix: GND",
-      "pass": true
-    },
-    {
-      "check": "Rear pin label has no numeric prefix: IR-",
       "pass": true
     },
     {
@@ -828,6 +1812,14 @@
     },
     {
       "check": "Rear pin label has no numeric prefix: 5V",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: JP1/R11 SCL",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: JP2/R12 SDA",
       "pass": true
     },
     {
@@ -879,7 +1871,7 @@
       "pass": true
     },
     {
-      "check": "Rear pin label has no numeric prefix: GND",
+      "check": "Rear pin label has no numeric prefix: I2CGND",
       "pass": true
     },
     {
@@ -903,6 +1895,14 @@
       "pass": true
     },
     {
+      "check": "Rear pin label has no numeric prefix: JP3/R13 SCL",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: JP4/R14 SDA",
+      "pass": true
+    },
+    {
       "check": "Rear pin label has no numeric prefix: RED",
       "pass": true
     },
@@ -911,7 +1911,39 @@
       "pass": true
     },
     {
+      "check": "Rear pin label has no numeric prefix: SCL",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: SDA",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: 3V3",
+      "pass": true
+    },
+    {
+      "check": "Rear pin label has no numeric prefix: GND",
+      "pass": true
+    },
+    {
       "check": "all routed tracks horizontal, vertical or 45 degrees",
+      "pass": true
+    },
+    {
+      "check": "Front silk v2.0 title",
+      "pass": true
+    },
+    {
+      "check": "Front jumper marking: BYP",
+      "pass": true
+    },
+    {
+      "check": "Front jumper marking: 100R",
+      "pass": true
+    },
+    {
+      "check": "Front jumper marking: I2C",
       "pass": true
     }
   ],

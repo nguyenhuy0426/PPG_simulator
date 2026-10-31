@@ -8,4 +8,5 @@
 7,10k,"Điện trở dán 1%, 1/8W",0805 (2012 metric),6,4,2,"BPW_R7, BPW_R8, TX_R1, TX_R2, TX_R6, TX_R7",Yageo RC0805FR-0710KL,Cầu chia: phải là loại 1%.
 8,1k,"Điện trở dán 1%, 1/8W",0805 (2012 metric),6,2,4,"OPT_R1, OPT_R2, BPW_R3, BPW_R4, TX_R3, TX_R8",Yageo RC0805FR-071KL,"TX_R3/TX_R8 thiết kế ghi ""1k"" (không yêu cầu 1%); gộp chung 1% để bớt 1 mã."
 9,100Ω,"Điện trở dán 1%, 0.25W (1/4W)",1206 (3216 metric),2,2,0,"TX_R4, TX_R9",Yageo RC1206FR-07100RL,"Điện trở sense dòng LED — đúng cỡ 1206, ≥0.25W, 1%."
-10,OPA333AIDBVR,"Op-amp CMOS zero-drift, 1.8–5.5V (TI)",SOT-23-5 (DBV),2,0,2,"BPW_U1, BPW_U2",TI OPA333AIDBVR (thay thế cùng chân: Microchip MCP6001T-I/OT),CÓ HƯỚNG: chân 1 trùng dấu tam giác trên silkscreen mặt dưới. Không dùng LM358.
+10,100Ω,"Điện trở dán 1%, 1/8W",0805 (2012 metric),4,4,0,"TX_R11, TX_R12, TX_R13, TX_R14",Yageo RC0805FR-07100RL,Nối tiếp SCL/SDA từng module MCP4725 (driver v2.0). Cỡ 0805 — khác TX_R4/R9 cỡ 1206.
+11,OPA333AIDBVR,"Op-amp CMOS zero-drift, 1.8–5.5V (TI)",SOT-23-5 (DBV),2,0,2,"BPW_U1, BPW_U2",TI OPA333AIDBVR (thay thế cùng chân: Microchip MCP6001T-I/OT),CÓ HƯỚNG: chân 1 trùng dấu tam giác trên silkscreen mặt dưới. Không dùng LM358.

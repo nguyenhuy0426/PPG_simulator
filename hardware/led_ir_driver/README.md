@@ -1,19 +1,19 @@
-# DATN: PPG-Simulator — LED / IR driver v1.9
+# DATN: PPG-Simulator — LED / IR driver v2.0
 
 Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 40 mm**,
 FR4 1,6 mm; socket module, socket IC và header xuyên lỗ; toàn bộ điện trở và tụ điện là linh kiện dán.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.9 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
-không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
+Schematic v2.0 dùng dây nối trực tiếp cho từng kênh; mỗi module MCP4725 có
+cổng I²C riêng (J8 cho IR, J9 cho RED) qua điện trở 100 Ω hoặc jumper bỏ qua. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
 rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
 chân nối; `reports/wiring_guide.png` thể hiện đường đồng hai lớp có màu.
 
-Mặt sau PCB ghi tên tín hiệu cạnh từng pad của J1/J2/J3/J4, J5/J6/J7, socket
-LM358 và hai transistor. Nhãn chân không có tiền tố số; tên connector và
+Mặt sau PCB ghi tên tín hiệu cạnh từng pad của J1/J2/J3/J4, J5/J6/J7, J8/J9,
+socket LM358 và hai transistor, cùng nhãn nhóm JP/R của từng kênh I²C. Nhãn chân không có tiền tố số; tên connector và
 reference linh kiện vẫn được giữ để đối chiếu schematic.
 
-Xem `CONNECTIVITY_REVIEW.md` để xem đường GND, bus chung và thay đổi một đầu cáp ở v1.3.
+Xem `CONNECTIVITY_REVIEW.md` để xem đường GND và việc tách I²C ở v2.0.
 
 ## Cắm module và dây
 
@@ -23,33 +23,64 @@ pad vuông SCL trên chính module không phải dấu pin 1 của socket PCB.
 Module nằm ngang, mặt linh kiện hướng lên; thân module mở rộng sang phải
 của hàng socket như ảnh. Hàn hàng chân đực xuống mặt dưới module để cắm.
 
-| Pad | J1 socket IR / J2 đầu cáp Pi | J3 socket Red |
+| Pad | J1 socket IR | J3 socket Red |
 |---|---|---|
-| 1 | OUT IR | OUT Red |
-| 2 | GND | GND |
-| 3 | SCL | SCL |
-| 4 | SDA | SDA |
-| 5 | 3,3 V | 3,3 V |
-| 6 | GND | GND |
+| 1 | OUT IR (`DAC_IR`) | OUT Red (`DAC_RED`) |
+| 2 | GND board | GND board |
+| 3 | SCL_IR → JP1.2 | SCL_RED → JP3.2 |
+| 4 | SDA_IR → JP2.2 | SDA_RED → JP4.2 |
+| 5 | 3V3_IR → J8.3 | 3V3_RED → J9.3 |
+| 6 | GNDI2C_IR → J8.4 | GNDI2C_RED → J9.4 |
 
-J1–J2 nối **1:1 đủ sáu chân**. J3 dùng chung GND, 3,3 V, SCL và SDA
-với J1/J2; OUT Red chỉ đi từ J3 vào mạch Red, không nối OUT IR.
-J2 là header đực duy nhất để đưa I²C/3,3 V từ Pi vào board.
-**Bẹ I²C bốn lõi vào chân 3–6: SCL, SDA, 3V3, GND; không vào 1–4.**
-J4 là header đực 1×2 bước 2,54 mm: chân 1 = OUT_RED, chân 2 = GND. J2.1/J2.2 là OUT_IR/GND. Nhóm I²C 2,00 mm của J2 vẫn là đầu cáp Pi dùng chung.
-Pin OUT là ngõ ra DAC để đo/lấy tín hiệu, không nối vào ngõ ra khác.
+**Cổng I²C riêng từng module (v2.0).** J8 (IR) và J9 (RED) là header đực
+1×4 bước 2,00 mm, thứ tự Grove: **pin 1 SCL, pin 2 SDA, pin 3 3V3, pin 4 GND**
+(pad vuông là pin 1). J8 chỉ nối module IR (J1), J9 chỉ nối module RED (J3).
+Trên PCB không còn bus SCL/SDA/3V3 chung giữa hai module: `3V3_IR` và
+`3V3_RED` là hai net riêng; `GNDI2C_IR`/`GNDI2C_RED` không có đường đồng,
+vùng đồng hay via nào nối về GND của board.
 
-Hai chân GND của mỗi module (pin 2 và pin 6) nối vào vùng đồng GND mặt dưới.
-Vùng này cũng nối J2.2/J2.6, LM358 pin 4, đầu dưới các điện trở sense,
-cực âm C5/C7 và J7.2. Vì vậy nguồn 5 V tại J7 phải chung GND với Pi.
+**Lưu ý quan trọng:** pin 2 và pin 6 của mỗi module MCP4725 đã nối chung bên
+trong module (một chip, một VSS). Khi cắm module, `GNDI2C_x` vẫn thông với GND
+board qua module. Tách trên PCB chỉ để không có đường đồng GND chung trên board,
+**không phải cách ly galvanic**. Nếu hai cổng Grove lấy từ cùng một HAT thì
+SCL/SDA vẫn là cùng một bus I²C của Pi; vẫn cần địa chỉ 0x60/0x61 khác nhau.
+
+J2 và J4 là header đực 1×2 bước 2,54 mm: chân 1 = OUT, chân 2 = GND
+(J2 cho IR, J4 cho RED). Pin OUT là ngõ ra DAC để đo/lấy tín hiệu, không
+nối vào ngõ ra khác.
+
+GND board (pin 2 của hai socket, J2.2/J4.2, LM358 pin 4, đầu dưới các điện
+trở sense, cực âm C5/C7 và J7.2) là vùng đồng hai mặt. Nguồn 5 V tại J7 phải
+chung GND với Pi; đường chung đó đi qua dây GND của J7 và qua module.
+
+### Jumper I²C — mặc định HỞ
+
+Mỗi đường SCL/SDA có một điện trở 100 Ω 1% 0805 và một jumper hàn 3 pad:
+
+| Kênh | Tín hiệu | R | JP | Pad 1 (BYP) | Pad 2 (giữa) | Pad 3 (100R) |
+|---|---|---|---|---|---|---|
+| IR | SCL | R11 | JP1 | SCL_H_IR (J8.1, R11.1) | SCL_IR → J1.3 | SCL_R_IR (R11.2) |
+| IR | SDA | R12 | JP2 | SDA_H_IR (J8.2, R12.1) | SDA_IR → J1.4 | SDA_R_IR (R12.2) |
+| RED | SCL | R13 | JP3 | SCL_H_RED (J9.1, R13.1) | SCL_RED → J3.3 | SCL_R_RED (R13.2) |
+| RED | SDA | R14 | JP4 | SDA_H_RED (J9.2, R14.1) | SDA_RED → J3.4 | SDA_R_RED (R14.2) |
+
+Hàn **pad 2–3** để đi qua 100 Ω; hàn **pad 2–1** (BYP) để bỏ qua điện trở.
+Chỉ hàn một phía. **Board xuất xưởng để hở cả hai**: module không nhận SCL/SDA
+cho đến khi hàn jumper. Silk mặt trên ghi `BYP` cạnh pad 1, `100R` cạnh pad 3
+và tên tín hiệu cạnh điện trở; jumper nằm ngoài vùng thân module.
+
+Hai module vẫn có pull-up riêng; carrier không thêm pull-up. Với 100 Ω nối
+tiếp, mức thấp phía bên kia điện trở tăng thêm I_pull-up × 100 Ω, ví dụ
+1,8 mA → 0,18 V. Kiểm tra mức thấp thật bằng oscilloscope so với V_IL của
+MCP4725/Pi khi đã biết tổng pull-up của Pi, HAT và hai module; nếu biên quá
+hẹp thì dùng phía BYP.
 
 Đặt jumper địa chỉ trên module: **IR = 0x60, Red = 0x61** theo cấu hình source.
 Với module MCP4725A0: IR đặt ADDR về GND, RED đặt ADDR về VCC (3,3 V).
 Gỡ cầu hàn ADDR–GND nếu có trước khi nối ADDR–VCC; không nối tắt cả ba pad.
-Hai chân GND của module vẫn giữ chung GND ở cả hai cấu hình địa chỉ.
+Hai chân GND của module vẫn là cùng VSS ở cả hai cấu hình địa chỉ.
 Header sáu chân không đưa chân ADDR ra ngoài. Kiểm tra jumper và quét I²C
-trước khi chạy; không để hai module cùng địa chỉ. Module đã có pull-up I²C,
-board không thêm pull-up; cần kiểm tra tải pull-up khi dùng chung Grove HAT.
+trước khi chạy; không để hai module cùng địa chỉ trên cùng một bus.
 
 | Đầu nối | Pin 1 | Pin 2 |
 |---|---|---|
@@ -59,7 +90,7 @@ board không thêm pull-up; cần kiểm tra tải pull-up khi dùng chung Grove
 
 J5/J6/J7 dùng header đực 1×2 bước 2,54 mm. LED nằm trên carrier trong hộp
 quang, nối bằng dây. Cathode LED không nối trực tiếp xuống GND.
-Nguồn 5 V chỉ cấp LM358 và LED; **không có 5 V ở header MCP4725**.
+Nguồn 5 V chỉ cấp LM358 và LED; **không có 5 V ở header MCP4725 hay J8/J9**.
 Driver và RX dùng dây nguồn/GND riêng về Pi/HAT; không nối tiếp đường hồi
 dòng LED qua board OPT101/Grove ADC. Trước khi cấp nguồn, xác nhận cực LED
 và chiều cắm IC/socket theo rãnh pin 1 ở phía trên board.
@@ -90,7 +121,8 @@ Các vị trí **DNP — chưa lắp**:
 - C2/C4: bù vòng từ OUT op-amp về ngõ đảo, chỉ chọn sau kiểm tra oscilloscope.
 
 Đã bỏ C1/C3, R5/R10 (trước đây đều DNP) và tụ bypass đầu nguồn C6 khỏi
-v1.3. Lắp mặc định **8 điện trở, C5 và C7**, không lắp C2/C4. Giữ tên
+v1.3. Lắp mặc định **12 điện trở (8 của mạch driver + R11–R14), C5 và C7**,
+không lắp C2/C4; JP1–JP4 chỉ là pad đồng. Giữ tên
 reference cũ để dễ đối chiếu, nên có số thứ tự khuyết trong BOM.
 
 Không khẳng định vòng ổn định chỉ từ ERC/DRC. Kiểm tra dòng, dao động,
@@ -115,8 +147,10 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 
 ## Kiểm tra và file gia công
 
-KiCad 10.0.6: **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm; 0 kết nối còn thiếu;
-0 sai khác schematic/PCB; 244 kiểm tra hợp đồng chân, giá trị, hình học và đi dây đạt**.
+KiCad 10.0.6 (v2.0): **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm (mọi mức); 0 kết nối
+còn thiếu; 0 sai khác schematic/PCB; 486 kiểm tra trong `verify_design.py` đạt**,
+gồm net từng chân J1/J3/J8/J9/JP/R, GNDI2C không chạm vùng GND, 3V3_IR ≠ 3V3_RED
+và 5V cách mọi đồng I²C/3V3 mới ≥ 2 mm trên cùng lớp (đo được 2,20 mm).
 Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm.
 
 - `reports/erc.rpt`: kiểm tra schematic.
@@ -125,7 +159,8 @@ Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm
   header 1:1, footprint, DNP và kích thước.
 - `fabrication/`: Gerber và drill. `../PPG_LED_IR_driver.zip`: gói board lẻ. Panel ghép mới nằm trong `../PPG_3boards_VCUT_panel.zip`.
 - `BOM.csv`: danh sách footprint trên board; mua thêm hai module MCP4725,
-  một LM358P và hai socket cái 1×6, một socket DIP-8 theo BOM.
+  một LM358P và hai socket cái 1×6, một socket DIP-8 theo BOM. JP1–JP4 ghi
+  `BRIDGE`: jumper hàn, không mua linh kiện.
 
 File đã xuất để kiểm tra; chưa gửi đặt sản xuất. Phần cứng và đặc tính
 quang/điện chưa được đo. Không coi DRC sạch là chứng minh mạch hoạt động.
@@ -137,6 +172,8 @@ Không cần chạy script để mở/chỉnh dự án bằng KiCad. `schematic_
 vẽ schematic bằng dây nối; `route_board.py` đặt từng đoạn đồng đã chọn theo
 chức năng, không sử dụng autorouter. Sau khi sinh cần refill zone và chạy
 ERC/DRC/parity; `verify_design.py` kiểm tra độc lập các kết nối dự định.
+Đường đồng I²C v2.0 nằm trong `routing_paths.json` (toạ độ board thu gọn,
+chỉ đoạn ngang/dọc/45°); via đổi lớp của chúng đặt trong `compact_layout.py`.
 `render_wiring.py --export` chạy bằng Python có pcbnew; sau đó chạy cùng
 script không tham số bằng Python có matplotlib để xuất bản đồ đường dây.
 
@@ -146,10 +183,20 @@ datasheet MCP4725 và LM358 trong `docs/ds_linhkien/`.
 Footprint/model từ KiCad 10: CC-BY-SA 4.0 với ngoại lệ sử dụng trong thiết kế
 điện tử, [KiCad Library License](https://www.kicad.org/libraries/license/).
 
-## J2 revision v1.4
+## Thay đổi v2.0 so với v1.9
 
-J2 gồm hai đoạn header đực rời: OUT/GND (pad 1–2) bước 2,54 mm; SCL/SDA/3V3/GND (pad 3–6) bước 2,00 mm. Khoảng cách tâm pad 2 đến pad 3 là 3,96 mm để tách hai thân nhựa. Mua một header 1×2 2,54 mm và một header 1×4 2,00 mm, không dùng một thanh 1×6. Socket cái J1/J3 vẫn bước 2,54 mm.
+- Bỏ nhóm I²C 2,00 mm của J2 và bus SCL/SDA/3V3 chung; J2 chỉ còn OUT_IR/GND.
+- Thêm J8/J9 (I²C riêng từng module), R11–R14 (100 Ω 1% 0805) và JP1–JP4.
+- J8 đặt đúng chỗ nhóm I²C cũ của J2 (x = 29 mm); J9 ở mép phải (x = 68,3 mm).
+- Kích thước, lỗ M3, vị trí J1/J3/J4–J7 và mạch LM358/2N4401/sense giữ nguyên.
+
+Một Grove Base Hat đã hỏng sau khi nối bản v1.9; kiểm tra hình học đồng v1.9
+không tìm thấy chập giữa các net. v2.0 chỉ giảm rủi ro (không còn đường đồng
+I²C/3V3/GND chung giữa hai module, có thể thêm 100 Ω nối tiếp), **không sửa
+một lỗi đã xác định**. Chưa đo trên board v2.0 thật.
 
 ## Bố trí bản thu gọn hiện tại
 
-PCB 70 × 40 mm. Lỗ PCB tại (4;24), (66;24), (4;36), (66;36) mm. C7 đặt mặt sau giữa các header, các tụ/trở còn lại dùng footprint SMD. Đường đồng ngang/dọc; nguồn 5 V rộng 0,60–0,80 mm. Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.
+PCB 70 × 40 mm. Lỗ PCB tại (4;24), (66;24), (4;36), (66;36) mm. C7 đặt mặt sau giữa các header, các tụ/trở còn lại dùng footprint SMD. Đường đồng ngang/dọc/45°; nguồn 5 V rộng 0,60–0,80 mm; 3V3_x 0,60 mm, GNDI2C_x 0,50 mm, SCL/SDA 0,35 mm.
+Cột R11/JP1/R12/JP2 (kênh IR) nằm phía trên C7 ở mặt đối diện: cách 5 V bằng
+lớp FR-4 1,6 mm, không phải khoảng hở bề mặt; trên cùng lớp, 5 V cách ≥ 2,20 mm. Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.
