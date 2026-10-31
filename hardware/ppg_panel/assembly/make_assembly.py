@@ -3,6 +3,8 @@
 
 KiCad Python:      make_assembly.py --export   -> panel_parts.json (from ../ppg_panel.kicad_pcb)
 Python + openpyxl: make_assembly.py            -> BOM/CPL CSV + XLSX for the assembly house
+Add --driver to either step for the LED/IR driver board alone
+(../../led_ir_driver/led_ir_driver.kicad_pcb -> ../../led_ir_driver/assembly/).
 
 Part numbers are suggestions; any part with the same specification is acceptable.
 """
@@ -14,17 +16,36 @@ from collections import OrderedDict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PARTS_JSON = HERE / 'panel_parts.json'
+DRIVER = '--driver' in sys.argv
+if DRIVER:
+    # Standalone driver board: same part lines, refs carry no TX_ prefix on the PCB.
+    OUT = HERE.parent.parent / 'led_ir_driver' / 'assembly'
+    PCB = HERE.parent.parent / 'led_ir_driver' / 'led_ir_driver.kicad_pcb'
+    PARTS_JSON = OUT / 'driver_parts.json'
+    STEM = 'PPG_LED_IR_driver'
+else:
+    OUT = HERE
+    PCB = HERE.parent / 'ppg_panel.kicad_pcb'
+    PARTS_JSON = HERE / 'panel_parts.json'
+    STEM = 'PPG_panel'
+
+
+QTY = 'SL / 1 board' if DRIVER else 'SL / 1 bộ panel'
+
+
+def disp(ref):
+    return ref[3:] if DRIVER else ref
 
 
 def export():
     import pcbnew as p
-    board = p.LoadBoard(str(HERE.parent / 'ppg_panel.kicad_pcb'))
+    board = p.LoadBoard(str(PCB))
+    OUT.mkdir(exist_ok=True)
     parts = []
     for fp in board.GetFootprints():
         pos = fp.GetPosition()
         parts.append({
-            'ref': fp.GetReference(), 'value': fp.GetValue(), 'footprint': str(fp.GetFPID().GetLibItemName()),
+            'ref': ('TX_' if DRIVER else '') + fp.GetReference(), 'value': fp.GetValue(), 'footprint': str(fp.GetFPID().GetLibItemName()),
             'side': 'bottom' if fp.GetLayer() == p.B_Cu else 'top',
             # Same convention as `kicad-cli pcb export pos`: Gerber coordinates, Y up.
             'x': round(p.ToMM(pos.x), 6), 'y': round(-p.ToMM(pos.y), 6), 'rot': round(fp.GetOrientationDegrees(), 6),
@@ -37,7 +58,10 @@ def export():
     print(len(parts), 'footprints ->', PARTS_JSON.name)
 
 
-BOARD = {'OPT': ('OPT101 RX 70x20', 70.0), 'BPW': ('BPW34 RX 70x20', 90.0), 'TX': ('LED/IR driver 70x40', 130.0)}
+# Board name, left edge X and bottom edge Y (Gerber coordinates, Y up) for local coordinates.
+BOARD = {'OPT': ('OPT101 RX 70x20', 50.0, 70.0), 'BPW': ('BPW34 RX 70x20', 50.0, 90.0), 'TX': ('LED/IR driver 70x40', 50.0, 130.0)}
+if DRIVER:
+    BOARD = {'TX': ('LED/IR driver 70x40', 100.0, 140.0)}
 SIDE_VN = {'top': 'TOP (mặt trên)', 'bottom': 'BOTTOM (mặt dưới)'}
 
 # One line per distinct part to buy and place. Refs are checked against the PCB.
@@ -47,7 +71,8 @@ LINES = [
          note='BẮT BUỘC C0G/NP0 (tụ ổn định TIA). Không thay bằng X7R/Y5V.'),
     dict(refs='OPT_C1 OPT_C2 BPW_C3 BPW_C4 BPW_C5 BPW_C6 TX_C5', value='100nF', spec='Tụ gốm MLCC X7R, 50V, ±10%',
          pkg='0805 (2012 metric)', mpn='Samsung CL21B104KBCNNNC',
-         note='Bypass/lọc VREF. X7R ≥25V đều dùng được; dùng 1 mã cho cả 7 vị trí.'),
+         note='Bypass/lọc VREF. X7R ≥25V đều dùng được; dùng 1 mã cho cả 7 vị trí.',
+         note_tx='Bypass nguồn LM358 (TX_C5). X7R ≥25V đều dùng được.'),
     dict(refs='OPT_C3 OPT_C4 BPW_C7 BPW_C8', value='1uF', spec='Tụ gốm MLCC X7R, 16V, ±10%', pkg='0805 (2012 metric)',
          mpn='Samsung CL21B105KOFNNNE',
          note='Lọc RC ngõ ra. Dùng cùng 1 mã cho cả 4 vị trí (cân bằng kênh RED/IR).'),
@@ -73,6 +98,10 @@ LINES = [
 ]
 DNP = ['TX_C2', 'TX_C4']
 JUMPERS = ['TX_JP1', 'TX_JP2', 'TX_JP3', 'TX_JP4']
+if DRIVER:
+    LINES = [dict(L, refs=' '.join(r for r in L['refs'].split() if r.startswith('TX_')), note=L.get('note_tx', L['note']).replace('TX_', ''))
+             for L in LINES]
+    LINES = [L for L in LINES if L['refs']]
 
 
 def sortkey(r):
@@ -125,36 +154,38 @@ def build():
         bot = [r for r in refs if side(r) == 'bottom']
         bom_rows.append(OrderedDict([
             ('STT', i), ('Giá trị', L['value']), ('Mô tả / thông số', L['spec']), ('Kiểu chân (package)', L['pkg']),
-            ('SL / 1 bộ panel', len(refs)), ('Mặt TOP', len(top)), ('Mặt BOTTOM', len(bot)),
-            ('Vị trí (Designator)', ', '.join(refs)),
+            (QTY, len(refs)), ('Mặt TOP', len(top)), ('Mặt BOTTOM', len(bot)),
+            ('Vị trí (Designator)', ', '.join(map(disp, refs))),
             ('Mã gợi ý (hoặc tương đương cùng thông số)', L['mpn']), ('Ghi chú', L['note']),
         ]))
-    total = sum(r['SL / 1 bộ panel'] for r in bom_rows)
+    total = sum(r[QTY] for r in bom_rows)
     n_top = sum(r['Mặt TOP'] for r in bom_rows)
     n_bot = sum(r['Mặt BOTTOM'] for r in bom_rows)
-    assert (total, n_top, n_bot) == (38, 15, 23), (total, n_top, n_bot)
+    assert (total, n_top, n_bot) == ((14, 13, 1) if DRIVER else (38, 15, 23)), (total, n_top, n_bot)
 
     # ---- CPL rows (Gerber coordinates, same origin as the Gerber files) -------------------
     pkg_of = {r: L['pkg'].split(' (')[0] for L in LINES for r in L['refs'].split()}
     cpl_rows = []
     for r in sorted(placed, key=sortkey):
         f = fps[r]
-        name, bottom_y = BOARD[board(r)]
+        name, left_x, bottom_y = BOARD[board(r)]
         cpl_rows.append(OrderedDict([
-            ('Designator', r), ('Val', f['value']), ('Package', pkg_of[r]), ('KiCad footprint', f['footprint']),
+            ('Designator', disp(r)), ('Val', f['value']), ('Package', pkg_of[r]), ('KiCad footprint', f['footprint']),
             ('Mid X', f'{f["x"]:.3f}'), ('Mid Y', f'{f["y"]:.3f}'), ('Rotation', f'{f["rot"]:.0f}'),
             ('Layer', 'Top' if f['side'] == 'top' else 'Bottom'),
-            ('Board', name), ('Local X (mm)', f'{f["x"] - 50.0:.3f}'), ('Local Y (mm)', f'{bottom_y + f["y"]:.3f}'),
+            ('Board', name), ('Local X (mm)', f'{f["x"] - left_x:.3f}'), ('Local Y (mm)', f'{bottom_y + f["y"]:.3f}'),
         ]))
 
     # ---- parts NOT for the assembly house ------------------------------------------------
     self_rows = []
 
     def add_self(refs, item, pkg, note):
-        refs = sorted(refs, key=sortkey)
+        refs = sorted((r for r in refs if not DRIVER or r.startswith('TX_')), key=sortkey)
+        if not refs:
+            return
         for r in refs:
             assert r in fps and 'smd' not in fps[r]['pads'], r
-        self_rows.append(OrderedDict([('Vị trí', ', '.join(refs)), ('SL', len(refs)), ('Linh kiện', item),
+        self_rows.append(OrderedDict([('Vị trí', ', '.join(map(disp, refs))), ('SL', len(refs)), ('Linh kiện', item),
                                       ('Kiểu chân', pkg), ('Ai hàn', 'Khách tự hàn'), ('Ghi chú', note)]))
     add_self(['OPT_U1', 'OPT_U2'], 'OPT101P (PDIP-8) [+ đế DIP-8 7,62 mm nếu dùng]', 'THT DIP-8',
              'Footprint là đế DIP-8. Rãnh/pin 1 hướng lên cạnh có chữ RED/A2, IR/A0. Hàn thẳng IC (không đế) sẽ đổi độ cao quang so với gá.')
@@ -174,16 +205,16 @@ def build():
              'Không thay C1815 (khác thứ tự chân). Mặt phẳng theo silkscreen, pad vuông = E.')
     for r in ['TX_H1', 'TX_H2', 'TX_H3', 'TX_H4']:
         assert fps[r]['pads'] == ['npth']
-    covered = {r for row in self_rows for r in row['Vị trí'].split(', ')}
+    covered = {('TX_' if DRIVER else '') + r for row in self_rows for r in row['Vị trí'].split(', ')}
     tht_refs = {r for r, f in fps.items() if r not in smd_refs and not r.startswith('TX_H')}
     assert covered == tht_refs, covered ^ tht_refs
 
-    noplace_rows = [OrderedDict([('Vị trí', r), ('Board', BOARD[board(r)][0]), ('Mặt', SIDE_VN[side(r)]), ('Footprint', '0805'),
+    noplace_rows = [OrderedDict([('Vị trí', disp(r)), ('Board', BOARD[board(r)][0]), ('Mặt', SIDE_VN[side(r)]), ('Footprint', '0805'),
                                  ('Yêu cầu', 'DNP — KHÔNG đặt linh kiện. Che lỗ stencil TOP tại vị trí này (file F_Paste vẫn có lỗ paste).')])
                     for r in DNP]
     for r in JUMPERS:
         assert not fps[r]['paste'], r
-        noplace_rows.append(OrderedDict([('Vị trí', r), ('Board', BOARD[board(r)][0]), ('Mặt', SIDE_VN[side(r)]),
+        noplace_rows.append(OrderedDict([('Vị trí', disp(r)), ('Board', BOARD[board(r)][0]), ('Mặt', SIDE_VN[side(r)]),
                                          ('Footprint', 'Jumper hàn 3 pad'),
                                          ('Yêu cầu', 'Chỉ là pad đồng, không có linh kiện, không có lỗ paste. GIỮ HỞ — không hàn nối; khách tự chọn 100R/BYP sau.')]))
 
@@ -201,6 +232,18 @@ def build():
         ('Tách panel', 'Thiết kế khuyến nghị tách panel TRƯỚC khi hàn. Nếu xưởng hàn nguyên panel rồi mới tách: dùng dao/máy cắt V-cut, không bẻ tay. Tụ gốm gần đường cắt nhất là BPW_C5/C6 (tâm cách đường V-cut 3,1 mm, nằm song song đường cắt).'),
         ('Kiểm tra', 'Kết quả CAD: DRC 0 lỗi, 0 pad chưa nối; giá trị footprint khớp schematic nguồn. Chưa có đo kiểm trên board đã lắp.'),
     ]
+    if DRIVER:
+        notes = [
+            ('Đơn vị', '1 bộ = 1 board LED/IR driver v2.0, 70 x 40 mm (board lẻ, không panel). Số lượng mua = SL/bộ x số board + hao hụt của xưởng.'),
+            ('Phạm vi xưởng', f'Chỉ hàn dán {total} linh kiện SMD / board, {len(LINES)} mã linh kiện. KHÔNG hàn các linh kiện xuyên lỗ ở sheet "Khach tu han", KHÔNG đặt C2/C4 (DNP) và KHÔNG hàn nối 4 jumper JP1–JP4.'),
+            ('Hai mặt', f'TOP {n_top} linh kiện, BOTTOM {n_bot} linh kiện (chỉ tụ hóa C7). Stencil: led_ir_driver-F_Paste.gbr (TOP), led_ir_driver-B_Paste.gbr (BOTTOM); C7 có thể hàn tay thay cho stencil mặt dưới.'),
+            ('Tệp sản xuất', 'Gerber/drill: led_ir_driver-*.gbr và led_ir_driver-*.drl. Ảnh tham chiếu: pcb_top.png, pcb_bottom.png.'),
+            ('Toạ độ', 'Mid X/Mid Y cùng gốc với file Gerber (đơn vị mm, Y âm theo KiCad). Local X/Y: tính từ góc dưới-trái của board, nhìn từ mặt TOP.'),
+            ('Góc xoay', 'Rotation theo quy ước KiCad 10. Linh kiện mặt BOTTOM: xưởng kiểm tra lại hướng theo dấu cực trên silkscreen trước khi chạy.'),
+            ('Phân cực', 'C7 tụ hóa: cực + vào pad có dấu "+" (net 5V). Các tụ gốm/điện trở không phân cực.'),
+            ('Hai loại 100Ω', 'R4/R9 = 100Ω 1206 0,25W (sense dòng LED). R11–R14 = 100Ω 0805 (nối tiếp I²C). Không đổi chỗ hai cỡ.'),
+            ('Kiểm tra', 'Kết quả CAD: DRC 0 lỗi, 0 pad chưa nối; giá trị footprint khớp schematic. Chưa có đo kiểm trên board đã lắp.'),
+        ]
 
     # ---- write CSV -----------------------------------------------------------------------
     def write_csv(path, rows):
@@ -209,8 +252,8 @@ def build():
             w.writeheader()
             w.writerows(rows)
 
-    write_csv(HERE / 'PPG_panel_BOM_SMT.csv', bom_rows)
-    write_csv(HERE / 'PPG_panel_CPL_SMT.csv', cpl_rows)
+    write_csv(OUT / f'{STEM}_BOM_SMT.csv', bom_rows)
+    write_csv(OUT / f'{STEM}_CPL_SMT.csv', cpl_rows)
 
     # ---- write XLSX ----------------------------------------------------------------------
     wb = Workbook()
@@ -258,13 +301,14 @@ def build():
         new = OrderedDict()
         for k, v in row.items():
             new[k] = v
-            if k == 'SL / 1 bộ panel':
+            if k == QTY:
                 new[qcol] = 0
         xl_rows.append(new)
     ws = wb.active
     last = sheet(ws, 'BOM han dan SMT', xl_rows, [5, 13, 34, 20, 9, 12, 8, 10, 40, 38, 48],
+                 'PPG LED/IR driver v2.0, board 70x40 — BOM linh kiện HÀN DÁN cho xưởng' if DRIVER else
                  'PPG panel 70x80 (OPT101 RX + BPW34 RX + LED/IR driver v2.0) — BOM linh kiện HÀN DÁN cho xưởng')
-    ws.cell(2, 1, 'Số bộ (panel) cần hàn:').font = Font(bold=True)
+    ws.cell(2, 1, 'Số board cần hàn:' if DRIVER else 'Số bộ (panel) cần hàn:').font = Font(bold=True)
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=4)
     ws.cell(2, 1).alignment = Alignment(horizontal='right')
     cnt = ws.cell(2, 5, 1)
@@ -285,7 +329,7 @@ def build():
     sheet(wb.create_sheet(), 'Ghi chu cho xuong', [OrderedDict([('Mục', a), ('Nội dung', b)]) for a, b in notes], [16, 120])
     for w in wb.worksheets:
         print_setup(w)
-    wb.save(HERE / 'PPG_panel_BOM_SMT.xlsx')
+    wb.save(OUT / f'{STEM}_BOM_SMT.xlsx')
     print('SMD placements', total, 'top', n_top, 'bottom', n_bot, 'part codes', len(LINES))
 
 
