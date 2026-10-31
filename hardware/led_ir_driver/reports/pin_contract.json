@@ -1035,23 +1035,27 @@
       "pass": true
     },
     {
-      "check": "R1.1 PCB/netlist match",
+      "check": "R3.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R1.2 PCB/netlist match",
+      "check": "R3.2 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "JP4.1 PCB/netlist match",
+      "check": "J5.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "JP4.2 PCB/netlist match",
+      "check": "J5.2 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "JP4.3 PCB/netlist match",
+      "check": "R9.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R9.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -1067,11 +1071,11 @@
       "pass": true
     },
     {
-      "check": "J2.1 PCB/netlist match",
+      "check": "R14.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J2.2 PCB/netlist match",
+      "check": "R14.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -1099,11 +1103,195 @@
       "pass": true
     },
     {
-      "check": "R13.1 PCB/netlist match",
+      "check": "J8.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R13.2 PCB/netlist match",
+      "check": "J8.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J8.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J8.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q1.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J6.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J6.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "C4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R7.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R7.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "Q2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.5 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J3.6 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP1.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R6.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R4.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R4.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R8.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R8.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R11.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R11.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J9.4 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "JP2.3 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "J2.2 PCB/netlist match",
       "pass": true
     },
     {
@@ -1139,219 +1327,15 @@
       "pass": true
     },
     {
-      "check": "R14.1 PCB/netlist match",
+      "check": "JP4.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R14.2 PCB/netlist match",
+      "check": "JP4.2 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "R4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J6.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J6.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R3.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C4.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP1.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP1.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.5 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J3.6 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "JP2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J8.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J8.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J8.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J8.4 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J7.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R11.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R11.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C5.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "C5.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R9.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R9.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R8.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R8.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "J5.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R12.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R12.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "R6.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q2.3 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.1 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.2 PCB/netlist match",
-      "pass": true
-    },
-    {
-      "check": "Q1.3 PCB/netlist match",
+      "check": "JP4.3 PCB/netlist match",
       "pass": true
     },
     {
@@ -1363,19 +1347,35 @@
       "pass": true
     },
     {
-      "check": "J9.1 PCB/netlist match",
+      "check": "R12.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J9.2 PCB/netlist match",
+      "check": "R12.2 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J9.3 PCB/netlist match",
+      "check": "C5.1 PCB/netlist match",
       "pass": true
     },
     {
-      "check": "J9.4 PCB/netlist match",
+      "check": "C5.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R1.2 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R13.1 PCB/netlist match",
+      "pass": true
+    },
+    {
+      "check": "R13.2 PCB/netlist match",
       "pass": true
     },
     {

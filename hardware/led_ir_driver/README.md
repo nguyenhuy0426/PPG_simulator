@@ -39,7 +39,12 @@ Trên PCB không còn bus SCL/SDA/3V3 chung giữa hai module: `3V3_IR` và
 `3V3_RED` là hai net riêng; `GNDI2C_IR`/`GNDI2C_RED` không có đường đồng,
 vùng đồng hay via nào nối về GND của board. Đã kiểm tra cả 16 chân J1.3–6,
 J3.3–6, J8.1–4, J9.1–4: không chân nào thuộc net GND, không có đồng/vùng đồng
-GND chạm vào chúng (vùng GND cách 0,30 mm). GND I²C chỉ lấy từ cổng Grove trên HAT.
+GND chạm vào chúng (vùng GND cách 0,50 mm). GND I²C chỉ lấy từ cổng Grove trên HAT.
+
+Theo quy định của nhà mạch: vùng đồng GND (hai mặt) cách mọi đồng khác
+0,50 mm, khe thermal 0,50 mm, cách mép board 0,60 mm. Pad linh kiện cắm có
+đường kính tối thiểu bằng lỗ khoan cộng 0,6 mm; header I²C 2,00 mm (J8/J9)
+dùng pad 1,50 mm cho lỗ 0,80 mm, thay cho pad 1,35 mm của thư viện KiCad.
 
 **Lưu ý quan trọng:** pin 2 và pin 6 của mỗi module MCP4725 đã nối chung bên
 trong module (một chip, một VSS). Khi cắm module, `GNDI2C_x` vẫn thông với GND

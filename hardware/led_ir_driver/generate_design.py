@@ -158,6 +158,9 @@ def board(share,cli):
                 dest=HERE/'3dmodels'/suffix; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(source,dest)
                 s=s.replace(model,'${KIPRJMOD}/3dmodels/'+suffix)
         if name=='SJ3': s=widen_jumper(s)
+        # Fab rule: THT pad >= drill + 0.6 mm. KiCad's 2.00 mm header has
+        # 1.35 mm pads on 0.8 mm drills; 1.5 mm leaves 0.5 mm between pads.
+        if name=='Header4': s=s.replace('(size 1.35 1.35)','(size 1.5 1.5)')
         (lib/f'{name}.kicad_mod').write_text(s)
     (lib/'HeaderMixed.kicad_mod').unlink(missing_ok=True)
     (HERE/'fp-lib-table').write_text('(fp_lib_table (version 7) (lib (name "TX") (type "KiCad") (uri "${KIPRJMOD}/TX.pretty") (options "") (descr "Driver local footprints")))')
