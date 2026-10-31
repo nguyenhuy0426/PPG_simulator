@@ -12,6 +12,7 @@ changing `\journal{...}` in `main.tex`.
 | `figures/` | Figures 1–7 as PDF (vector, for submission) and PNG (preview), drawn at the 390 pt text width |
 | `tables/` | Table bodies generated from the evaluation records; do not edit by hand |
 | `make_figures.py` | Builds every figure and table from the evidence files |
+| `make_physigpt_table.py` | Builds `tables/physigpt.tex` (Discussion, network size without a scaffold) from `evidence/physigpt-stage0-v1/results.json` |
 | `evidence/` | JSON records of the Kaggle runs the paper uses, copied from `ml/runs/` (which stays local) with the same relative paths |
 | `data/evidence_index.json` | SHA-256 of each evidence file used, plus the numbers quoted in the text |
 | `data/measured.json` | New laptop measurements: generator latency and the rate-control curves of Fig. 5 |

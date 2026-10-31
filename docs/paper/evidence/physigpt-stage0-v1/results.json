@@ -1,0 +1,295 @@
+{
+ "note": "Engineering evaluation of normalised 30 s, 40 Hz PPG shape; not clinical validation. valid_flow is on held-out records that also chose best.pt; the strict judge and the feature tier use separate held-out people.",
+ "controls": {
+  "circular_filter": 14.99,
+  "noise_1pct": 16.45,
+  "phase_randomized": 7.68,
+  "real_other_people": 0.14
+ },
+ "variants": [
+  {
+   "variant": "base, plateau stop (no decay)",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-stage0-v1",
+   "steps": 14500,
+   "hours": 1.99,
+   "valid_flow": 0.06451,
+   "strict": {
+    "kernel": "ppg-physigpt-judge0-v1",
+    "seeds": [
+     0,
+     1,
+     2
+    ],
+    "gen_steps": 32,
+    "clamp": true,
+    "mean_auc": 1.0,
+    "d_prime": [
+     20.82,
+     20.14,
+     12.79
+    ],
+    "mean_d_prime": 17.92
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, decay 3k",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-v1",
+   "steps": 17500,
+   "hours": 0.35,
+   "valid_flow": 0.05914,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-of-ppg-physigpt-decay0-v1",
+    "seeds": [
+     0,
+     1,
+     2
+    ],
+    "gen_steps": 32,
+    "clamp": true,
+    "mean_auc": 1.0,
+    "d_prime": [
+     10.84,
+     12.05,
+     13.67
+    ],
+    "mean_d_prime": 12.19
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, decay 3k, unclamped sampling",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-v1",
+   "steps": 17500,
+   "hours": 0.35,
+   "valid_flow": 0.05914,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-decay0-v1-noclamp",
+    "seeds": [
+     0,
+     1
+    ],
+    "gen_steps": 32,
+    "clamp": false,
+    "mean_auc": 1.0,
+    "d_prime": [
+     12.02,
+     10.4
+    ],
+    "mean_d_prime": 11.21
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, decay 3k, 128 ODE steps",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-v1",
+   "steps": 17500,
+   "hours": 0.35,
+   "valid_flow": 0.05914,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-decay0-v1-g128",
+    "seeds": [
+     0
+    ],
+    "gen_steps": 128,
+    "clamp": true,
+    "mean_auc": 1.0,
+    "d_prime": [
+     15.14
+    ],
+    "mean_d_prime": 15.14
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, hold 7k + decay 3k (longer)",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-longer-v1",
+   "steps": 24500,
+   "hours": 0.93,
+   "valid_flow": 0.05813,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-decay0-longer-v1",
+    "seeds": [
+     0,
+     1
+    ],
+    "gen_steps": 32,
+    "clamp": true,
+    "mean_auc": 1.0,
+    "d_prime": [
+     10.37,
+     7.72
+    ],
+    "mean_d_prime": 9.04
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, longer + sharpness loss 0.25",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-sharp-v1",
+   "steps": 27500,
+   "hours": 0.68,
+   "valid_flow": 0.05782,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-decay0-sharp-v1",
+    "seeds": [
+     0,
+     1
+    ],
+    "gen_steps": 32,
+    "clamp": true,
+    "mean_auc": 1.0,
+    "d_prime": [
+     7.95,
+     7.02
+    ],
+    "mean_d_prime": 7.48
+   },
+   "fidelity": null
+  },
+  {
+   "variant": "base, longer + sharpness loss 8",
+   "config": "base",
+   "parameters": 30666360,
+   "train_kernel": "ppg-physigpt-decay0-sharp8-v1",
+   "steps": 27500,
+   "hours": 0.69,
+   "valid_flow": 0.05783,
+   "strict": null,
+   "fidelity": {
+    "kernel": "ppg-physigpt-judge-decay0-sharp8-v1-fid",
+    "mean_similarity": 0.9334,
+    "share_at_least_95": 0.4286,
+    "tree_accuracy": 0.6385,
+    "tree_auc": 0.6935,
+    "passes": false,
+    "similarity": {
+     "rate_bpm": 0.9315,
+     "acf_peak": 0.8805000000000001,
+     "diff_std": 0.9299999999999999,
+     "diff2_std": 0.895,
+     "skew": 0.9605,
+     "kurtosis": 0.9205,
+     "diff_skew": 0.958,
+     "mean_level": 0.9705,
+     "centroid_hz": 0.897,
+     "power_0.5-1.5 Hz": 0.9515,
+     "power_1.5-3 Hz": 0.962,
+     "power_3-5 Hz": 0.9425,
+     "power_5-8 Hz": 0.895,
+     "power_8-20 Hz": 0.9725
+    },
+    "reference": {
+     "mean_similarity": 0.9595,
+     "share_at_least_95": 0.6429,
+     "tree_accuracy": 0.5,
+     "similarity": {
+      "rate_bpm": 0.967,
+      "acf_peak": 0.947,
+      "diff_std": 0.971,
+      "diff2_std": 0.9625,
+      "skew": 0.981,
+      "kurtosis": 0.9395,
+      "diff_skew": 0.9475,
+      "mean_level": 0.984,
+      "centroid_hz": 0.952,
+      "power_0.5-1.5 Hz": 0.9410000000000001,
+      "power_1.5-3 Hz": 0.9355,
+      "power_3-5 Hz": 0.9595,
+      "power_5-8 Hz": 0.9735,
+      "power_8-20 Hz": 0.972
+     }
+    },
+    "criteria": {
+     "mean_similarity_at_least": 0.95,
+     "tree_classifier_accuracy_at_most": 0.6
+    }
+   }
+  },
+  {
+   "variant": "large, plateau stop + decay 3k",
+   "config": "large",
+   "parameters": 99880056,
+   "train_kernel": "ppg-physigpt-decay0-large-v1",
+   "steps": 25000,
+   "hours": 0.85,
+   "valid_flow": 0.0575,
+   "strict": {
+    "kernel": "ppg-physigpt-judge-decay0-large-v1",
+    "seeds": [
+     0,
+     1
+    ],
+    "gen_steps": 32,
+    "clamp": true,
+    "mean_auc": 0.999999,
+    "d_prime": [
+     8.01,
+     9.27
+    ],
+    "mean_d_prime": 8.64
+   },
+   "fidelity": {
+    "kernel": "ppg-physigpt-judge-decay0-large-v1-fid",
+    "mean_similarity": 0.9413,
+    "share_at_least_95": 0.4286,
+    "tree_accuracy": 0.6178,
+    "tree_auc": 0.6565,
+    "passes": false,
+    "similarity": {
+     "rate_bpm": 0.95,
+     "acf_peak": 0.9185,
+     "diff_std": 0.947,
+     "diff2_std": 0.905,
+     "skew": 0.97,
+     "kurtosis": 0.9495,
+     "diff_skew": 0.9785,
+     "mean_level": 0.967,
+     "centroid_hz": 0.9165,
+     "power_0.5-1.5 Hz": 0.9295,
+     "power_1.5-3 Hz": 0.9505,
+     "power_3-5 Hz": 0.9325,
+     "power_5-8 Hz": 0.885,
+     "power_8-20 Hz": 0.9785
+    },
+    "reference": {
+     "mean_similarity": 0.9595,
+     "share_at_least_95": 0.6429,
+     "tree_accuracy": 0.5,
+     "similarity": {
+      "rate_bpm": 0.967,
+      "acf_peak": 0.947,
+      "diff_std": 0.971,
+      "diff2_std": 0.9625,
+      "skew": 0.981,
+      "kurtosis": 0.9395,
+      "diff_skew": 0.9475,
+      "mean_level": 0.984,
+      "centroid_hz": 0.952,
+      "power_0.5-1.5 Hz": 0.9410000000000001,
+      "power_1.5-3 Hz": 0.9355,
+      "power_3-5 Hz": 0.9595,
+      "power_5-8 Hz": 0.9735,
+      "power_8-20 Hz": 0.972
+     }
+    },
+    "criteria": {
+     "mean_similarity_at_least": 0.95,
+     "tree_classifier_accuracy_at_most": 0.6
+    }
+   }
+  }
+ ]
+}

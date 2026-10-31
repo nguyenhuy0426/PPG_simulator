@@ -490,6 +490,27 @@ Constructing the beat sequence and learning only the waveform around it gave a d
 
 On the finger and intensive-care datasets, rectified flow produced waveforms that the probe and the foundation model both found harder to separate from real ones, with higher coverage and closer context following. The development history explains part of the difference. Two of the GAN rounds were spent on the stability of adversarial training (Section~\ref{sec:res-development}), whereas the flow model has a regression loss and no adversary, and its improvements came from the data path (when to supply the scaffold) and from the distribution of training times. The probe AUC tells the same story: 0.70 for PhysioFlow against 0.83 for PhysioMix on validation, although the GAN's critic was itself shown first and second differences. The price is compute. PhysioFlow needs 31 network evaluations per strip and about 140 times the CPU time of PhysioMix. For a simulator that generates 30\,s strips ahead of playback, this is acceptable on a laptop; on the Pi it remains to be measured. The flow model is also less diverse: it followed contexts more consistently than real data do, and it showed signs of memorisation in the two smallest datasets. Both observations argue for more training subjects rather than for a larger network.
 
+\subsection{Network size without a scaffold}
+\label{sec:disc-scale}
+
+To see whether pretraining on a large intensive-care corpus and a larger network would close the gap without the scaffold, we trained an unconditional autoregressive patch transformer after GPT-PPG \cite{chen2025gptppg} on the PLETH channel of the MIMIC-III Waveform Database \cite{johnson2016mimic,goldberger2000physionet}, in the same normalised 0.5--8\,Hz view. A 30\,s window is cut into 30 one-second patches; a causal transformer predicts each patch from the earlier ones, and a flow-matching head \cite{lipman2023flow} draws it with 32 Heun steps. The model has no rate input, so it is not a candidate for the simulator; it serves only to separate scale from the scaffold. A base (30.7\,M parameters) and a large version (99.9\,M) were trained on two T4 GPUs with a warmup-stable-decay schedule, one training run each, excluding the records of the MIMIC PERform sets. They were scored by a judge stricter than the probe of Section~\ref{sec:criterion}: a 3.6\,M-parameter classifier with time, spectral and autocorrelation branches, trained on 4{,}972 subjects and tested on 180 others, with 2{,}000 windows per side. Its AUC was 1.00 for every variant, so Table~\ref{tab:physigpt} gives the separation $d'$ of its raw scores (difference of the means over the pooled standard deviation, mean over two judge seeds). A second test compared 14 waveform features (rate, autocorrelation peak, moments of the signal and its differences, spectral centroid and five band powers) between generated windows and the 180 held-out subjects by one minus the two-sample Kolmogorov--Smirnov statistic, together with a gradient-boosted classifier that sees only the features.
+
+\begin{table}[tbp]
+\centering
+\caption{Unconditional patch transformer on held-out subjects. Flow: held-out flow-matching loss on the pretraining validation records. $d'$: separation of the strict judge's scores. 1$-$KS: mean feature similarity over 14 features. Tree: accuracy of the feature-only classifier (0.5 = chance). The last row compares real windows of other subjects with the held-out subjects.}
+\label{tab:physigpt}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & Params (M) & Flow & AUC & $d'$ & 1$-$KS & Tree \\
+\midrule
+\tablebody{tables/physigpt.tex}
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tripling the parameters lowered the held-out flow loss from 0.0578 to 0.0575 and raised the feature similarity from 0.933 to 0.941, against 0.960 for real windows of other subjects; neither model met a criterion of 0.95 with the feature classifier at no more than 60\% accuracy. The strict judge separated the large model as well as the base one ($d'$ 8.6 against 7.5, with a spread of one to three between judge seeds), at the level of a phase-randomised copy of real PPG ($d'$ 7.7). The gain lay in beat regularity (autocorrelation peak 0.918 against 0.881) and pulse shape; the 5--8\,Hz band power remained the largest gap (0.885 against 0.974 for real data), the band that also betrayed PhysioMix on GalaxyPPG. A network three times larger, trained on the same data, thus did not supply the missing texture, which agrees with the argument above for more training subjects rather than a larger network; the texture would have to come from the data or from the training objective.
+
 \subsection{Everyday wrist PPG and small validation sets}
 
 Both deployed models failed on GalaxyPPG, and the band-limited probes show why: PhysioMix reproduced the pulse bands but not the 5--8\,Hz texture of the E4 signal. Realism on one wrist dataset recorded with a research device during exercise did not carry over to a consumer device in daily life. Motion and sensor texture are device-specific, and a simulator that targets wearables needs data from the class of device being tested. Training on the new device's data helped the flow model considerably, from about 3\% for the deployed PhysioFlow to 24--33\% on the same held-out participants, and once these data had their own dataset code, the original datasets did not suffer.
