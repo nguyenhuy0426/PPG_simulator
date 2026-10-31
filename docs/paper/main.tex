@@ -62,7 +62,28 @@ Photoplethysmography (PPG) measures changes in tissue blood volume optically. It
 
 Two kinds of test signal are in use. Recorded databases contain real physiology, and a beat detector can be scored against them \cite{charlton2022beats}, but they cannot be varied: rate, rhythm and recording conditions are fixed by the recording, and a file cannot exercise an optical sensor. Bench simulators reverse the trade-off. Commercial testers place an optical module in front of the device under test and modulate light with a pulse whose rate, amplitude and timing features are set by the operator; the WhaleTeq AECG100, for example, covers 10--300\,bpm with PPG, sine, triangle and square waveforms and can also play back user-supplied data \cite{whaleteq2025manual}. Such functional testers show that a device responds, but they do not establish SpO$_2$ accuracy, which is assessed in controlled studies on human subjects \cite{iso80601}. Academic bench simulators follow the same pattern. Pittella et al.\ drove multi-wavelength LEDs to reproduce database PPG in front of an earbud sensor \cite{pittella2024optical}, and Solo{\v{s}}enko et al.\ built an LED-based simulator driven by beat-to-beat interval series to reproduce ventricular tachycardia for wrist-worn devices \cite{solosenko2024vt}.
 
-The waveform is the weak point of these systems. Parametric models built from sums of Gaussians \cite{mcsharry2003ecg,tang2020gaussian}, stochastic pulse models \cite{martin2013stochastic}, rhythm models of atrial fibrillation \cite{solosenko2017af,solosenko2022physionet} and haemodynamic pulse-wave databases \cite{charlton2019pwdb} give exact control, but their pulses repeat more regularly than real ones \cite{mejia2022synthesis}. In our evaluation, a small convolutional classifier separated the simulator's Gaussian pulse from real windows of unseen subjects in all six datasets. Playing back recordings gives realism without control. Deep generative models fill part of this gap. Generative adversarial networks (GANs) \cite{goodfellow2014gan} have produced PPG for data augmentation \cite{kiyasseh2020pleth,ding2023lsmgan}, and diffusion and flow-matching models now generate electrocardiograms conditioned on diagnostic statements \cite{alcaraz2023sssd,bondar2025flowecg} or translate PPG into ECG \cite{sarkar2021cardiogan,shome2024rddm}. These models were not built to follow an operator's rate command, and their realism is often judged on a few examples, with a single distance or on test data that were seen during development \cite{brophy2023gan,theis2016note}.
+The waveform is the weak point of these systems. Parametric models built from sums of Gaussians \cite{mcsharry2003ecg,tang2020gaussian}, stochastic pulse models \cite{martin2013stochastic}, rhythm models of atrial fibrillation \cite{solosenko2017af,solosenko2022physionet} and haemodynamic pulse-wave databases \cite{charlton2019pwdb} give exact control, but their pulses repeat more regularly than real ones \cite{mejia2022synthesis}. In our evaluation, a small convolutional classifier separated the simulator's Gaussian pulse from real windows of unseen subjects in all six datasets. Playing back recordings gives realism without control. Deep generative models fill part of this gap. Generative adversarial networks (GANs) \cite{goodfellow2014gan} have produced PPG for data augmentation \cite{kiyasseh2020pleth,ding2023lsmgan}, and diffusion and flow-matching models now generate electrocardiograms conditioned on diagnostic statements \cite{alcaraz2023sssd,bondar2025flowecg} or translate PPG into ECG \cite{sarkar2021cardiogan,shome2024rddm}. These models were not built to follow an operator's rate command, and their realism is often judged on a few examples, with a single distance or on test data that were seen during development \cite{brophy2023gan,theis2016note}. Table~\ref{tab:related} summarises the trade-off.
+
+\begin{table}[tbp]
+\centering
+\caption{Sources of PPG test signals. Rate: how the pulse rate is set. Waveform: where the pulse shape comes from. Optical: whether the source emits light that an optical sensor can measure.}
+\label{tab:related}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{3.0cm}l}
+\toprule
+Source & Rate & Waveform & Optical \\
+\midrule
+Parametric and rhythm models \cite{mcsharry2003ecg,tang2020gaussian,martin2013stochastic,solosenko2017af,charlton2019pwdb} & set by the user & parametric & no \\
+Recorded databases \cite{charlton2022beats} & fixed by the recording & recorded & no \\
+Commercial functional tester \cite{whaleteq2025manual} & set by the operator (10--300\,bpm) & parametric shapes or playback & yes \\
+Optical playback of database PPG \cite{pittella2024optical} & fixed by the recording & recorded & yes \\
+Interval-driven LED simulator \cite{solosenko2024vt} & set by an interval series & synthetic & yes \\
+Deep generative models \cite{kiyasseh2020pleth,ding2023lsmgan,alcaraz2023sssd,bondar2025flowecg} & not commanded & learned & no \\
+This work & commanded, scaffolded (40--180\,bpm) & learned around the scaffold & yes$^{a}$ \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize $^{a}$ Converter output measured on the device; the optical path is not yet validated.}
+\end{tabular}
+\end{table}
 
 A simulator places four requirements on a generator. The rate and rhythm must follow the command exactly, including outside the range that dominates the training data. The waveform should be realistic in the recording context the user selects, such as a fingertip at rest, a patient in intensive care or a wrist during exercise. Inference has to fit a small Linux computer that also drives the converters in real time. Finally, users need to know where the model is realistic and where it is not, which requires evaluation on unseen subjects with metrics that a generator cannot easily satisfy by accident. This last requirement also concerns model selection. When the same validation subjects are reused over many development rounds, validation scores become optimistic, and gains reported on them may not survive a fresh test \cite{varoquaux2022failures,saeb2017usecase}. Fixing the analysis before the data are seen is the standard remedy in other fields \cite{nosek2018prereg}, and we apply it here to the development of signal generators.
 
@@ -299,6 +320,11 @@ WRIST-EX contains four training subjects recorded with a research device during 
 
 We designed the derivative probe ourselves, so it might reward our own design choices. We therefore added a judge we did not train: PaPaGei-S \cite{pillai2025papagei}, a frozen PPG foundation model with 5.8\,M parameters pre-trained on more than 57{,}000 hours of public PPG. Windows were resampled from 40 to 125\,Hz, split into three 10\,s segments, standardised and embedded; a linear C2ST on the mean 512-dimensional embedding, grouped by subject, gave a second indistinguishability score. We also trained the derivative probe on band-limited copies of real and generated windows (0.5--1.5, 1.5--3, 3--5 and 5--8\,Hz) to locate the cues that betray a generator. None of these results fed back into training or selection.
 
+\subsection{Statistical analysis}
+\label{sec:stats}
+
+Uncertainty was quantified at the level at which the data vary. Training randomness was captured by three seeds per candidate, and replacement decisions required differences larger than the pooled standard deviation across seeds (Section~\ref{sec:rules}); these thresholds were fixed before training, and no null-hypothesis significance test was used for selection. Subject variability entered through subject-disjoint splits and subject-grouped folds for every classifier test, so that windows of one subject never appear on both sides of a train--test boundary. Where the held-out cohort was small, results are given as mean and standard deviation over random halvings of the participants (GalaxyPPG) and, for step E, over seeds within halvings. Agreement between the two judges is reported as a Spearman rank correlation over generator--dataset pairs. Real windows of subjects not used for training were scored with every metric in place of a generator, which gives each score its attainable reference. Per-dataset estimates from cohorts of four or fewer subjects are reported but not interpreted on their own.
+
 \subsection{Measurements on the hardware}
 \label{sec:hw-protocol}
 
@@ -532,6 +558,9 @@ The optical path has not been validated: the one loopback capture did not reprod
 We built a low-cost PPG simulator on a Raspberry Pi 4 and two generators for it that construct the beat sequence and learn the waveform around it. This made rate control exact for both a GAN and a rectified-flow model, and the flow model was markedly harder to tell apart from real PPG on finger and intensive-care data. Neither model transferred to everyday wrist PPG from a new device without that device's data. With those data the flow model improved substantially, but not by the margin we had fixed in advance, and the pre-registered rules kept the deployed model unchanged. The next steps are to validate the optical path, to time the generators on the Pi, to learn paired infrared and red channels and to test a paired decision rule on participants not used so far.
 
 %% ================================================================================================
+\section*{Ethics statement}
+This study used only public, de-identified recordings released for research by their creators under open licences (Section~\ref{sec:data}); no new data were collected from human participants, and no ethical approval was therefore required. No attempt was made to re-identify any subject.
+
 \section*{CRediT authorship contribution statement}
 %% TODO(authors): confirm or edit the roles. The README credits hardware design and embedded firmware
 %% to HuyNN and software design and UI/UX to VyPT.
@@ -543,9 +572,9 @@ The authors declare that they have no known competing financial interests or per
 
 \section*{Data availability}
 All training and test datasets are public: FINGER \cite{li2026mendeley}, MIMIC PERform \cite{charlton2025mimicperform}, BIDMC \cite{pimentel2017rr}, wrist PPG during exercise \cite{jarchi2017wrist} and GalaxyPPG (doi:10.5281/zenodo.14635823) \cite{park2025galaxyppg}. Source code, board designs, trained generators with their SHA-256 digests, the frozen decision rules, the JSON records of the evaluation runs and the script that produces every figure and table of this paper from those records are available at \url{https://github.com/nguyenhuy0426/PPG_simulator}. The prepared data pack (49\,MB) is not redistributed; the preparation code in the repository builds it from the public sources, and its SHA-256 digest is recorded so that a rebuilt pack can be checked.
-%% TODO(authors): cite the release tag or archive DOI of the submitted version. The code and frozen rules
-%% of steps B-E and of PhysioFlow-SB are on branch claude/model-benchmark-physioflow-wrist-e-stopfix;
-%% until it is merged and pushed, this statement is not true for them.
+%% TODO(authors): create a release tag of the submitted version and archive it (e.g. Zenodo), then cite
+%% the archive DOI here. As of 1 Nov 2026 the code and frozen rules of steps B-E (docs/physioflow/rules,
+%% docs/physioflow/loop) and the PPG-physiGPT runs (docs/physigpt) are on the main branch.
 
 \section*{Funding}
 %% TODO(authors): add grant information or keep this sentence.
@@ -560,6 +589,26 @@ We thank the creators of the BIDMC, MIMIC PERform, wrist PPG during exercise, FI
 %% revision, state what you checked (text, numbers, figures). AI help with the software, the board designs
 %% or the experiments is research use and belongs in the Methods (Section 2.2 or 4), not here.
 During the preparation of this work the authors used Claude (Anthropic) to draft and edit the manuscript text and to write the script that draws every figure with Matplotlib (Fig.~\ref{fig:hardware} arranges KiCad renders and an application screenshot) and generates the tables from the evaluation records. After using this tool, the authors reviewed and edited the content as needed and take full responsibility for the content of the published article.
+
+\appendix
+\section{Abbreviations}
+\label{app:abbrev}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{ll@{\hspace{2em}}ll}
+\toprule
+AF & atrial fibrillation & IBI & inter-beat interval \\
+AUC & area under the ROC curve & KS & Kolmogorov--Smirnov statistic \\
+bpm & beats per minute & LED & light-emitting diode \\
+C2ST & classifier two-sample test & ODE & ordinary differential equation \\
+CV & coefficient of variation & PPG & photoplethysmogram \\
+DAC & digital-to-analogue converter & ROC & receiver operating characteristic \\
+GAN & generative adversarial network & SpO$_2$ & peripheral oxygen saturation \\
+ICU & intensive care unit & SD & standard deviation \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
