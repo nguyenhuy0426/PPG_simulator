@@ -26,9 +26,9 @@ một VSS**, nên khi cắm module hai net này thông nhau qua module: đây l�
 cùng bus I²C của Pi; địa chỉ 0x60/0x61 vẫn phải khác nhau.
 
 Khoảng cách đo trên PCB (KiCad 10.0.6 + shapely, đa giác đồng thực kể cả vùng đồng):
-5 V cách mọi đồng I²C/3V3 mới ≥ 2,20 mm trên cùng lớp (via SDA_H_IR ↔ pad C7+
-ở B.Cu). Chiếu hai lớp chồng nhau thì cột R11/JP1/R12/JP2 (F.Cu) nằm phía trên
-C7 (B.Cu): cách nhau bằng lớp FR-4 1,6 mm, không phải khoảng hở bề mặt.
+5 V cách mọi đồng I²C/3V3 mới ≥ 2,22 mm, trên cùng lớp và cả khi chiếu chồng
+hai lớp (pad J3.6 GNDI2C_RED ↔ đồng 5 V gần U1, B.Cu). Các cell R/JP đặt giữa
+header và socket, dưới thân module, không nằm trên C7.
 3V3_IR cách 3V3_RED 9,48 mm. Các số này là hình học CAD, không phải đo điện.
 
 Một Grove Base Hat (MM32, 0x08) đã hỏng sau khi nối bản v1.9; kiểm tra hình

@@ -38,7 +38,7 @@ FPS={
  'Socket6':'Connector_PinSocket_2.54mm.pretty/PinSocket_1x06_P2.54mm_Vertical.kicad_mod',
  'Header2':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
  'Header4':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
- 'SJ3':'Jumper.pretty/SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm.kicad_mod',
+ 'SJ3':'Jumper.pretty/SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm.kicad_mod',
  'DIP8':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
  'NPN':'Package_TO_SOT_THT.pretty/TO-92_Inline_Wide.kicad_mod',
  'R':'Resistor_SMD.pretty/R_0805_2012Metric_Pad1.20x1.40mm_HandSolder.kicad_mod',
@@ -61,12 +61,14 @@ for ch,s,x in [('IR','J1',7),('RED','J3',40)]:
 part('J2','Conn2','IR DAC OUT / GND',['DAC_IR','GND'],'Header2',(29,10),(116.84,50.8))
 # Per-channel I2C input: header -> 100R or bypass (3-pad solder jumper) -> module.
 # Jumpers ship open; the module sees no SCL/SDA until one side is bridged.
-# xy is the compact-board position plus the 5 mm offset removed after routing.
-for ch,j,x,cx,refs,angle in [('IR','J8',29,34.5,(11,12,1,2),0),('RED','J9',68.3,63.9,(13,14,3,4),180)]:
+# Each R/JP pair sits between its 2.00 mm header and its module socket (under
+# the plugged module body). xy is the compact-board position plus the 5 mm
+# offset removed after routing.
+for ch,j,x,dx,refs in [('IR','J8',29,0,(11,12,1,2)),('RED','J9',68.3,33,(13,14,3,4))]:
     part(j,'Conn4',f'I2C {ch}: SCL SDA 3V3 GND',[f'SCL_H_{ch}',f'SDA_H_{ch}',f'3V3_{ch}',f'GNDI2C_{ch}'],'Header4',(x,16.5),(0,0),anchor=False)
-    for sig,r,jp,y in [('SCL',refs[0],refs[2],16.5),('SDA',refs[1],refs[3],21.6)]:
-        part(f'R{r}','R','100R 1%',[f'{sig}_H_{ch}',f'{sig}_R_{ch}'],'R',(cx,y+2.5),(0,0),angle,anchor=False)
-        part(f'JP{jp}','SJ3',f'{sig} {ch} 1-2 BYP / 2-3 100R',[f'{sig}_H_{ch}',f'{sig}_{ch}',f'{sig}_R_{ch}'],'SJ3',(cx,y),(0,0),angle,anchor=False)
+    for sig,r,jp,cx in [('SCL',refs[0],refs[2],13+dx),('SDA',refs[1],refs[3],21+dx)]:
+        part(f'R{r}','R','100R 1%',[f'{sig}_H_{ch}',f'{sig}_R_{ch}'],'R',(cx,9.6),(0,0),anchor=False)
+        part(f'JP{jp}','SJ3',f'{sig} {ch} 1-2 BYP / 2-3 100R',[f'{sig}_H_{ch}',f'{sig}_{ch}',f'{sig}_R_{ch}'],'SJ3',(cx,12.6),(0,0),anchor=False)
 
 part('J4','Conn2','RED DAC OUT / GND',['DAC_RED','GND'],'Header2',(62,10),(330.2,40.64))
 

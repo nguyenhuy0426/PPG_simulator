@@ -66,8 +66,16 @@ Mỗi đường SCL/SDA có một điện trở 100 Ω 1% 0805 và một jumper 
 
 Hàn **pad 2–3** để đi qua 100 Ω; hàn **pad 2–1** (BYP) để bỏ qua điện trở.
 Chỉ hàn một phía. **Board xuất xưởng để hở cả hai**: module không nhận SCL/SDA
-cho đến khi hàn jumper. Silk mặt trên ghi `BYP` cạnh pad 1, `100R` cạnh pad 3
-và tên tín hiệu cạnh điện trở; jumper nằm ngoài vùng thân module.
+cho đến khi hàn jumper. Silk mặt trên ghi tên tín hiệu phía trên điện trở,
+`BYP` dưới pad 1 và `100R` dưới pad 3.
+
+Mỗi cặp R/JP nằm giữa header 2,00 mm và socket của chính module đó (IR: giữa
+J1 và J8, x = 13/21 mm; RED: giữa J3 và J9, x = 46/54 mm), R ở hàng trên
+(y = 4,6 mm), JP ở hàng dưới (y = 7,6 mm); courtyard các cell cách nhau ≥ 0,75 mm.
+**Vùng này nằm dưới thân module khi cắm**: rút module ra khỏi socket để hàn
+hoặc đổi jumper. Jumper dùng footprint KiCad `SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm`:
+tâm pad cách 2,0 mm, pad lớn hơn bản P1.3 mm; khe đồng giữa hai pad vẫn là
+0,25 mm (cả hai footprint thư viện đều vậy) để nối được bằng một giọt thiếc.
 
 Hai module vẫn có pull-up riêng; carrier không thêm pull-up. Với 100 Ω nối
 tiếp, mức thấp phía bên kia điện trở tăng thêm I_pull-up × 100 Ω, ví dụ
@@ -148,9 +156,9 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 ## Kiểm tra và file gia công
 
 KiCad 10.0.6 (v2.0): **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm (mọi mức); 0 kết nối
-còn thiếu; 0 sai khác schematic/PCB; 486 kiểm tra trong `verify_design.py` đạt**,
+còn thiếu; 0 sai khác schematic/PCB; 491 kiểm tra trong `verify_design.py` đạt**,
 gồm net từng chân J1/J3/J8/J9/JP/R, GNDI2C không chạm vùng GND, 3V3_IR ≠ 3V3_RED
-và 5V cách mọi đồng I²C/3V3 mới ≥ 2 mm trên cùng lớp (đo được 2,20 mm).
+và 5V cách mọi đồng I²C/3V3 mới ≥ 2 mm trên cùng lớp (đo được 2,22 mm).
 Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm.
 
 - `reports/erc.rpt`: kiểm tra schematic.
@@ -198,5 +206,5 @@ một lỗi đã xác định**. Chưa đo trên board v2.0 thật.
 ## Bố trí bản thu gọn hiện tại
 
 PCB 70 × 40 mm. Lỗ PCB tại (4;24), (66;24), (4;36), (66;36) mm. C7 đặt mặt sau giữa các header, các tụ/trở còn lại dùng footprint SMD. Đường đồng ngang/dọc/45°; nguồn 5 V rộng 0,60–0,80 mm; 3V3_x 0,60 mm, GNDI2C_x 0,50 mm, SCL/SDA 0,35 mm.
-Cột R11/JP1/R12/JP2 (kênh IR) nằm phía trên C7 ở mặt đối diện: cách 5 V bằng
-lớp FR-4 1,6 mm, không phải khoảng hở bề mặt; trên cùng lớp, 5 V cách ≥ 2,20 mm. Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.
+Các cell R/JP không chồng lên đồng 5 V ở mặt đối diện: kể cả chiếu hai lớp,
+5 V cách đồng I²C/3V3 mới ≥ 2,22 mm (pad J3.6 ↔ đồng 5 V gần U1). Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.

@@ -131,5 +131,8 @@ dòng thực; các phép đo đó vẫn cần thực hiện trên board lắp th
 không phải bảo vệ quá áp và không chứng minh được sẽ ngăn hỏng HAT. Giá trị
 nhỏ để mức thấp chỉ tăng I_pull-up × 100 Ω; vẫn phải đo mức thấp và sườn xung
 với pull-up thật. Jumper cho phép quay về nối thẳng (BYP) nếu biên không đủ.
-Jumper không có lỗ paste và không mua linh kiện.
+Jumper không có lỗ paste và không mua linh kiện. Footprint
+`SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm` có pad lớn, tâm pad cách
+2,0 mm; khe đồng 0,25 mm là thiết kế của jumper hàn (nối bằng giọt thiếc).
+Muốn khe rộng hơn phải tự vẽ footprint riêng và việc nối cầu sẽ khó hơn.
 

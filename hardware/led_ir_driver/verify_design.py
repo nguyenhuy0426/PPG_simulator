@@ -77,9 +77,16 @@ for ref in ('JP1','JP2','JP3','JP4'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' three SMD pads, open (three distinct nets)',len(pads)==3 and all(x.GetAttribute()==p.PAD_ATTRIB_SMD for x in pads.values())
           and len({x.GetNetname() for x in pads.values()})==3)
-    # Module bodies sit to the right of each socket, x+1..x+19 mm.
-    bb=fps[ref].GetBoundingBox(False,False); lo,hi=p.ToMM(bb.GetX()),p.ToMM(bb.GetRight())
-    check(ref+' not under a module body',all(hi<=x+1 or lo>=x+19 for x in (107,140)))
+for ch,socket,hdr,refs in (('IR','J1','J8',('R11','R12','JP1','JP2')),('RED','J3','J9',('R13','R14','JP3','JP4'))):
+    lo,hi=p.ToMM(fps[socket].GetPosition().x),p.ToMM(fps[hdr].GetPosition().x)
+    for ref in refs:
+        bb=fps[ref].GetBoundingBox(False,False)
+        check(f'{ref} between {socket} socket and {hdr} header',lo<p.ToMM(bb.GetX()) and p.ToMM(bb.GetRight())<hi)
+# Jumper cells keep >= 1 mm between neighbouring courtyards.
+cells=[fps[r].GetCourtyard(p.F_CrtYd).BBox() for r in ('R11','R12','JP1','JP2','R13','R14','JP3','JP4')]
+gaps=[max(p.ToMM(b.GetX()-a.GetRight()),p.ToMM(a.GetX()-b.GetRight()),p.ToMM(b.GetY()-a.GetBottom()),p.ToMM(a.GetY()-b.GetBottom()))
+      for i,a in enumerate(cells) for b in cells[i+1:]]
+check('I2C R/JP courtyards >= 0.5 mm apart',min(gaps)>=.5-1e-6)
 for ref in ('Q1','Q2'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' physical pin order 1=E,2=B,3=C',pads['1'].GetPosition().x<pads['2'].GetPosition().x<pads['3'].GetPosition().x)

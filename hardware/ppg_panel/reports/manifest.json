@@ -43,7 +43,7 @@
     {
       "prefix": "TX",
       "source": "led_ir_driver/led_ir_driver.kicad_pcb",
-      "sha256": "77a4c7e8bb81deb4c4d0747d65cfb75338c392a7cb3fa81583379297ee24f0e9",
+      "sha256": "6600391b79a849545164f881ccd1b88b12dbd7af5e0f1b628d8d2eedcefcb54c",
       "offset_mm": [
         0,
         40
@@ -53,7 +53,7 @@
         40
       ],
       "footprints": 36,
-      "tracks_and_vias": 168
+      "tracks_and_vias": 163
     }
   ]
 }

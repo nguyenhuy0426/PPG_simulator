@@ -89,6 +89,6 @@ tách một mẫu sản xuất thực. Nhà in phải duyệt CAM trước khi s
 Bảng trên là số liệu của lần rà soát 2026-10-03. v2.0 bỏ bus I²C chung và thêm
 đường SCL/SDA/3V3/GNDI2C riêng từng kênh (đặt tường minh trong
 `../led_ir_driver/routing_paths.json`, chỉ đoạn ngang/dọc/45°). Driver hiện có
-154 đoạn đồng; audit 45°: 0 đoạn lệch góc, 0 góc rẽ tự do 90°, 0 đoạn trùng.
+149 đoạn đồng; audit 45°: 0 đoạn lệch góc, 0 góc rẽ tự do 90°, 0 đoạn trùng.
 Một góc vát 5 V gần J7 đổi chiều dài vát 0,2 → 0,4 mm do thứ tự xử lý của
 `routing_45.py`; topo và pad không đổi.

@@ -42,10 +42,11 @@ def compact(input_path=FILE):
         'R8': (149.81, 127), 'R9': (161, 132.5),
         'C2': (127, 130.5), 'C4': (143, 130.5),
         'C5': (144, 121.5), 'C7': (134.3, 116.35),
-        # v2.0 per-channel I2C: header, 100R and 3-pad bypass jumper columns.
+        # v2.0 per-channel I2C: header, then 100R (upper) / 3-pad jumper (lower)
+        # cells between each 2.00 mm header and its module socket.
         'J8': (129, 111.5), 'J9': (168.3, 111.5),
-        'JP1': (134.5, 111.5), 'R11': (134.5, 114.0), 'JP2': (134.5, 116.6), 'R12': (134.5, 119.1),
-        'JP3': (163.9, 111.5), 'R13': (163.9, 114.0), 'JP4': (163.9, 116.6), 'R14': (163.9, 119.1),
+        'R11': (113, 104.6), 'JP1': (113, 107.6), 'R12': (121, 104.6), 'JP2': (121, 107.6),
+        'R13': (146, 104.6), 'JP3': (146, 107.6), 'R14': (154, 104.6), 'JP4': (154, 107.6),
     }
     nets = {}
     for net in src.GetNetsByNetcode().values():
@@ -123,8 +124,8 @@ def compact(input_path=FILE):
     via('/SENSE_RED',(159.45,134.5))
     trace('/SENSE_RED',[(159.45,134.5),(159.45,132.5)],p.F_Cu,.25)
     # Layer changes for the v2.0 I2C routes in routing_paths.json.
-    for net,pos in (('/SCL_H_IR',(131.1,111.5)),('/SDA_H_IR',(130.9,117.8)),
-                    ('/3V3_RED',(160.4,116.2)),('/GNDI2C_RED',(160.4,118.2))):
+    for net,pos in (('/SCL_H_IR',(110.2,106.6)),('/SDA_H_IR',(118.4,109.2)),
+                    ('/SCL_H_RED',(143.2,106.6)),('/SDA_H_RED',(151.4,109.2))):
         via(net,pos)
 
     def line(a, b, layer, width=.05):
@@ -162,14 +163,12 @@ def compact(input_path=FILE):
         for number,name in enumerate(('SCL','SDA','3V3','GND'),1):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
-    for x,top,bottom in ((134.5,'JP1/R11 SCL','JP2/R12 SDA'),(163.9,'JP3/R13 SCL','JP4/R14 SDA')):
-        silk(top,x,110.0,.8,True); silk(bottom,x,120.75,.8,True)
     silk('I2C',129,109.6,.8); silk('I2C',168.3,109.6,.8)
-    # Pad 1 (BYP) and pad 3 (100R) sides of each jumper; signal name beside its R.
-    for byp_x,res_x,ys in ((131.3,137.6,(111.5,116.6)),(166.57,160.9,(111.5,116.6))):
-        for y,sig in zip(ys,('SCL','SDA')):
-            silk('BYP',byp_x,y,.8,angle=90); silk('100R',res_x,y,.8,angle=90)
-            silk(sig,byp_x,y+2.5,.8,angle=90)
+    # Signal name above each R; BYP under jumper pad 1, 100R under pad 3.
+    for x,sig,jp,r in ((113,'SCL','JP1','R11'),(121,'SDA','JP2','R12'),(146,'SCL','JP3','R13'),(154,'SDA','JP4','R14')):
+        silk(sig,x,103.0,.8); silk('BYP',x-2,109.8,.8); silk('100R',x+2,109.8,.8)
+        # Rear: SCL cell labels on the R/JP gap row, SDA cell labels below its jumper.
+        silk(f'{jp}/{r} {sig}',x,106.1 if sig=='SCL' else 110.0,.8,True)
     for ref,names in (('J5',('5V','IR-')),('J6',('5V','RED-')),('J7',('5V','GND'))):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
         for number,name in enumerate(names,1):

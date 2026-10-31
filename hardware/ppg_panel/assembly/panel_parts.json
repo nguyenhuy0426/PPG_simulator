@@ -718,8 +718,8 @@
   "value": "SCL IR 1-2 BYP / 2-3 100R",
   "footprint": "SJ3",
   "side": "top",
-  "x": 84.5,
-  "y": -101.5,
+  "x": 63.0,
+  "y": -97.6,
   "rot": 0.0,
   "dnp": false,
   "pads": [
@@ -732,8 +732,8 @@
   "value": "SDA IR 1-2 BYP / 2-3 100R",
   "footprint": "SJ3",
   "side": "top",
-  "x": 84.5,
-  "y": -106.6,
+  "x": 71.0,
+  "y": -97.6,
   "rot": 0.0,
   "dnp": false,
   "pads": [
@@ -746,9 +746,9 @@
   "value": "SCL RED 1-2 BYP / 2-3 100R",
   "footprint": "SJ3",
   "side": "top",
-  "x": 113.9,
-  "y": -101.5,
-  "rot": 180.0,
+  "x": 96.0,
+  "y": -97.6,
+  "rot": 0.0,
   "dnp": false,
   "pads": [
    "smd"
@@ -760,9 +760,9 @@
   "value": "SDA RED 1-2 BYP / 2-3 100R",
   "footprint": "SJ3",
   "side": "top",
-  "x": 113.9,
-  "y": -106.6,
-  "rot": 180.0,
+  "x": 104.0,
+  "y": -97.6,
+  "rot": 0.0,
   "dnp": false,
   "pads": [
    "smd"
@@ -816,8 +816,8 @@
   "value": "100R 1%",
   "footprint": "R",
   "side": "top",
-  "x": 84.5,
-  "y": -104.0,
+  "x": 63.0,
+  "y": -94.6,
   "rot": 0.0,
   "dnp": false,
   "pads": [
@@ -830,8 +830,8 @@
   "value": "100R 1%",
   "footprint": "R",
   "side": "top",
-  "x": 84.5,
-  "y": -109.1,
+  "x": 71.0,
+  "y": -94.6,
   "rot": 0.0,
   "dnp": false,
   "pads": [
@@ -844,9 +844,9 @@
   "value": "100R 1%",
   "footprint": "R",
   "side": "top",
-  "x": 113.9,
-  "y": -104.0,
-  "rot": 180.0,
+  "x": 96.0,
+  "y": -94.6,
+  "rot": 0.0,
   "dnp": false,
   "pads": [
    "smd"
@@ -858,9 +858,9 @@
   "value": "100R 1%",
   "footprint": "R",
   "side": "top",
-  "x": 113.9,
-  "y": -109.1,
-  "rot": 180.0,
+  "x": 104.0,
+  "y": -94.6,
+  "rot": 0.0,
   "dnp": false,
   "pads": [
    "smd"

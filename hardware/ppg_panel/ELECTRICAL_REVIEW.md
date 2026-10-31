@@ -105,5 +105,5 @@ Driver bỏ bus SCL/SDA/3V3 chung: mỗi module có header riêng J8/J9, 3V3_IR 
 3V3_RED tách net, GNDI2C_IR/GNDI2C_RED không có đồng nối GND board (vẫn thông
 qua VSS bên trong module khi cắm — không phải cách ly). SCL/SDA đi qua 100 Ω
 hoặc jumper bỏ qua, mặc định hở. Trên cùng lớp, 5 V cách đồng I²C/3V3 mới
-≥ 2,20 mm. Chi tiết ở `../led_ir_driver/ELECTRICAL_AUDIT.md`. Thay đổi này giảm
+≥ 2,22 mm. Chi tiết ở `../led_ir_driver/ELECTRICAL_AUDIT.md`. Thay đổi này giảm
 rủi ro, không sửa một lỗi đã xác định; chưa đo điện trên board v2.0.
