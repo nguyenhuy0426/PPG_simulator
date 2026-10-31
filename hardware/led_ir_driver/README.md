@@ -37,7 +37,9 @@ của hàng socket như ảnh. Hàn hàng chân đực xuống mặt dưới mod
 (pad vuông là pin 1). J8 chỉ nối module IR (J1), J9 chỉ nối module RED (J3).
 Trên PCB không còn bus SCL/SDA/3V3 chung giữa hai module: `3V3_IR` và
 `3V3_RED` là hai net riêng; `GNDI2C_IR`/`GNDI2C_RED` không có đường đồng,
-vùng đồng hay via nào nối về GND của board.
+vùng đồng hay via nào nối về GND của board. Đã kiểm tra cả 16 chân J1.3–6,
+J3.3–6, J8.1–4, J9.1–4: không chân nào thuộc net GND, không có đồng/vùng đồng
+GND chạm vào chúng (vùng GND cách 0,30 mm). GND I²C chỉ lấy từ cổng Grove trên HAT.
 
 **Lưu ý quan trọng:** pin 2 và pin 6 của mỗi module MCP4725 đã nối chung bên
 trong module (một chip, một VSS). Khi cắm module, `GNDI2C_x` vẫn thông với GND
@@ -73,9 +75,11 @@ Mỗi cặp R/JP nằm giữa header 2,00 mm và socket của chính module đó
 J1 và J8, x = 13/21 mm; RED: giữa J3 và J9, x = 46/54 mm), R ở hàng trên
 (y = 4,6 mm), JP ở hàng dưới (y = 7,6 mm); courtyard các cell cách nhau ≥ 0,75 mm.
 **Vùng này nằm dưới thân module khi cắm**: rút module ra khỏi socket để hàn
-hoặc đổi jumper. Jumper dùng footprint KiCad `SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm`:
-tâm pad cách 2,0 mm, pad lớn hơn bản P1.3 mm; khe đồng giữa hai pad vẫn là
-0,25 mm (cả hai footprint thư viện đều vậy) để nối được bằng một giọt thiếc.
+hoặc đổi jumper. Jumper giữ hình pad bo tròn 1,0 × 1,5 mm của footprint KiCad
+`SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm`, chỉ dời pad 1/3 ra để **tâm
+pad cách 2,0 mm** (`generate_design.py: widen_jumper`). Khe đồng giữa hai pad
+khoảng 1,0 mm (0,95 mm tại góc bo); cần nhiều thiếc hơn hoặc một đoạn dây
+ngắn để nối 2–3 hoặc 2–1.
 
 Hai module vẫn có pull-up riêng; carrier không thêm pull-up. Với 100 Ω nối
 tiếp, mức thấp phía bên kia điện trở tăng thêm I_pull-up × 100 Ω, ví dụ
@@ -156,7 +160,7 @@ lần lượt là hai kênh khuếch đại và chân nguồn của **cùng mộ
 ## Kiểm tra và file gia công
 
 KiCad 10.0.6 (v2.0): **ERC 0 lỗi/0 cảnh báo; DRC 0 vi phạm (mọi mức); 0 kết nối
-còn thiếu; 0 sai khác schematic/PCB; 491 kiểm tra trong `verify_design.py` đạt**,
+còn thiếu; 0 sai khác schematic/PCB; 507 kiểm tra trong `verify_design.py` đạt**,
 gồm net từng chân J1/J3/J8/J9/JP/R, GNDI2C không chạm vùng GND, 3V3_IR ≠ 3V3_RED
 và 5V cách mọi đồng I²C/3V3 mới ≥ 2 mm trên cùng lớp (đo được 2,22 mm).
 Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm.

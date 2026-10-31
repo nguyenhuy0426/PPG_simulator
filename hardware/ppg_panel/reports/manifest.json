@@ -43,7 +43,7 @@
     {
       "prefix": "TX",
       "source": "led_ir_driver/led_ir_driver.kicad_pcb",
-      "sha256": "6600391b79a849545164f881ccd1b88b12dbd7af5e0f1b628d8d2eedcefcb54c",
+      "sha256": "bdcb3b0789d01d8255d91d089e2b72addec63b6c81fa775968260d91688c8cce",
       "offset_mm": [
         0,
         40

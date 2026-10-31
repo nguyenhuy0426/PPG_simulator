@@ -38,7 +38,7 @@ FPS={
  'Socket6':'Connector_PinSocket_2.54mm.pretty/PinSocket_1x06_P2.54mm_Vertical.kicad_mod',
  'Header2':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
  'Header4':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
- 'SJ3':'Jumper.pretty/SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm.kicad_mod',
+ 'SJ3':'Jumper.pretty/SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm.kicad_mod',
  'DIP8':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
  'NPN':'Package_TO_SOT_THT.pretty/TO-92_Inline_Wide.kicad_mod',
  'R':'Resistor_SMD.pretty/R_0805_2012Metric_Pad1.20x1.40mm_HandSolder.kicad_mod',
@@ -118,6 +118,24 @@ def symbol(kind):
         out.append(f'(pin {typ} line (at {x} {y} {ang}) (length {length}) (name {q(name)} {fx()}) (number "{num}" {fx()}))')
     return '\n'.join(out+['))'])
 
+def widen_jumper(s,pitch=2.0):
+    """KiCad rounded 3-pad jumper (1.3 mm pitch) re-pitched to `pitch` mm.
+
+    Pad shapes are unchanged (1.0 x 1.5 mm, rounded outer ends); the outer pads
+    move outward, giving a pitch-1.0 mm copper gap. Graphics outside the centre
+    pad's 0.75 mm half-width move with the outer pads.
+    """
+    shift=pitch-1.3
+    head,pads=s.split('\t(pad ',1)
+    def move(m):
+        x=float(m.group(2))
+        if abs(x)>=.85: x+=shift if x>0 else -shift
+        return f'({m.group(1)} {round(x,6):g} '
+    head=re.sub(r'\((start|end|mid) (-?[\d.]+) ',move,head)
+    head=head.replace('1.3mm','2.0mm').replace('0.3mm gap',f'{pitch-1:.1f}mm gap')
+    pads=('\t(pad '+pads).replace('(at -1.3 0)',f'(at {-pitch:g} 0)').replace('(at 1.3 0)',f'(at {pitch:g} 0)')
+    return head+pads
+
 def board(share,cli):
     import pcbnew as p
     mm=p.FromMM
@@ -138,6 +156,7 @@ def board(share,cli):
             if source.exists():
                 dest=HERE/'3dmodels'/suffix; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(source,dest)
                 s=s.replace(model,'${KIPRJMOD}/3dmodels/'+suffix)
+        if name=='SJ3': s=widen_jumper(s)
         (lib/f'{name}.kicad_mod').write_text(s)
     (lib/'HeaderMixed.kicad_mod').unlink(missing_ok=True)
     (HERE/'fp-lib-table').write_text('(fp_lib_table (version 7) (lib (name "TX") (type "KiCad") (uri "${KIPRJMOD}/TX.pretty") (options "") (descr "Driver local footprints")))')

@@ -103,7 +103,11 @@ check('Copper zones are GND only (no GNDI2C pour)',all(z.GetNetname()=='/GND' fo
 # GNDI2C copper must not touch board GND: no shared pads, no GND fill touching it.
 gndi2c_pads=[pad for fp in fps.values() for pad in fp.Pads() if pad.GetNetname().startswith('/GNDI2C')]
 check('GNDI2C pads: J1.6, J3.6, J8.4, J9.4',sorted(pad.GetParentFootprint().GetReference()+'.'+pad.GetNumber() for pad in gndi2c_pads)==['J1.6','J3.6','J8.4','J9.4'])
-gndi2c=gndi2c_pads+[t for t in tracks if t.GetNetname().startswith('/GNDI2C')]
+# Every I2C/3V3/GNDI2C item of sockets J1/J3 and headers J8/J9 stays off board GND.
+gndi2c=[pad for fp in fps.values() for pad in fp.Pads() if pad.GetNetname() in i2c_nets]+[t for t in tracks if t.GetNetname() in i2c_nets]
+for ref,pins in (('J1','3456'),('J3','3456'),('J8','1234'),('J9','1234')):
+    for n in pins:
+        check(f'{ref}.{n} not on board GND',next(x for x in fps[ref].Pads() if x.GetNumber()==n).GetNetname() in i2c_nets)
 control=next(pad for pad in fps['J1'].Pads() if pad.GetNumber()=='2')
 for z in board.Zones():
     if z.GetNetname()!='/GND': continue
@@ -111,7 +115,7 @@ for z in board.Zones():
         if not z.IsOnLayer(layer): continue
         fill=z.GetFilledPolysList(layer)
         check(f'GND fill on {board.GetLayerName(layer)} reaches J1.2 (test control)',control.GetEffectiveShape(layer).Collide(fill,0))
-        check(f'GND fill on {board.GetLayerName(layer)} does not touch GNDI2C copper',
+        check(f'GND fill on {board.GetLayerName(layer)} does not touch I2C/3V3/GNDI2C copper',
               not any(x.IsOnLayer(layer) and x.GetEffectiveShape(layer).Collide(fill,0) for x in gndi2c))
 # 5V keeps >= 2 mm surface spacing from every new I2C/3V3 copper item on the same layer.
 items=[t for t in tracks]+[pad for fp in fps.values() for pad in fp.Pads()]

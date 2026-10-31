@@ -20,7 +20,9 @@ mỗi kênh đi qua R 100 Ω 1% 0805 hoặc jumper bỏ qua (JP1–JP4, mặc đ
 | 3V3_RED / GNDI2C_RED | J9.3, J3.5 / J9.4, J3.6 |
 
 `GNDI2C_x` không có đường đồng, vùng đồng hay via nối GND board; vùng GND
-cách nó 0,30 mm (khoảng hở zone). **Pin 2 và pin 6 trong module MCP4725 là cùng
+cách nó 0,30 mm (khoảng hở zone). `verify_design.py` kiểm tra riêng 16 chân
+GND/3V3/SDA/SCL của J1, J3, J8, J9: không chân nào nằm trên net GND và vùng GND
+hai lớp không chạm bất kỳ đồng I²C/3V3/GNDI2C nào. **Pin 2 và pin 6 trong module MCP4725 là cùng
 một VSS**, nên khi cắm module hai net này thông nhau qua module: đây là tách
 đồng trên PCB, không phải cách ly galvanic. Hai cổng Grove trên cùng HAT vẫn là
 cùng bus I²C của Pi; địa chỉ 0x60/0x61 vẫn phải khác nhau.
