@@ -1,0 +1,133 @@
+{
+  "file": "17_ga_pcb_OPT101_BPW34_driver.stl",
+  "extents_xyz_mm": [
+    149.0,
+    85.51,
+    8.6
+  ],
+  "total_volume_mm3": 4896.4,
+  "sha256": "558236316a1c03c2f0eef8c5e4b41ee9ab2974cd5174ce52de79ca36279e10a1",
+  "parts": [
+    {
+      "part": "driver",
+      "source": "16_ga_driver_70x40.stl",
+      "origin_xy_mm": [
+        0.0,
+        0.0
+      ],
+      "extents_xyz_mm": [
+        70.0,
+        55.0,
+        6.0
+      ],
+      "volume_mm3": 2732.0
+    },
+    {
+      "part": "opt101",
+      "source": "14_ga_chu_U_OPT101_70x20.stl",
+      "origin_xy_mm": [
+        76.0,
+        0.0
+      ],
+      "extents_xyz_mm": [
+        73.0,
+        37.81,
+        3.8
+      ],
+      "volume_mm3": 910.5
+    },
+    {
+      "part": "bpw34",
+      "source": "15_ga_chu_U_BPW34_70x20.stl",
+      "origin_xy_mm": [
+        76.0,
+        43.81
+      ],
+      "extents_xyz_mm": [
+        73.0,
+        41.7,
+        3.8
+      ],
+      "volume_mm3": 977.4
+    },
+    {
+      "part": "button_1",
+      "source": "18_nut_nhua_driver.stl",
+      "origin_xy_mm": [
+        0.0,
+        61.0
+      ],
+      "extents_xyz_mm": [
+        5.6,
+        5.6,
+        8.6
+      ],
+      "volume_mm3": 69.1
+    },
+    {
+      "part": "button_2",
+      "source": "18_nut_nhua_driver.stl",
+      "origin_xy_mm": [
+        9.6,
+        61.0
+      ],
+      "extents_xyz_mm": [
+        5.6,
+        5.6,
+        8.6
+      ],
+      "volume_mm3": 69.1
+    },
+    {
+      "part": "button_3",
+      "source": "18_nut_nhua_driver.stl",
+      "origin_xy_mm": [
+        19.2,
+        61.0
+      ],
+      "extents_xyz_mm": [
+        5.6,
+        5.6,
+        8.6
+      ],
+      "volume_mm3": 69.1
+    },
+    {
+      "part": "button_4",
+      "source": "18_nut_nhua_driver.stl",
+      "origin_xy_mm": [
+        28.8,
+        61.0
+      ],
+      "extents_xyz_mm": [
+        5.6,
+        5.6,
+        8.6
+      ],
+      "volume_mm3": 69.1
+    }
+  ],
+  "checks": [
+    {
+      "label": "kín (watertight)",
+      "ok": true
+    },
+    {
+      "label": "đúng 7 khối rời (3 gá + 4 nút)",
+      "ok": true
+    },
+    {
+      "label": "các khối cách nhau ≥ 4 mm (gá H và gá driver cách 6 mm)",
+      "ok": true
+    },
+    {
+      "label": "chạm bàn đúng z = 0",
+      "ok": true
+    },
+    {
+      "label": "nằm trong bàn 180 mm, lề 8 mm",
+      "ok": true
+    }
+  ],
+  "note": "Chưa in thử. Gá H cần thử lắp trượt vào hộp thật; nút bấm của gá driver chưa thử cài vào PCB thật."
+}

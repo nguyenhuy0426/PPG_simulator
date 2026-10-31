@@ -4,30 +4,18 @@
     55.0,
     6.0
   ],
+  "button_mm": [
+    5.6,
+    5.6,
+    8.6
+  ],
+  "buttons_needed": 4,
   "pcb_mm": [
     70,
     40,
     1.6
   ],
-  "old_base_holes_mm": [
-    [
-      4,
-      4
-    ],
-    [
-      4,
-      51
-    ],
-    [
-      66,
-      4
-    ],
-    [
-      66,
-      51
-    ]
-  ],
-  "new_pcb_holes_mm": [
+  "pcb_holes_mm_local": [
     [
       4,
       24
@@ -48,17 +36,72 @@
   "pcb_origin_on_adapter_mm": [
     0,
     7,
-    6
+    6.0
   ],
-  "pcb_height_increase_mm": 6,
+  "pcb_height_increase_mm": 6.0,
+  "fastening": "4 straight tapered plastic pins, friction fit, no screws, no barbs",
   "checks": {
-    "watertight": true,
-    "single_body": true,
+    "adapter_watertight": true,
+    "adapter_single_body": true,
+    "button_watertight": true,
+    "button_single_body": true,
+    "buttons_needed": 4,
     "pcb_interference_mm3": 0.0,
-    "solder_interference_mm3": 0.0
+    "solder_interference_mm3": 0.0,
+    "button_vs_adapter_press_fit_mm3": 0.009,
+    "button_vs_pcb_mm3": 0.0,
+    "button_head_radius_mm": 2.8,
+    "nearest_pad_to_hole_centre_mm": 3.84,
+    "nearest_courtyard_to_hole_centre_mm": 3.48,
+    "head_clearance_to_courtyard_mm": 0.68,
+    "head_clearance_to_pad_mm": 1.04,
+    "pin_clearance_in_pcb_hole_per_side_mm": 0.075,
+    "friction_interference_per_side_mm_at_tube_top": {
+      "shrink_0": 0.012,
+      "shrink_0.2": 0.112,
+      "shrink_0.4": 0.212
+    },
+    "friction_grip_length_in_tube_mm": {
+      "shrink_0": 0.3,
+      "shrink_0.2": 2.83,
+      "shrink_0.4": 5.37
+    },
+    "tube_wall_mm": 1.75,
+    "hat_holes_mm": [
+      [
+        6.0,
+        3.0
+      ],
+      [
+        6.0,
+        52.0
+      ],
+      [
+        64.0,
+        3.0
+      ],
+      [
+        64.0,
+        52.0
+      ]
+    ],
+    "hat_pitch_mm": [
+      58.0,
+      49.0
+    ],
+    "hat_source": "Seeed Eagle v1.0: board 65x56 mm, holes d=2.75 mm at (3.5,3.5),(3.5,52.5),(61.5,3.5),(61.5,52.5)",
+    "hat_holes_clear_of_pcb_mm": 4.0,
+    "adapter_volume_mm3": 2732.0,
+    "button_volume_mm3": 69.1,
+    "adapter_saving_vs_screw_version_pct": 30.8
   },
   "limits": [
-    "Nominal solids only, no physical print/cable test.",
+    "Nominal solids only; no physical print, no insertion or pull-out test.",
+    "Friction fit depends on the printed hole size: with no hole shrink (2.9 mm) the pin is nearly loose.",
+    "A1 hole shrink (0.2-0.4 mm) is an assumption from Bambu wiki/forum reports.",
+    "Component clearance uses KiCad pads and courtyards, not 3D bodies or tall parts.",
+    "HAT hole pitch 58 x 49 mm (65 x 56 mm board, 2.75 mm holes) comes from Seeed Eagle file v1.0, not measured on a physical Hat.",
+    "No 3D model of the Hat was found on the Seeed page: connector and chip heights are unknown, so the standoff height is not checked.",
     "MCP4725 module body dimensions are not measured; check actual modules before manufacture."
   ]
 }
