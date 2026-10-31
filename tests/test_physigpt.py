@@ -569,6 +569,8 @@ def test_fidelity_tier_separates_matching_features_from_shifted_ones_and_keeps_t
     shifted = jp.fidelity_report(fit, held, other, windows(4, 3, 4), windows(5, 3, 4, 1000))
     assert same["generated"]["mean_similarity"] > .9 and same["generated"]["classifier"]["trees"]["accuracy"] < .62
     assert same["generated"]["passes"] and not shifted["generated"]["passes"]
+    assert same["generated"]["passes_relative"] and not shifted["generated"]["passes_relative"]
+    assert same["generated"]["relative_similarity"] == same["generated"]["mean_similarity"]/same["real_other_people"]["mean_similarity"]
     assert shifted["generated"]["mean_similarity"] < .8 and shifted["generated"]["classifier"]["trees"]["accuracy"] > .9
     assert same["real_other_people"]["mean_similarity"] > .9 and "passes" not in same["real_other_people"]
 

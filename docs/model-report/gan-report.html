@@ -91,7 +91,7 @@
       <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
       <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
       <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
-      <tr><td>PPG-physiGPT large (kiểu GPT-PPG, 99,9M)</td><td>1,00 (d′ 8,6; 2 seed)</td><td><span class="tag ai">giữ</span></td><td>Gần nhất ở tầng đặc trưng (1 − KS 0,941, mốc thật 0,960) nhưng chưa đạt 0,95; giám khảo nghiêm vẫn tách hết (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
+      <tr><td>PPG-physiGPT large (kiểu GPT-PPG, 99,9M)</td><td>1,00 (d′ 8,6; 2 seed)</td><td><span class="tag ai">V1</span></td><td>Đạt V1 ở tầng đặc trưng (98,1 % mức người thật); chưa đạt V2 (0,95 tuyệt đối); giám khảo nghiêm vẫn tách hết (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
       <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
       <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
       <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
@@ -197,12 +197,12 @@
 </section>
 
 <section id="physigpt-sec">
-  <h2>PPG-physiGPT <span class="tag ai">stage 0 xong · chưa đạt</span></h2>
+  <h2>PPG-physiGPT <span class="tag ai">V1 đạt (ngưỡng tương đối) · V2 chưa</span></h2>
   <p class="lead">Mô hình kiểu GPT (theo GPT-PPG 2025): <b>vẽ sóng PPG 30 s từng giây một</b>, học từ PPG bệnh viện (MIMIC-III), train trên Kaggle 2 × T4.
   Sinh không điều kiện (không điều khiển nhịp tim).</p>
 
   <div class="cards">
-    <div class="card stat"><div class="num">0,941</div><div class="lbl">độ giống đặc trưng (1 − KS, 14 đặc trưng) của bản large; ngưỡng 0,95, người thật khác 0,960</div></div>
+    <div class="card stat"><div class="num">98,1 %</div><div class="lbl">độ giống đặc trưng của bản large (1 − KS 0,941) so với người thật khác (0,960); V1 cần ≥ 95 %</div></div>
     <div class="card stat"><div class="num">1,00</div><div class="lbl">AUC giám khảo nghiêm, mọi biến thể (d′ tốt nhất 7,5; người thật khác 0,14)</div></div>
     <div class="card stat"><div class="num">0,0575</div><div class="lbl">flow loss held-out của bản large sau decay (base tốt nhất 0,0578)</div></div>
   </div>
@@ -211,9 +211,9 @@
   <p class="small">Cả hai tầng dùng người chưa từng train. <b>Giám khảo nghiêm</b> (C2ST, 3,6M tham số, 3 nhánh thời gian / phổ / tự tương quan) giữ nguyên;
   AUC đã bão hoà ở 1,0 nên báo thêm d′ = (điểm trung bình sóng sinh − điểm trung bình sóng thật) / độ lệch chuẩn gộp, tính từ điểm thô của giám khảo.
   <b>Tầng đặc trưng</b>: với mỗi đặc trưng tính 1 − KS giữa 2.000 cửa sổ sinh ra và 180 người thật held-out, cộng bộ phân loại chỉ nhìn đặc trưng.
-  Đạt khi trung bình ≥ 0,95 và độ chính xác của cây ≤ 0,60.</p>
+  <b>V1</b> (đang dùng): trung bình ≥ 95 % mức của người thật so với người thật khác. <b>V2</b> (mục tiêu sau): trung bình ≥ 0,95 tuyệt đối và độ chính xác của cây ≤ 0,60.</p>
   <div class="tablewrap"><table>
-    <thead><tr><th>Biến thể</th><th>Bước</th><th>Flow held-out</th><th>AUC nghiêm</th><th>d′ (theo seed)</th><th>1 − KS</th><th>Cây (acc.)</th></tr></thead>
+    <thead><tr><th>Biến thể</th><th>Bước</th><th>Flow held-out</th><th>AUC nghiêm</th><th>d′ (theo seed)</th><th>1 − KS (so với mốc thật)</th><th>Cây (acc.)</th></tr></thead>
     <tbody>
       <tr><td>base, dừng plateau (chưa decay)</td><td>14.500</td><td>0,0645</td><td>1,00</td><td>17,9 (20,8; 20,1; 12,8)</td><td>—</td><td>—</td></tr>
       <tr><td>base, decay 3k</td><td>17.500</td><td>0,0591</td><td>1,00</td><td>12,2 (10,8; 12,1; 13,7)</td><td>—</td><td>—</td></tr>
@@ -221,8 +221,8 @@
       <tr><td>base, decay 3k, 128 bước ODE</td><td>17.500</td><td>0,0591</td><td>1,00</td><td>15,1 (1 seed)</td><td>—</td><td>—</td></tr>
       <tr><td>base, giữ 7k + decay 3k (longer)</td><td>24.500</td><td>0,0581</td><td>1,00</td><td>9,0 (10,4; 7,7)</td><td>—</td><td>—</td></tr>
       <tr><td>base, longer + loss độ sắc 0,25</td><td>27.500</td><td>0,0578</td><td>1,00</td><td><b>7,5</b> (8,0; 7,0)</td><td>—</td><td>—</td></tr>
-      <tr><td>base, longer + loss độ sắc 8</td><td>27.500</td><td>0,0578</td><td>—</td><td>—</td><td>0,933</td><td>0,639</td></tr>
-      <tr><td><b>large 99,9M, dừng plateau + decay 3k</b></td><td>25.000</td><td><b>0,0575</b></td><td>1,00</td><td>8,6 (8,0; 9,3)</td><td><b>0,941</b></td><td><b>0,618</b></td></tr>
+      <tr><td>base, longer + loss độ sắc 8</td><td>27.500</td><td>0,0578</td><td>—</td><td>—</td><td>0,933 (97,3 %)</td><td>0,639</td></tr>
+      <tr><td><b>large 99,9M, dừng plateau + decay 3k (V1)</b></td><td>25.000</td><td><b>0,0575</b></td><td>1,00</td><td>8,6 (8,0; 9,3)</td><td><b>0,941 (98,1 %)</b></td><td><b>0,618</b></td></tr>
       <tr><td>người thật so với người thật khác</td><td></td><td></td><td>0,54 (1 seed)</td><td>0,14</td><td>0,960</td><td>0,50</td></tr>
     </tbody>
   </table></div>

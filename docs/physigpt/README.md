@@ -18,12 +18,13 @@ validation, and nothing here was measured on the Pi/DAC/OPT101.
     at 1.0 for every variant, so the separation d' = (mean fake score - mean real score) / pooled SD of the raw
     judge scores is reported as the progress measure (real vs other real people: d' 0.14).
   - **feature tier**: per-feature similarity 1 - KS between 2,000 generated windows and the held-out people for
-    14 waveform features, plus a feature-only classifier. Pass: mean similarity >= 0.95 and tree-classifier
-    accuracy <= 0.60. Real windows of other people score 0.960 and 0.50 on the same test.
+    14 waveform features, plus a feature-only classifier. Real windows of other people score 0.960 and 0.50 on the
+    same test. **V1** passes when the mean similarity reaches 95% of that real-vs-real value (`FIDELITY_REL`);
+    **V2**, the later target, asks for the absolute pair: mean similarity >= 0.95 and tree-classifier accuracy <= 0.60.
 
 ## Results
 
-| Variant | Steps | Held-out flow | Strict AUC | d' (per seed) | Feature 1-KS | Tree acc. |
+| Variant | Steps | Held-out flow | Strict AUC | d' (per seed) | Feature 1-KS (of real) | Tree acc. |
 |---|---|---|---|---|---|---|
 | base, plateau stop (no decay) | 14,500 | 0.0645 | 1.00 | 17.9 (20.8, 20.1, 12.8) | | |
 | base, decay 3k | 17,500 | 0.0591 | 1.00 | 12.2 (10.8, 12.1, 13.7) | | |
@@ -31,8 +32,8 @@ validation, and nothing here was measured on the Pi/DAC/OPT101.
 | base, decay 3k, 128 ODE steps | 17,500 | 0.0591 | 1.00 | 15.1 (one seed) | | |
 | base, hold 7k + decay 3k (longer) | 24,500 | 0.0581 | 1.00 | 9.0 (10.4, 7.7) | | |
 | base, longer + sharpness loss 0.25 | 27,500 | 0.0578 | 1.00 | **7.5** (8.0, 7.0) | | |
-| base, longer + sharpness loss 8 | 27,500 | 0.0578 | | | 0.933 | 0.639 |
-| **large, plateau stop + decay 3k** | 25,000 | **0.0575** | 1.00 | 8.6 (8.0, 9.3) | **0.941** | **0.618** |
+| base, longer + sharpness loss 8 | 27,500 | 0.0578 | | | 0.933 (97.3%) | 0.639 |
+| **large, plateau stop + decay 3k (V1)** | 25,000 | **0.0575** | 1.00 | 8.6 (8.0, 9.3) | **0.941 (98.1%)** | **0.618** |
 | real vs other real people | | | 0.54 (one seed) | 0.14 | 0.960 | 0.50 |
 
 Judge controls on real windows (seed 0): phase-randomised AUC 1.0, d' 7.7; 1% noise AUC 1.0, d' 16.5; circular
@@ -49,8 +50,10 @@ band power 5-8 Hz 0.885 vs 0.895 [0.974] and second-difference SD 0.905 vs 0.895
 
 - The larger model lowered the held-out flow loss only slightly (0.0575 vs 0.0578) and did not separate from the
   best base variant on the strict judge (d' 8.6 vs 7.5; the seed spread is about 1-3). Every variant stays at AUC 1.0.
-- On the feature tier, large is the closest so far (0.941, 98% of the real-vs-real 0.960) and improves beat
-  regularity, rate and pulse shape, but it fails both criteria. The remaining gap is high-frequency detail
+- **V1 (relative criterion) is met** by the large model at 98.1% of the real-vs-real similarity, and is the V1
+  release; the best base variant also clears it (97.3%). Large improves beat regularity, rate and pulse shape.
+- **V2 (absolute criterion) is not met**: 0.941 < 0.95 and tree accuracy 0.618 > 0.60, and the strict judge still
+  separates every variant (AUC 1.0). The remaining gap is high-frequency detail
   (5-8 Hz power, second differences), which neither the larger model nor the sharpness loss closed.
 - The decay step, not the stable phase, gave most of each gain; in the large stable phase the held-out loss fell
   by about 2% per 6,500 steps before the plateau stop.

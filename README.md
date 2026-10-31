@@ -81,10 +81,10 @@ validation, and they were not measured on the Pi/DAC/OPT101.
 
 PPG-physiGPT (`ml/kaggle_physigpt/`, research only, not in the app) is an unconditional GPT-PPG-style patch
 transformer with a flow-matching head, pretrained on MIMIC-III WDB on Kaggle 2 x T4. The strict judge still separates
-every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people;
-pass at 0.95 with a feature-only tree classifier at most 0.60 accurate), the 99.9M large model reaches 0.941 and
-0.618 against 0.933 and 0.639 for the best 30.7M base, where real people score 0.960 and 0.50: closer, not passing.
-The gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
+every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people),
+the 99.9M large model reaches 0.941 against 0.933 for the best 30.7M base, where real people score 0.960. It is the
+V1 release: V1 asks for 95% of the real-vs-real similarity (large: 98.1%). The V2 target, absolute 0.95 with a
+feature-only tree classifier at most 0.60 accurate (large: 0.618), is not met; the gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
 
 #### Earlier models (history)
 

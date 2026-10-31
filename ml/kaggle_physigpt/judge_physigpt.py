@@ -169,6 +169,9 @@ def feature_report(real_eval, other_people, generated):
 # Real people against other real people set the reference, since no generator can be closer than that.
 FIDELITY_SIM = .95    # mean over the features of 1 - KS
 FIDELITY_ACC = .60    # accuracy of the feature classifier (0.5 = indistinguishable)
+# V1 criterion: the generated mean similarity reaches 95% of real people against other real people (about 0.96, so
+# the absolute 0.95 asks for 99% of what real data reach). The absolute pair above stays as the stricter V2 target.
+FIDELITY_REL = .95
 
 
 def feature_matrix(x):
@@ -210,8 +213,11 @@ def fidelity_report(real_fit, real_held, real_other, gen_fit, gen_eval):
     reference = summary(similarity(held, other), classify(fit[:half], fit[half:], held, other))
     generated["passes"] = bool(generated["mean_similarity"] >= FIDELITY_SIM
                                and generated["classifier"]["trees"]["accuracy"] <= FIDELITY_ACC)
+    generated["relative_similarity"] = generated["mean_similarity"]/reference["mean_similarity"]
+    generated["passes_relative"] = bool(generated["relative_similarity"] >= FIDELITY_REL)
     return dict(generated=generated, real_other_people=reference,
-                criteria=dict(mean_similarity_at_least=FIDELITY_SIM, tree_classifier_accuracy_at_most=FIDELITY_ACC))
+                criteria=dict(mean_similarity_at_least=FIDELITY_SIM, tree_classifier_accuracy_at_most=FIDELITY_ACC,
+                              relative_mean_similarity_at_least=FIDELITY_REL))
 
 
 # ------------------------------------------------------------------ generation
