@@ -174,7 +174,9 @@
     "share_at_least_95": 0.4286,
     "tree_accuracy": 0.6385,
     "tree_auc": 0.6935,
-    "passes": false,
+    "relative_similarity": 0.9728,
+    "passes_v1_relative": true,
+    "passes_v2_absolute": false,
     "similarity": {
      "rate_bpm": 0.9315,
      "acf_peak": 0.8805000000000001,
@@ -214,7 +216,8 @@
     },
     "criteria": {
      "mean_similarity_at_least": 0.95,
-     "tree_classifier_accuracy_at_most": 0.6
+     "tree_classifier_accuracy_at_most": 0.6,
+     "relative_mean_similarity_at_least": 0.95
     }
    }
   },
@@ -247,7 +250,9 @@
     "share_at_least_95": 0.4286,
     "tree_accuracy": 0.6178,
     "tree_auc": 0.6565,
-    "passes": false,
+    "relative_similarity": 0.981,
+    "passes_v1_relative": true,
+    "passes_v2_absolute": false,
     "similarity": {
      "rate_bpm": 0.95,
      "acf_peak": 0.9185,
@@ -287,7 +292,8 @@
     },
     "criteria": {
      "mean_similarity_at_least": 0.95,
-     "tree_classifier_accuracy_at_most": 0.6
+     "tree_classifier_accuracy_at_most": 0.6,
+     "relative_mean_similarity_at_least": 0.95
     }
    }
   }

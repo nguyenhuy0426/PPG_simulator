@@ -19,13 +19,19 @@ def cell(value, digits):
     return "--" if value is None else f"{value:.{digits}f}"
 
 
+def rel(feat):
+    if not feat:
+        return "--"
+    return f"{feat['mean_similarity']:.3f} ({100*feat['relative_similarity']:.1f}\\%)"
+
+
 variants = {row["variant"]: row for row in RESULTS["variants"]}
 lines = []
 for label, key in ROWS:
     row = variants[key]
     strict, feat = row["strict"] or {}, row["fidelity"] or {}
     lines.append(f"{label} & {row['parameters']/1e6:.1f} & {row['valid_flow']:.4f} & {cell(strict.get('mean_auc'), 2)} & "
-                 f"{cell(strict.get('mean_d_prime'), 1)} & {cell(feat.get('mean_similarity'), 3)} & "
+                 f"{cell(strict.get('mean_d_prime'), 1)} & {rel(feat)} & "
                  f"{cell(feat.get('tree_accuracy'), 2)} \\\\")
 ref = variants["large, plateau stop + decay 3k"]["fidelity"]["reference"]
 lines.append(f"Real, other subjects & -- & -- & -- & {RESULTS['controls']['real_other_people']:.2f} & "

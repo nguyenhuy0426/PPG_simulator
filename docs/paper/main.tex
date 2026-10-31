@@ -497,7 +497,7 @@ To see whether pretraining on a large intensive-care corpus and a larger network
 
 \begin{table}[tbp]
 \centering
-\caption{Unconditional patch transformer on held-out subjects. Flow: held-out flow-matching loss on the pretraining validation records. $d'$: separation of the strict judge's scores. 1$-$KS: mean feature similarity over 14 features. Tree: accuracy of the feature-only classifier (0.5 = chance). The last row compares real windows of other subjects with the held-out subjects.}
+\caption{Unconditional patch transformer on held-out subjects. Flow: held-out flow-matching loss on the pretraining validation records. $d'$: separation of the strict judge's scores. 1$-$KS: mean feature similarity over 14 features (in brackets, as a share of the real-subject value). Tree: accuracy of the feature-only classifier (0.5 = chance). The last row compares real windows of other subjects with the held-out subjects.}
 \label{tab:physigpt}
 \small
 \begin{tabular}{lrrrrrr}
@@ -509,7 +509,7 @@ Model & Params (M) & Flow & AUC & $d'$ & 1$-$KS & Tree \\
 \end{tabular}
 \end{table}
 
-Tripling the parameters lowered the held-out flow loss from 0.0578 to 0.0575 and raised the feature similarity from 0.933 to 0.941, against 0.960 for real windows of other subjects; neither model met a criterion of 0.95 with the feature classifier at no more than 60\% accuracy. The strict judge separated the large model as well as the base one ($d'$ 8.6 against 7.5, with a spread of one to three between judge seeds), at the level of a phase-randomised copy of real PPG ($d'$ 7.7). The gain lay in beat regularity (autocorrelation peak 0.918 against 0.881) and pulse shape; the 5--8\,Hz band power remained the largest gap (0.885 against 0.974 for real data), the band that also betrayed PhysioMix on GalaxyPPG. A network three times larger, trained on the same data, thus did not supply the missing texture, which agrees with the argument above for more training subjects rather than a larger network; the texture would have to come from the data or from the training objective.
+Tripling the parameters lowered the held-out flow loss from 0.0578 to 0.0575 and raised the feature similarity from 0.933 to 0.941, against 0.960 for real windows of other subjects. Measured against that reference, both models reach the 95\% of the real-subject similarity that we set as a first criterion (97.3\% and 98.1\%), but neither meets the stricter absolute criterion of 0.95 with the feature classifier at no more than 60\% accuracy. The strict judge separated the large model as well as the base one ($d'$ 8.6 against 7.5, with a spread of one to three between judge seeds), at the level of a phase-randomised copy of real PPG ($d'$ 7.7). The gain lay in beat regularity (autocorrelation peak 0.918 against 0.881) and pulse shape; the 5--8\,Hz band power remained the largest gap (0.885 against 0.974 for real data), the band that also betrayed PhysioMix on GalaxyPPG. A network three times larger, trained on the same data, thus did not supply the missing texture, which agrees with the argument above for more training subjects rather than a larger network; the texture would have to come from the data or from the training objective.
 
 \subsection{Everyday wrist PPG and small validation sets}
 
