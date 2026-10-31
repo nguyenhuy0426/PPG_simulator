@@ -1221,6 +1221,106 @@
       "pass": true
     },
     {
+      "check": "TX R1 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R1 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R1 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R1.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R1.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R1.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R1.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP4 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX JP4 placement",
+      "pass": true
+    },
+    {
+      "check": "TX JP4 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.3 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP4.3 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP3 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX JP3 placement",
+      "pass": true
+    },
+    {
+      "check": "TX JP3 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.3 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP3.3 physical pad/drill",
+      "pass": true
+    },
+    {
       "check": "TX J2 fitted value",
       "pass": true
     },
@@ -1249,39 +1349,419 @@
       "pass": true
     },
     {
-      "check": "TX Q1 fitted value",
+      "check": "TX J1 fitted value",
       "pass": true
     },
     {
-      "check": "TX Q1 placement",
+      "check": "TX J1 placement",
       "pass": true
     },
     {
-      "check": "TX Q1 pad inventory",
+      "check": "TX J1 pad inventory",
       "pass": true
     },
     {
-      "check": "TX Q1.1 isolated net",
+      "check": "TX J1.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX Q1.1 physical pad/drill",
+      "check": "TX J1.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX Q1.2 isolated net",
+      "check": "TX J1.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX Q1.2 physical pad/drill",
+      "check": "TX J1.2 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX Q1.3 isolated net",
+      "check": "TX J1.3 isolated net",
       "pass": true
     },
     {
-      "check": "TX Q1.3 physical pad/drill",
+      "check": "TX J1.3 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J1.4 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J1.4 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J1.5 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J1.5 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J1.6 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J1.6 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R13 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R13 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R13 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R13.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R13.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R13.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R13.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX U1 placement",
+      "pass": true
+    },
+    {
+      "check": "TX U1 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX U1.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.3 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.3 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.4 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.4 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.5 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.5 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.6 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.6 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.7 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.7 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX U1.8 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX U1.8 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R14 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R14 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R14 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R14.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R14.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R14.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R14.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R4 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R4 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R4 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R4.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R4.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R4.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R4.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J6 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX J6 placement",
+      "pass": true
+    },
+    {
+      "check": "TX J6 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX J6.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J6.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J6.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J6.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R3 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R3 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R3 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R3.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R3.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R3.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R3.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J4 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX J4 placement",
+      "pass": true
+    },
+    {
+      "check": "TX J4 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX J4.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J4.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J4.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J4.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C4 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX C4 placement",
+      "pass": true
+    },
+    {
+      "check": "TX C4 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX C4.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C4.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C4.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C4.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX H1 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX H1 placement",
+      "pass": true
+    },
+    {
+      "check": "TX H1 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX H1. isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX H1. physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R7 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R7 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R7 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R7.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R7.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R7.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R7.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP1 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX JP1 placement",
+      "pass": true
+    },
+    {
+      "check": "TX JP1 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.3 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX JP1.3 physical pad/drill",
       "pass": true
     },
     {
@@ -1345,59 +1825,31 @@
       "pass": true
     },
     {
-      "check": "TX R11 fitted value",
+      "check": "TX R2 fitted value",
       "pass": true
     },
     {
-      "check": "TX R11 placement",
+      "check": "TX R2 placement",
       "pass": true
     },
     {
-      "check": "TX R11 pad inventory",
+      "check": "TX R2 pad inventory",
       "pass": true
     },
     {
-      "check": "TX R11.1 isolated net",
+      "check": "TX R2.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX R11.1 physical pad/drill",
+      "check": "TX R2.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX R11.2 isolated net",
+      "check": "TX R2.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX R11.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R4 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R4 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R4.2 physical pad/drill",
+      "check": "TX R2.2 physical pad/drill",
       "pass": true
     },
     {
@@ -1481,59 +1933,155 @@
       "pass": true
     },
     {
-      "check": "TX C2 fitted value",
+      "check": "TX J7 fitted value",
       "pass": true
     },
     {
-      "check": "TX C2 placement",
+      "check": "TX J7 placement",
       "pass": true
     },
     {
-      "check": "TX C2 pad inventory",
+      "check": "TX J7 pad inventory",
       "pass": true
     },
     {
-      "check": "TX C2.1 isolated net",
+      "check": "TX J7.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX C2.1 physical pad/drill",
+      "check": "TX J7.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX C2.2 isolated net",
+      "check": "TX J7.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX C2.2 physical pad/drill",
+      "check": "TX J7.2 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX R12 fitted value",
+      "check": "TX R11 fitted value",
       "pass": true
     },
     {
-      "check": "TX R12 placement",
+      "check": "TX R11 placement",
       "pass": true
     },
     {
-      "check": "TX R12 pad inventory",
+      "check": "TX R11 pad inventory",
       "pass": true
     },
     {
-      "check": "TX R12.1 isolated net",
+      "check": "TX R11.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX R12.1 physical pad/drill",
+      "check": "TX R11.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX R12.2 isolated net",
+      "check": "TX R11.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX R12.2 physical pad/drill",
+      "check": "TX R11.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C5 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX C5 placement",
+      "pass": true
+    },
+    {
+      "check": "TX C5 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX C5.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C5.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C5.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C5.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX H2 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX H2 placement",
+      "pass": true
+    },
+    {
+      "check": "TX H2 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX H2. isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX H2. physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX H3 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX H3 placement",
+      "pass": true
+    },
+    {
+      "check": "TX H3 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX H3. isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX H3. physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R9 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX R9 placement",
+      "pass": true
+    },
+    {
+      "check": "TX R9 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX R9.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R9.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX R9.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX R9.2 physical pad/drill",
       "pass": true
     },
     {
@@ -1565,130 +2113,6 @@
       "pass": true
     },
     {
-      "check": "TX J1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX J1 placement",
-      "pass": true
-    },
-    {
-      "check": "TX J1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX J1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J1.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J1.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J1.5 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.5 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J1.6 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J1.6 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R14 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R14 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R14 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R14.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R14.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R14.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R14.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX JP1 placement",
-      "pass": true
-    },
-    {
-      "check": "TX JP1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP1.3 physical pad/drill",
-      "pass": true
-    },
-    {
       "check": "TX J5 fitted value",
       "pass": true
     },
@@ -1717,319 +2141,31 @@
       "pass": true
     },
     {
-      "check": "TX U1 fitted value",
+      "check": "TX R12 fitted value",
       "pass": true
     },
     {
-      "check": "TX U1 placement",
+      "check": "TX R12 placement",
       "pass": true
     },
     {
-      "check": "TX U1 pad inventory",
+      "check": "TX R12 pad inventory",
       "pass": true
     },
     {
-      "check": "TX U1.1 isolated net",
+      "check": "TX R12.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX U1.1 physical pad/drill",
+      "check": "TX R12.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX U1.2 isolated net",
+      "check": "TX R12.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX U1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.5 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.5 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.6 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.6 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.7 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.7 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX U1.8 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX U1.8 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J7 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX J7 placement",
-      "pass": true
-    },
-    {
-      "check": "TX J7 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX J7.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J7.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J7.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J7.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R1 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP4 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX JP4 placement",
-      "pass": true
-    },
-    {
-      "check": "TX JP4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP4.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R3 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R3.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R3.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R3.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R3.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J9 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX J9 placement",
-      "pass": true
-    },
-    {
-      "check": "TX J9 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX J9.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J9.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J9.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J9.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J9.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J9.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J9.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J9.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J6 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX J6 placement",
-      "pass": true
-    },
-    {
-      "check": "TX J6 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX J6.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J6.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J6.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J6.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX H1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX H1 placement",
-      "pass": true
-    },
-    {
-      "check": "TX H1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX H1. isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX H1. physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R7 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R7 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R7 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R7.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R7.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R7.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R7.2 physical pad/drill",
+      "check": "TX R12.2 physical pad/drill",
       "pass": true
     },
     {
@@ -2097,247 +2233,39 @@
       "pass": true
     },
     {
-      "check": "TX R13 fitted value",
+      "check": "TX Q1 fitted value",
       "pass": true
     },
     {
-      "check": "TX R13 placement",
+      "check": "TX Q1 placement",
       "pass": true
     },
     {
-      "check": "TX R13 pad inventory",
+      "check": "TX Q1 pad inventory",
       "pass": true
     },
     {
-      "check": "TX R13.1 isolated net",
+      "check": "TX Q1.1 isolated net",
       "pass": true
     },
     {
-      "check": "TX R13.1 physical pad/drill",
+      "check": "TX Q1.1 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX R13.2 isolated net",
+      "check": "TX Q1.2 isolated net",
       "pass": true
     },
     {
-      "check": "TX R13.2 physical pad/drill",
+      "check": "TX Q1.2 physical pad/drill",
       "pass": true
     },
     {
-      "check": "TX C4 fitted value",
+      "check": "TX Q1.3 isolated net",
       "pass": true
     },
     {
-      "check": "TX C4 placement",
-      "pass": true
-    },
-    {
-      "check": "TX C4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX C4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX C4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX C4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX C4.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX H2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX H2 placement",
-      "pass": true
-    },
-    {
-      "check": "TX H2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX H2. isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX H2. physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX H3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX H3 placement",
-      "pass": true
-    },
-    {
-      "check": "TX H3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX H3. isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX H3. physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J4 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX J4 placement",
-      "pass": true
-    },
-    {
-      "check": "TX J4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX J4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX J4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX J4.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R9 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R9 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R9 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R9.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R9.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R9.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R9.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX C5 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX C5 placement",
-      "pass": true
-    },
-    {
-      "check": "TX C5 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX C5.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX C5.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX C5.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX C5.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX R2 placement",
-      "pass": true
-    },
-    {
-      "check": "TX R2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX R2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX R2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX R2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "TX JP3 placement",
-      "pass": true
-    },
-    {
-      "check": "TX JP3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "TX JP3.3 physical pad/drill",
+      "check": "TX Q1.3 physical pad/drill",
       "pass": true
     },
     {
@@ -2358,6 +2286,78 @@
     },
     {
       "check": "TX H4. physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C2 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX C2 placement",
+      "pass": true
+    },
+    {
+      "check": "TX C2 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX C2.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C2.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX C2.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX C2.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J9 fitted value",
+      "pass": true
+    },
+    {
+      "check": "TX J9 placement",
+      "pass": true
+    },
+    {
+      "check": "TX J9 pad inventory",
+      "pass": true
+    },
+    {
+      "check": "TX J9.1 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J9.1 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J9.2 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J9.2 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J9.3 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J9.3 physical pad/drill",
+      "pass": true
+    },
+    {
+      "check": "TX J9.4 isolated net",
+      "pass": true
+    },
+    {
+      "check": "TX J9.4 physical pad/drill",
       "pass": true
     },
     {
@@ -2413,11 +2413,11 @@
       "pass": true
     },
     {
-      "check": "TX/GND zone filled",
+      "check": "BPW/GND_IR zone filled",
       "pass": true
     },
     {
-      "check": "OPT/GND_IR zone filled",
+      "check": "TX/GND zone filled",
       "pass": true
     },
     {
@@ -2425,51 +2425,23 @@
       "pass": true
     },
     {
-      "check": "BPW/GND_IR zone filled",
-      "pass": true
-    },
-    {
       "check": "OPT/GND_RED zone filled",
       "pass": true
     },
     {
-      "check": "OPT_C2 footprint envelope >=2mm from score",
+      "check": "OPT/GND_IR zone filled",
       "pass": true
     },
     {
-      "check": "TX_C4 footprint envelope >=2mm from score",
+      "check": "TX_R7 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "TX_C5 footprint envelope >=2mm from score",
+      "check": "TX_C2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "TX_R9 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_C1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R6 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R14 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R12 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R8 footprint envelope >=2mm from score",
+      "check": "TX_R1 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2481,7 +2453,15 @@
       "pass": true
     },
     {
-      "check": "TX_R1 footprint envelope >=2mm from score",
+      "check": "TX_R14 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_C5 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "OPT_C1 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2493,11 +2473,31 @@
       "pass": true
     },
     {
-      "check": "TX_C2 footprint envelope >=2mm from score",
+      "check": "TX_R12 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "TX_R7 footprint envelope >=2mm from score",
+      "check": "TX_R2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_C4 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "OPT_C2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R9 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R8 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_R6 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2505,11 +2505,35 @@
       "pass": true
     },
     {
-      "check": "BPW_C6 footprint envelope >=2mm from score",
+      "check": "BPW_R3 footprint envelope >=2mm from score",
       "pass": true
     },
     {
       "check": "BPW_C7 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R7 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R5 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R2 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C4 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "OPT_C3 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R8 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2521,23 +2545,7 @@
       "pass": true
     },
     {
-      "check": "BPW_R1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C8 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
       "check": "OPT_C4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C5 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2545,35 +2553,15 @@
       "pass": true
     },
     {
-      "check": "BPW_R7 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
       "check": "BPW_C2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_R8 footprint envelope >=2mm from score",
+      "check": "BPW_C6 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_C3 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_R1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C4 footprint envelope >=2mm from score",
+      "check": "BPW_R4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2581,7 +2569,19 @@
       "pass": true
     },
     {
-      "check": "BPW_R3 footprint envelope >=2mm from score",
+      "check": "OPT_R1 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_R1 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C5 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "BPW_C8 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2675,45 +2675,31 @@
           0.3,
           0.35
         ],
-        "/SENSE_IR": [
-          0.35,
-          0.6
-        ],
-        "/BASE_IR": [
+        "/CMD_IR": [
           0.35
         ],
-        "/LED_K_IR": [
-          0.6
-        ],
-        "/DAC_RED": [
-          0.3,
-          0.35
-        ],
-        "/SCL_RED": [
+        "/SDA_H_RED": [
           0.35
         ],
         "/SDA_RED": [
           0.35
         ],
-        "/3V3_RED": [
-          0.6
-        ],
-        "/GNDI2C_RED": [
-          0.5
-        ],
-        "/SCL_H_IR": [
+        "/SDA_R_RED": [
           0.35
         ],
-        "/SCL_R_IR": [
+        "/SCL_H_RED": [
           0.35
         ],
-        "/SDA_H_IR": [
+        "/SCL_RED": [
+          0.35
+        ],
+        "/SCL_R_RED": [
+          0.35
+        ],
+        "/SCL_IR": [
           0.35
         ],
         "/SDA_IR": [
-          0.35
-        ],
-        "/SDA_R_IR": [
           0.35
         ],
         "/3V3_IR": [
@@ -2726,27 +2712,9 @@
           0.35,
           0.6
         ],
-        "/AMP_RED": [
-          0.35
-        ],
-        "/BASE_RED": [
-          0.35
-        ],
-        "/SCL_IR": [
-          0.35
-        ],
-        "/SDA_H_RED": [
-          0.35
-        ],
-        "/SDA_R_RED": [
-          0.35
-        ],
-        "/5V": [
-          0.6,
-          0.8
-        ],
-        "/CMD_IR": [
-          0.35
+        "/SENSE_IR": [
+          0.35,
+          0.6
         ],
         "/CMD_RED": [
           0.35
@@ -2755,19 +2723,51 @@
           0.35,
           0.6
         ],
-        "/SCL_H_RED": [
+        "/AMP_RED": [
           0.35
+        ],
+        "/5V": [
+          0.6,
+          0.8
         ],
         "/LED_K_RED": [
           0.6
         ],
-        "/SCL_R_RED": [
+        "/BASE_IR": [
           0.35
+        ],
+        "/DAC_RED": [
+          0.3,
+          0.35
+        ],
+        "/SCL_H_IR": [
+          0.35
+        ],
+        "/SCL_R_IR": [
+          0.35
+        ],
+        "/3V3_RED": [
+          0.6
+        ],
+        "/GNDI2C_RED": [
+          0.5
+        ],
+        "/SDA_H_IR": [
+          0.35
+        ],
+        "/SDA_R_IR": [
+          0.35
+        ],
+        "/BASE_RED": [
+          0.35
+        ],
+        "/LED_K_IR": [
+          0.6
         ]
       },
       "track_to_mounting_drill_edge_mm": {
         "H1": 4.5622,
-        "H2": 4.65,
+        "H2": 5.7822,
         "H3": 3.641,
         "H4": 4.7196
       }
@@ -2775,44 +2775,44 @@
   },
   "component_to_vcut_min_mm": 2.095,
   "component_margins_mm": {
-    "OPT_C2": 15.495,
-    "TX_C4": 28.595,
-    "TX_C5": 20.495,
-    "TX_R9": 31.345,
-    "OPT_C1": 15.495,
-    "TX_R6": 18.025,
-    "TX_R14": 3.625,
-    "TX_R2": 21.025,
-    "TX_R12": 3.625,
-    "TX_R8": 26.025,
+    "TX_R7": 21.025,
+    "TX_C2": 28.595,
+    "TX_R1": 18.025,
     "TX_R13": 3.625,
     "TX_R11": 3.625,
-    "TX_R1": 18.025,
+    "TX_R14": 3.625,
+    "TX_C5": 20.495,
+    "OPT_C1": 15.495,
     "TX_R4": 35.845,
     "TX_R3": 23.435,
-    "TX_C2": 28.595,
-    "TX_R7": 21.025,
+    "TX_R12": 3.625,
+    "TX_R2": 21.025,
+    "TX_C4": 28.595,
+    "OPT_C2": 15.495,
+    "TX_R9": 31.345,
+    "TX_R8": 26.025,
+    "TX_R6": 18.025,
     "BPW_R6": 3.825,
-    "BPW_C6": 2.095,
+    "BPW_R3": 7.091666,
     "BPW_C7": 4.328334,
+    "BPW_R7": 8.025,
+    "BPW_R5": 3.825,
+    "BPW_R2": 2.375,
+    "BPW_C4": 7.995,
+    "OPT_C3": 5.295,
+    "BPW_R8": 8.025,
     "BPW_C3": 7.995,
     "TX_C7": 12.375,
-    "BPW_R1": 2.375,
-    "BPW_R4": 5.725,
-    "BPW_C8": 4.328334,
     "OPT_C4": 5.295,
-    "BPW_C5": 2.095,
     "OPT_R2": 5.325,
-    "BPW_R7": 8.025,
     "BPW_C2": 4.645,
-    "BPW_R8": 8.025,
-    "BPW_R2": 2.375,
-    "BPW_R5": 3.825,
-    "OPT_C3": 5.295,
-    "OPT_R1": 5.325,
-    "BPW_C4": 7.995,
+    "BPW_C6": 2.095,
+    "BPW_R4": 5.725,
     "BPW_C1": 4.645,
-    "BPW_R3": 7.091666
+    "OPT_R1": 5.325,
+    "BPW_R1": 2.375,
+    "BPW_C5": 2.095,
+    "BPW_C8": 4.328334
   },
   "copper_to_vcut_min_mm": 1.5,
   "panel_mm": [

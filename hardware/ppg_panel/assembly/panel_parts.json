@@ -704,7 +704,7 @@
   "value": "I2C RED: SCL SDA 3V3 GND",
   "footprint": "Header4",
   "side": "top",
-  "x": 118.3,
+  "x": 112.0,
   "y": -101.5,
   "rot": 0.0,
   "dnp": false,

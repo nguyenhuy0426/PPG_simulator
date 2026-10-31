@@ -64,7 +64,7 @@ part('J2','Conn2','IR DAC OUT / GND',['DAC_IR','GND'],'Header2',(29,10),(116.84,
 # Each R/JP pair sits between its 2.00 mm header and its module socket (under
 # the plugged module body). xy is the compact-board position plus the 5 mm
 # offset removed after routing.
-for ch,j,x,dx,refs in [('IR','J8',29,0,(11,12,1,2)),('RED','J9',68.3,33,(13,14,3,4))]:
+for ch,j,x,dx,refs in [('IR','J8',29,0,(11,12,1,2)),('RED','J9',62,33,(13,14,3,4))]:
     part(j,'Conn4',f'I2C {ch}: SCL SDA 3V3 GND',[f'SCL_H_{ch}',f'SDA_H_{ch}',f'3V3_{ch}',f'GNDI2C_{ch}'],'Header4',(x,16.5),(0,0),anchor=False)
     for sig,r,jp,cx in [('SCL',refs[0],refs[2],13+dx),('SDA',refs[1],refs[3],21+dx)]:
         part(f'R{r}','R','100R 1%',[f'{sig}_H_{ch}',f'{sig}_R_{ch}'],'R',(cx,9.6),(0,0),anchor=False)

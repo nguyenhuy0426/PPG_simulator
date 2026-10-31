@@ -44,7 +44,7 @@ def compact(input_path=FILE):
         'C5': (144, 121.5), 'C7': (134.3, 116.35),
         # v2.0 per-channel I2C: header, then 100R (upper) / 3-pad jumper (lower)
         # cells between each 2.00 mm header and its module socket.
-        'J8': (129, 111.5), 'J9': (168.3, 111.5),
+        'J8': (129, 111.5), 'J9': (162, 111.5),
         'R11': (113, 104.6), 'JP1': (113, 107.6), 'R12': (121, 104.6), 'JP2': (121, 107.6),
         'R13': (146, 104.6), 'JP3': (146, 107.6), 'R14': (154, 104.6), 'JP4': (154, 107.6),
     }
@@ -158,12 +158,12 @@ def compact(input_path=FILE):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
     # v2.0 I2C headers (Grove order) and jumper/resistor columns.
-    for ref,x in (('J8',126.3),('J9',165.5)):
+    for ref,x in (('J8',126.3),('J9',159.3)):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
         for number,name in enumerate(('SCL','SDA','3V3','GND'),1):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
-    silk('I2C',129,109.6,.8); silk('I2C',168.3,109.6,.8)
+    silk('I2C',129,109.6,.8); silk('I2C',162,109.6,.8)
     # Signal name above each R; BYP under jumper pad 1, 100R under pad 3.
     for x,sig,jp,r in ((113,'SCL','JP1','R11'),(121,'SDA','JP2','R12'),(146,'SCL','JP3','R13'),(154,'SDA','JP4','R14')):
         silk(sig,x,103.0,.8); silk('BYP',x-1.55,109.8,.8); silk('100R',x+1.55,109.8,.8)

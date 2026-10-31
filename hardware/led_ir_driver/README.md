@@ -198,7 +198,7 @@ Footprint/model từ KiCad 10: CC-BY-SA 4.0 với ngoại lệ sử dụng trong
 
 - Bỏ nhóm I²C 2,00 mm của J2 và bus SCL/SDA/3V3 chung; J2 chỉ còn OUT_IR/GND.
 - Thêm J8/J9 (I²C riêng từng module), R11–R14 (100 Ω 1% 0805) và JP1–JP4.
-- J8 đặt đúng chỗ nhóm I²C cũ của J2 (x = 29 mm); J9 ở mép phải (x = 68,3 mm).
+- J8 đặt đúng chỗ nhóm I²C cũ của J2 (x = 29 mm); J9 thẳng hàng dưới J4 (x = 62 mm), cùng bố cục với J8 dưới J2.
 - Kích thước, lỗ M3, vị trí J1/J3/J4–J7 và mạch LM358/2N4401/sense giữ nguyên.
 
 Một Grove Base Hat đã hỏng sau khi nối bản v1.9; kiểm tra hình học đồng v1.9
