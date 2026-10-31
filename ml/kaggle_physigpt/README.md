@@ -88,3 +88,19 @@ python3 -m ml.kaggle_physigpt.stage <dir> train --owner halovie2412 --stage 0 --
 With `--plateau`, a stage whose held-out flow loss has risen above its best (overfitting) ends at `best.pt`
 instead of decaying; on solo 0 alone (87 k windows) the held-out loss was lowest at step 2000 and rose after. Realism is not claimed from NLL or flow loss:
 a later round fine-tunes on the project's people and goes through the strict judge with its copy gate.
+
+The decay a plateau stop skipped runs as its own kernel from `stable.pt`; a tagged train kernel keeps its own
+output, and the large config needs gradient accumulation on a T4:
+
+```
+python3 -m ml.kaggle_physigpt.stage <dir> train --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
+    --datasets ppg-physigpt-shard0-data-v1 --config large --tag large --micro 256 --lr 0.0004 \
+    --epochs 300 --plateau 6 --plateau-delta 0.001 --eval-every 500
+python3 -m ml.kaggle_physigpt.stage <dir> decay --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
+    --datasets ppg-physigpt-shard0-data-v1 --config large --epochs 300 --from-slug ppg-physigpt-stage0-large-v1 \
+    --tag large --decay-steps 3000 --micro 256 --lr 0.0004
+python3 -m ml.kaggle_physigpt.stage <dir> judge --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
+    --datasets ppg-physigpt-shard0-data-v1 --from-slug ppg-physigpt-decay0-large-v1 --judge-seeds 0   # feature tier only
+```
+
+Measured results (strict judge, feature tier, held-out flow loss) are in [docs/physigpt](../../docs/physigpt/README.md).

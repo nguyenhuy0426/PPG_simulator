@@ -79,6 +79,13 @@ further work: PhysioFlow-R (R1, mean 0.759 over seeds 0.745–0.785 at 16 Heun s
 their code is in git history. These are engineering evaluations of normalized waveform shape, not clinical
 validation, and they were not measured on the Pi/DAC/OPT101.
 
+PPG-physiGPT (`ml/kaggle_physigpt/`, research only, not in the app) is an unconditional GPT-PPG-style patch
+transformer with a flow-matching head, pretrained on MIMIC-III WDB on Kaggle 2 x T4. The strict judge still separates
+every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people;
+pass at 0.95 with a feature-only tree classifier at most 0.60 accurate), the 99.9M large model reaches 0.941 and
+0.618 against 0.933 and 0.639 for the best 30.7M base, where real people score 0.960 and 0.50: closer, not passing.
+The gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
+
 #### Earlier models (history)
 
 The **04 PPG morphology** page keeps the original three-Gaussian

@@ -39,7 +39,7 @@
     <a href="#summary">0. Tóm tắt và quyết định</a>
     <a href="#models-kept">Mô hình giữ / đã loại</a>
     <a href="#p5-sec">P5 · PhysioGAN-R (đang train)</a>
-    <a href="#physigpt-sec">PPG-physiGPT (đang chạy)</a>
+    <a href="#physigpt-sec">PPG-physiGPT (kết quả stage 0)</a>
     <a href="#g-fig1">Hình 1 · Quy trình</a>
     <a href="#table1-sec">Bảng I · Dữ liệu</a>
     <a href="#fig2-sec">Hình 2 · Ví dụ tín hiệu</a>
@@ -91,7 +91,7 @@
       <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
       <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
       <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
-      <tr><td>PPG-physiGPT (kiểu GPT-PPG)</td><td>chưa có</td><td><span class="tag ai">mới</span></td><td>2 kernel đang chạy: shard 0 (CPU) và solo (tải rồi train, 2 × T4) (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
+      <tr><td>PPG-physiGPT large (kiểu GPT-PPG, 99,9M)</td><td>1,00 (d′ 8,6; 2 seed)</td><td><span class="tag ai">giữ</span></td><td>Gần nhất ở tầng đặc trưng (1 − KS 0,941, mốc thật 0,960) nhưng chưa đạt 0,95; giám khảo nghiêm vẫn tách hết (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
       <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
       <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
       <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
@@ -197,25 +197,55 @@
 </section>
 
 <section id="physigpt-sec">
-  <h2>PPG-physiGPT <span class="tag off">đang chạy · chưa có AUC</span></h2>
-  <p class="lead">Mô hình kiểu GPT (theo GPT-PPG 2025): <b>vẽ sóng PPG 30 s từng giây một</b>, học từ PPG bệnh viện, train trên Kaggle 2 × T4.</p>
+  <h2>PPG-physiGPT <span class="tag ai">stage 0 xong · chưa đạt</span></h2>
+  <p class="lead">Mô hình kiểu GPT (theo GPT-PPG 2025): <b>vẽ sóng PPG 30 s từng giây một</b>, học từ PPG bệnh viện (MIMIC-III), train trên Kaggle 2 × T4.
+  Sinh không điều kiện (không điều khiển nhịp tim).</p>
 
   <div class="cards">
-    <div class="card stat"><div class="num">Đang chạy</div><div class="lbl">kernel solo trên 2 × T4: tự tải dữ liệu rồi train (từ 12:38 UTC)</div></div>
-    <div class="card stat"><div class="num">—</div><div class="lbl">AUC của giám khảo (chưa chấm; mục tiêu ≤ 0,55)</div></div>
-    <div class="card stat"><div class="num">≈ 5 giờ</div><div class="lbl">tới khi có model đầu tiên (4,5 giờ tải + train)</div></div>
+    <div class="card stat"><div class="num">0,941</div><div class="lbl">độ giống đặc trưng (1 − KS, 14 đặc trưng) của bản large; ngưỡng 0,95, người thật khác 0,960</div></div>
+    <div class="card stat"><div class="num">1,00</div><div class="lbl">AUC giám khảo nghiêm, mọi biến thể (d′ tốt nhất 7,5; người thật khác 0,14)</div></div>
+    <div class="card stat"><div class="num">0,0575</div><div class="lbl">flow loss held-out của bản large sau decay (base tốt nhất 0,0578)</div></div>
   </div>
 
-  <h3>Tiến độ</h3>
-  <ol class="pg-steps">
-    <li class="now"><b>1 · Tải dữ liệu</b><span>MIMIC-III ICU → đoạn 30 s, 40 Hz</span><em>● đang chạy</em></li>
-    <li class="now"><b>2 · Train GPU</b><span>2 × T4, cùng kernel solo, ngay sau khi tải</span><em>◐ xếp hàng</em></li>
-    <li><b>3 · Fine-tune</b><span>trên người của dự án</span><em>○ chờ</em></li>
-    <li><b>4 · Giám khảo chấm</b><span>AUC, 0,5 = không tách được</span><em>○ chờ</em></li>
-  </ol>
-  <p class="caption">Kernel solo (27/10/2026, 12:38 UTC): 5 phút chạy thử GPU trên sóng giả → 4,5 giờ tải các record khác shard 0 → train bản base 30,7M, 4 epoch. Kernel shard 0 (từ 11:40 UTC) vẫn tải tiếp cho đợt sau. Đã chạy thử cả chuỗi trên CPU với record thật trước khi push.</p>
+  <h3>Hai tầng đánh giá</h3>
+  <p class="small">Cả hai tầng dùng người chưa từng train. <b>Giám khảo nghiêm</b> (C2ST, 3,6M tham số, 3 nhánh thời gian / phổ / tự tương quan) giữ nguyên;
+  AUC đã bão hoà ở 1,0 nên báo thêm d′ = (điểm trung bình sóng sinh − điểm trung bình sóng thật) / độ lệch chuẩn gộp, tính từ điểm thô của giám khảo.
+  <b>Tầng đặc trưng</b>: với mỗi đặc trưng tính 1 − KS giữa 2.000 cửa sổ sinh ra và 180 người thật held-out, cộng bộ phân loại chỉ nhìn đặc trưng.
+  Đạt khi trung bình ≥ 0,95 và độ chính xác của cây ≤ 0,60.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Biến thể</th><th>Bước</th><th>Flow held-out</th><th>AUC nghiêm</th><th>d′ (theo seed)</th><th>1 − KS</th><th>Cây (acc.)</th></tr></thead>
+    <tbody>
+      <tr><td>base, dừng plateau (chưa decay)</td><td>14.500</td><td>0,0645</td><td>1,00</td><td>17,9 (20,8; 20,1; 12,8)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, decay 3k</td><td>17.500</td><td>0,0591</td><td>1,00</td><td>12,2 (10,8; 12,1; 13,7)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, decay 3k, không clamp</td><td>17.500</td><td>0,0591</td><td>1,00</td><td>11,2 (12,0; 10,4)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, decay 3k, 128 bước ODE</td><td>17.500</td><td>0,0591</td><td>1,00</td><td>15,1 (1 seed)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, giữ 7k + decay 3k (longer)</td><td>24.500</td><td>0,0581</td><td>1,00</td><td>9,0 (10,4; 7,7)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, longer + loss độ sắc 0,25</td><td>27.500</td><td>0,0578</td><td>1,00</td><td><b>7,5</b> (8,0; 7,0)</td><td>—</td><td>—</td></tr>
+      <tr><td>base, longer + loss độ sắc 8</td><td>27.500</td><td>0,0578</td><td>—</td><td>—</td><td>0,933</td><td>0,639</td></tr>
+      <tr><td><b>large 99,9M, dừng plateau + decay 3k</b></td><td>25.000</td><td><b>0,0575</b></td><td>1,00</td><td>8,6 (8,0; 9,3)</td><td><b>0,941</b></td><td><b>0,618</b></td></tr>
+      <tr><td>người thật so với người thật khác</td><td></td><td></td><td>0,54 (1 seed)</td><td>0,14</td><td>0,960</td><td>0,50</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">Đối chứng trên sóng thật (seed 0): đảo pha ngẫu nhiên AUC 1,0, d′ 7,7; nhiễu 1 % d′ 16,5; lọc vòng d′ 15,0. Biến thể tốt nhất đang ở mức tách
+  của một bản sóng thật bị đảo pha. Bản large train 22.000 bước trong 7,7 giờ (938 cửa sổ/s, 6,9 GB mỗi T4), dừng ở checkpoint tốt nhất khi flow held-out tăng,
+  rồi decay 3.000 bước trong 0,85 giờ. Số liệu: <code>docs/physigpt/results.json</code>, tạo bởi <code>docs/physigpt/build_results.py</code> từ bản ghi kernel trong <code>docs/physigpt/evidence/</code>.</p>
 
-  <h3>Dữ liệu dùng để học</h3>
+  <h3>Đặc trưng nào còn thiếu (large so với base, 1 − KS)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Đặc trưng</th><th>base</th><th>large</th><th>Người thật khác</th></tr></thead>
+    <tbody>
+      <tr><td>độ đều giữa các nhịp (<code>acf_peak</code>)</td><td>0,881</td><td>0,918</td><td>0,947</td></tr>
+      <tr><td>nhịp tim</td><td>0,931</td><td>0,950</td><td>0,967</td></tr>
+      <tr><td>kurtosis (dáng nhịp)</td><td>0,920</td><td>0,950</td><td>0,940</td></tr>
+      <tr><td>trọng tâm phổ</td><td>0,897</td><td>0,916</td><td>0,952</td></tr>
+      <tr><td>độ lệch chuẩn sai phân bậc 2 (chi tiết mịn)</td><td>0,895</td><td>0,905</td><td>0,963</td></tr>
+      <tr><td>công suất 5–8 Hz</td><td>0,895</td><td>0,885</td><td>0,974</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">Model to hơn làm nhịp đều hơn, nhịp tim và dáng nhịp sát thật hơn, nhưng chi tiết tần số cao (5–8 Hz, sai phân bậc 2) vẫn thiếu;
+  cả model lớn lẫn loss độ sắc đều chưa đóng được khoảng này. Flow loss held-out đo trên các bản ghi cũng dùng để chọn <code>best.pt</code>, nên chỉ là số đo độ khớp.</p>
+
+<h3>Dữ liệu dùng để học</h3>
   <figure class="card" style="margin:0">
     <img src="media/physigpt-du-lieu.png" alt="Ba đoạn PPG 30 s thật từ MIMIC-III: sạch 86 nhịp/phút, 60 nhịp/phút, và có nhiễu cử động" style="width:100%;height:auto;border-radius:8px;background:#fff">
     <p class="caption">PPG thật của bệnh nhân ICU (MIMIC-III, giấy phép mở), đã cắt về khuôn của dự án. Bộ 200 triệu đoạn của GPT-PPG không công khai.</p>
@@ -225,7 +255,7 @@
   <figure class="card" style="margin:0">
     <video controls preload="metadata" width="990" height="594" src="media/physigpt-hoc-tung-patch.mp4" style="width:100%;height:auto;border-radius:8px;background:#fff"></video>
     <p class="caption">Model nhìn các giây đã có (tím), rồi học cách biến nhiễu thành giây tiếp theo (vàng). Đây là minh hoạ đích học trên sóng thật,
-    <b>không phải sóng do model vẽ</b>, vì model chưa train.</p>
+    <b>không phải sóng do model vẽ</b>.</p>
   </figure>
 
   <h3>Bên trong model</h3>
@@ -309,8 +339,8 @@
       </tbody>
     </table></div>
     <ul class="small">
-      <li><b>Đã kiểm chứng (CPU, máy này):</b> 11/11 test đạt; CLI chạy trên 4 bản ghi thật cho 18 đoạn.</li>
-      <li><b>Chưa kiểm chứng:</b> fp16/NCCL trên T4, tốc độ train và tốc độ tải trên Kaggle, MIMIC-III có đủ 200 triệu đoạn hay không, chất lượng mẫu, AUC.</li>
+      <li><b>Đã kiểm chứng:</b> 38/38 test trên CPU; train DDP fp16 trên Kaggle 2 × T4 (base 2.498 cửa sổ/s, large 938 cửa sổ/s, cả hai GPU); kết quả hai tầng ở bảng trên.</li>
+      <li><b>Chưa kiểm chứng:</b> MIMIC-III có đủ 200 triệu đoạn hay không; tốc độ sinh trên Pi; fine-tune trên người của dự án.</li>
       <li><b>Lỗi lần chạy 1:</b> <code>KeyError: 'files'</code>, vì tập PERFORM Large lưu tên ở <code>mimic_details.file</code>. Đã sửa ở commit <code>73910b24</code>.</li>
       <li>Code ở <code>ml/kaggle_physigpt/</code>; hình và video tạo bằng <code>scripts/build_physigpt_media.py</code>. Không phải kiểm định lâm sàng.</li>
     </ul>

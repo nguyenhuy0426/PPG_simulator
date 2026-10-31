@@ -53,3 +53,9 @@ liệu; mục P5 và bảng model giữ/loại trên trang được viết tay.
 
 Tỷ lệ artifact là luật SQI tự viết (`ml/kaggle_multidomain/artifact_sqi.py`), không phải nhãn chuyên gia. Hình 1, 4, 5 và
 các thuật toán viết tay từ mã nguồn (mỗi số có ghi file:line trong trang).
+
+## Mục PPG-physiGPT của `gan-report.html`
+
+Viết tay từ `docs/physigpt/results.json` (tạo bởi `docs/physigpt/build_results.py` từ bản ghi kernel Kaggle trong
+`docs/physigpt/evidence/`): giám khảo nghiêm (AUC, d′ từ điểm thô) và tầng đặc trưng (1 − KS, bộ phân loại chỉ nhìn đặc
+trưng). Khi có lần chạy mới, chép bản ghi vào `evidence/`, thêm biến thể vào `build_results.py` rồi cập nhật mục này.
