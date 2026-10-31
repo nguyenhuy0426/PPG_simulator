@@ -166,7 +166,7 @@ def compact(input_path=FILE):
     silk('I2C',129,109.6,.8); silk('I2C',168.3,109.6,.8)
     # Signal name above each R; BYP under jumper pad 1, 100R under pad 3.
     for x,sig,jp,r in ((113,'SCL','JP1','R11'),(121,'SDA','JP2','R12'),(146,'SCL','JP3','R13'),(154,'SDA','JP4','R14')):
-        silk(sig,x,103.0,.8); silk('BYP',x-2,109.8,.8); silk('100R',x+2,109.8,.8)
+        silk(sig,x,103.0,.8); silk('BYP',x-1.55,109.8,.8); silk('100R',x+1.55,109.8,.8)
         # Rear: SCL cell labels on the R/JP gap row, SDA cell labels below its jumper.
         silk(f'{jp}/{r} {sig}',x,106.1 if sig=='SCL' else 110.0,.8,True)
     for ref,names in (('J5',('5V','IR-')),('J6',('5V','RED-')),('J7',('5V','GND'))):

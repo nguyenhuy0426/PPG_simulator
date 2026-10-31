@@ -2,7 +2,7 @@
 <export version="E">
   <design>
     <source>/home/huynn/final_project/PPG_simulator_raspi/.claude/worktrees/pcb-3-circuits-bom-export-874928/hardware/led_ir_driver/led_ir_driver.kicad_sch</source>
-    <date>2026-10-31T11:33:22</date>
+    <date>2026-10-31T11:46:43</date>
     <tool>Eeschema 10.0.6</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>

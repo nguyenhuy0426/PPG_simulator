@@ -118,11 +118,12 @@ def symbol(kind):
         out.append(f'(pin {typ} line (at {x} {y} {ang}) (length {length}) (name {q(name)} {fx()}) (number "{num}" {fx()}))')
     return '\n'.join(out+['))'])
 
-def widen_jumper(s,pitch=2.0):
+def widen_jumper(s,pitch=1.55):
     """KiCad rounded 3-pad jumper (1.3 mm pitch) re-pitched to `pitch` mm.
 
     Pad shapes are unchanged (1.0 x 1.5 mm, rounded outer ends); the outer pads
-    move outward, giving a pitch-1.0 mm copper gap. Graphics outside the centre
+    move outward, giving a pitch-1.0 mm copper gap (0.55 mm; 0.50 mm at the
+    rounded corners). Graphics outside the centre
     pad's 0.75 mm half-width move with the outer pads.
     """
     shift=pitch-1.3
@@ -132,7 +133,7 @@ def widen_jumper(s,pitch=2.0):
         if abs(x)>=.85: x+=shift if x>0 else -shift
         return f'({m.group(1)} {round(x,6):g} '
     head=re.sub(r'\((start|end|mid) (-?[\d.]+) ',move,head)
-    head=head.replace('1.3mm','2.0mm').replace('0.3mm gap',f'{pitch-1:.1f}mm gap')
+    head=head.replace('1.3mm',f'{pitch:g}mm').replace('0.3mm gap',f'{pitch-1:.2f}mm gap')
     pads=('\t(pad '+pads).replace('(at -1.3 0)',f'(at {-pitch:g} 0)').replace('(at 1.3 0)',f'(at {pitch:g} 0)')
     return head+pads
 

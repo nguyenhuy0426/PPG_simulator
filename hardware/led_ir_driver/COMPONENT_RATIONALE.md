@@ -133,6 +133,6 @@ nhỏ để mức thấp chỉ tăng I_pull-up × 100 Ω; vẫn phải đo mức
 với pull-up thật. Jumper cho phép quay về nối thẳng (BYP) nếu biên không đủ.
 Jumper không có lỗ paste và không mua linh kiện. Footprint là bản pad bo tròn
 1,0 × 1,5 mm của KiCad (`SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm`) được
-dời pad ngoài ra bước 2,0 mm: khe đồng khoảng 1,0 mm (0,95 mm tại góc bo), khó
-chạm cầu nhầm hơn nhưng phải dùng nhiều thiếc hoặc dây ngắn để nối.
+dời pad ngoài ra bước 1,55 mm: khe đồng 0,55 mm (0,50 mm tại góc bo), rộng hơn
+khe 0,25 mm của bản gốc nên khó chạm cầu nhầm, vẫn nối được bằng một cầu thiếc.
 

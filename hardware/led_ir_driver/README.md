@@ -77,9 +77,8 @@ J1 và J8, x = 13/21 mm; RED: giữa J3 và J9, x = 46/54 mm), R ở hàng trên
 **Vùng này nằm dưới thân module khi cắm**: rút module ra khỏi socket để hàn
 hoặc đổi jumper. Jumper giữ hình pad bo tròn 1,0 × 1,5 mm của footprint KiCad
 `SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm`, chỉ dời pad 1/3 ra để **tâm
-pad cách 2,0 mm** (`generate_design.py: widen_jumper`). Khe đồng giữa hai pad
-khoảng 1,0 mm (0,95 mm tại góc bo); cần nhiều thiếc hơn hoặc một đoạn dây
-ngắn để nối 2–3 hoặc 2–1.
+pad cách 1,55 mm** (`generate_design.py: widen_jumper`). Khe đồng giữa hai pad
+0,55 mm (0,50 mm tại góc bo); nối 2–3 hoặc 2–1 bằng một cầu thiếc.
 
 Hai module vẫn có pull-up riêng; carrier không thêm pull-up. Với 100 Ω nối
 tiếp, mức thấp phía bên kia điện trở tăng thêm I_pull-up × 100 Ω, ví dụ

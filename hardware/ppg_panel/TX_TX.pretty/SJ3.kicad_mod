@@ -3,7 +3,7 @@
 	(generator "pcbnew")
 	(generator_version "10.0")
 	(layer "F.Cu")
-	(descr "SMD Solder 3-pad Jumper, 1x1.5mm rounded Pads, 1.0mm gap, open")
+	(descr "SMD Solder 3-pad Jumper, 1x1.5mm rounded Pads, 0.55mm gap, open")
 	(tags "solder jumper open")
 	(property "Reference" "REF**"
 		(at 0 -1.8 0)
@@ -16,7 +16,7 @@
 			)
 		)
 	)
-	(property "Value" "SolderJumper-3_P2.0mm_Open_RoundedPad1.0x1.5mm"
+	(property "Value" "SolderJumper-3_P1.55mm_Open_RoundedPad1.0x1.5mm"
 		(at 0 1.9 0)
 		(layer "F.Fab")
 		(uuid "9070ce28-1a08-48ab-9dec-e56dd22ea974")
@@ -68,8 +68,8 @@
 		(uuid "8155afa5-d482-4249-a0ce-f675e838102e")
 	)
 	(fp_line
-		(start -2.75 0.3)
-		(end -2.75 -0.3)
+		(start -2.3 0.3)
+		(end -2.3 -0.3)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -78,8 +78,8 @@
 		(uuid "78cfe39c-283d-428d-b5c2-ec00fc719d32")
 	)
 	(fp_line
-		(start -2.2 1.5)
-		(end -1.6 1.5)
+		(start -1.75 1.5)
+		(end -1.15 1.5)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -88,8 +88,8 @@
 		(uuid "c27bd981-aac2-4bdd-a421-7229f3378587")
 	)
 	(fp_line
-		(start -2.1 -1)
-		(end 2.1 -1)
+		(start -1.65 -1)
+		(end 1.65 -1)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -98,8 +98,8 @@
 		(uuid "56f6ae66-d35f-41f5-9e47-7f66a176f832")
 	)
 	(fp_line
-		(start -1.9 1.2)
-		(end -2.2 1.5)
+		(start -1.45 1.2)
+		(end -1.75 1.5)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -108,8 +108,8 @@
 		(uuid "990b050f-8d63-4468-8307-e12404a9faf6")
 	)
 	(fp_line
-		(start -1.9 1.2)
-		(end -1.6 1.5)
+		(start -1.45 1.2)
+		(end -1.15 1.5)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -118,8 +118,8 @@
 		(uuid "73a62363-6eae-4593-96bf-6e4de39f5a55")
 	)
 	(fp_line
-		(start 2.1 1)
-		(end -2.1 1)
+		(start 1.65 1)
+		(end -1.65 1)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -128,8 +128,8 @@
 		(uuid "0cea505e-6386-480e-b9ce-edd39838a7bf")
 	)
 	(fp_line
-		(start 2.75 -0.3)
-		(end 2.75 0.3)
+		(start 2.3 -0.3)
+		(end 2.3 0.3)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -138,9 +138,9 @@
 		(uuid "2d4621d3-e2ee-4c40-9764-a8cb003fafaf")
 	)
 	(fp_arc
-		(start -2.75 -0.3)
-		(mid -2.54497 -0.794975)
-		(end -2.05 -1)
+		(start -2.3 -0.3)
+		(mid -2.09497 -0.794975)
+		(end -1.6 -1)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -149,9 +149,9 @@
 		(uuid "141defa7-6f0f-4a7e-a0b7-154a3a20a0d9")
 	)
 	(fp_arc
-		(start -2.05 1)
-		(mid -2.54497 0.794975)
-		(end -2.75 0.3)
+		(start -1.6 1)
+		(mid -2.09497 0.794975)
+		(end -2.3 0.3)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -160,9 +160,9 @@
 		(uuid "8cdc5b3d-0965-4b69-a05b-e578764331a9")
 	)
 	(fp_arc
-		(start 2.05 -1)
-		(mid 2.54497 -0.794975)
-		(end 2.75 -0.3)
+		(start 1.6 -1)
+		(mid 2.09497 -0.794975)
+		(end 2.3 -0.3)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -171,9 +171,9 @@
 		(uuid "094d4c38-9e6a-4278-b9fc-c371acd48c84")
 	)
 	(fp_arc
-		(start 2.75 0.3)
-		(mid 2.54497 0.794975)
-		(end 2.05 1)
+		(start 2.3 0.3)
+		(mid 2.09497 0.794975)
+		(end 1.6 1)
 		(stroke
 			(width 0.12)
 			(type solid)
@@ -182,8 +182,8 @@
 		(uuid "ad182b45-3bb2-4152-9f9d-561a72271c46")
 	)
 	(fp_line
-		(start -3 -1.25)
-		(end -3 1.25)
+		(start -2.55 -1.25)
+		(end -2.55 1.25)
 		(stroke
 			(width 0.05)
 			(type solid)
@@ -192,8 +192,8 @@
 		(uuid "ae4a1575-8e1c-4f49-a5f8-fa355c7aa13d")
 	)
 	(fp_line
-		(start -3 -1.25)
-		(end 3 -1.25)
+		(start -2.55 -1.25)
+		(end 2.55 -1.25)
 		(stroke
 			(width 0.05)
 			(type solid)
@@ -202,8 +202,8 @@
 		(uuid "0057fb2c-2d87-483b-835b-278b45043d7c")
 	)
 	(fp_line
-		(start 3 1.25)
-		(end -3 1.25)
+		(start 2.55 1.25)
+		(end -2.55 1.25)
 		(stroke
 			(width 0.05)
 			(type solid)
@@ -212,8 +212,8 @@
 		(uuid "dd8be6f6-59a4-4ef0-9ad4-077fe806fb96")
 	)
 	(fp_line
-		(start 3 1.25)
-		(end 3 -1.25)
+		(start 2.55 1.25)
+		(end 2.55 -1.25)
 		(stroke
 			(width 0.05)
 			(type solid)
@@ -222,7 +222,7 @@
 		(uuid "dd32a5c8-19c7-4429-9596-0002d6d9ea81")
 	)
 	(pad "1" smd custom
-		(at -2 0)
+		(at -1.55 0)
 		(size 1 0.5)
 		(layers "F.Cu" "F.Mask")
 		(zone_connect 2)
@@ -261,7 +261,7 @@
 		(uuid "e089c6a0-c9bb-4ad9-a768-0469208d1120")
 	)
 	(pad "3" smd custom
-		(at 2 0)
+		(at 1.55 0)
 		(size 1 0.5)
 		(layers "F.Cu" "F.Mask")
 		(zone_connect 2)
