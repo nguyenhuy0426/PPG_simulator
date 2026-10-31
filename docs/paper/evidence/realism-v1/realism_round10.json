@@ -1,0 +1,1256 @@
+{
+  "data_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "unseen_splits": [
+    "validation",
+    "test"
+  ],
+  "sources": [
+    "round9",
+    "physioflow",
+    "lsm_gan",
+    "gaussian_shaper"
+  ],
+  "view": "v3 0.5-8 Hz",
+  "realism": {
+    "gxu_finger": {
+      "people": 44,
+      "windows": 256,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.98046875,
+        "coverage": 0.9921875,
+        "c2st_auc": 0.5292245622335378,
+        "c2st_auc_range": [
+          0.5189076033951037,
+          0.5388317192848683
+        ],
+        "indistinguishable": 0.9415508755329246,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.953125,
+        "coverage": 0.76171875,
+        "c2st_auc": 0.957058430582464,
+        "c2st_auc_range": [
+          0.954236586293038,
+          0.9597964824429903
+        ],
+        "indistinguishable": 0.08588313883507204,
+        "c2st_folds": 4
+      },
+      "physioflow": {
+        "fidelity": 0.9609375,
+        "coverage": 0.921875,
+        "c2st_auc": 0.7511499857619487,
+        "c2st_auc_range": [
+          0.7450176816998105,
+          0.7580081791901349
+        ],
+        "indistinguishable": 0.4977000284761026,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.1171875,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.0078125,
+        "coverage": 0.0078125,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      }
+    },
+    "perform_large": {
+      "people": 191,
+      "windows": 256,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.9765625,
+        "coverage": 0.953125,
+        "c2st_auc": 0.4831842074037301,
+        "c2st_auc_range": [
+          0.46458889086768307,
+          0.4958295173093755
+        ],
+        "indistinguishable": 0.9663684148074602,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.9765625,
+        "coverage": 0.62890625,
+        "c2st_auc": 0.8176223847021196,
+        "c2st_auc_range": [
+          0.7977226079782539,
+          0.8428158416561737
+        ],
+        "indistinguishable": 0.3647552305957608,
+        "c2st_folds": 4
+      },
+      "physioflow": {
+        "fidelity": 0.97265625,
+        "coverage": 0.8828125,
+        "c2st_auc": 0.5447541763869788,
+        "c2st_auc_range": [
+          0.5319653308558017,
+          0.5590912871308379
+        ],
+        "indistinguishable": 0.9104916472260424,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.97265625,
+        "coverage": 0.0078125,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.69921875,
+        "coverage": 0.0,
+        "c2st_auc": 0.9998559256051093,
+        "c2st_auc_range": [
+          0.999746385261194,
+          0.999937996031746
+        ],
+        "indistinguishable": 0.0002881487897813025,
+        "c2st_folds": 4
+      }
+    },
+    "bidmc": {
+      "people": 14,
+      "windows": 222,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.51171875,
+        "coverage": 0.8783783783783784,
+        "c2st_auc": 0.47829864313541753,
+        "c2st_auc_range": [
+          0.46195721824100794,
+          0.5003412518093956
+        ],
+        "indistinguishable": 0.9561422838583077,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.48828125,
+        "coverage": 0.6666666666666666,
+        "c2st_auc": 0.7730125075965856,
+        "c2st_auc_range": [
+          0.7491572366216545,
+          0.811788582793767
+        ],
+        "indistinguishable": 0.453974984806829,
+        "c2st_folds": 4
+      },
+      "physioflow": {
+        "fidelity": 0.56640625,
+        "coverage": 0.8378378378378378,
+        "c2st_auc": 0.6639493826097778,
+        "c2st_auc_range": [
+          0.6491361577460106,
+          0.6787492364936888
+        ],
+        "indistinguishable": 0.6721012347804445,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.7890625,
+        "coverage": 0.02252252252252252,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.0,
+        "coverage": 0.5990990990990991,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      }
+    },
+    "perform_af": {
+      "people": 4,
+      "windows": 158,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.546875,
+        "coverage": 0.8291139240506329,
+        "c2st_auc": 0.2778935917225443,
+        "c2st_auc_range": [
+          0.24000577629561015,
+          0.3104606483838487
+        ],
+        "indistinguishable": 0.5557871834450886,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.51171875,
+        "coverage": 0.45569620253164556,
+        "c2st_auc": 0.9656455592105263,
+        "c2st_auc_range": [
+          0.9549650493421054,
+          0.9802323190789474
+        ],
+        "indistinguishable": 0.06870888157894724,
+        "c2st_folds": 4
+      },
+      "physioflow": {
+        "fidelity": 0.5703125,
+        "coverage": 0.9493670886075949,
+        "c2st_auc": 0.4083264802631579,
+        "c2st_auc_range": [
+          0.36077816611842106,
+          0.4379009046052631
+        ],
+        "indistinguishable": 0.8166529605263158,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.265625,
+        "coverage": 0.012658227848101266,
+        "c2st_auc": 0.9994174890350878,
+        "c2st_auc_range": [
+          0.9982524671052632,
+          1.0
+        ],
+        "indistinguishable": 0.0011650219298245574,
+        "c2st_folds": 4
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.01171875,
+        "coverage": 0.0,
+        "c2st_auc": 0.9998972039473685,
+        "c2st_auc_range": [
+          0.9996916118421053,
+          1.0
+        ],
+        "indistinguishable": 0.00020559210526312674,
+        "c2st_folds": 4
+      }
+    },
+    "perform_non_af": {
+      "people": 2,
+      "windows": 80,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.11328125,
+        "coverage": 0.175,
+        "c2st_auc": 0.7030565391116,
+        "c2st_auc_range": [
+          0.6035164176351226,
+          0.7700858660736347
+        ],
+        "indistinguishable": 0.5938869217767999,
+        "c2st_folds": 2
+      },
+      "round9": {
+        "fidelity": 0.1015625,
+        "coverage": 0.9375,
+        "c2st_auc": 0.4010416666666667,
+        "c2st_auc_range": [
+          0.29228515624999996,
+          0.46142578125
+        ],
+        "indistinguishable": 0.8020833333333334,
+        "c2st_folds": 2
+      },
+      "physioflow": {
+        "fidelity": 0.109375,
+        "coverage": 0.4125,
+        "c2st_auc": 0.80625,
+        "c2st_auc_range": [
+          0.6182617187499999,
+          0.90517578125
+        ],
+        "indistinguishable": 0.3875000000000001,
+        "c2st_folds": 2
+      },
+      "lsm_gan": {
+        "fidelity": 0.0546875,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 2
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.0,
+        "coverage": 0.0,
+        "c2st_auc": 0.9996419270833333,
+        "c2st_auc_range": [
+          0.99931640625,
+          1.0
+        ],
+        "indistinguishable": 0.0007161458333333481,
+        "c2st_folds": 2
+      }
+    },
+    "wrist": {
+      "people": 4,
+      "windows": 119,
+      "compared": 83,
+      "real_other_people": {
+        "fidelity": 0.7710843373493976,
+        "coverage": 0.5378151260504201,
+        "c2st_auc": 0.49275011140819974,
+        "c2st_auc_range": [
+          0.4265899541634836,
+          0.5419642857142858
+        ],
+        "indistinguishable": 0.9166197160682454,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.9156626506024096,
+        "coverage": 0.5630252100840336,
+        "c2st_auc": 0.7375872167048637,
+        "c2st_auc_range": [
+          0.7076419658772599,
+          0.7663785968933028
+        ],
+        "indistinguishable": 0.5248255665902725,
+        "c2st_folds": 4
+      },
+      "physioflow": {
+        "fidelity": 0.6506024096385542,
+        "coverage": 0.6050420168067226,
+        "c2st_auc": 0.7384645297512945,
+        "c2st_auc_range": [
+          0.7248618538324421,
+          0.7568681563534505
+        ],
+        "indistinguishable": 0.5230709404974111,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.0,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      },
+      "gaussian_shaper": {
+        "fidelity": 0.0,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      }
+    }
+  },
+  "condition_following": {
+    "states": [
+      "bidmc",
+      "perform_af",
+      "perform_non_af",
+      "perform_large",
+      "gxu_rest",
+      "gxu_post_exercise",
+      "wrist_exercise"
+    ],
+    "chance": 0.14285714285714285,
+    "real_unseen": {
+      "confusion": [
+        [
+          29,
+          29,
+          15,
+          36,
+          14,
+          5,
+          0
+        ],
+        [
+          10,
+          114,
+          0,
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          65,
+          13,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        [
+          39,
+          12,
+          23,
+          46,
+          2,
+          1,
+          5
+        ],
+        [
+          0,
+          0,
+          0,
+          2,
+          108,
+          18,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          1,
+          81,
+          46,
+          0
+        ],
+        [
+          0,
+          0,
+          5,
+          2,
+          6,
+          4,
+          102
+        ]
+      ],
+      "accuracy": {
+        "bidmc": 0.2265625,
+        "perform_af": 0.890625,
+        "perform_non_af": 0.0,
+        "perform_large": 0.359375,
+        "gxu_rest": 0.84375,
+        "gxu_post_exercise": 0.359375,
+        "wrist_exercise": 0.8571428571428571
+      },
+      "balanced_accuracy": 0.5052614795918368,
+      "motion_probability": {
+        "bidmc": 2.821306770783849e-05,
+        "perform_af": 0.0006353111821226776,
+        "perform_non_af": 3.224756483177771e-06,
+        "perform_large": 0.03519556671380997,
+        "gxu_rest": 1.2343836175432443e-08,
+        "gxu_post_exercise": 2.2539718429470668e-06,
+        "wrist_exercise": 0.7399353384971619
+      }
+    },
+    "physiology": {
+      "real_unseen": {
+        "bidmc": {
+          "hr_median": 90.71209553732051,
+          "ibi_cv_median": 0.028545387330436055,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9105525016784668
+        },
+        "perform_af": {
+          "hr_median": 94.46613352184991,
+          "ibi_cv_median": 0.2238100560198239,
+          "rate_measurable": 0.890625,
+          "periodicity_median": 0.2557693123817444
+        },
+        "perform_non_af": {
+          "hr_median": 93.25111500551833,
+          "ibi_cv_median": 0.02987624244172232,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9151979684829712
+        },
+        "perform_large": {
+          "hr_median": 82.58983177726222,
+          "ibi_cv_median": 0.05163304549609027,
+          "rate_measurable": 0.9765625,
+          "periodicity_median": 0.8691011667251587
+        },
+        "gxu_rest": {
+          "hr_median": 78.87553807054326,
+          "ibi_cv_median": 0.06547164996147359,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.8452603220939636
+        },
+        "gxu_post_exercise": {
+          "hr_median": 85.82509666062334,
+          "ibi_cv_median": 0.0537573274316821,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.8561636209487915
+        },
+        "wrist_exercise": {
+          "hr_median": 89.84272492247169,
+          "ibi_cv_median": 0.24984063159337097,
+          "rate_measurable": 0.773109243697479,
+          "periodicity_median": 0.5170066356658936
+        }
+      },
+      "real_prompts": {
+        "bidmc": {
+          "hr_median": 86.94445300859175,
+          "ibi_cv_median": 0.12401788995729474,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.835634708404541
+        },
+        "perform_af": {
+          "hr_median": 87.22539522442301,
+          "ibi_cv_median": 0.2346829687184084,
+          "rate_measurable": 0.7578125,
+          "periodicity_median": 0.23565056920051575
+        },
+        "perform_non_af": {
+          "hr_median": 70.549086930387,
+          "ibi_cv_median": 0.03041071359975467,
+          "rate_measurable": 0.96875,
+          "periodicity_median": 0.9054441452026367
+        },
+        "perform_large": {
+          "hr_median": 79.6229864662712,
+          "ibi_cv_median": 0.06597783813444497,
+          "rate_measurable": 0.9453125,
+          "periodicity_median": 0.819979190826416
+        },
+        "gxu_rest": {
+          "hr_median": 79.56794759235308,
+          "ibi_cv_median": 0.05914236459823644,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.8442508578300476
+        },
+        "gxu_post_exercise": {
+          "hr_median": 86.81159542123683,
+          "ibi_cv_median": 0.05456600586635391,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.8480569124221802
+        },
+        "wrist_exercise": {
+          "hr_median": 72.77467070514498,
+          "ibi_cv_median": 0.20409891644507505,
+          "rate_measurable": 0.7890625,
+          "periodicity_median": 0.623616635799408
+        }
+      },
+      "round9": {
+        "bidmc": {
+          "hr_median": 86.0302786773706,
+          "ibi_cv_median": 0.10184477202867279,
+          "rate_measurable": 0.9765625,
+          "periodicity_median": 0.6665517091751099
+        },
+        "perform_af": {
+          "hr_median": 86.61977955220554,
+          "ibi_cv_median": 0.20048786176733246,
+          "rate_measurable": 0.8671875,
+          "periodicity_median": 0.3350618779659271
+        },
+        "perform_non_af": {
+          "hr_median": 70.11813630488258,
+          "ibi_cv_median": 0.029455555431937747,
+          "rate_measurable": 0.984375,
+          "periodicity_median": 0.9272514581680298
+        },
+        "perform_large": {
+          "hr_median": 79.49910519098995,
+          "ibi_cv_median": 0.05110102627916357,
+          "rate_measurable": 0.9375,
+          "periodicity_median": 0.7407594323158264
+        },
+        "gxu_rest": {
+          "hr_median": 79.89746427803577,
+          "ibi_cv_median": 0.07476218491107395,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.860306978225708
+        },
+        "gxu_post_exercise": {
+          "hr_median": 86.9163127320332,
+          "ibi_cv_median": 0.05173811960101843,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.8738300800323486
+        },
+        "wrist_exercise": {
+          "hr_median": 102.760998721504,
+          "ibi_cv_median": 0.22476301154077516,
+          "rate_measurable": 0.6171875,
+          "periodicity_median": 0.2155168354511261
+        }
+      },
+      "physioflow": {
+        "bidmc": {
+          "hr_median": 85.60663865751653,
+          "ibi_cv_median": 0.06999339710777808,
+          "rate_measurable": 0.9296875,
+          "periodicity_median": 0.6040518283843994
+        },
+        "perform_af": {
+          "hr_median": 84.04001048800879,
+          "ibi_cv_median": 0.21929452291423734,
+          "rate_measurable": 0.6875,
+          "periodicity_median": 0.22179600596427917
+        },
+        "perform_non_af": {
+          "hr_median": 70.03056795169336,
+          "ibi_cv_median": 0.029853620326813688,
+          "rate_measurable": 0.9765625,
+          "periodicity_median": 0.906277060508728
+        },
+        "perform_large": {
+          "hr_median": 78.9178457625946,
+          "ibi_cv_median": 0.04864506343495956,
+          "rate_measurable": 0.90625,
+          "periodicity_median": 0.6460747122764587
+        },
+        "gxu_rest": {
+          "hr_median": 79.248046875,
+          "ibi_cv_median": 0.058505882230587884,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.8494148254394531
+        },
+        "gxu_post_exercise": {
+          "hr_median": 87.13428130403324,
+          "ibi_cv_median": 0.05514278275632802,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.8608104586601257
+        },
+        "wrist_exercise": {
+          "hr_median": 72.86922486853294,
+          "ibi_cv_median": 0.20366542792028572,
+          "rate_measurable": 0.8671875,
+          "periodicity_median": 0.42365506291389465
+        }
+      },
+      "lsm_gan": {
+        "bidmc": {
+          "hr_median": 91.74943684431692,
+          "ibi_cv_median": 0.20966027262581638,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.4770466089248657
+        },
+        "perform_af": {
+          "hr_median": 92.89318684798607,
+          "ibi_cv_median": 0.20313891079777258,
+          "rate_measurable": 0.96875,
+          "periodicity_median": 0.48302558064460754
+        },
+        "perform_non_af": {
+          "hr_median": 92.73595465044184,
+          "ibi_cv_median": 0.2027035936143467,
+          "rate_measurable": 0.9765625,
+          "periodicity_median": 0.481989324092865
+        },
+        "perform_large": {
+          "hr_median": 92.69788431353122,
+          "ibi_cv_median": 0.20305817421157413,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.4785355031490326
+        },
+        "gxu_rest": {
+          "hr_median": 92.30819988881221,
+          "ibi_cv_median": 0.20307233271018157,
+          "rate_measurable": 0.9765625,
+          "periodicity_median": 0.47959625720977783
+        },
+        "gxu_post_exercise": {
+          "hr_median": 92.1928133692152,
+          "ibi_cv_median": 0.20336034566465644,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.4913051724433899
+        },
+        "wrist_exercise": {
+          "hr_median": 91.69404000770209,
+          "ibi_cv_median": 0.20248068606716244,
+          "rate_measurable": 0.9921875,
+          "periodicity_median": 0.47087499499320984
+        }
+      },
+      "gaussian_shaper": {
+        "bidmc": {
+          "hr_median": 87.2985333645485,
+          "ibi_cv_median": 0.0005251682245046476,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9655707478523254
+        },
+        "perform_af": {
+          "hr_median": 87.81576234992897,
+          "ibi_cv_median": 0.0004956334776848649,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9683475494384766
+        },
+        "perform_non_af": {
+          "hr_median": 70.79363790003629,
+          "ibi_cv_median": 0.0003072631250210356,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9657461047172546
+        },
+        "perform_large": {
+          "hr_median": 81.84557566305634,
+          "ibi_cv_median": 0.00044096321440564526,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9661977291107178
+        },
+        "gxu_rest": {
+          "hr_median": 79.3779879473243,
+          "ibi_cv_median": 0.00045936915926518134,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9664651155471802
+        },
+        "gxu_post_exercise": {
+          "hr_median": 87.21036282863246,
+          "ibi_cv_median": 0.0005255133900913544,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.968685507774353
+        },
+        "wrist_exercise": {
+          "hr_median": 102.40667346613591,
+          "ibi_cv_median": 0.0009273410550317611,
+          "rate_measurable": 1.0,
+          "periodicity_median": 0.9689743518829346
+        }
+      }
+    },
+    "round9": {
+      "confusion": [
+        [
+          44,
+          38,
+          18,
+          25,
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          83,
+          7,
+          29,
+          0,
+          0,
+          6
+        ],
+        [
+          17,
+          12,
+          67,
+          23,
+          1,
+          4,
+          4
+        ],
+        [
+          25,
+          21,
+          28,
+          42,
+          4,
+          0,
+          8
+        ],
+        [
+          0,
+          1,
+          1,
+          6,
+          103,
+          17,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          6,
+          73,
+          44,
+          3
+        ],
+        [
+          0,
+          1,
+          6,
+          18,
+          4,
+          0,
+          99
+        ]
+      ],
+      "accuracy": {
+        "bidmc": 0.34375,
+        "perform_af": 0.6484375,
+        "perform_non_af": 0.5234375,
+        "perform_large": 0.328125,
+        "gxu_rest": 0.8046875,
+        "gxu_post_exercise": 0.34375,
+        "wrist_exercise": 0.7734375
+      },
+      "balanced_accuracy": 0.5379464285714286,
+      "motion_probability": {
+        "bidmc": 0.015774983912706375,
+        "perform_af": 0.05847533419728279,
+        "perform_non_af": 0.029845936223864555,
+        "perform_large": 0.0603223517537117,
+        "gxu_rest": 0.0004376420984044671,
+        "gxu_post_exercise": 0.0251883864402771,
+        "wrist_exercise": 0.7246511578559875
+      },
+      "swap_following": 0.49107142857142855,
+      "swap_distinct_answers_per_noise": 4.90625
+    },
+    "physioflow": {
+      "confusion": [
+        [
+          68,
+          24,
+          20,
+          15,
+          0,
+          1,
+          0
+        ],
+        [
+          4,
+          114,
+          1,
+          9,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          4,
+          113,
+          3,
+          0,
+          0,
+          5
+        ],
+        [
+          25,
+          24,
+          21,
+          55,
+          1,
+          0,
+          2
+        ],
+        [
+          0,
+          3,
+          0,
+          2,
+          111,
+          12,
+          0
+        ],
+        [
+          0,
+          3,
+          1,
+          2,
+          96,
+          26,
+          0
+        ],
+        [
+          0,
+          2,
+          4,
+          2,
+          0,
+          0,
+          120
+        ]
+      ],
+      "accuracy": {
+        "bidmc": 0.53125,
+        "perform_af": 0.890625,
+        "perform_non_af": 0.8828125,
+        "perform_large": 0.4296875,
+        "gxu_rest": 0.8671875,
+        "gxu_post_exercise": 0.203125,
+        "wrist_exercise": 0.9375
+      },
+      "balanced_accuracy": 0.6774553571428571,
+      "motion_probability": {
+        "bidmc": 0.00039393582846969366,
+        "perform_af": 0.0006469198269769549,
+        "perform_non_af": 0.03713320195674896,
+        "perform_large": 0.015631206333637238,
+        "gxu_rest": 0.0020317782182246447,
+        "gxu_post_exercise": 0.0009543205378577113,
+        "wrist_exercise": 0.8501632213592529
+      },
+      "swap_following": 0.7053571428571429,
+      "swap_distinct_answers_per_noise": 5.40625
+    },
+    "lsm_gan": {
+      "confusion": [
+        [
+          46,
+          0,
+          82,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          54,
+          0,
+          74,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          46,
+          0,
+          82,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          61,
+          0,
+          67,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          55,
+          0,
+          73,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          60,
+          0,
+          68,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          52,
+          0,
+          76,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "accuracy": {
+        "bidmc": 0.359375,
+        "perform_af": 0.0,
+        "perform_non_af": 0.640625,
+        "perform_large": 0.0,
+        "gxu_rest": 0.0,
+        "gxu_post_exercise": 0.0,
+        "wrist_exercise": 0.0
+      },
+      "balanced_accuracy": 0.14285714285714285,
+      "motion_probability": {
+        "bidmc": 5.869653250556439e-06,
+        "perform_af": 7.171943707362516e-06,
+        "perform_non_af": 9.84377766144462e-06,
+        "perform_large": 1.003146098810248e-05,
+        "gxu_rest": 4.678843197325477e-06,
+        "gxu_post_exercise": 9.321267498307861e-06,
+        "wrist_exercise": 4.411662303027697e-06
+      },
+      "swap_following": 0.14285714285714285,
+      "swap_distinct_answers_per_noise": 1.0
+    },
+    "gaussian_shaper": {
+      "confusion": [
+        [
+          0,
+          0,
+          7,
+          28,
+          42,
+          51,
+          0
+        ],
+        [
+          0,
+          0,
+          17,
+          28,
+          50,
+          33,
+          0
+        ],
+        [
+          0,
+          2,
+          25,
+          58,
+          19,
+          21,
+          3
+        ],
+        [
+          0,
+          0,
+          13,
+          46,
+          29,
+          40,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          26,
+          49,
+          53,
+          0
+        ],
+        [
+          0,
+          0,
+          6,
+          37,
+          38,
+          47,
+          0
+        ],
+        [
+          0,
+          0,
+          19,
+          87,
+          11,
+          1,
+          10
+        ]
+      ],
+      "accuracy": {
+        "bidmc": 0.0,
+        "perform_af": 0.0,
+        "perform_non_af": 0.1953125,
+        "perform_large": 0.359375,
+        "gxu_rest": 0.3828125,
+        "gxu_post_exercise": 0.3671875,
+        "wrist_exercise": 0.078125
+      },
+      "balanced_accuracy": 0.19754464285714285,
+      "motion_probability": {
+        "bidmc": 9.253353346139193e-05,
+        "perform_af": 0.003242670791223645,
+        "perform_non_af": 0.02497873455286026,
+        "perform_large": 0.0028089978732168674,
+        "gxu_rest": 9.793522792733711e-08,
+        "gxu_post_exercise": 0.002528214594349265,
+        "wrist_exercise": 0.06637377291917801
+      },
+      "swap_following": 0.16517857142857142,
+      "swap_distinct_answers_per_noise": 3.390625
+    }
+  },
+  "memorization": {
+    "gxu_finger": {
+      "real_unseen": {
+        "median": 0.7538298095781181,
+        "p95": 0.85822709604346,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.814730746635492,
+        "p95": 0.9028184014144507,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.8046998952743483,
+        "p95": 0.886505100469865,
+        "above_0_99": 0.0
+      },
+      "lsm_gan": {
+        "median": 0.4801845006880094,
+        "p95": 0.5632017119155734,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.7542104301482848,
+        "p95": 0.8045367039715067,
+        "above_0_99": 0.0
+      }
+    },
+    "perform_large": {
+      "real_unseen": {
+        "median": 0.8704708511965715,
+        "p95": 0.9557666479609584,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.839609358220698,
+        "p95": 0.9692456172804261,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.8311868409325593,
+        "p95": 0.9681796313034792,
+        "above_0_99": 0.0
+      },
+      "lsm_gan": {
+        "median": 0.46573074241285006,
+        "p95": 0.5446498380504112,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.8592320499122825,
+        "p95": 0.8980813438800048,
+        "above_0_99": 0.0
+      }
+    },
+    "bidmc": {
+      "real_unseen": {
+        "median": 0.852699332868412,
+        "p95": 0.9558664307626763,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.7717853326802933,
+        "p95": 0.9766996579763897,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.7843616001709913,
+        "p95": 0.9774622206416939,
+        "above_0_99": 0.0078125
+      },
+      "lsm_gan": {
+        "median": 0.4558447702047824,
+        "p95": 0.5268634150863895,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.8283279474030645,
+        "p95": 0.878975675804499,
+        "above_0_99": 0.0
+      }
+    },
+    "perform_af": {
+      "real_unseen": {
+        "median": 0.413191562380611,
+        "p95": 0.4968450346509656,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.41728634372260365,
+        "p95": 0.5354116524892151,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.4137671487770286,
+        "p95": 0.5399857271177158,
+        "above_0_99": 0.0
+      },
+      "lsm_gan": {
+        "median": 0.43094204093762845,
+        "p95": 0.49080625667637495,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.4139201076046184,
+        "p95": 0.5266513676910999,
+        "above_0_99": 0.0
+      }
+    },
+    "perform_non_af": {
+      "real_unseen": {
+        "median": 0.8211613811781514,
+        "p95": 0.9562662317494207,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.9036589810023385,
+        "p95": 0.9749257885166798,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.8975378207398164,
+        "p95": 0.9793283275846066,
+        "above_0_99": 0.015625
+      },
+      "lsm_gan": {
+        "median": 0.4094371671078626,
+        "p95": 0.5074734455062966,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.8392216750311416,
+        "p95": 0.8894093015610625,
+        "above_0_99": 0.0
+      }
+    },
+    "wrist": {
+      "real_unseen": {
+        "median": 0.2843858752729392,
+        "p95": 0.4149469468743033,
+        "above_0_99": 0.0
+      },
+      "round9": {
+        "median": 0.2780205734705486,
+        "p95": 0.3602401429977638,
+        "above_0_99": 0.0
+      },
+      "physioflow": {
+        "median": 0.46117367926241765,
+        "p95": 0.7552373598263823,
+        "above_0_99": 0.0
+      },
+      "lsm_gan": {
+        "median": 0.2973527791075795,
+        "p95": 0.33660296448258537,
+        "above_0_99": 0.0
+      },
+      "gaussian_shaper": {
+        "median": 0.2669798032518434,
+        "p95": 0.34177609603387876,
+        "above_0_99": 0.0
+      }
+    }
+  }
+}

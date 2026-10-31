@@ -16,6 +16,8 @@ venv/
 env/
 
 # Python bytecode / build artefacts
+docs/paper/*.log
+docs/paper/*.blg
 __pycache__/
 *.py[cod]
 *.egg-info/
