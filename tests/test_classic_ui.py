@@ -3,6 +3,7 @@
 The Tk tests need a display (Xvfb is fine); they skip on a headless machine.
 """
 import os
+import time
 import unittest
 
 from models.ppg_model import CONDITION_NAMES
@@ -233,3 +234,58 @@ class TestTouchPanelPages(unittest.TestCase):
             self.assertTrue(all(lane.points for lane in neural.trace.lanes))
         finally:
             app.on_closing()
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class LaneViewRedrawTest(unittest.TestCase):
+    """The canvas is rebuilt only when something visible changed."""
+
+    def setUp(self):
+        import tkinter as tk
+        from ui.trace_view import LaneView
+        self.root = tk.Tk()
+        self.view = LaneView(self.root, width=600, height=300)
+        self.view.pack(fill="both", expand=True)
+        self.root.update()
+        self.renders = 0
+        real = self.view.render
+
+        def counted():
+            self.renders += 1
+            real()
+        self.view.render = counted
+
+    def tearDown(self):
+        self.root.destroy()
+
+    @staticmethod
+    def lanes(n=40, shift=0.0):
+        from ui.trace_view import Lane
+        return [Lane("IR", "#0a0", "", [(i * 0.1 - 8 + shift, float(i)) for i in range(n)])]
+
+    def test_identical_frames_do_not_redraw(self):
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.assertEqual(self.renders, 1)
+
+    def test_new_data_redraws(self):
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view.update_lanes(self.lanes(shift=0.05), end_s=0.0)
+        self.assertEqual(self.renders, 2)
+
+    def test_a_slow_render_delays_the_next_one(self):
+        from ui import trace_view
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view._not_before = time.perf_counter() + 60
+        self.view.update_lanes(self.lanes(shift=0.05), end_s=0.0)
+        self.assertEqual(self.renders, 1)
+        self.assertGreater(trace_view.RENDER_BACKOFF, 1)
+
+    def test_long_traces_are_drawn_with_at_most_one_vertex_per_pixel(self):
+        from ui.trace_view import Lane
+        pts = [(i * 0.001 - 8, float(i % 50)) for i in range(8000)]
+        self.view.update_lanes([Lane("IR", "#0a0", "", pts)], end_s=0.0)
+        vertices = max((len(self.view.coords(i)) // 2 for i in self.view.find_all()
+                        if self.view.type(i) == "line"), default=0)
+        self.assertLessEqual(vertices, self.view.winfo_width())
+        self.assertGreater(vertices, 100)

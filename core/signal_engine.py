@@ -30,6 +30,7 @@ from comm.logger import log
 # deadline is never missed by more than half a period, long enough that the
 # two loops do not spin the CPU.
 LOOP_YIELD_S = 0.0005
+GENERATION_MAX_WAIT_S = 0.005
 
 # TDM pacing sleep cap: stop() latency stays a few ms inside a 10 ms slot.
 TDM_SLEEP_QUANTUM_S = 0.002
@@ -386,7 +387,9 @@ class SignalEngine:
                     break
                 self._generate_one_tick()
 
-            time.sleep(LOOP_YIELD_S)
+            # Sleep to the next 10 ms model deadline (not a 0.5 ms poll, which
+            # woke this thread 2000×/s on the Pi); capped so stop() stays prompt.
+            time.sleep(ticker.wait_seconds(time.perf_counter(), GENERATION_MAX_WAIT_S))
 
     def _dac_loop(self):
         """DAC thread — drains the ring to the MCP4725 pair at FS_TIMER_HZ."""

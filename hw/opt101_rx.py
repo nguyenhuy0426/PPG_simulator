@@ -64,6 +64,7 @@ from config import (
     DRY_RUN,
 )
 from comm.logger import log
+from hw.grove_adc import FramedGroveADC
 
 # Per-channel status values (strings so logs/UI can show them directly).
 RX_STATUS_INIT = "init"                  # begin() not called / no read attempted yet
@@ -228,10 +229,9 @@ class OPT101Receiver:
 
         if self._adc is None:
             try:
-                from grove.adc import ADC
-                self._adc = ADC(address=GROVE_ADC_ADDR)
+                self._adc = FramedGroveADC(address=GROVE_ADC_ADDR)
             except Exception as e:
-                log.error(f"[OPT101Rx] Failed to init grove.adc.ADC(0x{GROVE_ADC_ADDR:02X}): {e}")
+                log.error(f"[OPT101Rx] Failed to init the Grove ADC (0x{GROVE_ADC_ADDR:02X}): {e}")
                 return False
 
         # Probe: one real read on the IR channel proves the hat is reachable.
@@ -340,9 +340,18 @@ class OPT101Receiver:
             return None
         return self._read_channel(state)
 
+    def _read_adc(self, state: _ChannelState):
+        """Raw code; the bit-slip decoder may use this lane's fresh last sample."""
+        if not isinstance(self._adc, FramedGroveADC):
+            return self._adc.read_raw(state.physical)
+        with self._lock:
+            last = state.buffer[-1] if state.buffer else None
+        fresh = last is not None and time.monotonic() - last.timestamp <= RX_STALE_THRESHOLD_S
+        return self._adc.read_near(state.physical, last.raw if fresh else None)
+
     def _read_channel(self, state: _ChannelState) -> Optional[RXSample]:
         try:
-            raw = self._adc.read_raw(state.physical)
+            raw = self._read_adc(state)
         except SystemExit as e:
             # grove.adc read_register() calls sys.exit(2) on IOError; convert
             # to a channel error so a bus fault never terminates the thread.

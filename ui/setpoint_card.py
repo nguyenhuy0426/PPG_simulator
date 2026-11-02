@@ -13,6 +13,7 @@ class SetpointCard(ctk.CTkFrame):
         self.limit, self.step, self.decimals, self.command = limit, step, decimals, command
         self._value = limit.default
         self._enabled = True
+        self._badge_text = None
         self._ui = ui
         pad = ui(10)
         self.grid_columnconfigure(1, weight=1)

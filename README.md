@@ -372,13 +372,13 @@ saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
 The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
 IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
 first, so the two LEDs are never commanded on together. A0 is read once per slot,
-`PPG_TDM_READ_DELAY_MS` after the switch (default 8 ms of a 10 ms
-`PPG_TDM_SLOT_MS`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
+`PPG_TDM_READ_DELAY_MS` after the switch (default 6 ms of a 10 ms
+`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
 The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
 next to them. Nothing is subtracted. TDM reads the sensor only while output
 runs, and the LEDs pulse instead of glowing steadily.
 The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
-(τ = 1 ms) needs about 7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
+(τ = 1 ms) needs about 6–7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
 slow for 10 ms slots. Measure it with the app stopped:
 
 ```bash

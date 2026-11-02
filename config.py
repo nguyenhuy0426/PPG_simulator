@@ -177,6 +177,16 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR,)  # Only OPT101 on A0 is installed; A2 disabled.
 # (In PPG_RX_MODE=tdm both logical IR and RED lanes are fed from that one A0 sensor.)
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
+# Grove Base Hat reads over the Pi 4 I2C master slip one bit (bcm2835 clock
+# stretching): most frames arrive as [lo, hi >> 1, 0xFF], which loses bit 8 and
+# halves the upper bits; only ~15 % arrive intact, recognisable because the third
+# byte is then not 0xFF [VERIFIED on this Pi 4 and 0x08 Hat, 2026-11-02; intact
+# frames form a smooth step, slipped ones a sawtooth at 256-count boundaries].
+# hw/grove_adc.py decodes both. A sample is taken after at most
+# RX_ADC_MAX_ATTEMPTS frames (~0.7 ms each); a first read with no earlier value
+# to compare with may take up to RX_ADC_SYNC_ATTEMPTS.
+RX_ADC_MAX_ATTEMPTS = 3
+RX_ADC_SYNC_ATTEMPTS = 64
 RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
 RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disconnected
@@ -202,16 +212,17 @@ if RX_MODE not in ("dual", "tdm"):
     raise ValueError("PPG_RX_MODE must be 'dual' or 'tdm'")
 RX_TDM_ADC_CHANNEL = ADC_CHANNEL_IR   # the single shared OPT101 sits on A0
 RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "10")) / 1000.0
-RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "8")) / 1000.0
+RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "6")) / 1000.0
 RX_TDM_DARK_SLOT = os.environ.get("PPG_TDM_DARK", "1") == "1"
 # The read delay counts from the END of the LED-switching DAC writes, so it is
 # the real settling time. Two DAC writes (~0.3 ms each) and one Grove read
 # (~0.45 ms) at 100 kHz I2C [INFERENCE, Phase 4 budget] must also fit in the
-# slot; a slot that overruns is counted (tdm_late_slots) and re-based.
+# slot. Measured on the Pi 4 [VERIFIED 2026-11-02]: a Grove frame takes ~0.7 ms
+# and a sample up to three frames, so the two DAC writes plus the read need ~2.7 ms; a slot that overruns is counted (tdm_late_slots) and re-based.
 RX_TDM_MIN_READ_DELAY_S = 0.001
-RX_TDM_IO_BUDGET_S = 0.0015
+RX_TDM_IO_BUDGET_S = 0.003
 if not RX_TDM_MIN_READ_DELAY_S <= RX_TDM_READ_DELAY_S <= RX_TDM_SLOT_S - RX_TDM_IO_BUDGET_S:
-    raise ValueError("PPG_TDM_READ_DELAY_MS must be ≥ 1 ms and leave ≥ 1.5 ms of the "
+    raise ValueError("PPG_TDM_READ_DELAY_MS must be ≥ 1 ms and leave ≥ 3 ms of the "
                      "slot for the DAC writes and the ADC read")
 RX_TDM_SLOTS = ("red", "ir", "dark") if RX_TDM_DARK_SLOT else ("red", "ir")
 RX_TDM_FRAME_S = RX_TDM_SLOT_S * len(RX_TDM_SLOTS)   # one sample per channel per frame

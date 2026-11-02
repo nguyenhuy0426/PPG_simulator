@@ -38,11 +38,38 @@ def read_window(adc, seconds, switched_at):
     end = switched_at + seconds
     while time.perf_counter() < end:
         try:
-            raw = adc.read_raw(RX_TDM_ADC_CHANNEL)
-        except (SystemExit, Exception):  # grove.adc calls sys.exit(2) on IOError
+            raw = adc.read_near(RX_TDM_ADC_CHANNEL, rows[-1][1] if rows else None)
+        except OSError:
             continue
         rows.append((time.perf_counter() - switched_at, raw))
     return rows
+
+
+def despike(rows, width=5):
+    """Rolling median: removes isolated read errors without touching the
+    underlying step shape."""
+    half = width // 2
+    raws = [raw for _, raw in rows]
+    return [(t, statistics.median(raws[max(0, i - half):i + half + 1]))
+            for i, (t, _) in enumerate(rows)]
+
+
+def time_constant(rows):
+    """Time for a despiked step to cover 63.2 % of the way to its plateau,
+    or None when the window is too short to reach a plateau estimate."""
+    if len(rows) < 12:
+        return None
+    start = statistics.median(raw for _, raw in rows[:3])
+    tail = rows[int(len(rows) * (1 - PLATEAU_FRACTION)):]
+    final = statistics.median(raw for _, raw in tail)
+    if abs(final - start) < 20:
+        return None
+    target = start + 0.632 * (final - start)
+    rising = final > start
+    for t, raw in rows:
+        if (raw >= target) if rising else (raw <= target):
+            return t
+    return None
 
 
 def settle_time(rows, tolerance):
@@ -81,8 +108,8 @@ def main():
         raise SystemExit(f"--level-mv must be within (0, {DAC_FULLSCALE_MV:g}]")
     args.output.mkdir(parents=True, exist_ok=False)
 
-    from grove.adc import ADC
-    adc = ADC(address=GROVE_ADC_ADDR)
+    from hw.grove_adc import FramedGroveADC
+    adc = FramedGroveADC(address=GROVE_ADC_ADDR)
     dac = DACManager()
     if not dac.begin():
         raise SystemExit("MCP4725 DACs unavailable")
@@ -98,11 +125,15 @@ def main():
             on = (0, code) if led == "red" else (code, 0)
             settle = {"rise": [], "fall": []}
             plateaus = {"rise": [], "fall": []}
+            taus = {"rise": [], "fall": []}
             saturated = 0
             for repeat in range(args.repeats):
                 for edge, values in (("rise", on), ("fall", (DAC_IDLE_VALUE, DAC_IDLE_VALUE))):
                     dac.set_values(*values)
-                    rows = read_window(adc, window_s, time.perf_counter())
+                    rows = despike(read_window(adc, window_s, time.perf_counter()))
+                    tau = time_constant(rows)
+                    if tau is not None:
+                        taus[edge].append(tau)
                     saturated += sum(raw >= ADC_MAX_VALUE for _, raw in rows)
                     steps.extend((led, edge, repeat, t, raw) for t, raw in rows)
                     t_settle, plateau = settle_time(rows, args.tolerance_counts)
@@ -114,6 +145,7 @@ def main():
                     "settle_ms_median": statistics.median(v) * 1000 if v else None,
                     "settle_ms_max": max(v) * 1000 if v else None,
                     "plateau_raw_median": statistics.median(plateaus[edge]) if plateaus[edge] else None,
+                    "tau_ms_median": statistics.median(taus[edge]) * 1000 if taus[edge] else None,
                     "edges_settled": len(v), "edges_total": args.repeats,
                 } for edge, v in settle.items()}
             summary[led]["saturated_reads"] = saturated

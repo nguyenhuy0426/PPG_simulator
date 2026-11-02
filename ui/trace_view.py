@@ -1,8 +1,19 @@
 """Timestamp-based signal lanes; no generated placeholder traces."""
 import math
+import time
 import tkinter as tk
 from ui import theme as T
 from ui.theme import AXIS, DARK, GRID, IR, PLOT_TEXT, RED  # noqa: F401  (re-exported)
+
+
+# A Pi 4 pays ~0.3 ms per canvas item (Tk + Xwayland), so a lane is drawn with at
+# most one vertex per pixel column; the y-scale still uses every sample.
+MAX_VERTICES_PER_PIXEL = 1.0
+# A render slower than this marks a slow host: the next one then waits twice
+# as long as the last took, so the Tk thread (which also owns the GIL the
+# TDM slot master needs) never spends its whole time redrawing.
+SLOW_RENDER_S = 0.015
+RENDER_BACKOFF = 2.0
 
 
 class Lane:
@@ -33,9 +44,15 @@ class LaneView(tk.Canvas):
         self.end_s = None            # None: follow the newest sample; 0 with relative times
         self.placeholder = ("", "")  # shown once, centred, when no lane has samples
         self._drawn = None           # what the canvas shows; an identical update is not redrawn
+        self._not_before = 0.0
         self.bind("<Configure>", lambda event: self.render())
 
     def update_lanes(self, lanes, end_s=None):
+        """Redraw only when something visible changed and, on a slow host,
+        not before the backoff from the previous render has passed."""
+        now = time.perf_counter()
+        if now < self._not_before:
+            return
         self.lanes, self.end_s = list(lanes), end_s
         # Stopped output, an idle receiver or a dry-run status repeat the same picture every tick;
         # redrawing it costs a full canvas rebuild. Size and theme changes call render() directly.
@@ -46,6 +63,9 @@ class LaneView(tk.Canvas):
             return
         self._drawn = content
         self.render()
+        cost = time.perf_counter() - now
+        if cost > SLOW_RENDER_S:
+            self._not_before = now + RENDER_BACKOFF * cost
 
     @staticmethod
     def _format(value, lo, hi):
@@ -126,6 +146,13 @@ class LaneView(tk.Canvas):
                                  fill=AXIS, font=small, anchor="e")
             coords, previous = [], None
             width = max(1, round(1.6 * scale))
+            cap = max(2, int((right - left) * MAX_VERTICES_PER_PIXEL))
+            if len(points) > cap:
+                stride = -(-len(points) // cap)
+                last = points[-1]
+                points = points[::stride]
+                if points[-1] is not last:
+                    points.append(last)
             for t, v in points:
                 if lane.max_gap_s is not None and previous is not None and t - previous > lane.max_gap_s:
                     if len(coords) >= 4:
