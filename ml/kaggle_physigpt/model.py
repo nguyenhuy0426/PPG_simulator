@@ -190,18 +190,23 @@ class PhysiGPT(nn.Module):
             parts["sharp"] = sharp.detach()
         return flow+aux*nll+diff*sharp, parts
 
-    @torch.no_grad()
-    def sample_patch(self, h, steps, generator=None, clamp=True):
-        x = torch.randn(len(h), self.cfg.patch, device=h.device, generator=generator)
+    def integrate(self, x, h, steps, flow=None):
+        """Heun ODE of the flow head from the start noise x [n, 40] to a patch in [-1, 1] (unclipped). flow replaces
+        self.flow (a gradient-checkpointed call in adversarial fine-tuning); without no_grad, it is differentiable."""
+        flow = flow or self.flow
         dt = 1/steps
         for i in range(steps):
             t = torch.full((len(h),), i*dt, device=h.device)
-            v = self.flow(x.to(h.dtype), t, h).float()
+            v = flow(x.to(h.dtype), t, h).float()
             if i < steps-1:
-                v2 = self.flow((x+dt*v).to(h.dtype), t+dt, h).float()
+                v2 = flow((x+dt*v).to(h.dtype), t+dt, h).float()
                 v = (v+v2)/2
             x = x+dt*v
-        x = (x+1)/2
+        return x
+
+    @torch.no_grad()
+    def sample_patch(self, h, steps, generator=None, clamp=True):
+        x = (self.integrate(torch.randn(len(h), self.cfg.patch, device=h.device, generator=generator), h, steps)+1)/2
         return x.clamp(0, 1) if clamp else x
 
     @torch.no_grad()

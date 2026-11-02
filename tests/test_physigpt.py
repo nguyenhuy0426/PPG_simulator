@@ -641,3 +641,232 @@ def test_tagged_large_stage_keeps_its_own_output_and_smokes_with_its_micro_batch
     untagged = st.stage(tmp_path/"k2", "train", owner="halovie2412", stage=0, shards=(1,))
     assert json.loads((untagged/"kernel-metadata.json").read_text())["id"] == "halovie2412/ppg-physigpt-stage0-v1"
     assert "pick_compile('/tmp/physigpt_smoke', 'base', extra=[])" in (untagged/"run.py").read_text()
+
+
+def test_apft_gan_regenerates_the_sampled_windows_with_a_gradient_to_the_transformer():
+    from ml.kaggle_physigpt import gan
+    torch.manual_seed(0)
+    model = PhysiGPT(CONFIGS["tiny"])
+    for p in model.flow.parameters():   # the zero-initialised head would make every patch the same
+        torch.nn.init.normal_(p, std=.05)
+    patches, noise = gan.rollout(model, 4, 3, torch.Generator().manual_seed(1), "cpu")
+    windows = gan.regenerate(model, patches, noise, 3)
+    assert torch.allclose(windows, gan.windows_of(patches), atol=1e-5)
+    windows.square().sum().backward()
+    assert model.flow.outp.weight.grad.abs().sum() > 0 and model.blocks[0].qkv.weight.grad.abs().sum() > 0
+
+
+def test_apft_gan_two_process_run_fine_tunes_a_release_and_keeps_the_best_selection(tmp_path):
+    from ml.kaggle_physigpt import gan
+    _shard(tmp_path/"shard0")
+    tr.main(["--data", str(tmp_path/"shard0"), "--config", "tiny", "--batch", "8", "--steps", "2", "--warmup", "1",
+             "--cpu", "--eval-every", "2", "--sample-steps", "2", "--output", str(tmp_path/"v1")])
+    gan.main(["--data", str(tmp_path/"shard0"), "--init", str(tmp_path/"v1"/"release.pt"), "--config", "tiny",
+              "--output", str(tmp_path/"gan"), "--steps", "4", "--batch", "4", "--anchor", "4", "--critic-warmup", "1",
+              "--gen-steps", "2", "--eval-every", "2", "--log-every", "1", "--cpu", "--cpu-world", "2",
+              "--port", "29533", "--rt-gate", "-1"])
+    lines = [json.loads(l) for l in (tmp_path/"gan"/"metrics.jsonl").read_text().splitlines()]
+    selected = [l["step"] for l in lines if "select" in l]
+    trained = [l for l in lines if "adv" in l]
+    assert selected == [0, 2, 4] and [l["step"] for l in trained] == [2, 3, 4]
+    assert all(np.isfinite(l["loss_g"]) and 0 <= l["lam"] <= 1 for l in trained)
+    release = torch.load(tmp_path/"gan"/"gan_release.pt", weights_only=False)
+    summary = json.loads((tmp_path/"gan"/"gan_summary.json").read_text())
+    assert release["config"] == "tiny" and release["step"] == summary["best"]["step"] and summary["steps"] == 4
+    assert summary["generator_updates"] == 3
+    # a critic that never separates the classes (gate above any reachable rt) never moves the generator
+    gan.main(["--data", str(tmp_path/"shard0"), "--init", str(tmp_path/"v1"/"release.pt"), "--config", "tiny",
+              "--output", str(tmp_path/"gated"), "--steps", "3", "--batch", "4", "--anchor", "4", "--critic-warmup", "0",
+              "--gen-steps", "2", "--eval-every", "3", "--cpu", "--port", "29534", "--rt-gate", "2"])
+    gated = json.loads((tmp_path/"gated"/"gan_summary.json").read_text())
+    assert gated["generator_updates"] == 0 and gated["best"]["step"] == 0
+
+
+def test_rsr_flowgan_sampler_is_the_app_sampler_and_passes_the_critic_gradient_through_every_step():
+    from ml.kaggle_multidomain import rsr_flowgan as rf
+    from ml.kaggle_multidomain.flow import FlowGenerator
+    torch.manual_seed(0)
+    g = FlowGenerator(11, np.zeros(3, np.float32), np.ones(3, np.float32), sample_steps=4, flag_scaffold=True)
+    torch.nn.init.normal_(g.net.out.weight, std=.05)   # zero-initialised output: every velocity would be 0
+    z, condition = torch.randn(3, tr.LENGTH), torch.rand(3, 11)
+    with torch.no_grad():
+        reference = g.eval()(z, condition)
+    out = rf.sample(g, z, condition, use_checkpoint=True)
+    assert torch.allclose(out, reference, atol=1e-6)
+    out.square().sum().backward()
+    assert g.net.inp.weight.grad.abs().sum() > 0
+
+
+def test_rsr_flowgan_kernel_stages_its_imports_and_mounts_the_pack_and_the_app_bundle(tmp_path):
+    import ast
+    from ml.kaggle_physigpt import stage as st
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    staged, todo, seen = set(st.SOURCES["rsrgan"]), ["ml/kaggle_multidomain/rsr_flowgan.py"], set()
+    while todo:
+        name = todo.pop()
+        seen.add(name)
+        for node in ast.parse((root/name).read_text()).body:
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("ml"):
+                base = node.module.replace(".", "/")
+                todo += [c for c in [base+".py"]+[f"{base}/{a.name}.py" for a in node.names]
+                         if (root/c).exists() and c not in seen]
+    assert seen <= staged, seen-staged
+    st.main([str(tmp_path/"k"), "rsrgan", "--owner", "halovie2412", "--gan-steps", "6000"])
+    meta, script = json.loads((tmp_path/"k"/"kernel-metadata.json").read_text()), (tmp_path/"k"/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-rsr-flowgan-v1" and meta["enable_gpu"] and not meta["kernel_sources"]
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physio3-data-v1", "halovie2412/ppg-app-models-v1"]
+    assert script.index("'--skip-judge'") < script.index("'/kaggle/working/rsr_flowgan', *['--steps', '6000']")
+    assert f"left = {st.KERNEL_HOURS} - {st.RSR_JUDGE_HOURS} - " in script
+
+
+def test_gan_kernel_stages_its_imports_and_fine_tunes_the_mounted_release(tmp_path):
+    import ast
+    from ml.kaggle_physigpt import stage as st
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    staged, todo, seen = set(st.SOURCES["gan"]), ["ml/kaggle_physigpt/gan.py"], set()
+    while todo:
+        name = todo.pop()
+        seen.add(name)
+        for node in ast.parse((root/name).read_text()).body:
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("ml"):
+                base = node.module.replace(".", "/")
+                todo += [c for c in [base+".py"]+[f"{base}/{a.name}.py" for a in node.names]
+                         if (root/c).exists() and c not in seen]
+    assert seen <= staged, seen-staged
+    with pytest.raises(ValueError):
+        st.entry_for("gan")
+    st.main([str(tmp_path/"k"), "gan", "--owner", "halovie2412", "--shards", "1", "2", "--solos", "0",
+             "--datasets", "ppg-physigpt-shard0-data-v1", "--config", "large", "--from-slug",
+             "ppg-physigpt-decay0-large-v1", "--gen-steps", "16", "--gan-steps", "6000"])
+    meta, script = json.loads((tmp_path/"k"/"kernel-metadata.json").read_text()), (tmp_path/"k"/"run.py").read_text()
+    assert meta["id"] == "halovie2412/ppg-physigpt-apft-gan-v1" and meta["title"] == "ppg-physigpt-apft-gan-v1"
+    assert meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-decay0-large-v1" and len(meta["kernel_sources"]) == 4
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"] and meta["enable_gpu"]
+    assert "rglob('release.pt')" in script and script.index("smoke(") < script.index("gan(['--data'")
+    assert "'--config', 'large', *['--steps', '6000', '--gen-steps', '16']" in script
+
+
+def _pulses(periods, rise=.2, amplitudes=None, start=0.):
+    """Min-max window of raised-cosine beats with known timing: up over rise seconds, down over the rest of the period."""
+    edges = np.cumsum(np.r_[-start, periods])
+    t, x = np.arange(mw.LENGTH)/mw.FS, np.zeros(mw.LENGTH)
+    for i, (a, b) in enumerate(zip(edges, edges[1:])):
+        up, down = (t >= a) & (t < a+rise), (t >= a+rise) & (t < b)
+        scale = 1. if amplitudes is None else amplitudes[i]
+        x[up] = scale*.5*(1-np.cos(np.pi*(t[up]-a)/rise))
+        x[down] = scale*.5*(1+np.cos(np.pi*(t[down]-a-rise)/(b-a-rise)))
+    return ((x-x.min())/np.ptp(x)).astype(np.float32)
+
+
+def _pulse_set(seed, n):
+    rng = np.random.default_rng(seed)
+    return np.stack([_pulses(np.full(50, rng.uniform(.6, 1.2))*rng.uniform(.95, 1.05, 50), rise=rng.uniform(.12, .22),
+                             amplitudes=rng.uniform(.8, 1., 50), start=rng.uniform(0, .5)) for _ in range(n)])
+
+
+def test_signal_features_stay_the_fourteen_on_record_and_the_beat_layer_is_apart():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    x = _pulse_set(0, 3)
+    assert list(jp.signal_features(x)) == ["rate_bpm", "acf_peak", "diff_std", "diff2_std", "skew", "kurtosis", "diff_skew",
+                                           "mean_level", "centroid_hz", "power_0.5-1.5 Hz", "power_1.5-3 Hz",
+                                           "power_3-5 Hz", "power_5-8 Hz", "power_8-20 Hz"]
+    assert not set(jp.signal_features(x)) & set(jp.beat_features(x))
+    assert (jp.FIDELITY_SIM, jp.FIDELITY_ACC, jp.FIDELITY_REL) == (.95, .60, .95)
+
+
+def test_beat_features_recover_known_timing_of_a_regular_pulse():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    f = jp.window_beats(_pulses(np.full(40, 1.), rise=.2, start=.3))
+    rise_10_90 = .2*(np.arccos(-.8)-np.arccos(.8))/np.pi    # raised cosine
+    assert f["rise_time_s"] == pytest.approx(rise_10_90, abs=.01) and f["systolic_fraction"] == pytest.approx(.2, abs=.03)
+    assert f["width_50_s"] == pytest.approx(.5, abs=.02) and f["area_fraction"] == pytest.approx(.5, abs=.02)
+    assert f["ibi_cv"] < .005 and f["amp_cv"] < .01 and f["template_corr"] > .99
+    # Whole beats only: the peaks of the first and last part beats bound them, 26 to 29 s of the 30.
+    assert .85 < f["beat_coverage"] <= .97
+
+
+def test_beat_features_read_the_beat_to_beat_change_they_name():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    rng = np.random.default_rng(0)
+    regular = jp.window_beats(_pulses(np.full(40, .9)))
+    uneven = jp.window_beats(_pulses(rng.uniform(.6, 1.2, 50)))
+    varying = jp.window_beats(_pulses(np.full(40, .9), amplitudes=rng.uniform(.5, 1., 40)))
+    assert uneven["ibi_cv"] > .1 > .005 > regular["ibi_cv"]
+    assert varying["amp_cv"] > .1 > .01 > regular["amp_cv"]
+    fast = jp.window_beats(_pulses(np.full(60, .6), rise=.1))
+    assert fast["rise_time_s"] < regular["rise_time_s"] and fast["width_50_s"] < regular["width_50_s"]
+
+
+def test_beat_features_mark_windows_without_beats_instead_of_inventing_values():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    broken = np.ones((3, mw.LENGTH), np.float32)
+    broken[1] = np.linspace(0, 1, mw.LENGTH)
+    broken[2, 5] = np.nan
+    f = jp.beat_features(broken)
+    assert f["beat_coverage"].tolist() == [0., 0., 0.]
+    assert all(np.isnan(f[k]).all() for k in f if k != "beat_coverage")
+    assert jp.finite_similarity(f["rise_time_s"], jp.beat_features(_pulse_set(0, 3))["rise_time_s"]) == 0.
+
+
+def test_target_verdict_separates_a_miss_from_a_set_that_cannot_show_the_target():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    assert jp.target_verdict(.95, [], .60, .96) == "pass"
+    assert jp.target_verdict(.95, [], .60, .85) == "pass"
+    assert jp.target_verdict(.94, [], .60, .96) == "fail"
+    assert jp.target_verdict(.97, ["amp_cv"], .60, .96) == "fail"
+    assert jp.target_verdict(.97, [], .61, .96) == "fail"
+    assert jp.target_verdict(.89, [], .60, .85) == "inconclusive"
+
+
+def test_target_report_keeps_the_fourteen_score_and_the_beat_layer_catches_what_the_spectrum_hides():
+    from ml.kaggle_multidomain import strict_judge as sj
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    fit, held, other = _pulse_set(1, 1500), _pulse_set(2, 1500), _pulse_set(3, 1500)
+    gen_fit, gen_eval = _pulse_set(4, 1500), _pulse_set(5, 1500)
+    same = jp.target_report(fit, held, other, gen_fit, gen_eval)
+    fidelity = jp.fidelity_report(fit, held, other, gen_fit, gen_eval)
+    assert same["generated"]["fourteen"]["mean_similarity"] == pytest.approx(fidelity["generated"]["mean_similarity"])
+    assert same["real_other_people"]["fourteen"]["mean_similarity"] == pytest.approx(fidelity["real_other_people"]["mean_similarity"])
+    assert same["generated"]["fourteen"]["features"] == 14 and same["generated"]["beat"]["features"] == len(jp.BEAT_SCORED)
+    assert same["generated"]["full"]["features"] == 14+len(jp.BEAT_SCORED)
+    assert same["verdict"] == "pass" and same["generated"]["below_floor"] == []
+    assert not set(jp.BEAT_DIAGNOSTIC) & set(same["floor"]) and set(jp.BEAT_DIAGNOSTIC) <= set(same["generated"]["similarity"])
+    rng = np.random.default_rng(0)
+    shuffled = jp.target_report(fit, held, other, sj.phase_randomized(gen_fit, rng), sj.phase_randomized(gen_eval, rng))
+    g = shuffled["generated"]
+    # Same power spectrum, no pulse shape left: the spectral features stay close and the beat features do not.
+    assert g["similarity"]["power_1.5-3 Hz"] > .8 and g["beat"]["mean_similarity"] < .7
+    assert shuffled["verdict"] == "fail" and {"rise_time_s", "template_corr"} <= set(g["below_floor"])
+    assert g["classifier"]["trees"]["accuracy"] > .9
+    json.dumps(shuffled)
+
+
+def test_target_floor_never_asks_a_feature_to_beat_real_people():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    held, other = _pulse_set(2, 300), _pulse_set(3, 300)
+    other = np.stack([_pulses(np.full(50, 1.3), rise=.3, start=.1*i % .5) for i in range(300)])
+    report = jp.target_report(_pulse_set(1, 300), held, other, _pulse_set(4, 300), _pulse_set(5, 300))
+    assert report["floor"]["rate_bpm"] == report["real_other_people"]["similarity"]["rate_bpm"] < jp.TARGET_FLOOR
+    assert report["verdict"] == "inconclusive" and report["real_other_people"]["full"]["mean_similarity"] < jp.TARGET_MEAN
+
+
+def test_features_mode_writes_the_target_report_next_to_the_unchanged_fidelity_report(tmp_path):
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    root = tmp_path/"shard"
+    writer = mw.ShardWriter(root)
+    for valid, records, seed in ((False, range(3000000, 3000040), 0), (True, range(3900000, 3900006), 100)):
+        for record in records:
+            x = _pulse_set(seed+record % 1000, 30)
+            writer.add(x, record, [("s", i) for i in range(30)], valid, *mw.rate_features(x))
+    writer.flush()
+    tr.save_json(root/"manifest.json", dict(protocol=mw.PROTOCOL, record_range=[0, 0], windows=46*30, chunks=writer.chunks))
+    np.save(tmp_path/"generated.npy", _pulse_set(7, 120))
+    jp.main([str(tmp_path/"f"), "--mode", "features", "--generated", str(tmp_path/"generated.npy"), "--data", str(root),
+             "--sizes", "60", "20", "40", "--threads", "2"])
+    target = json.loads((tmp_path/"f"/"target.json").read_text())
+    fidelity = json.loads((tmp_path/"f"/"fidelity.json").read_text())
+    assert target["verdict"] in ("pass", "fail", "inconclusive") and target["windows"]["generated"] == 40
+    assert target["generated"]["fourteen"]["mean_similarity"] == pytest.approx(fidelity["generated"]["mean_similarity"])
+    assert {"rate_bpm", "power_8-20 Hz"} <= set(json.loads((tmp_path/"f"/"features.json").read_text()))

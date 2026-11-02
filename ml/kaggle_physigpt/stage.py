@@ -10,8 +10,12 @@ windows that also logs the torch/torch_xla versions of the TPU image.
 solo k (T4 x2, internet): one kernel that needs no finished data kernel: a GPU smoke run on synthetic windows, then
 mimic_wdb for --hours into /kaggle/working/shard, then stage 0 of train.py on that shard for the rest of the kernel
 budget. Its shard mounts later like any data shard (Windows finds it by manifest.json).
+gan (T4 x2): gan.py (APFT-GAN) on the mounted shards, fine-tuning the release.pt of --from-slug (the V1 large decay
+kernel) against a critic, after a smoke run of the tiny config on synthetic windows on the same GPUs.
 judge (T4 x2): ml.kaggle_physigpt.judge_physigpt on the mounted shards and a finished stage's release.pt: the model
 judge and its features on GPU 0, the null and damaged-real control judges on GPU 1, as separate processes.
+sample (T4 x2): generator windows only, from a checkpoint in a dataset, without real data, for an account that
+cannot mount the shards; judge --generated-slug --cpu then scores them on the account that can (no GPU quota).
 solotrain k (T4 x2): stage 0 again on solo k's shard (its output mounted), after smoke runs that measure eager
 against torch.compile on the same GPUs; planned for many epochs and ended by --plateau, since solo's own 4-epoch
 plan over a small shard is a few hundred steps.
@@ -38,7 +42,21 @@ SOURCES["judge"] = SOURCES["train"]+["ml/kaggle_physigpt/judge_physigpt.py", "ml
                                       "ml/kaggle_multidomain/models.py", "ml/kaggle_multidomain/labels.py",
                                       "ml/kaggle_multidomain/data.py", "ml/kaggle_multidomain/benchmark.py",
                                       "ml/kaggle_multidomain/control.py"]
-TPU_HOURS = 8.3       # Kaggle's TPU session limit is taken as 9 h (not confirmed from a document)
+SOURCES["sample"] = SOURCES["judge"]
+# APFT-GAN: the judge's modules (signal features, StrictCritic) plus PhysioGAN-R's loss and augmentation
+SOURCES["gan"] = SOURCES["judge"]+["ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/data_r.py",
+                                   "ml/kaggle_physigpt/gan.py"]
+# RSR-FlowGAN (ml/kaggle_multidomain/rsr_flowgan.py) on the v3 pack and the app bundle: its module-level imports
+SOURCES["rsrgan"] = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_physigpt/mimic_wdb.py", "ml/kaggle_physigpt/model.py",
+                     "ml/kaggle_physigpt/train.py", "ml/kaggle_physigpt/judge_physigpt.py",
+                     *(f"ml/kaggle_multidomain/{m}.py" for m in ("benchmark", "control", "data", "data_gxu", "data_more",
+                                                                  "data_r", "flow", "labels", "models", "physio",
+                                                                  "physiogan_r", "rsr_flowgan", "strict_judge", "train",
+                                                                  "view"))]
+SOURCES["rsrfid"] = SOURCES["rsrgan"]   # the app's generators on the feature tier, no training
+RSR_DATASETS = ("ppg-physio3-data-v1", "ppg-app-models-v1")
+RSR_JUDGE_HOURS = 1.3   # after training: three sources' sets, the feature tier and 8 strict-judge fits on two T4s
+TPU_HOURS = 8.3     # Kaggle's TPU session limit is taken as 9 h (not confirmed from a document)
 KERNEL_HOURS = 11.5   # Kaggle stops a GPU kernel at 12 h; the rest is train.py's own reserve plus packing
 
 
@@ -82,7 +100,7 @@ def mount_lookup(owner):
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
               config="base", epochs=4., extra=(), smoke_only=False, solos=(), datasets=(), owner=OWNER,
               kernel_hours=KERNEL_HOURS, checkpoint="release.pt", judge_seeds=3, decay_steps=0, from_slug=None,
-              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag=""):
+              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag="", generated_slug=None, cpu=False):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
@@ -110,6 +128,65 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 "print('smoke', json.dumps(report), flush=True)\n"
                 f"left = {KERNEL_HOURS} - (time.time()-begin)/3600\n"
                 f"train({train!r} + (['--compile'] if use else []) + ['--hours', f'{{left:.3f}}'])")
+    if kind == "rsrfid":
+        return ("from ml.kaggle_multidomain.rsr_flowgan import main as rsr\n"
+                "rsr(['--input-root', '/kaggle/input', '--output', '/kaggle/working/fidelity', '--fidelity-only'])")
+    if kind == "rsrgan":
+        smoke = ["--input-root", "/kaggle/input", "--output", "/tmp/rsr_smoke", "--steps", "3", "--batch", "4",
+                 "--anchor", "4", "--critic-warmup", "1", "--eval-every", "2", "--rt-gate", "-1", "--skip-judge"]
+        return ("import time\nfrom ml.kaggle_multidomain.rsr_flowgan import main as rsr\nbegin = time.time()\n"
+                f"rsr({smoke!r})\nprint('smoke done', flush=True)\n"
+                f"left = {kernel_hours} - {RSR_JUDGE_HOURS} - (time.time()-begin)/3600\n"
+                "rsr(['--input-root', '/kaggle/input', '--output', '/kaggle/working/rsr_flowgan', "
+                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])")
+    if kind == "gan":
+        if not from_slug:
+            raise ValueError("gan: --from-slug names the kernel whose release.pt is fine-tuned")
+        slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
+        return ("import time\nfrom ml.kaggle_physigpt.gan import main as gan, smoke\nbegin = time.time()\n"
+                + mount_lookup(owner)
+                + f"init = sorted(pathlib.Path(mounted({from_slug!r})).rglob('release.pt'))\n"
+                "if len(init) != 1:\n    raise FileNotFoundError(f'expected one release.pt, found {init}')\n"
+                f"data = [mounted(slug) for slug in {slugs!r}]\n"
+                "print('smoke', json.dumps(smoke('/tmp/gan_smoke')), flush=True)\n"
+                f"left = {kernel_hours} - (time.time()-begin)/3600\n"
+                f"gan(['--data', *data, '--init', str(init[0]), '--output', '/kaggle/working/gan', '--config', {config!r}, "
+                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])")
+    if kind == "sample":
+        if len(datasets) != 1:
+            raise ValueError("sample: --datasets names the one dataset holding the checkpoint")
+        return (mount_lookup(owner)
+                + "import time\nimport numpy as np\nimport torch\n"
+                "from ml.kaggle_physigpt.judge_physigpt import SIZES, generate\n"
+                f"found = sorted(pathlib.Path(mounted({datasets[0]!r})).rglob({checkpoint!r}))\n"
+                f"if len(found) != 1:\n    raise FileNotFoundError(f'expected one {checkpoint}, found {{found}}')\n"
+                "if not torch.cuda.is_available():\n    raise SystemExit('sample: no GPU in this kernel')\n"
+                "begin = time.time()\n"
+                f"parts = [generate(str(found[0]), n, seed, 'cuda', steps={gen_steps}, clamp={not no_clamp})\n"
+                "         for n, seed in ((SIZES['fit'], 1_000_000), (SIZES['inner'], 2_000_000),\n"
+                "                         (SIZES['eval'], 3_000_000))]\n"
+                "generated = np.concatenate(parts)\n"
+                "np.save('/kaggle/working/generated.npy', generated.astype(np.float16))\n"
+                "np.save('/kaggle/working/generated_float32.npy', generated)\n"
+                "print('sampled', generated.shape, 'minutes', (time.time()-begin)/60, flush=True)")
+    if cpu and not generated_slug:
+        raise ValueError("judge --cpu scores samples drawn elsewhere: it needs --generated-slug")
+    if kind == "judge" and generated_slug:
+        if judge_seeds != 0:
+            raise ValueError("judge --generated-slug is the feature tier only: --judge-seeds 0")
+        slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
+        return (mount_lookup(owner)
+                + "import os, subprocess\n"
+                f"slugs, out = {slugs!r}, '/kaggle/working/eval'\n"
+                f"found = sorted(pathlib.Path(mounted({generated_slug!r})).rglob('generated*.npy'))\n"
+                "if not found:\n    raise FileNotFoundError('no generated*.npy mounted')\n"
+                "data = [mounted(slug) for slug in slugs]\n"
+                "for path in found:   # one report per file, in eval/<file stem>\n"
+                "    subprocess.run([sys.executable, '-m', 'ml.kaggle_physigpt.judge_physigpt', out+'/'+path.stem,\n"
+                "                    '--data', *data, '--mode', 'features', '--generated', str(path), '--device',\n"
+                f"                    {'cpu' if cpu else 'cuda'!r}, '--threads', '4'],\n"
+                "                   env={**os.environ, 'PYTHONPATH': str(root)}, check=True)\n"
+                "print('judge done:', [p.stem for p in found], flush=True)")
     if kind == "judge":
         slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
         head = (mount_lookup(owner)
@@ -194,7 +271,10 @@ def stage(output, kind, owner=OWNER, **kw):
     script = "# Generated by ml/kaggle_physigpt/stage.py\nif __name__ == '__main__':\n" + \
         "\n".join("    "+line for line in body.splitlines())+"\n"
     compile(script, "run.py", "exec")
-    dataset_sources = [f"{owner}/{d}" for d in kw.get("datasets", ())] if kind in ("tpu", "train", "judge", "decay") else []
+    dataset_sources = ([f"{owner}/{d}" for d in kw.get("datasets", ())]
+                       if kind in ("tpu", "train", "judge", "decay", "gan", "sample") else [])
+    if kw.get("generated_slug"):
+        dataset_sources.append(f"{owner}/{kw['generated_slug']}")
     if kind == "data":
         k = kw.get("shard", 0)
         meta = dict(id=f"{owner}/{shard_slug(k)}", title=f"PPG physiGPT MIMIC3 Shard{k} v1", enable_gpu=False,
@@ -214,6 +294,25 @@ def stage(output, kind, owner=OWNER, **kw):
                     machine_shape="NvidiaTeslaT4", kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
                     + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
                     + [f"{owner}/{kw.get('from_slug') or stage_slug(k)}"])
+    elif kind in ("rsrgan", "rsrfid"):
+        name = "ppg-app-fidelity-v1" if kind == "rsrfid" else f"ppg-{kw.get('tag') or 'rsr-flowgan'}-v1"
+        dataset_sources = [f"{owner}/{d}" for d in RSR_DATASETS]
+        meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4", kernel_sources=[])
+    elif kind == "gan":
+        name = f"ppg-physigpt-{kw.get('tag') or 'apft-gan'}-v1"
+        meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4",
+                    kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())] + [f"{owner}/{kw['from_slug']}"])
+    elif kind == "sample":
+        name = f"ppg-physigpt-{kw['tag']}-sample-v1"
+        meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4", kernel_sources=[])
+    elif kind == "judge" and kw.get("generated_slug"):
+        name = f"ppg-physigpt-judge-{kw['generated_slug'].removeprefix('ppg-physigpt-')}-fid"
+        meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=not kw.get("cpu"),
+                    kernel_sources=[f"{owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{owner}/{solo_slug(s)}" for s in kw.get("solos", ())])
+        if not kw.get("cpu"):
+            meta["machine_shape"] = "NvidiaTeslaT4"
     elif kind == "judge":
         k = kw.get("stage", 0)
         source = kw.get("from_slug") or stage_slug(k)
@@ -290,14 +389,20 @@ def main(argv=None):
     parser.add_argument("--no-clamp", action="store_true", help="judge: sample patches without clipping to [0, 1]")
     parser.add_argument("--skip-controls", action="store_true", help="judge: do not rerun the model-independent controls")
     parser.add_argument("--from-slug", default=None, help="judge: kernel whose release.pt is judged (default: the stage)")
+    parser.add_argument("--generated-slug", default=None,
+                        help="judge: dataset (same owner) of generated*.npy to score on the feature tier, no checkpoint")
+    parser.add_argument("--cpu", action="store_true", help="judge: run on CPU, spending no GPU quota (needs --generated-slug)")
     parser.add_argument("--plateau-delta", type=float, default=0., help="train.py --plateau-delta (0: its default)")
     parser.add_argument("--eval-every", type=int, default=0, help="train.py --eval-every (0: its default)")
+    parser.add_argument("--gan-steps", type=int, default=0, help="gan: gan.py --steps (0: its default)")
+    parser.add_argument("--adv-weight", type=float, default=0., help="gan: gan.py --adv-weight (0: its default)")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
                  epochs=args.epochs, datasets=tuple(args.datasets), kernel_hours=args.kernel_hours,
                  checkpoint=args.checkpoint, judge_seeds=args.judge_seeds, decay_steps=args.decay_steps,
-                 from_slug=args.from_slug, gen_steps=args.gen_steps, skip_controls=args.skip_controls, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag)
+                 from_slug=args.from_slug, gen_steps=args.gen_steps, skip_controls=args.skip_controls, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag,
+                 generated_slug=args.generated_slug, cpu=args.cpu)
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
@@ -305,7 +410,19 @@ def main(argv=None):
              + (["--micro", str(args.micro)] if args.micro else [])
              + (["--lr", str(args.lr)] if args.lr else []))
     train["extra"] = tuple(extra)
-    kw = dict(data=data, train=train, judge=train, decay=train, tpu=dict(train, smoke_only=args.smoke_only),
+    gan = dict(train, extra=tuple((["--steps", str(args.gan_steps)] if args.gan_steps else [])
+                                  + (["--adv-weight", str(args.adv_weight)] if args.adv_weight else [])
+                                  + (["--lr", str(args.lr)] if args.lr else [])
+                                  + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
+                                  + ["--gen-steps", str(args.gen_steps)]))
+    rsrgan = dict(kernel_hours=args.kernel_hours, tag=args.tag,
+                  extra=tuple((["--steps", str(args.gan_steps)] if args.gan_steps else [])
+                              + (["--adv-weight", str(args.adv_weight)] if args.adv_weight else [])
+                              + (["--lr", str(args.lr)] if args.lr else [])
+                              + (["--eval-every", str(args.eval_every)] if args.eval_every else [])))
+    sample = dict(datasets=tuple(args.datasets), checkpoint=args.checkpoint, gen_steps=args.gen_steps,
+                  no_clamp=args.no_clamp, tag=args.tag)
+    kw = dict(data=data, train=train, judge=train, sample=sample, decay=train, gan=gan, rsrgan=rsrgan, rsrfid={}, tpu=dict(train, smoke_only=args.smoke_only),
               solo=dict(data, config=args.config, epochs=args.epochs, extra=tuple(extra)),
               solotrain=dict(shard=args.shard, config=args.config, epochs=args.epochs, extra=tuple(extra)))[args.kind]
     print(stage(args.output, args.kind, args.owner, **kw))
