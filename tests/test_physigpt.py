@@ -689,6 +689,14 @@ def test_stage_passes_patience_and_critic_weight_to_the_gan_kernel(tmp_path):
     run = (tmp_path/"k"/"run.py").read_text()
     assert "'--adv-weight', '0.05', '--patience', '4', '--gen-steps', '16'" in run
     assert json.loads((tmp_path/"k"/"kernel-metadata.json").read_text())["id"] == "halovie2412/ppg-physigpt-apft-gan-w005-v1"
+    # another account runs the kernel on its quota and mounts the shards and release of the account holding them
+    st.main([str(tmp_path/"k2"), "gan", "--owner", "charlesday2612", "--source-owner", "halovie2412", "--shards", "1",
+             "--solos", "0", "--datasets", "ppg-physigpt-shard0-data-v1", "--config", "large",
+             "--from-slug", "ppg-physigpt-decay0-large-v1", "--tag", "apft-gan-w005"])
+    meta = json.loads((tmp_path/"k2"/"kernel-metadata.json").read_text())
+    assert meta["id"] == "charlesday2612/ppg-physigpt-apft-gan-w005-v1"
+    assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
+    assert all(s.startswith("halovie2412/") for s in meta["kernel_sources"]) and len(meta["kernel_sources"]) == 3
 
 
 def test_apft_gan_two_process_run_fine_tunes_a_release_and_keeps_the_best_selection(tmp_path):
