@@ -670,6 +670,27 @@ def test_apft_gan_regenerates_the_sampled_windows_with_a_gradient_to_the_transfo
     assert model.flow.outp.weight.grad.abs().sum() > 0 and model.blocks[0].qkv.weight.grad.abs().sum() > 0
 
 
+def test_apft_gan_selects_on_the_scored_target_features():
+    from ml.kaggle_physigpt import gan, judge_physigpt as jp
+    t = np.arange(1200)/40
+    beats = np.stack([.5+.5*np.sin(2*np.pi*(1+.02*i)*t) for i in range(32)])
+    real = jp.all_features(beats)
+    same, flat = gan.similarity(real, beats), gan.similarity(real, np.full_like(beats, .5))
+    assert len(same) == 22 and not set(same) & set(jp.BEAT_DIAGNOSTIC)
+    assert set(jp.BEAT_SCORED) < set(same) and same["rise_time_s"] == 1
+    assert flat["rise_time_s"] == 0   # no beats found is as far as a feature can be
+
+
+def test_stage_passes_patience_and_critic_weight_to_the_gan_kernel(tmp_path):
+    from ml.kaggle_physigpt import stage as st
+    st.main([str(tmp_path/"k"), "gan", "--owner", "halovie2412", "--shards", "1", "--config", "large",
+             "--from-slug", "ppg-physigpt-decay0-large-v1", "--tag", "apft-gan-w005", "--adv-weight", "0.05",
+             "--patience", "4", "--gen-steps", "16"])
+    run = (tmp_path/"k"/"run.py").read_text()
+    assert "'--adv-weight', '0.05', '--patience', '4', '--gen-steps', '16'" in run
+    assert json.loads((tmp_path/"k"/"kernel-metadata.json").read_text())["id"] == "halovie2412/ppg-physigpt-apft-gan-w005-v1"
+
+
 def test_apft_gan_two_process_run_fine_tunes_a_release_and_keeps_the_best_selection(tmp_path):
     from ml.kaggle_physigpt import gan
     _shard(tmp_path/"shard0")

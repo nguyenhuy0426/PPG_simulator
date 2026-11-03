@@ -16,8 +16,9 @@ discriminator and Flow-GAN / Denoising Diffusion GAN pair an iterative sampler w
   scaled by the adaptive weight of Esser et al. 2021 (the ratio of the two losses' gradient norms at the flow head's
   output layer) times --adv-weight, so the critic cannot pull the model off the data's flow;
 - selection: at step 0 (the V1 model, at this sampler) and every --eval-every steps, 1024 windows are sampled and
-  compared with 2048 windows of training records on the judge's 14 features (mean 1 - KS); gan_release.pt is the best
-  state by that. The judge's real class (the shards' held-out records) is used neither in training nor in selection.
+  compared with 2048 windows of training records on the target's 22 features (mean 1 - KS; v1 used the 14 signal
+  features alone, and its best state lost beat shape on held-out people); gan_release.pt is the best state by that.
+  The judge's real class (the shards' held-out records) is used neither in training nor in selection.
   --patience N stops after N evaluations in a row without a new best (0, the default: no early stop); an evaluation
   counts only if the generator moved since the last one, and gan_summary.json says why the run stopped;
 Two T4s: one process per GPU with gradients averaged by all-reduce. Not DDP: the generator and critic steps freeze
@@ -31,7 +32,6 @@ from pathlib import Path
 import time
 
 import numpy as np
-from scipy import stats
 import torch
 import torch.distributed as dist
 from torch.utils.checkpoint import checkpoint
@@ -39,7 +39,7 @@ from torch.utils.checkpoint import checkpoint
 from ml.kaggle_lsm.train_lsm import save_json
 from ml.kaggle_multidomain.physiogan_r import Balanced, d_loss, g_loss, penalty
 from ml.kaggle_multidomain.strict_judge import JudgeCritic, StrictCritic
-from ml.kaggle_physigpt.judge_physigpt import signal_features
+from ml.kaggle_physigpt.judge_physigpt import BEAT_DIAGNOSTIC, all_features, finite_similarity
 from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
 from ml.kaggle_physigpt.train import Windows, evaluate, synthetic_shard, warm_cache
 
@@ -79,9 +79,9 @@ def regenerate(model, patches, noise, steps, use_checkpoint=True):
 
 
 def similarity(real_features, windows):
-    """Per-feature 1 - KS of generated windows against the selection's real windows."""
-    fake = signal_features(windows)
-    return {k: float(1-stats.ks_2samp(real_features[k], fake[k]).statistic) for k in real_features}
+    """Per-feature 1 - KS of generated windows against the selection's real windows, on the target's scored features."""
+    fake = all_features(windows)
+    return {k: finite_similarity(real_features[k], fake[k]) for k in real_features if k not in BEAT_DIAGNOSTIC}
 
 
 def select_score(model, real_features, steps, device):
@@ -150,7 +150,7 @@ def worker(rank, world, args):
     data = Windows(args.data)
     selection = np.sort(np.random.default_rng(SELECT_SEED).choice(data.train, min(SELECT_REAL, len(data.train)),
                                                                     replace=False))
-    real_features = signal_features(data.rows(selection).astype(np.float32)/65535)
+    real_features = all_features(data.rows(selection).astype(np.float32)/65535)
     step, best, rt_ema, g_updates = 0, dict(step=None, mean_similarity=-math.inf), None, 0
     stale, scored_updates, stop_reason = 0, 0, "steps"
     if args.resume:
