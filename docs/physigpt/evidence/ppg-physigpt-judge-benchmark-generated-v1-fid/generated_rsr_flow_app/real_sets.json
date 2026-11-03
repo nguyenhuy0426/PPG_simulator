@@ -1,0 +1,23 @@
+{
+ "held": {
+  "windows": 2000,
+  "people": 180,
+  "rows_sha256": "02e3709011268ddc77a976a3c7393eb8140777b2050c2a17d839205382e0ffed",
+  "records_sha256": "99cdad7372c9dcd5c33953b0042173ae5ec6c408d1c8ca27b5673474d2084595",
+  "windows_sha256": "7b17f9fbddf0dc6e6a6713592b0d5283dbe77b0d5eb7bfb0777113aa1f87d864"
+ },
+ "other": {
+  "windows": 2000,
+  "people": 1000,
+  "rows_sha256": "15f19f1f3fced65595baf97615cd89d1009f5a4aa091565aacf688bd1a5e56d1",
+  "records_sha256": "5acb332a3f50abdfe1708533e980e9b07a098e2c0b2451bdc93a054a29acbb5b",
+  "windows_sha256": "b75ac1de082a09f99d84c7e6c999b3285ab65f7ee025d96b270b27c42154cfb6"
+ },
+ "fit": {
+  "windows": 6000,
+  "people": 3498,
+  "rows_sha256": "8327f0465dc6fbd49a24eae3b980c49698e3538f127e99479147a18d1f07eaaa",
+  "records_sha256": "d6a4401a81fe75026f4a8221534a0c0e61923481180919dce52396a44d38ce66",
+  "windows_sha256": "5a2c0d9350aac2956cbaa267075edaa39034996be7afc4b82ede92905c8c829a"
+ }
+}

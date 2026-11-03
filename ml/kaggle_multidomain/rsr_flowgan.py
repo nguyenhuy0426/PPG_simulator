@@ -47,7 +47,7 @@ from ml.kaggle_multidomain.data_gxu import load_input
 from ml.kaggle_multidomain.flow import FlowGenerator, flow_loss, real_scaffolds
 from ml.kaggle_multidomain.physio import Conditions
 from ml.kaggle_multidomain.physiogan_r import Balanced, d_loss, g_loss, penalty
-from ml.kaggle_physigpt.judge_physigpt import fidelity_report, signal_features
+from ml.kaggle_physigpt.judge_physigpt import SIZES, fidelity_report, signal_features
 
 PROTOCOL = "ppg_physiomix_v3"
 ARM = dict(name="F6_flow_flag_deriv_unif_s16_w1", sample_steps=16, flag_scaffold=True, deriv=1., t_dist="uniform")
@@ -343,13 +343,9 @@ def judge(root, output, seeds, judge_seeds=JUDGE_SEEDS):
     return summary
 
 
-def app_fidelity(root, output):
-    """Feature tier only, on the same sets as judge(): the app's RSH-GAN (PhysioMix) and RSR-Flow (PhysioFlow)
-    against the real_other_people reference, so the generators are compared on one measure (14 judge_physigpt
-    features, validation people)."""
-    output = Path(output)
-    inputs = Inputs(root)
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+def app_sources(inputs, device):
+    """The app's RSH-GAN (PhysioMix) and RSR-Flow (PhysioFlow) generators, checked against the bundle's manifest (sha256,
+    condition schema)."""
     bank = sj.ConditionsView(inputs.conditions, inputs.keep)
     app = json.loads((inputs.bundle/"manifest.json").read_text())
     sources = {}
@@ -362,6 +358,17 @@ def app_fidelity(root, output):
         if hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
             raise ValueError(f"{slot} checksum mismatch")
         sources[name] = sj.torchscript_generator(path, device, len(bank.domains)+5)
+    return sources
+
+
+def app_fidelity(root, output):
+    """Feature tier only, on the same sets as judge(): the app's generators against the real_other_people reference, so
+    they are compared on one measure (14 judge_physigpt features, validation people)."""
+    output = Path(output)
+    inputs = Inputs(root)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    bank = sj.ConditionsView(inputs.conditions, inputs.keep)
+    sources = app_sources(inputs, device)
     arrays, info = sj.build_sets(inputs.pack, bank, sources, "validation", controls=("real_other_people",))
     fidelity = {name: fidelity_report(arrays["real_train"], arrays["real_eval"], arrays["real_other_people_eval"],
                                       arrays[f"{name}_train"], arrays[f"{name}_eval"]) for name in sources}
@@ -373,6 +380,51 @@ def app_fidelity(root, output):
               f"{report['real_other_people']['mean_similarity']:.3f}), relative {g['relative_similarity']:.3f}, "
               f"trees acc {g['classifier']['trees']['accuracy']:.3f}", flush=True)
     return fidelity
+
+
+def domain_prompts(view, conditions, domain, n, rng):
+    """View ids of n prompts, training windows of the domain, each person weighted equally as judge_physigpt.Real.draw.
+    Drawn with replacement: a person's condition may repeat, the noise of the window does not."""
+    rows = np.flatnonzero((view["split"] == "train") & (view["domain"] == domain))
+    if not len(rows):
+        raise ValueError(f"no training windows of {domain}")
+    _, inverse, counts = np.unique(view["subject"][rows], return_inverse=True, return_counts=True)
+    weight = 1/counts[inverse]
+    ids = rng.choice(rows, n, p=weight/weight.sum())
+    conditions.for_ids(ids)   # refuses anything but training rows
+    return ids
+
+
+def app_samples(root, output, domain="perform_large", seed=SELECT_SEED):
+    """generated_<name>.npy (fit + inner + eval windows, float16, as judge_physigpt writes generated.npy) of the app's
+    generators, prompted with the conditions of the domain's training people, known flags included; to be scored with
+    judge_physigpt --mode features --generated. <name>_prompts.npz keeps each window's condition row and person."""
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    inputs = Inputs(root)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    sets = (("fit", SIZES["fit"], 1_000_000), ("inner", SIZES["inner"], 2_000_000), ("eval", SIZES["eval"], 3_000_000))
+    record = dict(domain=domain, prompts="training people, person-balanced, Conditions.for_ids", device=device,
+                  sets={k: n for k, n, _ in sets}, pack_sha256=inputs.manifest["windows_sha256"], models={})
+    app = json.loads((inputs.bundle/"manifest.json").read_text())
+    for name, generate in app_sources(inputs, device).items():
+        rng = np.random.default_rng(seed)   # both generators see the same prompts
+        slot = "physiomix" if name == "rsh_gan_app" else "physioflow"
+        started = time.monotonic()
+        ids = {k: domain_prompts(inputs.view, inputs.conditions, domain, n, rng) for k, n, _ in sets}
+        fake = np.concatenate([generate(ids[k], inputs.conditions, s) for k, _, s in sets])
+        np.save(output/f"generated_{name}.npy", fake.astype(np.float16))
+        every = np.concatenate([ids[k] for k, _, _ in sets])
+        np.savez_compressed(output/f"{name}_prompts.npz", condition=inputs.conditions.for_ids(every),
+                            person=inputs.view["subject"][every], person_eval=inputs.view["subject"][ids["eval"]])
+        record["models"][name] = dict(
+            variant=app[slot]["variant"], arm=app[slot]["arm"], seed=app[slot]["seed"], best_step=app[slot]["best_step"],
+            file=app["models"][f"{slot}_generator"]["file"], sha256=app["models"][f"{slot}_generator"]["sha256"],
+            seconds=time.monotonic()-started, min=float(fake.min()), max=float(fake.max()),
+            non_finite=int((~np.isfinite(fake)).sum()), generated_sha256=hashlib.sha256((output/f"generated_{name}.npy").read_bytes()).hexdigest())
+        save_json(output/"app_samples.json", record)
+        print("SAMPLED", name, record["models"][name], flush=True)
+    return record
 
 
 def main(argv=None):
@@ -409,6 +461,8 @@ def main(argv=None):
     parser.add_argument("--skip-judge", action="store_true")
     parser.add_argument("--fidelity-only", action="store_true",
                         help="no training: feature tier of the app's RSH-GAN, RSR-Flow and LSM-GAN (app_fidelity)")
+    parser.add_argument("--app-samples", action="store_true",
+                        help="no training: the app generators' windows for judge_physigpt --mode features (app_samples)")
     parser.add_argument("--smoke", action="store_true", help="tiny judge (CPU tests)")
     parser.add_argument("--cpu", action="store_true")
     args = parser.parse_args(argv)
@@ -418,6 +472,8 @@ def main(argv=None):
     output.mkdir(parents=True, exist_ok=True)
     if args.fidelity_only:
         return app_fidelity(args.input_root, output)
+    if args.app_samples:
+        return app_samples(args.input_root, output)
     devices = torch.cuda.device_count() if torch.cuda.is_available() and not args.cpu else 1
     if len(args.seeds) > max(devices, 1) and devices > 1:
         raise ValueError(f"{len(args.seeds)} seeds on {devices} devices")

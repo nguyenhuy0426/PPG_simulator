@@ -46,7 +46,14 @@ def main():
     decay = [[best, round(stage["best"]["valid_flow"], 5)]]+curve(EVIDENCE/"ppg-physigpt-decay0-large-v1/metrics.jsonl")
     real = json.loads((EVIDENCE/"ppg-physigpt-feature-hist-v1/examples_real.json").read_text())["real"]
     gen = json.loads((EVIDENCE/"ppg-physigpt-judge-decay0-large-v1/sample_windows.json").read_text())["windows"]
+    bench = results["benchmark"]
     data = dict(
+        benchmark=dict(
+            criteria=bench["criteria"], held_people=bench["held_people"], real=bench["real_other_people"],
+            models=[dict(name=m["name"], earlier=m["earlier_name"], verdict=m["verdict"], mean=m["mean_22"],
+                         ci=m["ci_95_mean_22"], trees=m["tree_accuracy"], below=len(m["features_below_floor"]),
+                         lowest=m["lowest"], lowest_value=m["lowest_value"]) for m in bench["models"]],
+            diff={k: dict(point=v["point"], ci=v["ci_95"]) for k, v in bench["paired_differences_22"].items()}),
         physigpt=dict(
             relative=large["fidelity"]["relative_similarity"], mean_similarity=large["fidelity"]["mean_similarity"],
             reference=large["fidelity"]["reference"]["mean_similarity"], base_similarity=base["fidelity"]["mean_similarity"],

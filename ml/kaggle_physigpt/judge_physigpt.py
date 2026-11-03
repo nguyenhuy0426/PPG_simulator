@@ -19,6 +19,7 @@ Mode features is the pass criterion of the feature goal (target_report): the 14 
 against held-out people, written to target.json. The strict judge stays as a record and no longer decides a pass.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -63,9 +64,9 @@ class Real:
     def people(self, role):
         return len(np.unique(self.record[self.rows[role]]))
 
-    def draw(self, role, n):
-        """n windows of the role, each record weighted equally. Training roles never repeat a window (the sets stay
-        disjoint); the evaluation roles (held_out, control_eval) return the same windows on every call."""
+    def pick(self, role, n):
+        """Sorted rows of n windows of the role, each record weighted equally. Training roles never repeat a window (the
+        sets stay disjoint); the evaluation roles (held_out, control_eval) return the same rows on every call."""
         evaluation = role in EVAL_ROLES
         rows = self.rows[role]
         if not evaluation and self.used:
@@ -78,7 +79,13 @@ class Real:
         pick = rng.choice(rows, n, replace=False, p=weight/weight.sum())
         if not evaluation:
             self.used.update(pick.tolist())
-        return (self.data.rows(np.sort(pick)).astype(np.float32)/65535).copy()
+        return np.sort(pick)
+
+    def windows(self, rows):
+        return (self.data.rows(rows).astype(np.float32)/65535).copy()
+
+    def draw(self, role, n):
+        return self.windows(self.pick(role, n))
 
 
 def damaged(real, damage):
@@ -381,6 +388,22 @@ def target_report(real_fit, real_held, real_other, gen_fit, gen_eval, seed=0):
                               tree_classifier_accuracy_at_most=TARGET_ACC))
 
 
+def target_inputs(output, real, held_rows, other_rows, fit_rows, gen_eval):
+    """What compare_target needs after the kernel is gone: per-window features with each real window's record, and
+    digests that show two runs scored the same real windows. Features only, no waveforms."""
+    sets = {}
+    for role, rows in (("held", held_rows), ("other", other_rows), ("fit", fit_rows)):
+        sets[role] = dict(windows=len(rows), people=len(np.unique(real.record[rows])),
+                          rows_sha256=hashlib.sha256(np.asarray(rows, np.int64).tobytes()).hexdigest(),
+                          records_sha256=hashlib.sha256(np.asarray(real.record[rows], np.int64).tobytes()).hexdigest(),
+                          windows_sha256=hashlib.sha256(real.data.rows(rows).tobytes()).hexdigest())
+    arrays = dict(held_person=real.record[held_rows], other_person=real.record[other_rows])
+    for side, x in (("held", real.windows(held_rows)), ("other", real.windows(other_rows)), ("generated", gen_eval)):
+        arrays.update({f"{side}/{k}": v for k, v in all_features(x).items()})
+    np.savez_compressed(Path(output)/"target_inputs.npz", **arrays)
+    (Path(output)/"real_sets.json").write_text(json.dumps(sets, indent=1))
+
+
 # ------------------------------------------------------------------ generation
 def generate(checkpoint, n, seed, device, batch=250, steps=32, clamp=True):
     state = torch.load(checkpoint, map_location="cpu", weights_only=False)
@@ -448,14 +471,17 @@ def main(argv=None):
     cut = np.cumsum([SIZES["fit"], SIZES["inner"]])
     fakes = tuple(np.split(generated, cut))
     if args.mode == "features":
-        real_eval = real.draw("held_out", SIZES["eval"])
+        held_rows = real.pick("held_out", SIZES["eval"])
+        real_eval = real.windows(held_rows)
         report = feature_report(real_eval, real.draw("control_eval", SIZES["eval"]), fakes[2])
         (output/"features.json").write_text(json.dumps(report, indent=1))
-        real_fit, real_other = real.draw("fit", SIZES["fit"]), real.draw("control_eval", SIZES["eval"])
+        fit_rows, other_rows = real.pick("fit", SIZES["fit"]), real.pick("control_eval", SIZES["eval"])
+        real_fit, real_other = real.windows(fit_rows), real.windows(other_rows)
         fidelity = fidelity_report(real_fit, real_eval, real_other, fakes[0], fakes[2])
         (output/"fidelity.json").write_text(json.dumps(fidelity, indent=1))
         target = target_report(real_fit, real_eval, real_other, fakes[0], fakes[2])
         (output/"target.json").write_text(json.dumps(target, indent=1))
+        target_inputs(output, real, held_rows, other_rows, fit_rows, fakes[2])
         return
     result = judge_source("generated", real, fakes, args.kind, args.seeds, args.device, output)
     (output/"generated_judge.json").write_text(json.dumps(dict(info=info, result=result)))

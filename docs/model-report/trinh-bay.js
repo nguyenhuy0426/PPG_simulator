@@ -92,11 +92,56 @@
     });
   }
 
+  // Four models on the same 180 people: mean 1 - KS over 22 features with its 95% interval, goal line and real-vs-real mark.
+  // Wide hosts get one line per model; narrow hosts (phones) get a taller row with the labels above the bar so the text stays legible.
+  let benchNarrow = null;
+  function bench() {
+    const B = window.REPORT.benchmark;
+    const host = document.getElementById('pg-bench');
+    if (!B || !host) return;
+    const narrow = host.clientWidth < 560;
+    if (narrow === benchNarrow) return;
+    benchNarrow = narrow;
+    host.textContent = '';
+    const rows = [...B.models].sort((a, b) => b.mean - a.mean);
+    const W = narrow ? 420 : 1000, rowH = narrow ? 88 : 46, top = 34, left = narrow ? 12 : 130, right = narrow ? 12 : 230;
+    const H = top + rows.length * rowH + 20;
+    const s = svg('pg-bench', W, H, 'Trung bình 22 đặc trưng của bốn mô hình, khoảng tin cậy 95 %, mốc 0,95 và mức người thật');
+    const lo = 0.84, hi = 0.98;
+    const x = (v) => left + (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo) * (W - left - right);
+    [0.85, 0.9, 0.95].forEach((v) => {
+      el('line', { class: 'grid', x1: x(v), x2: x(v), y1: top - 10, y2: H - 14 }, s);
+      el('text', { x: x(v), y: top - 16, 'text-anchor': 'middle' }, s, vi(v, 2));
+    });
+    el('line', { class: 'ref', x1: x(0.95), x2: x(0.95), y1: top - 10, y2: H - 14 }, s);
+    el('line', { class: 'tick-real', x1: x(B.real.mean_22), x2: x(B.real.mean_22), y1: top - 10, y2: H - 14 }, s);
+    rows.forEach((m, i) => {
+      const cy = narrow ? top + i * rowH + 24 : top + i * rowH + rowH / 2;
+      const g = el('g', { class: 'row' }, s);
+      const detail = `cây ${vi(m.trees, 3)} · ${m.below} đặc trưng dưới sàn`;
+      el('title', {}, g, `${m.name}: ${vi(m.mean, 4)} (khoảng 95 % ${vi(m.ci[0], 3)}–${vi(m.ci[1], 3)}), ${detail}`);
+      el('rect', { class: 'hit', x: 0, y: narrow ? cy - 24 : cy - rowH / 2, width: W, height: rowH, rx: 6 }, g);
+      el('line', { class: 'span', x1: x(m.ci[0]), x2: x(m.ci[1]), y1: cy, y2: cy }, g);
+      el('circle', { class: 'dot-large', cx: x(m.mean), cy, r: 7 }, g);
+      el('text', { class: 'val', x: x(m.mean), y: cy - 14, 'text-anchor': 'middle' }, g, vi(m.mean, 3));
+      const verdict = m.verdict === 'pass' ? 'đạt' : 'chưa đạt';
+      if (narrow) {
+        el('text', { class: 'lab', x: left, y: cy + 24 }, g, m.name);
+        el('text', { class: m.verdict === 'pass' ? '' : 'gap', x: W - right, y: cy + 24, 'text-anchor': 'end' }, g, verdict);
+        el('text', { x: left, y: cy + 42 }, g, detail);
+      } else {
+        el('text', { class: 'lab', x: left - 14, y: cy + 4, 'text-anchor': 'end' }, g, m.name);
+        el('text', { class: m.verdict === 'pass' ? '' : 'gap', x: W - 4, y: cy - 2, 'text-anchor': 'end' }, g, verdict);
+        el('text', { x: W - 4, y: cy + 14, 'text-anchor': 'end' }, g, detail);
+      }
+    });
+  }
+
+  bench();
+  window.addEventListener('resize', bench);
   curve();
   waves();
   features();
-  const rel = document.getElementById('pg-rel');
-  if (rel) rel.textContent = `${vi(R.relative * 100, 1)} %`;
   const hours = document.getElementById('pg-hours');
   if (hours) hours.textContent = `${vi(R.hours, 1)} giờ`;
 })();

@@ -11,18 +11,18 @@
 <main class="rp-main">
 
 <header class="rp-hero">
-  <p class="rp-eyebrow">PPG Simulator · báo cáo cho khách hàng · cập nhật 01/11/2026</p>
+  <p class="rp-eyebrow">PPG Simulator · báo cáo cho khách hàng · cập nhật 02/11/2026</p>
   <h1>Máy giả lập nhịp mạch PPG, chạy AI trên Raspberry Pi</h1>
   <p class="rp-lede">Phát ra ánh sáng “đập” như mạch máu thật để thử máy đo nhịp tim, đồng hồ thông minh và thuật toán, đúng nhịp tim bạn chọn.</p>
   <div class="rp-kpis">
     <div class="rp-kpi"><b>&lt; 1</b><span>nhịp/phút sai số nhịp tim<br>(lệnh 40–180 nhịp/phút)</span></div>
     <div class="rp-kpi"><b>50–91 %</b><span>sóng PhysioFlow được chấm “không phân biệt được” trên 4 bộ dữ liệu</span></div>
     <div class="rp-kpi"><b>500 Hz</b><span>tốc độ xuất tín hiệu trên Pi, không trễ nhịp</span></div>
-    <div class="rp-kpi ai"><b>98,1 %</b><span>PPG-physiGPT V1: đặc trưng sóng so với người thật</span></div>
+    <div class="rp-kpi warn"><b>0,938</b><span>PPG-physiGPT V1: trung bình 22 đặc trưng so với người thật. Mốc 0,95: chưa đạt</span></div>
   </div>
   <nav class="rp-nav" aria-label="Mục lục">
     <a href="#he-thong">Hệ thống</a><a href="#tao-song">Tạo sóng</a><a href="#nhip-tim">Nhịp tim</a>
-    <a href="#giong-that">Giống thật</a><a href="#video">Video train</a><a href="#physigpt">PPG-physiGPT V1</a>
+    <a href="#dac-trung">Đặc trưng sóng</a><a href="#giong-that">Giống thật</a><a href="#video">Video train</a><a href="#hoc-vet">Học vẹt?</a><a href="#physigpt">PPG-physiGPT V1</a>
     <a href="#lo-trinh">Lộ trình</a><a href="#gioi-han">Giới hạn</a>
   </nav>
 </header>
@@ -68,8 +68,30 @@
     <figcaption>Ra lệnh 40–180 nhịp/phút, đo lại trên sóng sinh ra: sai số trung bình dưới 1 nhịp/phút với cả hai model.</figcaption></figure>
 </section>
 
+<section id="dac-trung">
+  <h2><span>04</span> Đặc trưng của sóng PPG</h2>
+  <p class="rp-note">Mọi số dưới đây đo bằng đúng code chấm điểm, trên cả đoạn 30 giây. Đổi nguồn để so cùng một bộ đặc trưng.</p>
+  <div class="rp-switch" role="group" aria-label="Nguồn sóng">
+    <button type="button" data-source="real" aria-pressed="true">Người thật (ICU)</button>
+    <button type="button" data-source="ai" aria-pressed="false">AI (APFT-GAN)</button>
+  </div>
+  <figure class="rp-card"><h3>Dáng một nhịp</h3><div id="an-beat" class="rp-chart"></div>
+    <figcaption>Đường đậm: nhịp trung vị. Đường mờ: các nhịp cùng đoạn, kéo về cùng độ dài.</figcaption></figure>
+  <figure class="rp-card" style="margin-top:18px"><h3>Chuỗi nhịp</h3><div id="an-seq" class="rp-chart"></div>
+    <div id="an-seq-chips" class="rp-chips values"></div></figure>
+  <div class="rp-grid2">
+    <figure class="rp-card"><h3>Độ sắc</h3><div id="an-sharp" class="rp-chart"></div>
+      <div id="an-sharp-chips" class="rp-chips values"></div></figure>
+    <figure class="rp-card"><h3>Thời gian ở từng mức</h3><div id="an-hist" class="rp-chart"></div>
+      <div id="an-hist-chips" class="rp-chips values"></div></figure>
+    <figure class="rp-card"><h3>Phổ: phần năng lượng từng dải (Hz)</h3><div id="an-spec" class="rp-chart"></div></figure>
+    <figure class="rp-card"><h3>Sóng lặp lại đều đến đâu</h3><div id="an-acf" class="rp-chart"></div></figure>
+  </div>
+  <p class="rp-note">Cả hai đoạn được chọn để thấy rõ khuyết mạch: nhịp đều và rõ nhất trong 256 đoạn, nên chỉ để minh hoạ, không đại diện cho toàn bộ. Sóng đã lọc 0,5–8 Hz và chuẩn hoá, nên đây là dáng sóng, không phải đo sinh lý.</p>
+</section>
+
 <section id="giong-that">
-  <h2><span>04</span> Giống thật đến đâu</h2>
+  <h2><span>05</span> Giống thật đến đâu</h2>
   <div class="rp-chips">
     <span class="ok">Ngón tay và ICU: PhysioFlow giống thật nhất</span>
     <span class="ok">Giám khảo độc lập PaPaGei xếp hạng giống vậy (ρ = 0,88)</span>
@@ -82,48 +104,94 @@
 </section>
 
 <section id="video">
-  <h2><span>05</span> Model học thế nào</h2>
+  <h2><span>06</span> Model học thế nào</h2>
   <div class="rp-grid2">
-    <figure class="rp-fig"><video controls preload="metadata" src="media/train-PhysioMix.mp4"></video><figcaption>PhysioMix (GAN): hoạ sĩ và giám khảo cùng học</figcaption></figure>
-    <figure class="rp-fig"><video controls preload="metadata" src="media/train-PhysioFlow.mp4"></video><figcaption>PhysioFlow: sửa nhiễu dần thành sóng</figcaption></figure>
+    <figure class="rp-fig"><video controls preload="metadata" src="media/train-PhysioMix.mp4"></video><figcaption>PhysioMix (GAN), bản thử nghiệm bước D (seed 42), không phải model trong app. Dừng ở bước được chọn 3 500, rồi vài khung ghi rõ là không dùng. Bên phải: một đoạn sóng thật của người validation, chỉ để minh hoạ.</figcaption></figure>
+    <figure class="rp-fig"><video controls preload="metadata" src="media/train-PhysioFlow.mp4"></video><figcaption>PhysioFlow, bản thử nghiệm bước D (seed 42), không phải model trong app. Dừng ở bước được chọn 12 000, rồi vài khung ghi rõ là không dùng. Bên phải: một đoạn sóng thật của người validation, chỉ để minh hoạ.</figcaption></figure>
   </div>
+  <h3 style="margin:28px 0 4px">Bước cuối không phải model được dùng</h3>
+  <p class="rp-note">Train càng lâu, điểm có thể xấu đi, nên mỗi lần train giữ lại bước tốt nhất theo điểm chọn model. Điểm của APFT-GAN đo trên người train.</p>
+  <div class="rp-grid3">
+    <figure class="rp-card"><h3>PhysioMix trong app</h3><div id="ln-mix" class="rp-chart"></div></figure>
+    <figure class="rp-card"><h3>PhysioFlow trong app</h3><div id="ln-flow" class="rp-chart"></div></figure>
+    <figure class="rp-card"><h3>APFT-GAN</h3><div id="ln-gan" class="rp-chart"></div></figure>
+  </div>
+  <figure class="rp-card" style="margin-top:18px"><h3>Vì sao bước cuối trông xấu: sóng cổ tay trong video PhysioMix</h3><div id="ln-wrist" class="rp-chart"></div>
+    <figcaption>Cùng một mẫu nhiễu cố định, lệnh 75 nhịp/phút. Đây là một mẫu duy nhất, nên cần đọc cùng các đường điểm ở trên.</figcaption></figure>
+</section>
+
+<section id="hoc-vet">
+  <h2><span>07</span> Học được hay học vẹt</h2>
+  <div class="rp-chips">
+    <span class="ok">Không thấy chép đoạn train: gần như không đoạn nào vượt 0,99</span>
+    <span class="no">Chưa tự nhiên hoàn toàn: máy phân loại vẫn nhận ra</span>
+    <span class="ok">APFT-GAN và V1 large: không cao hơn mốc người thật</span>
+  </div>
+  <figure class="rp-card" style="margin-top:14px"><h3>Đoạn train giống nhất với mỗi đoạn sinh ra</h3>
+    <div class="rp-legend"><span><i class="real"></i>Người thật chưa train (mốc)</span><span><i class="mix"></i>PhysioMix</span><span><i class="flow"></i>PhysioFlow</span><span>● trung vị, vạch tới mức 95 %</span></div>
+    <div id="cp-chart" class="rp-chart"></div>
+    <figcaption>128 đoạn mỗi nguồn và bộ dữ liệu. Tương quan cao nhất với mọi đoạn train, ở mọi độ lệch thời gian. Sóng có chu kỳ vốn đã giống nhau nên phải so với mốc người thật.</figcaption></figure>
+  <figure class="rp-card" style="margin-top:18px"><h3>APFT-GAN và V1 large so với toàn bộ 2.184.676 đoạn train</h3>
+    <div class="rp-table"><table>
+      <thead><tr><th>2.000 đoạn mỗi nguồn</th><th>Trung vị</th><th>Mức 95 %</th><th>Đoạn &gt; 0,99</th><th>Cao nhất</th></tr></thead>
+      <tbody>
+        <tr><td>APFT-GAN</td><td>0,807</td><td>0,973</td><td>0,10 % (2 đoạn)</td><td>0,993</td></tr>
+        <tr><td>V1 large</td><td>0,826</td><td>0,976</td><td>0,35 % (7 đoạn)</td><td>0,992</td></tr>
+        <tr><td>Người thật chưa train (mốc)</td><td>0,863</td><td>0,979</td><td>0,10 % (2 đoạn)</td><td>0,996</td></tr>
+      </tbody>
+    </table></div>
+    <figcaption>Phép sàng lọc trên cả đoạn 30 giây: không loại được việc chép một phần đoạn hoặc chép ở tỷ lệ rất nhỏ.</figcaption></figure>
+  <figure class="rp-card" style="margin-top:18px"><h3>Độ đa dạng: phần dáng sóng của người thật mà model sinh được (%)</h3>
+    <div class="rp-legend"><span><i class="real"></i>Người thật khác</span><span><i class="mix"></i>PhysioMix</span><span><i class="flow"></i>PhysioFlow</span></div>
+    <div id="cp-cover" class="rp-chart"></div>
+    <figcaption>Bộ dữ liệu ít người (dưới 15 người) dao động mạnh; đáng tin nhất là Ngón tay và ICU lớn.</figcaption></figure>
 </section>
 
 <section id="physigpt">
-  <h2><span>06</span> PPG-physiGPT V1 <em class="rp-tag">mới · nghiên cứu</em></h2>
+  <h2><span>08</span> PPG-physiGPT V1 <em class="rp-tag">mới · nghiên cứu · chưa đạt mốc 95 %</em></h2>
   <p class="rp-note">Mô hình kiểu GPT, học 30 giây sóng PPG bệnh viện (MIMIC-III) từng giây một, train trên Kaggle 2 × T4.</p>
   <div class="rp-kpis small">
-    <div class="rp-kpi ai"><b id="pg-rel">98,1 %</b><span>đặc trưng sóng so với người thật (V1 cần ≥ 95 %)</span></div>
+    <div class="rp-kpi warn"><b>0,938</b><span>trung bình 22 đặc trưng so với người thật. Mốc 0,95: chưa đạt</span></div>
     <div class="rp-kpi"><b>99,9 M</b><span>tham số, bản large</span></div>
     <div class="rp-kpi"><b id="pg-hours">8,5 giờ</b><span>train trên 2 × T4</span></div>
-    <div class="rp-kpi warn"><b>1,00</b><span>AUC giám khảo nghiêm: vẫn nhận ra là sóng AI</span></div>
+    <div class="rp-kpi"><b>1,00</b><span>AUC giám khảo nghiêm, giới hạn đã biết. Người thật so với người thật: khoảng 0,5</span></div>
   </div>
+  <h3 style="margin:26px 0 4px">Tiêu chí đạt và bốn mô hình</h3>
+  <div class="rp-chips">
+    <span class="wait">Trung bình 22 đặc trưng ≥ 0,95</span>
+    <span class="wait">Từng đặc trưng ≥ 0,90 (hoặc mức người thật nếu thấp hơn)</span>
+    <span class="wait">Máy phân loại dạng cây nhận đúng ≤ 60 %</span>
+  </div>
+  <p class="rp-note">Cùng 180 người MIMIC chưa từng train, cùng bộ chấm. <b>Cả bốn mô hình đều chưa đạt.</b> V1 large và APFT-GAN không tách được nhau và cùng hơn hai mô hình trong app. RSH-GAN (tên cũ PhysioMix) và RSR-Flow (tên cũ PhysioFlow) chịu bất lợi ở bộ này vì được cấp điều kiện của bộ <code>perform_large</code>, nên chưa chứng minh chúng kém hơn trên dữ liệu của chính chúng.</p>
+  <figure class="rp-card"><div id="pg-bench" class="rp-chart"></div>
+    <figcaption>Trung bình 1 − KS của 22 đặc trưng. Chấm: kết quả; vạch ngang: khoảng tin cậy 95 % (bootstrap theo người); vạch dọc nét đứt: mốc 0,95; vạch đặc: người thật so với người thật khác (0,958).</figcaption></figure>
+
   <div class="rp-grid2">
     <figure class="rp-card"><div id="pg-curve" class="rp-chart"></div><figcaption>Sai số học trên dữ liệu kiểm tra (thấp hơn = tốt hơn). Xám: learning rate cố định; tím: pha giảm learning rate.</figcaption></figure>
     <figure class="rp-card"><div id="pg-waves" class="rp-chart"></div><figcaption>3 đoạn thật và 3 đoạn AI vẽ (lấy ngẫu nhiên, 10 giây đầu)</figcaption></figure>
   </div>
   <figure class="rp-card"><div id="pg-features" class="rp-chart"></div>
-    <figcaption>Độ giống từng đặc trưng (1 − KS). ● bản large · ○ bản base · ▏ người thật so với người thật khác</figcaption></figure>
+    <figcaption>Độ giống từng đặc trưng trong 14 đặc trưng gốc (1 − KS). ● bản large · ○ bản base · ▏ người thật so với người thật khác</figcaption></figure>
   <div class="rp-grid2">
     <figure class="rp-fig"><video controls preload="metadata" src="media/physigpt-hoc-tung-patch.mp4"></video><figcaption>Model nhìn các giây trước, vẽ giây tiếp theo</figcaption></figure>
-    <figure class="rp-card"><svg class="rp-diagram" viewBox="0 0 520 300" role="img" aria-label="Hai tầng chấm điểm: tầng đặc trưng và giám khảo nghiêm">
+    <figure class="rp-card"><svg class="rp-diagram" viewBox="0 0 520 300" role="img" aria-label="Hai tầng chấm điểm: tầng đặc trưng quyết định đạt hay không, giám khảo nghiêm là giới hạn đã biết">
       <defs><marker id="rp-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="rp-ah" d="M0,1 L9,5 L0,9 z"/></marker></defs>
       <g class="rp-node ai"><rect x="10" y="115" width="130" height="70" rx="12"/><text x="75" y="145" class="t">Sóng AI</text><text x="75" y="166">2.000 đoạn</text></g>
       <path class="rp-arrow" d="M142,135 C170,135 170,70 196,70" marker-end="url(#rp-ar2)"/>
       <path class="rp-arrow" d="M142,165 C170,165 170,230 196,230" marker-end="url(#rp-ar2)"/>
-      <g class="rp-node ok"><rect x="198" y="30" width="200" height="80" rx="12"/><text x="298" y="58" class="t">Tầng 1 · đặc trưng</text><text x="298" y="80">14 đặc trưng vs người thật</text><text x="298" y="98">V1 đạt: 98,1 %</text></g>
-      <g class="rp-node bad"><rect x="198" y="190" width="200" height="80" rx="12"/><text x="298" y="218" class="t">Tầng 2 · giám khảo nghiêm</text><text x="298" y="240">mạng nơ-ron 3,6 M</text><text x="298" y="258">vẫn tách được: AUC 1,0</text></g>
-      <text x="410" y="76" class="rp-mark ok">✓</text><text x="410" y="236" class="rp-mark bad">✗</text>
+      <g class="rp-node bad"><rect x="198" y="30" width="200" height="80" rx="12"/><text x="298" y="58" class="t">Tầng 1 · đặc trưng</text><text x="298" y="80">22 đặc trưng vs người thật</text><text x="298" y="98">V1 large 0,938, mốc 0,95</text></g>
+      <g class="rp-node bad"><rect x="198" y="190" width="200" height="80" rx="12"/><text x="298" y="218" class="t">Tầng 2 · giám khảo</text><text x="298" y="240">giới hạn đã biết: AUC 1,0</text><text x="298" y="258">thật vs thật ≈ 0,5</text></g>
+      <text x="410" y="76" class="rp-mark bad">✗</text><text x="410" y="236" class="rp-mark bad">✗</text>
     </svg><figcaption>Hai tầng chấm, cùng trên 180 người chưa từng train</figcaption></figure>
   </div>
 </section>
 
 <section id="lo-trinh">
-  <h2><span>07</span> Lộ trình</h2>
-  <div class="rp-card"><svg class="rp-diagram" viewBox="0 0 1000 170" role="img" aria-label="Lộ trình: V1 xong, V2, kiểm định đường quang, đo trên Pi, fine-tune trên người dự án">
+  <h2><span>09</span> Lộ trình</h2>
+  <div class="rp-card"><svg class="rp-diagram" viewBox="0 0 1000 170" role="img" aria-label="Lộ trình: V1 large chưa đạt mốc 95 %, đạt mốc, kiểm định đường quang, đo trên Pi, thêm dữ liệu đồng hồ">
     <path class="rp-line" d="M100,70 H900"/>
-    <g class="rp-step done"><circle cx="100" cy="70" r="16"/><text x="100" y="76" class="n">✓</text><text x="100" y="118" class="t">V1 · 11/2026</text><text x="100" y="140">đặc trưng ≥ 95 % mức thật</text></g>
-    <g class="rp-step next"><circle cx="300" cy="70" r="16"/><text x="300" y="76" class="n">2</text><text x="300" y="118" class="t">V2</text><text x="300" y="140">bù chi tiết 5–8 Hz, đạt 0,95</text></g>
+    <g class="rp-step next"><circle cx="100" cy="70" r="16"/><text x="100" y="76" class="n">1</text><text x="100" y="118" class="t">V1 large · 11/2026</text><text x="100" y="140">đã train, 0,938: chưa đạt 0,95</text></g>
+    <g class="rp-step"><circle cx="300" cy="70" r="16"/><text x="300" y="76" class="n">2</text><text x="300" y="118" class="t">Đạt mốc 95 %</text><text x="300" y="140">bù chi tiết 5–8 Hz, đủ 3 tiêu chí</text></g>
     <g class="rp-step"><circle cx="500" cy="70" r="16"/><text x="500" y="76" class="n">3</text><text x="500" y="118" class="t">Đường quang</text><text x="500" y="140">kiểm định LED → OPT101</text></g>
     <g class="rp-step"><circle cx="700" cy="70" r="16"/><text x="700" y="76" class="n">4</text><text x="700" y="118" class="t">Đo trên Pi</text><text x="700" y="140">tốc độ sinh sóng của model</text></g>
     <g class="rp-step"><circle cx="900" cy="70" r="16"/><text x="900" y="76" class="n">5</text><text x="900" y="118" class="t">Cổ tay đời thường</text><text x="900" y="140">thêm dữ liệu đồng hồ</text></g>
@@ -131,10 +199,11 @@
 </section>
 
 <section id="gioi-han">
-  <h2><span>08</span> Giới hạn cần biết</h2>
-  <div class="rp-grid3 rp-limits">
+  <h2><span>10</span> Giới hạn cần biết</h2>
+  <div class="rp-grid3 rp-limits" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
     <div class="rp-card"><b>Không phải thiết bị y tế</b><span>Đánh giá kỹ thuật về dáng sóng, chưa kiểm định lâm sàng.</span></div>
     <div class="rp-card"><b>Đường quang chưa kiểm định</b><span>Đã đo tín hiệu DAC trên Pi; ánh sáng tới cảm biến chưa được xác nhận.</span></div>
+    <div class="rp-card"><b>Giám khảo nghiêm vẫn tách được</b><span>Mạng chấm nghiêm nhận ra sóng AI (AUC 1,0), người thật so với người thật khoảng 0,5. Giới hạn đã biết, không còn là tiêu chí đạt.</span></div>
     <div class="rp-card"><b>Không dùng để kiểm SpO₂</b><span>Một dáng sóng cho cả hai kênh, LED 625/875 nm khác máy đo oxy phổ biến.</span></div>
   </div>
 </section>
@@ -147,5 +216,7 @@
 </main>
 <script src="media/report-data.js"></script>
 <script src="trinh-bay.js"></script>
+<script src="media/ppg-anatomy.js"></script>
+<script src="trinh-bay-anatomy.js"></script>
 </body>
 </html>

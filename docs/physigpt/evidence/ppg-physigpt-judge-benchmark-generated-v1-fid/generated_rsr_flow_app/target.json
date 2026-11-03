@@ -1,0 +1,146 @@
+{
+ "verdict": "fail",
+ "generated": {
+  "similarity": {
+   "rate_bpm": 0.859,
+   "acf_peak": 0.9035,
+   "diff_std": 0.9425,
+   "diff2_std": 0.943,
+   "skew": 0.921,
+   "kurtosis": 0.8575,
+   "diff_skew": 0.976,
+   "mean_level": 0.966,
+   "centroid_hz": 0.902,
+   "power_0.5-1.5 Hz": 0.937,
+   "power_1.5-3 Hz": 0.9475,
+   "power_3-5 Hz": 0.892,
+   "power_5-8 Hz": 0.847,
+   "power_8-20 Hz": 0.8045,
+   "beat_coverage": 0.895,
+   "rise_time_s": 0.875,
+   "systolic_fraction": 0.9095,
+   "width_50_s": 0.9005,
+   "area_fraction": 0.902,
+   "template_corr": 0.9005,
+   "amp_cv": 0.9125,
+   "ibi_cv": 0.895,
+   "dicrotic_rebound": 0.9305,
+   "descent_flatness": 0.8665
+  },
+  "fourteen": {
+   "mean_similarity": 0.9070357142857143,
+   "features": 14
+  },
+  "beat": {
+   "mean_similarity": 0.89875,
+   "features": 8
+  },
+  "full": {
+   "mean_similarity": 0.9040227272727273,
+   "features": 22
+  },
+  "windows_with_beats": 1.0,
+  "lowest": "power_8-20 Hz",
+  "classifier": {
+   "logreg": {
+    "auc": 0.71124525,
+    "accuracy": 0.652
+   },
+   "trees": {
+    "auc": 0.867393,
+    "accuracy": 0.7795
+   }
+  },
+  "below_floor": [
+   "beat_coverage",
+   "ibi_cv",
+   "kurtosis",
+   "power_3-5 Hz",
+   "power_5-8 Hz",
+   "power_8-20 Hz",
+   "rate_bpm",
+   "rise_time_s"
+  ],
+  "relative_similarity": 0.9433767441947652
+ },
+ "real_other_people": {
+  "similarity": {
+   "rate_bpm": 0.967,
+   "acf_peak": 0.947,
+   "diff_std": 0.971,
+   "diff2_std": 0.9625,
+   "skew": 0.981,
+   "kurtosis": 0.9395,
+   "diff_skew": 0.9475,
+   "mean_level": 0.984,
+   "centroid_hz": 0.952,
+   "power_0.5-1.5 Hz": 0.9410000000000001,
+   "power_1.5-3 Hz": 0.9355,
+   "power_3-5 Hz": 0.9595,
+   "power_5-8 Hz": 0.9735,
+   "power_8-20 Hz": 0.972,
+   "beat_coverage": 0.962,
+   "rise_time_s": 0.964799899949975,
+   "systolic_fraction": 0.9554004502251126,
+   "width_50_s": 0.9581385692846424,
+   "area_fraction": 0.9592981490745373,
+   "template_corr": 0.9543789394697348,
+   "amp_cv": 0.9423611805902952,
+   "ibi_cv": 0.952868184092046,
+   "dicrotic_rebound": 0.962620060030015,
+   "descent_flatness": 0.9441703351675838
+  },
+  "fourteen": {
+   "mean_similarity": 0.9595,
+   "features": 14
+  },
+  "beat": {
+   "mean_similarity": 0.9561556715857928,
+   "features": 8
+  },
+  "full": {
+   "mean_similarity": 0.958283880576652,
+   "features": 22
+  },
+  "windows_with_beats": 0.9995,
+  "lowest": "power_1.5-3 Hz"
+ },
+ "floor": {
+  "rate_bpm": 0.9,
+  "acf_peak": 0.9,
+  "diff_std": 0.9,
+  "diff2_std": 0.9,
+  "skew": 0.9,
+  "kurtosis": 0.9,
+  "diff_skew": 0.9,
+  "mean_level": 0.9,
+  "centroid_hz": 0.9,
+  "power_0.5-1.5 Hz": 0.9,
+  "power_1.5-3 Hz": 0.9,
+  "power_3-5 Hz": 0.9,
+  "power_5-8 Hz": 0.9,
+  "power_8-20 Hz": 0.9,
+  "beat_coverage": 0.9,
+  "rise_time_s": 0.9,
+  "systolic_fraction": 0.9,
+  "width_50_s": 0.9,
+  "area_fraction": 0.9,
+  "template_corr": 0.9,
+  "amp_cv": 0.9,
+  "ibi_cv": 0.9
+ },
+ "diagnostic_only": [
+  "dicrotic_rebound",
+  "descent_flatness"
+ ],
+ "windows": {
+  "held": 2000,
+  "other": 2000,
+  "generated": 2000
+ },
+ "criteria": {
+  "mean_similarity_at_least": 0.95,
+  "floor_at_least": 0.9,
+  "tree_classifier_accuracy_at_most": 0.6
+ }
+}

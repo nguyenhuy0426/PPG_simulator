@@ -92,7 +92,66 @@
 .rp-chart .gap { fill: var(--warn); font-weight: 700; }
 .rp-chart .val { fill: var(--ai); font-weight: 700; }
 
+/* Feature and learning figures (trinh-bay-anatomy.js) */
+.rp-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--panel); margin-bottom: 14px; }
+.rp-switch button { font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 6px 16px; cursor: pointer; }
+.rp-switch button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.rp-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rp-chips.values { margin: 10px 0 0; gap: 6px; }
+.rp-chips.values span { background: var(--soft); color: var(--muted); font-weight: 500; font-size: 13px; padding: 4px 10px; }
+.rp-chips.values b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.rp-card h3 { margin: 0 0 10px; font-size: 16px; letter-spacing: -.005em; }
+.rp-chips .wait { background: var(--soft); color: var(--muted); }
+.rp-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13.5px; margin-bottom: 8px; }
+.rp-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; }
+.rp-legend .real { background: var(--real); }
+.rp-legend .mix { background: var(--s2); }
+.rp-legend .flow { background: var(--s3); }
+.rp-chart text.an-t { fill: var(--ink); font-size: 14px; font-weight: 650; }
+.rp-chart text.an-s { fill: var(--muted); font-size: 12.5px; }
+.rp-chart .an-lead { stroke: var(--line); stroke-width: 1.2; }
+.rp-chart .an-ah { fill: var(--ink); }
+.rp-chart .an-measure { stroke: var(--ink); stroke-width: 1.5; }
+.rp-chart .an-rise { fill: var(--warn-soft); }
+.rp-chart .an-fill { stroke: none; opacity: .1; }
+.rp-chart .an-fill.real { fill: var(--real); }
+.rp-chart .an-fill.gen { fill: var(--ai); }
+.rp-chart .an-ghost { fill: none; stroke-width: 1; opacity: .25; }
+.rp-chart .an-beatline { fill: none; stroke-width: 3.5; }
+.rp-chart .an-wave { fill: none; stroke-width: 1.6; }
+.rp-chart .an-ghost.real, .rp-chart .an-beatline.real, .rp-chart .an-wave.real { stroke: var(--real); }
+.rp-chart .an-ghost.gen, .rp-chart .an-beatline.gen, .rp-chart .an-wave.gen { stroke: var(--ai); }
+.rp-chart .an-wave.chosen { stroke: var(--rule); }
+.rp-chart .an-wave.bad { stroke: var(--bad); }
+.rp-chart .an-dot.real { fill: var(--real); }
+.rp-chart .an-dot.gen { fill: var(--ai); }
+.rp-chart .an-foot { fill: var(--panel); stroke: var(--muted); stroke-width: 1.5; }
+.rp-chart .an-notch { fill: var(--panel); stroke: var(--s3); stroke-width: 2.5; }
+.rp-chart .an-cover { fill: var(--rule); opacity: .55; }
+.rp-chart .an-bar.real { fill: var(--real); opacity: .75; }
+.rp-chart .an-bar.gen { fill: var(--ai); opacity: .75; }
+.rp-chart .an-mean { stroke: var(--s3); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.rp-chart .an-band.b0 { fill: var(--soft); }
+.rp-chart .an-band.b1 { fill: transparent; }
+.rp-chart .an-step { fill: none; stroke-width: 2.2; }
+.rp-chart .an-step.chosen { stroke: var(--s4); }
+.rp-chart .an-step.bad { stroke: var(--bad); }
+.rp-chart .an-chosen { fill: var(--rule); stroke: var(--panel); stroke-width: 2; }
+.rp-chart .an-last { fill: var(--bad); stroke: var(--panel); stroke-width: 2; }
+.rp-chart .an-command { stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.rp-chart .an-copyline { stroke: var(--bad); stroke-width: 2; }
+.rp-chart .an-copytext { fill: var(--bad); font-weight: 700; }
+.rp-chart .an-range { stroke-width: 3; stroke-linecap: round; opacity: .55; }
+.rp-chart .an-range.real { stroke: var(--real); }
+.rp-chart .an-range.mix { stroke: var(--s2); }
+.rp-chart .an-range.flow { stroke: var(--s3); }
+.rp-chart .an-pt.real { fill: var(--real); }
+.rp-chart .an-pt.mix { fill: var(--s2); }
+.rp-chart .an-pt.flow { fill: var(--s3); }
+
 @media (max-width: 860px) {
+  .rp-card:has(#an-beat), .rp-card:has(#an-seq), .rp-card:has(#ln-wrist), .rp-card:has(#cp-chart), .rp-card:has(#cp-cover) { overflow-x: auto; }
+  #an-beat svg, #an-seq svg, #ln-wrist svg, #cp-chart svg, #cp-cover svg { min-width: 760px; }
   .rp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rp-grid2, .rp-grid3 { grid-template-columns: minmax(0, 1fr); }
   .rp main.rp-main { padding: 0 16px 56px; }

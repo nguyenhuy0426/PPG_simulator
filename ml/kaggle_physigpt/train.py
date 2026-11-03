@@ -46,8 +46,11 @@ class Windows:
     """Memory-mapped windows of every shard found under the given roots, split by the shard's validation flag."""
 
     def __init__(self, roots):
+        # By record range, not by path: Kaggle may mount the same inputs under other paths, and row numbers (so every
+        # seeded draw of rows) follow this order.
         manifests = sorted({p for root in roots for p in Path(root).rglob("manifest.json")
-                            if json.loads(p.read_text()).get("protocol") == PROTOCOL})
+                            if json.loads(p.read_text()).get("protocol") == PROTOCOL},
+                           key=lambda p: (json.loads(p.read_text())["record_range"], str(p)))
         if not manifests:
             raise FileNotFoundError(f"No {PROTOCOL} shard under {roots}")
         self.signal, self.shards, metas = [], [], []

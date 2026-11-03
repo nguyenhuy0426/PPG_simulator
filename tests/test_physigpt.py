@@ -300,6 +300,20 @@ def test_shards_sharing_records_are_refused(tmp_path):
     assert len(tr.Windows([str(tmp_path/"a")]).train) == 48
 
 
+def test_shard_order_follows_record_ranges_whatever_the_mount_path(tmp_path):
+    def build(first, second):
+        for name, start in ((first, 3000000), (second, 3000100)):
+            writer = mw.ShardWriter(tmp_path/name)
+            x = np.zeros((2, mw.LENGTH), np.float32)
+            x[:, 0] = 1
+            writer.add(x, start, [("s", 0), ("s", 1)], False, np.zeros(2), np.zeros(2))
+            writer.flush()
+            tr.save_json(tmp_path/name/"manifest.json", dict(protocol=mw.PROTOCOL, record_range=[start, start+1], windows=2,
+                                                             chunks=writer.chunks))
+        return tr.Windows([str(tmp_path/first), str(tmp_path/second)]).record.tolist()
+    assert build("a", "z") == build("y", "b") == [3000000]*2+[3000100]*2
+
+
 def test_plateau_starts_the_decay_on_every_rank_and_leaves_a_stable_state(tmp_path):
     _shard(tmp_path/"shard0")
     # delta .99: only the first evaluation counts as a gain, so the second (step 4) ends the stable phase.
@@ -870,3 +884,126 @@ def test_features_mode_writes_the_target_report_next_to_the_unchanged_fidelity_r
     assert target["verdict"] in ("pass", "fail", "inconclusive") and target["windows"]["generated"] == 40
     assert target["generated"]["fourteen"]["mean_similarity"] == pytest.approx(fidelity["generated"]["mean_similarity"])
     assert {"rate_bpm", "power_8-20 Hz"} <= set(json.loads((tmp_path/"f"/"features.json").read_text()))
+
+
+def test_features_mode_saves_the_inputs_of_the_bootstrap_and_the_digests_of_its_real_windows(tmp_path):
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    root = tmp_path/"shard"
+    writer = mw.ShardWriter(root)
+    for valid, records, seed in ((False, range(3000000, 3000040), 0), (True, range(3900000, 3900006), 100)):
+        for record in records:
+            x = _pulse_set(seed+record % 1000, 30)
+            writer.add(x, record, [("s", i) for i in range(30)], valid, *mw.rate_features(x))
+    writer.flush()
+    tr.save_json(root/"manifest.json", dict(protocol=mw.PROTOCOL, record_range=[0, 0], windows=46*30, chunks=writer.chunks))
+    np.save(tmp_path/"generated.npy", _pulse_set(7, 120))
+    args = ["--mode", "features", "--generated", str(tmp_path/"generated.npy"), "--data", str(root),
+            "--sizes", "60", "20", "40", "--threads", "2"]
+    jp.main([str(tmp_path/"a"), *args])
+    np.save(tmp_path/"generated.npy", _pulse_set(8, 120))
+    jp.main([str(tmp_path/"b"), *args])
+    sets = [json.loads((tmp_path/run/"real_sets.json").read_text()) for run in "ab"]
+    assert sets[0] == sets[1] and sets[0]["held"]["people"] == 6 and sets[0]["held"]["windows"] == 40
+    inputs = np.load(tmp_path/"a"/"target_inputs.npz")
+    assert len(inputs["held_person"]) == 40 and set(inputs["held_person"]) <= set(range(3900000, 3900006))
+    target = json.loads((tmp_path/"a"/"target.json").read_text())
+    from ml.kaggle_physigpt import compare_target as ct
+    keys = ct.score_sets(list(ct.load_side(inputs, "held")))
+    assert len(keys["fourteen"]) == 14 and len(keys["full"]) == 14+len(jp.BEAT_SCORED)
+    # The saved features are the report's: the point estimate is reproduced to the last digit.
+    held, gen = ct.load_side(inputs, "held"), ct.load_side(inputs, "generated")
+    point = ct.means(held, gen, keys["full"], np.arange(40), np.arange(40))
+    assert point == pytest.approx(target["generated"]["full"]["mean_similarity"], abs=1e-12)
+
+
+def _compare_inputs(rng, shift, people=30, per_person=10):
+    """Per-window features of one real set by person and a generated set shifted by the given amount."""
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    names = [f"f{i}" for i in range(14)]+list(jp.BEAT_SCORED)
+    person = np.repeat(np.arange(people), per_person)
+    offset = rng.normal(0, 1, people)[person]
+    out = dict(held_person=person, other_person=person+1000)
+    for name in names:
+        out[f"held/{name}"] = offset+rng.normal(0, .3, len(person))
+        out[f"other/{name}"] = rng.normal(0, 1, people)[person]+rng.normal(0, .3, len(person))
+        out[f"generated/{name}"] = rng.normal(shift, 1.04, len(person))
+    return out
+
+
+def test_similarity_sorted_is_the_judge_s_finite_similarity():
+    from ml.kaggle_physigpt import compare_target as ct
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    rng = np.random.default_rng(0)
+    for a, b in ((rng.normal(size=50), rng.normal(.3, 1, 70)), (np.r_[rng.normal(size=9), np.nan], rng.integers(0, 3, 40)*1.),
+                 (np.full(3, np.nan), rng.normal(size=3))):
+        assert ct.similarity_sorted(ct.sorted_finite(a), ct.sorted_finite(b)) == pytest.approx(jp.finite_similarity(a, b))
+
+
+def test_group_rows_keeps_every_row_once_and_takes_string_people():
+    from ml.kaggle_physigpt import compare_target as ct
+    groups = ct.group_rows(np.array(["b", "a", "b", "c"]))
+    assert sorted(sorted(g.tolist()) for g in groups) == [[0, 2], [1], [3]]
+    assert [g.tolist() for g in ct.group_rows(3)] == [[0], [1], [2]]
+
+
+def test_compare_pairs_on_held_people_and_finds_a_real_gap_but_not_an_absent_one():
+    from ml.kaggle_physigpt import compare_target as ct
+    rng = np.random.default_rng(1)
+    base = _compare_inputs(rng, 0.)
+    same = dict(base, **{k: v for k, v in _compare_inputs(np.random.default_rng(2), 0.).items() if k.startswith("generated/")})
+    worse = dict(base, **{k: v for k, v in _compare_inputs(np.random.default_rng(3), 1.).items() if k.startswith("generated/")})
+    out = ct.compare(dict(a=dict(inputs=base), b=dict(inputs=same), c=dict(inputs=worse)), rounds=200)
+    full = out["sets"]["full"]
+    gap = full["differences"]["a - c"]
+    assert gap["point"] > 0 and gap["percentile_95"][0] > 0
+    close = full["differences"]["a - b"]
+    assert close["percentile_95"][0] < 0 < close["percentile_95"][1]
+    # Resampling repeats values, which can only push a KS distance up on average: a downward bias, which is reported.
+    assert full["means"]["a"]["bias"] < 0
+    low, high = full["means"]["a"]["corrected_95"]
+    assert low < full["means"]["a"]["point"] < high
+    assert out["held_people"] == 30 and set(full["against_real"]) == {"a", "b", "c"}
+    json.dumps(out)
+
+
+def test_compare_refuses_runs_on_different_real_people():
+    from ml.kaggle_physigpt import compare_target as ct
+    a = _compare_inputs(np.random.default_rng(1), 0.)
+    b = dict(a, held_person=a["held_person"]+1)
+    with pytest.raises(ValueError, match="not paired"):
+        ct.compare(dict(a=dict(inputs=a), b=dict(inputs=b)), rounds=2)
+
+
+def test_compare_resamples_a_prompted_generator_by_the_person_behind_each_window():
+    from ml.kaggle_physigpt import compare_target as ct
+    rng = np.random.default_rng(4)
+    a = _compare_inputs(rng, 0., people=600, per_person=1)   # many held-out people: the generated side sets the width
+    # Each person's windows repeat one value: by person the spread is that of 30 values, not of 600.
+    person = np.repeat(np.arange(30), 20)
+    b = dict(a, **{k: rng.normal(0, 1, 30)[person] for k in a if k.startswith("generated/")})
+    by_person = ct.compare(dict(b=dict(inputs=b, groups=person)), rounds=200)
+    by_window = ct.compare(dict(b=dict(inputs=b)), rounds=200)
+    width = lambda o: np.subtract(*o["sets"]["full"]["means"]["b"]["percentile_95"][::-1])
+    assert width(by_person) > width(by_window)
+
+
+def test_domain_prompts_weigh_people_equally_and_stay_in_the_training_rows():
+    pytest.importorskip("scipy")
+    from ml.kaggle_multidomain.rsr_flowgan import domain_prompts
+    view = dict(split=np.array(["train"]*12+["validation"]*2+["train"]*3),
+                domain=np.array(["d"]*14+["e"]*3),
+                subject=np.array(["a"]*10+["b"]*2+["c"]*2+["e"]*3))
+
+    class Bank:
+        def __init__(self):
+            self.asked = None
+
+        def for_ids(self, ids):
+            self.asked = ids
+            return ids
+    bank = Bank()
+    ids = domain_prompts(view, bank, "d", 4000, np.random.default_rng(0))
+    assert (bank.asked == ids).all() and set(view["split"][ids]) == {"train"} and set(view["domain"][ids]) == {"d"}
+    assert abs((view["subject"][ids] == "b").mean()-.5) < .05   # 2 windows of b against 10 of a
+    with pytest.raises(ValueError, match="no training windows"):
+        domain_prompts(view, bank, "none", 4, np.random.default_rng(0))
