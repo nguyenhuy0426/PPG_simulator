@@ -1,5 +1,7 @@
 # Panel V-cut PPG — 70 × 80 mm
 
+> **Lưu ý (2026-11-04):** bản driver trong panel này chưa cập nhật theo quy định nhà mạch (vùng GND cách đồng 0,50 mm; pad J8/J9 1,50 mm). Chỉ `led_ir_driver/` và `PPG_LED_IR_driver.zip` đã cập nhật. Dựng lại panel (`build_panel.py`) rồi chạy lại DRC và `verify_panel.py` trước khi gửi in panel.
+
 Mở `ppg_panel.kicad_pro` / `ppg_panel.kicad_pcb` bằng KiCad 10.
 Đây là **panel gia công gồm ba thiết kế khác nhau**, mỗi thiết kế một bản:
 

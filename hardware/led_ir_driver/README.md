@@ -216,3 +216,9 @@ một lỗi đã xác định**. Chưa đo trên board v2.0 thật.
 PCB 70 × 40 mm. Lỗ PCB tại (4;24), (66;24), (4;36), (66;36) mm. C7 đặt mặt sau giữa các header, các tụ/trở còn lại dùng footprint SMD. Đường đồng ngang/dọc/45°; nguồn 5 V rộng 0,60–0,80 mm; 3V3_x 0,60 mm, GNDI2C_x 0,50 mm, SCL/SDA 0,35 mm.
 Các cell R/JP không chồng lên đồng 5 V ở mặt đối diện: kể cả chiếu hai lớp,
 5 V cách đồng I²C/3V3 mới ≥ 2,22 mm (pad J3.6 ↔ đồng 5 V gần U1). Tọa độ hiện tại trong PCB/fit_report.json thay cho bảng vị trí cũ.
+
+## Phiên bản và hồ sơ đi kèm
+
+- v2.0 trở lên (hiện tại): cổng I²C riêng cho từng module và jumper 3 pad; GND cách đồng 0,50 mm, pad J8/J9 1,50 mm (xem trên). Hồ sơ hàn dán: `assembly/README.md`.
+- Bản gốc trước v2.0 (commit `fcd6c97a`): không có jumper, dùng chung một header I²C. Đây là bản tác giả đang dùng thực tế; ảnh 3D ở `../renders_original/`. Lịch sử git giữ nguyên các file của bản này.
+- Tài liệu tham khảo: `../../docs/REFERENCES.md`.

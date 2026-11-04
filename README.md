@@ -135,7 +135,7 @@ electrically independent boards.
 |---|---:|---|---|
 | OPT101 receiver | 70 × 20 mm | Two OPT101P in DIP-8 sockets; 2 mm Grove A2/RED and A0/IR headers; ADS1115 signal header; supply bypass and output RC | [Schematic, PCB and assembly notes](hardware/opt101_receiver_kicad/opt101_receiver/README.md) |
 | BPW34 receiver | 70 × 20 mm | Two BPW34, two OPA333 TIAs, 1 MΩ/22 pF feedback, 2 mm Grove headers, ADS1115 signal/GND header | [Schematic, PCB and assembly notes](hardware/bpw34_receiver/README.md) |
-| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
+| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers. v2.0 adds a separate I²C header per module (J8 IR, J9 RED) with a 100 Ω / bypass solder jumper, open by default | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
 
 | OPT101 receiver | BPW34 receiver | LED/IR driver |
 |---|---|---|
@@ -148,6 +148,23 @@ that accepts three designs on one panel. Standalone packages are available for
 [OPT101](hardware/PPG_OPT101_receiver.zip), [BPW34](hardware/PPG_BPW34_receiver.zip)
 and the [driver](hardware/PPG_LED_IR_driver.zip). Confirm V-score capability and pricing with the board house;
 separate the bare boards before soldering.
+
+**Driver-only order and assembly.** The driver can be ordered on its own from the
+[driver ZIP](hardware/PPG_LED_IR_driver.zip) (Gerber in `hardware/led_ir_driver/fabrication/`).
+Its SMT files (BOM with 14 placements, CPL, DNP list) are in
+[`hardware/led_ir_driver/assembly/`](hardware/led_ir_driver/assembly/README.md).
+After the board house's review the driver uses a 0.5 mm GND-pour clearance and
+1.5 mm pads for the 0.8 mm-drill 2.00 mm headers (J8/J9). **The three-board panel
+and its ZIP were not rebuilt with these rules**, so they still carry the earlier
+driver copy (0.3 mm pour clearance, 1.35 mm J8/J9 pads). Rebuild the panel
+before ordering it. These are CAD checks (ERC, DRC, connectivity), not
+measurements on assembled boards.
+
+**Assembled 3D views.** [`hardware/renders_original/`](hardware/renders_original/README.md)
+shows the original driver (before v2.0, no jumpers, shared I²C header) and the
+OPT101 receiver with the chips and MCP4725 modules fitted, both sides;
+[`hardware/renders_v2.1/`](hardware/renders_v2.1/README.md) shows the v2.x driver.
+The module and OPT101P bodies are approximate stand-in models.
 
 ![Three-board V-cut fabrication panel](hardware/ppg_panel/reports/pcb_top.png)
 ![V-cut positions and dimensions](hardware/ppg_panel/reports/vcut_drawing.png)
@@ -402,6 +419,11 @@ command path, and offers the older 10k/10k divider hypothesis separately. Its
 `I ≈ Vcmd/R` readout is an ideal estimate; current, compliance and optical response
 must be measured on the actual assembly. No wiring, transistor or resistor is
 changed by this software update.
+
+## References
+
+The datasheets, papers and web sources used by the hardware, PPG model and
+neural-model work are collected in [docs/REFERENCES.md](docs/REFERENCES.md).
 
 ## 👨‍💻 Authors
 
