@@ -112,6 +112,8 @@ def font(size=13, bold=False):
 
 
 def install(theme=LIGHT):
+    from ui import ctk_perf
+    ctk_perf.install()
     ctk.set_appearance_mode("Dark" if normalise_theme(theme) == DARK_MODE else "Light")
     ctk.set_default_color_theme("blue")
     t = ctk.ThemeManager.theme

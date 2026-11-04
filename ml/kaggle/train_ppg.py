@@ -110,9 +110,9 @@ def render_ir_red(pulse, fs=100, hr=75, seconds=4, dc_ir=1.5, dc_red=1.5,
 
 
 def gaussian_baseline():
-    """Current project's DEFAULT preset, not fitted to held-out targets."""
-    y = np.exp(-.5*((PHASE-.15)/.055)**2) + .4*np.exp(-.5*((PHASE-.40)/.10)**2)
-    y *= 1-.25*np.exp(-.5*((PHASE-.30)/.02)**2)
+    """Current project's DEFAULT preset (IntelliVue fit), not fitted to held-out targets."""
+    y = np.exp(-.5*((PHASE-.240)/.0837)**2) + .1557*np.exp(-.5*((PHASE-.536)/.1807)**2)
+    y *= 1-.65*np.exp(-.5*((PHASE-.257)/.1072)**2)
     edge = np.minimum(1, np.minimum(PHASE, 1-PHASE)/.05)
     y *= edge**2*(3-2*edge)
     return (y/y.max()).astype(np.float32)

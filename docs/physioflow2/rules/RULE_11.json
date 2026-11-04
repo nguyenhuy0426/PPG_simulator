@@ -1,0 +1,55 @@
+{
+  "rule": "Round 11 (PhysioFlow-2), fixed before training. Pack ppg_physioflow2_v4. Arms U2 (two-channel U-Net) and T2 (DiT-1D), recipe: uniform flow times, first-difference weight 1 and stop-band log-PSD weight 0.1 on each channel, red terms only where red is known, 20000 steps, batch 128, AdamW 3e-4 with cosine decay, 16 Heun steps; checkpoints every 2000 steps on infrared S_real + 0.5C. Gates: finite, not flat, rho in [0.75, 1.25], TorchScript agreement, single-thread latency < 5000 ms. Pilot (seed 42): an arm is eligible if it passes every gate and the median |R_generated - R_prompted| on the red validation windows is <= 0.05; the winner is the eligible arm with the lowest S_arm, U2 within 0.02; with no eligible arm the round stops. Final: the winner at seeds 123 and 2026 plus the pilot seed. D1 (the two-channel model replaces PhysioFlow F6 as the research mode): every seed eligible; seed-mean S_arm <= F6 mean + pooled SD; seed-mean wrist-exercise Q <= 0.587; seed-mean two-channel 'indistinguishable' on the red validation windows exceeds the infrared-copy baseline's by more than 2 x max(seed SD of the model, seed SD of the copy). D2 (the two-channel model replaces PhysioMix R9 as the app default): D1 and the R9 rule of round 10: S_arm gap to R9 > pooled SD, seed-mean S_real <= R9 S_real + 0.05, seed-mean S_arm <= 0.559. Shipped seed: the eligible seed with the lowest S_arm. Validation only; test splits are not used.",
+  "recipe": {
+    "lr": 0.0003,
+    "schedule": "cosine",
+    "steps": 20000,
+    "batch": 128,
+    "interval": 2000,
+    "warmup": 500,
+    "sample_steps": 16,
+    "deriv": 1.0,
+    "spectral": 0.1,
+    "t_dist": "uniform",
+    "cond_drop": 0.1,
+    "scaffold_drop": 0.15,
+    "latency_limit_ms": 5000.0
+  },
+  "arms": {
+    "U2": {
+      "backbone": "unet"
+    },
+    "T2": {
+      "backbone": "dit"
+    }
+  },
+  "limits": {
+    "R_mae": 0.05,
+    "S_arm_abs": 0.559,
+    "wrist_Q": 0.587,
+    "S_real_margin": 0.05,
+    "tie": 0.02
+  },
+  "incumbents": {
+    "F6": {
+      "S_arm": [
+        0.475,
+        0.4998,
+        0.4719
+      ],
+      "S_real": null
+    },
+    "R9": {
+      "S_arm_mean": 0.52985,
+      "S_arm_sd": 0.02928,
+      "S_real_mean": 0.34375
+    }
+  },
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0",
+  "pack": {
+    "protocol": "ppg_physioflow2_v4",
+    "windows_sha256": "90c33a02b714db672551be2903dbc1280d4a76f26d361c7989668669dc4e0c4a",
+    "content_sha256": "1093433e58d7e77b29d4874565e7b4b41a47c5459ab855c0df914d807e179493"
+  },
+  "domain_slots": 16
+}

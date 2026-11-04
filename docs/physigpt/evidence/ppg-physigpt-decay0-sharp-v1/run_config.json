@@ -1,0 +1,170 @@
+{
+  "data": [
+    "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard1-v1",
+    "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard2-v1",
+    "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard3-v1",
+    "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard4-v1",
+    "/kaggle/input/notebooks/halovie2412/ppg-physigpt-solo0-v1",
+    "/kaggle/input/datasets/halovie2412/ppg-physigpt-shard0-data-v1"
+  ],
+  "replay": [],
+  "replay_share": 0.25,
+  "output": "/kaggle/working/stage0",
+  "config": "base",
+  "resume": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-decay0-longer-v1/stage0/stable.pt",
+  "epochs": 300.0,
+  "steps": 0,
+  "batch": 1024,
+  "lr": 0.0006,
+  "warmup": 1000,
+  "decay_frac": 0.15,
+  "weight_decay": 0.1,
+  "clip": 1.0,
+  "aux": 0.1,
+  "repeats": 4,
+  "hours": 11.458,
+  "reserve_minutes": 25.0,
+  "save_minutes": 30.0,
+  "log_every": 100,
+  "eval_every": 500,
+  "sample_steps": 32,
+  "stop_at": -1,
+  "decay_steps": 3000,
+  "hold_steps": 3000,
+  "diff_weight": 0.25,
+  "plateau": 0,
+  "plateau_delta": 0.005,
+  "compile": true,
+  "seed": 42,
+  "port": 29517,
+  "cpu": false,
+  "cpu_world": 1,
+  "stage_id": "f0fd6cf7d671e211",
+  "world": 2,
+  "model": {
+    "config": {
+      "patch": 40,
+      "patches": 30,
+      "dim": 512,
+      "layers": 8,
+      "heads": 8,
+      "ffn": 1376,
+      "domain_slots": 8,
+      "head_width": 512,
+      "head_blocks": 3,
+      "rope_base": 10000.0
+    },
+    "parameters": 30666360,
+    "backbone_parameters": 25330688,
+    "domains": [
+      "mimic3_icu"
+    ]
+  },
+  "new_windows": 2184676,
+  "replay_windows": 0,
+  "valid_windows": 47252,
+  "shards": [
+    {
+      "path": "/kaggle/input/datasets/halovie2412/ppg-physigpt-shard0-data-v1",
+      "record_range": [
+        0,
+        990
+      ],
+      "windows": 149089,
+      "chunks": [
+        "31bd04678a8f5fd59e7163acf184fb95c696ff6e68ac9a90c07d29f2160b49ba",
+        "c3d0af5e0f42125882c1f74870189aef2ee7854224c0bfabc3e55a2ba7dab838",
+        "b94c4832cf235b287dd3a4c691a7612db21cc054aa84d14bd755f5736c9e1b3a"
+      ]
+    },
+    {
+      "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard1-v1/shard",
+      "record_range": [
+        5000,
+        8520
+      ],
+      "windows": 534452,
+      "chunks": [
+        "c0804b6d9e0363749eb3543512919b901df2c71a9288bf58a987438e043e3aa0",
+        "4e16deea153d58190c054fdcad15f9708341d82f106ae026dbcb47ee943a9fdf",
+        "2702a8c4bd311d444e65da746161a98a8e4bd847610d8fb8457c777f00da0859",
+        "2d458d3a52cacb5e435bc3fdb9beb6ab1615e07434a692e60736747229003eb3",
+        "46bf1735236dc32bb9a459e5f79b70da0502c33b99b70aa188c96e1379a1a165",
+        "43cf7921809c43bbab7f83b8c6f0e0a4e035b767099f7d93155bdafbb55c526a",
+        "90c75b6435ab7bc11f5bac37fbc4055c2c0e3b6370383c04e673c12567defb25",
+        "94dcda7d3d3bd2e9fd3254bdb55066ee061d8991bed6e70019f0fbb9a92edf4c",
+        "19a6d078b1d7f74969eca12fa0af7a58ef09a72e24d134b1151f40f3ecfced1f"
+      ]
+    },
+    {
+      "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard2-v1/shard",
+      "record_range": [
+        10000,
+        13456
+      ],
+      "windows": 519840,
+      "chunks": [
+        "c60c315114f817916b9e6365dec39592a42eecba8ed8aa884eb5822d21057e78",
+        "fe37865c4710ad9c2e33d65bf4706379c2a4e5190e2d7a26558538768e4e1aab",
+        "50fe09b5203b6b9fdacb4d5f5d0bb35605779e0725e7bc76e3e8c13bff455983",
+        "4a38219246200d344d202a7d0917f00c42a6200b803672475c4642cea41fa2ac",
+        "f54b0304d0173095a59f95a0668023ae66a51e4414cc8aa38b4ebeb283e73130",
+        "2a9ad569d5beb397ac0cb90559f9e3ecee54e4a585ad565c900acf772cf0455c",
+        "2592f6106c020c299c2565710ba13ff68244db7aeb5f5f8d375563e5618efc0b",
+        "8a13ae1473c6fcbdfdf9c6d363b2c1244ab2f300a1952222de886b40e5e59f01"
+      ]
+    },
+    {
+      "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard3-v1/shard",
+      "record_range": [
+        15000,
+        17492
+      ],
+      "windows": 369542,
+      "chunks": [
+        "e2a2cb9ad4382d6993374f29fd7e6a81c9c6b3e5d039aa8614e248f180e9c39e",
+        "cbbdbd7fdb39c03f540b3032097f47891893674d5683296c11135c70462b5c1f",
+        "1bddb353fc979cb0480ac94be8b4a806326c5c35d759fe578dc33838e2beaf09",
+        "9cb4955d529d0b28ed640c70da4759f9d251d4b117927dc19a0fbd62447272b5",
+        "d907c6bf59a27c26db7994b6ad24acf88497a779dc7cbc8d812de9c84742e611",
+        "cfb4f6b2a7ae04b7e4ce4ec2668d623c22fcbf3c5891d8191d2f48669b420c52"
+      ]
+    },
+    {
+      "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard4-v1/shard",
+      "record_range": [
+        20000,
+        23699
+      ],
+      "windows": 570136,
+      "chunks": [
+        "b2dd87d5af0c842e12e9e3264a8f548b360b6acae5a0eac7f2972e082ec4ab3c",
+        "3a9f900f07079d5da149fd9b3d1d8e6910a780969ba41344789877a9a83c4844",
+        "4ca94d045fc39a3eb1ff9c3105a9924132a98ff3341ac00d5e9f8efaefddc831",
+        "c292a0f89cc56d486db4ef270fbada747d522979c76f9157a5d854bb8a754d79",
+        "1b9a5e683f16294b13b9ca6de34988702fb802febca1c2dfc4959bc03796782b",
+        "09d70de8b23d2670b61ba60cbb84b5ba291d0e5145ac8d370fdd84eb33c5cc24",
+        "94aac14a54f3467e28eb75b8fd76be8e739f62f754c261bc69204ab9b0fbe92b",
+        "ec59d94414fc85c6d81f31e599a91be0b4bd8cc493fb885a4b6bbc3749697961",
+        "41d1792c4f7f2aff1f18b05b5d5950d8004eb89c377e7e846f1af124b1b223db"
+      ]
+    },
+    {
+      "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-solo0-v1/shard",
+      "record_range": [
+        45000,
+        45628
+      ],
+      "windows": 88869,
+      "chunks": [
+        "72210b3c17fe63bbe59563805a93055c824969a953e40f1927daaea14bb22ffd",
+        "87b2bb6cea8cd132ae2974f230ba289bff92ab8c12d971c1a8a29e7b17c6b2f2"
+      ]
+    }
+  ],
+  "plan": [
+    27500,
+    24500
+  ],
+  "start_step": 21500
+}

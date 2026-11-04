@@ -66,7 +66,29 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 ### Neural waveform models
 
-The current **04 PPG morphology** page keeps the original three-Gaussian
+The app's Neural page offers the fitted three-Gaussian shaper and the LSM-GAN sequence (normalized 30 s strip at 40 Hz,
+BIDMC, no rate control, no paired IR/RED, no calibrated SpO₂); `assets/neural/manifest.json` lists the packaged files.
+
+PhysioMix (round 9) and PhysioFlow (round 10) were removed from the app with every research generator that did not
+improve on them. A strict real-vs-generated judge retrained per source on unseen people (C2ST, validation AUC; 0.5 =
+indistinguishable, the real-vs-real control is about 0.45) still separated them at 0.99–1.00, as it did PhysioMix with
+the strict critic, LSM-GAN-S, the flow-GANs G1–G3, BeatGen and the spectral-finish variants (0.95–1.00). Kept for
+further work: PhysioFlow-R (R1, mean 0.759 over seeds 0.745–0.785 at 16 Heun steps, the only clear gain), its fine-tune R1F and PhysioGAN-R
+(P5, in training), and the LSM-GAN author topology as the unchanged baseline. The removed models' results stay in
+`ml/runs`, [docs/model-report](docs/model-report/README.md) and [docs/physioflow/REPORT_VI.md](docs/physioflow/REPORT_VI.md);
+their code is in git history. These are engineering evaluations of normalized waveform shape, not clinical
+validation, and they were not measured on the Pi/DAC/OPT101.
+
+PPG-physiGPT (`ml/kaggle_physigpt/`, research only, not in the app) is an unconditional GPT-PPG-style patch
+transformer with a flow-matching head, pretrained on MIMIC-III WDB on Kaggle 2 x T4. The strict judge still separates
+every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people),
+the 99.9M large model reaches 0.941 against 0.933 for the best 30.7M base, where real people score 0.960. It is the
+V1 release: V1 asks for 95% of the real-vs-real similarity (large: 98.1%). The V2 target, absolute 0.95 with a
+feature-only tree classifier at most 0.60 accurate (large: 0.618), is not met; the gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
+
+#### Earlier models (history)
+
+The **04 PPG morphology** page keeps the original three-Gaussian
 generator and offers the LSM-GAN sequence as an experimental model. The
 cWGAN-GP checkpoint below is retained for research comparison; it is not the
 current sequence source. Both neural models were trained from BIDMC 1.0.0 PPG
@@ -356,6 +378,34 @@ page stops an active calibration. Sine calibration drives both MCP4725 DAC chann
 plotting an 8-second rolling window for A0 (IR) and A2 (Red). Sensor readings display raw
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
+
+**Single-sensor TDM mode (Setup → RX sensor → 1 × OPT101, or `--rx-mode tdm`):**
+when only one OPT101 is available, put both LEDs in one chamber in front of the A0
+sensor. [docs/system_3d/README_TDM.md](docs/system_3d/README_TDM.md) adds a
+dual-LED carrier (RED + IR, toed in to meet at the sensor, with swappable IR
+masks) for the IR lane of the existing rectangular v4 box; the 70 × 20 mm
+receiver PCB is used with only socket U2 (A0) populated. The Setup switch is locked while output runs, is
+saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
+The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
+IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
+first, so the two LEDs are never commanded on together. A0 is read once per slot,
+`PPG_TDM_READ_DELAY_MS` after the switch (default 6 ms of a 10 ms
+`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
+The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
+next to them. Nothing is subtracted. TDM reads the sensor only while output
+runs, and the LEDs pulse instead of glowing steadily.
+The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
+(τ = 1 ms) needs about 6–7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
+slow for 10 ms slots. Measure it with the app stopped:
+
+```bash
+.venv/bin/python scripts/measure_tdm_settling.py --output docs/hardware-validation/tdm-settling
+```
+
+`suggested_read_delay_ms` in its summary is the slowest observed edge plus 25 %.
+If it does not fit, lengthen `PPG_TDM_SLOT_MS` (lower per-channel rate) or reduce
+the RC. These checks establish timing only, not SpO₂ calibration: both channels
+now share one photodiode's responsivity, so the R ratio differs from dual mode.
 
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
 between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN

@@ -1,0 +1,77 @@
+{
+  "rule": "Step D pilot (seed 42), fixed before training. Selection on validation only. A retrained model goes to a 3-seed final only if (1) on the original validation it passes every gate with S_arm <= 0.559 and wrist-exercise Q <= 0.587, and (2) on the 4 everyday-wrist validation people (3 halvings), prompted as the everyday-wrist domain, its mean 'indistinguishable' exceeds the app PhysioMix's (prompted as wrist) by more than 2x the larger halving SD, its Q is lower and its median |rate error| is not worse by more than 2 bpm. If both recipes pass, the final trains the one with the higher everyday-wrist validation 'indistinguishable'. The 12 GalaxyPPG test people are reported only.",
+  "rule_sha256": "20a6823fbf0ad343d29d05d93e75e935b604b778ff61edbbc3d2fbc3ba2660d2",
+  "recipes": {
+    "physiomix_d": {
+      "arm": "L3_rel_beat_lr_crop_r1w_motion_dom",
+      "sampler": "L3_rel_beat_lr_crop_r1w_motion_dom",
+      "steps": 20000,
+      "batch": 32,
+      "interval": 500,
+      "frozen": null
+    },
+    "physioflow_d": {
+      "arm": "F10_flow_unif_stop01",
+      "sampler": "F10_flow_unif_stop01_s16_w1",
+      "steps": 20000,
+      "batch": 128,
+      "interval": 2000,
+      "frozen": {
+        "samplers": [
+          "F10_flow_unif_stop01_s16_w1"
+        ]
+      }
+    }
+  },
+  "jobs": [
+    [
+      "physiomix_d",
+      42
+    ],
+    [
+      "physioflow_d",
+      42
+    ]
+  ],
+  "data_sha256": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+  "content_sha256": "e8e32d646b9743d54f7883dfc9666b10c1dc38e71932ad9b8dc258e3bd3684ea",
+  "galaxy_people": {
+    "train": [
+      "galaxyppg:P02",
+      "galaxyppg:P04",
+      "galaxyppg:P05",
+      "galaxyppg:P12",
+      "galaxyppg:P15",
+      "galaxyppg:P17",
+      "galaxyppg:P21",
+      "galaxyppg:P22"
+    ],
+    "validation": [
+      "galaxyppg:P08",
+      "galaxyppg:P11",
+      "galaxyppg:P14",
+      "galaxyppg:P20"
+    ],
+    "external": [
+      "galaxyppg:P01",
+      "galaxyppg:P03",
+      "galaxyppg:P06",
+      "galaxyppg:P07",
+      "galaxyppg:P09",
+      "galaxyppg:P10",
+      "galaxyppg:P13",
+      "galaxyppg:P16",
+      "galaxyppg:P18",
+      "galaxyppg:P19",
+      "galaxyppg:P23",
+      "galaxyppg:P24"
+    ]
+  },
+  "python": "3.13.15",
+  "torch": "2.11.0+cu128",
+  "gpus": [
+    "Tesla T4",
+    "Tesla T4"
+  ],
+  "cpu_count": 4
+}

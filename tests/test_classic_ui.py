@@ -3,6 +3,7 @@
 The Tk tests need a display (Xvfb is fine); they skip on a headless machine.
 """
 import os
+import time
 import unittest
 
 from models.ppg_model import CONDITION_NAMES
@@ -193,3 +194,98 @@ class TestRailAndTheme(unittest.TestCase):
             self.assertEqual(app.frames["Pathology"].trace.cget("bg"), T.DARK[0])
         finally:
             app.on_closing()
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class TestTouchPanelPages(unittest.TestCase):
+    def test_every_page_fits_the_1024x600_panel_with_readable_plots(self):
+        """Emulates the Pi panel (compact profile, 0.75 scaling); resizing a desktop window does not."""
+        import time
+        from unittest import mock
+        from ui.ctk_app import CTkApp
+        with mock.patch.object(CTkApp, "winfo_screenwidth", lambda self: 1024), \
+                mock.patch.object(CTkApp, "winfo_screenheight", lambda self: 600), \
+                mock.patch.object(CTkApp, "_maximize_to_work_area", lambda self: None):
+            app = CTkApp(language="vi")
+        app._save_language = lambda: None
+        try:
+            self.assertTrue(app.layout.compact)
+            app.geometry("1024x600+0+0")
+
+            def pump(seconds):
+                end = time.monotonic() + seconds
+                while time.monotonic() < end:
+                    app.update()
+                    time.sleep(.01)
+            for name in ("Pathology", "Calibration", "Playback", "Neural"):
+                app._show_frame(name)
+                pump(.4)
+                page = app.frames[name]
+                bottom = app.winfo_rooty() + app.winfo_height()
+                self.assertLessEqual(page.winfo_reqheight(), page.master.winfo_height(), name)
+                self.assertGreaterEqual(page.rx_panel.winfo_height(), 150, name)
+                self.assertLessEqual(page.rx_panel.winfo_rooty() + page.rx_panel.winfo_height(), bottom, name)
+            neural = app.frames["Neural"]
+            self.assertGreaterEqual(neural.trace.winfo_height(), 150)
+            for widget in (neural.play_btn, neural.export_btn, neural.seek, neural.status):
+                self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(), bottom)
+            # Generated and reference lanes share the TX view and both draw.
+            self.assertEqual(len(neural.trace.lanes), 2)
+            self.assertTrue(all(lane.points for lane in neural.trace.lanes))
+        finally:
+            app.on_closing()
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class LaneViewRedrawTest(unittest.TestCase):
+    """The canvas is rebuilt only when something visible changed."""
+
+    def setUp(self):
+        import tkinter as tk
+        from ui.trace_view import LaneView
+        self.root = tk.Tk()
+        self.view = LaneView(self.root, width=600, height=300)
+        self.view.pack(fill="both", expand=True)
+        self.root.update()
+        self.renders = 0
+        real = self.view.render
+
+        def counted():
+            self.renders += 1
+            real()
+        self.view.render = counted
+
+    def tearDown(self):
+        self.root.destroy()
+
+    @staticmethod
+    def lanes(n=40, shift=0.0):
+        from ui.trace_view import Lane
+        return [Lane("IR", "#0a0", "", [(i * 0.1 - 8 + shift, float(i)) for i in range(n)])]
+
+    def test_identical_frames_do_not_redraw(self):
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.assertEqual(self.renders, 1)
+
+    def test_new_data_redraws(self):
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view.update_lanes(self.lanes(shift=0.05), end_s=0.0)
+        self.assertEqual(self.renders, 2)
+
+    def test_a_slow_render_delays_the_next_one(self):
+        from ui import trace_view
+        self.view.update_lanes(self.lanes(), end_s=0.0)
+        self.view._not_before = time.perf_counter() + 60
+        self.view.update_lanes(self.lanes(shift=0.05), end_s=0.0)
+        self.assertEqual(self.renders, 1)
+        self.assertGreater(trace_view.RENDER_BACKOFF, 1)
+
+    def test_long_traces_are_drawn_with_at_most_one_vertex_per_pixel(self):
+        from ui.trace_view import Lane
+        pts = [(i * 0.001 - 8, float(i % 50)) for i in range(8000)]
+        self.view.update_lanes([Lane("IR", "#0a0", "", pts)], end_s=0.0)
+        vertices = max((len(self.view.coords(i)) // 2 for i in self.view.find_all()
+                        if self.view.type(i) == "line"), default=0)
+        self.assertLessEqual(vertices, self.view.winfo_width())
+        self.assertGreater(vertices, 100)

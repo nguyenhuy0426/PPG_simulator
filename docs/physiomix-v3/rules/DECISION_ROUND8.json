@@ -1,0 +1,44 @@
+{
+  "arm": "L3_rel_beat_lr_crop_r1w_motion",
+  "incumbent": "L3_rel_beat_lr_crop_r1w",
+  "ship": false,
+  "ship_seed": 42,
+  "eligible": true,
+  "gap": -0.012615251363809143,
+  "pooled_sd": 0.0400335332330506,
+  "non_inferior": true,
+  "S_arm": {
+    "mean": 0.5229967975938917,
+    "sd": 0.020895148458848187,
+    "n": 3
+  },
+  "S_real": {
+    "mean": 0.3535729566795891,
+    "sd": 0.005108283348121741,
+    "n": 3
+  },
+  "incumbent_S_arm": {
+    "mean": 0.5103815462300826,
+    "sd": 0.05261901117586902,
+    "n": 3
+  },
+  "incumbent_S_real": {
+    "mean": 0.3599922268653601,
+    "sd": 0.022862781749749043,
+    "n": 3
+  },
+  "target": "wrist",
+  "target_Q": {
+    "mean": 0.6074587489548483,
+    "sd": 0.08124225897664519,
+    "n": 3
+  },
+  "incumbent_target_Q": {
+    "mean": 0.6529837633057968,
+    "sd": 0.05881596615817456,
+    "n": 3
+  },
+  "target_gap": 0.04552501435094847,
+  "target_pooled_sd": 0.07092116228160612,
+  "S_arm_within_pooled_sd": true
+}

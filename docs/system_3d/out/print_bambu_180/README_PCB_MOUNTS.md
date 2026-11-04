@@ -2,9 +2,12 @@
 
 - OPT101 70×20: in `14_ga_chu_U_OPT101_70x20.stl`.
 - BPW34 70×20: in `15_ga_chu_U_BPW34_70x20.stl`.
-- Driver 70×40: in `16_ga_driver_70x40.stl`.
+- Driver 70×40: in `16_ga_driver_70x40.stl` (không vít) và 4 nút nhựa thẳng `18_nut_nhua_driver.stl`.
+- **Gửi in một lần:** `17_ga_pcb_OPT101_BPW34_driver.stl` gộp ba gá trên cùng nút nhựa của gá driver
+  (149 × 85,5 × 8,6 mm: ba gá và 4 nút nhựa, các khối rời cách nhau ≥ 4 mm). Dựng lại bằng
+  `docs/system_3d/build_pcb_mount_plate.py`.
 
-In mỗi gá cần dùng một bản; chúng chưa nằm trong các plate gốc.
+In mỗi gá cần dùng một bản (file 17 đã có đủ ba); chúng chưa nằm trong các plate gốc.
 Hai receiver dùng gá H không bắt vít: hai trụ cạnh và thanh ngang đỡ mép dưới PCB;
 vùng dưới thanh ngang rỗng để luồn dây header ở phía trước PCB. Rãnh trong hộp
 rộng 4,3 mm; gá dày 3,8 mm, hở danh nghĩa 0,5 mm theo chiều dày và 0,5 mm

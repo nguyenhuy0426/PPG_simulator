@@ -1,0 +1,353 @@
+{
+ "loop": 7,
+ "change": "Thêm 87 bản sao giãn pha tâm trương (giữ 0,5 s sau đỉnh và 0,1 s trước đỉnh kế) của 11 cửa sổ cổ tay train có khung nhịp, phủ 40–115 bpm; mỗi batch thay một nửa số hàng cổ tay có khung nhịp bằng một bản sao. Trọng số loss dải chặn 0,3 (F11) và 0,1 (F12). Pilot seed 42, 20 000 bước, Kaggle 2 × T4 (tài khoản halovie2412), sampler 16 bước Heun.",
+ "go_limits": {
+  "wrist_Q": 0.546,
+  "S_arm": 0.487
+ },
+ "go_final": false,
+ "winner": null,
+ "selection_reason": "no eligible pair within {'wrist_Q': 0.546, 'S_arm': 0.487}",
+ "loop6_pilot_F10": {
+  "S_arm": 0.449,
+  "S_real": 0.314,
+  "C": 0.066,
+  "auc": 0.704,
+  "wrist_Q": 0.581
+ },
+ "incumbent_round9": {
+  "S_arm": 0.53,
+  "wrist_Q": 0.527
+ },
+ "wrist_grid_bpm": [
+  40,
+  50,
+  60,
+  70,
+  80,
+  90,
+  100,
+  110,
+  120,
+  130,
+  140,
+  150,
+  160,
+  170,
+  180
+ ],
+ "wrist_median_hr": {
+  "F11_flow_stop03_wslow": [
+   149,
+   70,
+   80,
+   140,
+   160,
+   90,
+   100,
+   110,
+   120,
+   130,
+   140,
+   150,
+   160,
+   170,
+   180
+  ],
+  "F12_flow_stop01_wslow": [
+   143,
+   63,
+   67,
+   87,
+   160,
+   91,
+   100,
+   110,
+   120,
+   130,
+   140,
+   150,
+   160,
+   170,
+   180
+  ],
+  "F10_flow_unif_stop01 (vòng 6)": [
+   47,
+   103,
+   60,
+   70,
+   80,
+   90,
+   100,
+   110,
+   120,
+   130,
+   140,
+   150,
+   160,
+   170,
+   180
+  ]
+ },
+ "conclusion": "Không đạt go. F11: S_arm 0,580, C 0,298, Q cổ tay 0,533; F12: S_arm 0,529, C 0,218, Q cổ tay 0,561. Cổ tay bám nhịp chậm tệ hơn vòng 6 (lệnh 40 bpm ra 143–149, 80 bpm ra 160; F10 vòng 6 chỉ lỗi ở 50 bpm). Bản sao giãn không dạy được bám nhịp chậm mà còn đẩy thêm khoá hài. Không chạy final 3 seed.",
+ "candidates": [
+  {
+   "arm": "F11_flow_stop03_wslow",
+   "sampler": "F11_flow_stop03_wslow_s16_w1",
+   "S_arm": 0.58,
+   "S_real": 0.319,
+   "C": 0.298,
+   "auc": 0.724,
+   "eligible": true,
+   "latency_ms": 1526,
+   "Q": {
+    "gxu_finger": 0.103,
+    "perform_large": 0.108,
+    "bidmc": 0.702,
+    "perform_cohort": 0.422,
+    "wrist": 0.533
+   },
+   "mae_ext": 3.91
+  },
+  {
+   "arm": "F12_flow_stop01_wslow",
+   "sampler": "F12_flow_stop01_wslow_s16_w1",
+   "S_arm": 0.529,
+   "S_real": 0.318,
+   "C": 0.218,
+   "auc": 0.705,
+   "eligible": true,
+   "latency_ms": 1438,
+   "Q": {
+    "gxu_finger": 0.109,
+    "perform_large": 0.097,
+    "bidmc": 0.751,
+    "perform_cohort": 0.383,
+    "wrist": 0.561
+   },
+   "mae_ext": 3.55
+  }
+ ],
+ "curves": {
+  "F11_flow_stop03_wslow": [
+   {
+    "step": 4000,
+    "S_real": 0.467,
+    "C": 0.271,
+    "Q": {
+     "gxu_finger": 0.305,
+     "perform_large": 0.251,
+     "bidmc": 0.796,
+     "perform_cohort": 0.527,
+     "wrist": 0.72
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.379,
+    "C": 0.251,
+    "Q": {
+     "gxu_finger": 0.201,
+     "perform_large": 0.157,
+     "bidmc": 0.704,
+     "perform_cohort": 0.467,
+     "wrist": 0.645
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.341,
+    "C": 0.242,
+    "Q": {
+     "gxu_finger": 0.156,
+     "perform_large": 0.13,
+     "bidmc": 0.655,
+     "perform_cohort": 0.415,
+     "wrist": 0.625
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.323,
+    "C": 0.275,
+    "Q": {
+     "gxu_finger": 0.156,
+     "perform_large": 0.098,
+     "bidmc": 0.661,
+     "perform_cohort": 0.378,
+     "wrist": 0.578
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.32,
+    "C": 0.296,
+    "Q": {
+     "gxu_finger": 0.149,
+     "perform_large": 0.096,
+     "bidmc": 0.694,
+     "perform_cohort": 0.364,
+     "wrist": 0.525
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.306,
+    "C": 0.292,
+    "Q": {
+     "gxu_finger": 0.125,
+     "perform_large": 0.09,
+     "bidmc": 0.682,
+     "perform_cohort": 0.365,
+     "wrist": 0.48
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.301,
+    "C": 0.328,
+    "Q": {
+     "gxu_finger": 0.117,
+     "perform_large": 0.087,
+     "bidmc": 0.672,
+     "perform_cohort": 0.37,
+     "wrist": 0.462
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.305,
+    "C": 0.32,
+    "Q": {
+     "gxu_finger": 0.109,
+     "perform_large": 0.083,
+     "bidmc": 0.7,
+     "perform_cohort": 0.373,
+     "wrist": 0.492
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.31,
+    "C": 0.322,
+    "Q": {
+     "gxu_finger": 0.122,
+     "perform_large": 0.105,
+     "bidmc": 0.689,
+     "perform_cohort": 0.369,
+     "wrist": 0.46
+    }
+   }
+  ],
+  "F12_flow_stop01_wslow": [
+   {
+    "step": 4000,
+    "S_real": 0.459,
+    "C": 0.245,
+    "Q": {
+     "gxu_finger": 0.291,
+     "perform_large": 0.241,
+     "bidmc": 0.777,
+     "perform_cohort": 0.54,
+     "wrist": 0.758
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.375,
+    "C": 0.267,
+    "Q": {
+     "gxu_finger": 0.196,
+     "perform_large": 0.16,
+     "bidmc": 0.711,
+     "perform_cohort": 0.459,
+     "wrist": 0.678
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.338,
+    "C": 0.244,
+    "Q": {
+     "gxu_finger": 0.141,
+     "perform_large": 0.116,
+     "bidmc": 0.686,
+     "perform_cohort": 0.427,
+     "wrist": 0.667
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.327,
+    "C": 0.204,
+    "Q": {
+     "gxu_finger": 0.129,
+     "perform_large": 0.109,
+     "bidmc": 0.7,
+     "perform_cohort": 0.415,
+     "wrist": 0.604
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.32,
+    "C": 0.214,
+    "Q": {
+     "gxu_finger": 0.103,
+     "perform_large": 0.096,
+     "bidmc": 0.72,
+     "perform_cohort": 0.394,
+     "wrist": 0.646
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.331,
+    "C": 0.198,
+    "Q": {
+     "gxu_finger": 0.121,
+     "perform_large": 0.089,
+     "bidmc": 0.702,
+     "perform_cohort": 0.399,
+     "wrist": 0.722
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.337,
+    "C": 0.185,
+    "Q": {
+     "gxu_finger": 0.121,
+     "perform_large": 0.095,
+     "bidmc": 0.705,
+     "perform_cohort": 0.404,
+     "wrist": 0.735
+    }
+   },
+   {
+    "step": 18000,
+    "S_real": 0.343,
+    "C": 0.198,
+    "Q": {
+     "gxu_finger": 0.136,
+     "perform_large": 0.089,
+     "bidmc": 0.699,
+     "perform_cohort": 0.414,
+     "wrist": 0.756
+    }
+   },
+   {
+    "step": 20000,
+    "S_real": 0.344,
+    "C": 0.21,
+    "Q": {
+     "gxu_finger": 0.152,
+     "perform_large": 0.093,
+     "bidmc": 0.689,
+     "perform_cohort": 0.424,
+     "wrist": 0.667
+    }
+   }
+  ]
+ }
+}

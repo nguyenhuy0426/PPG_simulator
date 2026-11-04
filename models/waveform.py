@@ -129,22 +129,23 @@ class PulseMorphology:
     are relative to the systolic peak amplitude, which is itself relative.
     Absolute millivolts are applied downstream by models/ppg_model.py.
 
-    The existing component-position/width defaults are retained as project
-    presets, not population reference intervals. dicrotic_depth is a local
-    attenuation fraction, not a measured clinical notch-depth index.
+    The defaults are the project preset fitted to a Philips IntelliVue Pleth
+    display trace (assets/gaussian/intellivue_fit.json, same values as
+    models/ppg_model.py), not population reference intervals. dicrotic_depth
+    is a local attenuation fraction, not a measured clinical notch-depth index.
     """
 
-    systolic_pos: float = 0.15
-    notch_pos: float = 0.30
-    diastolic_pos: float = 0.40
+    systolic_pos: float = 0.240
+    notch_pos: float = 0.257
+    diastolic_pos: float = 0.536
 
-    systolic_width: float = 0.055
-    notch_width: float = 0.02
-    diastolic_width: float = 0.10
+    systolic_width: float = 0.0837
+    notch_width: float = 0.1072
+    diastolic_width: float = 0.1807
 
     systolic_amplitude: float = 1.0
-    diastolic_amplitude: float = 0.4
-    dicrotic_depth: float = 0.25
+    diastolic_amplitude: float = 0.1557
+    dicrotic_depth: float = 0.65
 
     # ---- millisecond view (AECG100 units, quoted at 60 BPM) ----
 

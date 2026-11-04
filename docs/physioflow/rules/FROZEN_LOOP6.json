@@ -1,0 +1,127 @@
+{
+  "rule": "PhysioFlow round-10 rule (validation only; locked criterion sha256 813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0).\nArm F10_flow_unif_stop01_s16_w1 = PhysioFlow (flag-gated rhythm scaffold, x0 first-difference loss 1, uniform flow times) plus a stop-band log-PSD loss of the x0 estimate at low t (weight 0.1); sampler 16 Heun steps, guidance 1; chosen by the seed-42 pilot (validation S_arm).\nGates: the round-3 gates (finite, no flat output, rho in [0.75, 1.25], TorchScript trace) with the flow latency limit: median one-thread CPU time per 30 s window < 5000 ms (Kaggle host).\nIncumbent: round9_L3_rel_beat_lr_crop_r1w_motion_dom (app model), S_arm [0.5262649541586719, 0.5025288682026399, 0.5607545089099031], S_real [0.3366883143979049, 0.3348687034928986, 0.3596942225745373], validation wrist Q [0.4933984613693272, 0.49099468070021157, 0.5954892596652901].\nPhysioFlow replaces it as the app's conditioned generator only if every seed passes the gates, its mean S_arm beats the incumbent's by more than the pooled seed SD of S_arm, its mean S_real is at most the incumbent's + 0.05, and its mean validation wrist Q is at most the incumbent's mean + the pooled seed SD of wrist Q (the round-9 wrist gain is kept); the shipped seed is its lowest-S_arm seed. Otherwise the incumbent stays. The GXU test is scored only after this decision is saved.",
+  "rule_sha256": "142f66cd1028b5ac98562d7485cd58916a5ed205c9365e9a3c99a04339414ef4",
+  "arm": "F10_flow_unif_stop01_s16_w1",
+  "config": {
+    "diffusion": false,
+    "osc": false,
+    "dc": false,
+    "guidance": 1.0,
+    "sample_steps": 16,
+    "lr": 0.0003,
+    "schedule": "cosine",
+    "rel": false,
+    "beat": false,
+    "domloss": false,
+    "pad": 0,
+    "r1_scaled_clip": false,
+    "r1_weight": 1.0,
+    "motion": false,
+    "flow": true,
+    "deriv": 1.0,
+    "width": 1.0,
+    "flag_scaffold": true,
+    "t_dist": "uniform",
+    "t_end": 0.0,
+    "finish_filter": false,
+    "spectral": 0.1,
+    "spectral_stop": true,
+    "input_noise": 0.0,
+    "latency_limit_ms": 5000.0,
+    "version": "v2"
+  },
+  "incumbent": {
+    "arm": "L3_rel_beat_lr_crop_r1w_motion_dom",
+    "S_arm": [
+      0.5262649541586719,
+      0.5025288682026399,
+      0.5607545089099031
+    ],
+    "S_real_fresh": [
+      0.3366883143979049,
+      0.3348687034928986,
+      0.3596942225745373
+    ],
+    "seeds": [
+      42,
+      123,
+      2026
+    ],
+    "wrist_Q": [
+      0.4933984613693272,
+      0.49099468070021157,
+      0.5954892596652901
+    ],
+    "name": "round9_L3_rel_beat_lr_crop_r1w_motion_dom"
+  },
+  "seeds": [
+    42,
+    123,
+    2026
+  ],
+  "steps": 20000,
+  "batch": 128,
+  "data_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "gxu_test_subject_sha256": "a0d0c0e982ab31f265ab02853efe93c26ab8d547df68eef2576f8489079ebb45",
+  "pilot": {
+    "winner": "F10_flow_unif_stop01_s16_w1",
+    "base": "F10_flow_unif_stop01",
+    "candidates": [
+      {
+        "arm": "F9_flow_unif_stop03",
+        "sampler": "F9_flow_unif_stop03_s16_w1",
+        "S_arm": 0.45736379229026713,
+        "S_real": 0.29775886924618017,
+        "C": 0.14674119116501053,
+        "auc": 0.6724686549231634,
+        "eligible": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": true,
+          "trace_ok": true,
+          "latency_ok": true
+        },
+        "latency": {
+          "median_ms": 1311.4320959998622,
+          "p95_ms": 1347.9956650998247,
+          "cpu_threads": 1,
+          "hardware_scope": "Kaggle host CPU; Pi not measured"
+        },
+        "wrist_Q": 0.5014785958238075
+      },
+      {
+        "arm": "F10_flow_unif_stop01",
+        "sampler": "F10_flow_unif_stop01_s16_w1",
+        "S_arm": 0.4492805128241998,
+        "S_real": 0.3142486408875022,
+        "C": 0.06610854747008532,
+        "auc": 0.7039551964033098,
+        "eligible": true,
+        "gates": {
+          "finite": true,
+          "flat": false,
+          "rho_ok": true,
+          "d_clipped_ok": true,
+          "trace_ok": true,
+          "latency_ok": true
+        },
+        "latency": {
+          "median_ms": 1356.7303314998753,
+          "p95_ms": 1443.2360220001556,
+          "cpu_threads": 1,
+          "hardware_scope": "Kaggle host CPU; Pi not measured"
+        },
+        "wrist_Q": 0.5809984981340643
+      }
+    ],
+    "reason": "argmin S_arm over eligible (arm, sampler) pairs, seed 42 within {'wrist_Q': 0.601, 'S_arm': 0.487}",
+    "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0",
+    "go_limits": {
+      "wrist_Q": 0.601,
+      "S_arm": 0.487
+    },
+    "go_final": true
+  }
+}

@@ -1,0 +1,582 @@
+{
+  "rule": "Step B-LSM (seed 42), fixed before training. Report only: LSM-GAN has no condition input, so no LSM arm can replace an app generator. On the 12 GalaxyPPG test people (3 halvings), an arm counts as 'more data helped' if its mean 'indistinguishable' exceeds the app LSM-GAN's by more than 2x the larger halving SD; 'GalaxyPPG helped' if lsm_v3g_all or lsm_v3g_wrist exceeds lsm_v3_all by the same margin.",
+  "more_data_vs_app_lsm": {
+    "lsm_v3_all": {
+      "gap": 0.15883612939093794,
+      "margin": 0.2868437603300892,
+      "helped": false
+    },
+    "lsm_v3g_all": {
+      "gap": 1.5213880733189116,
+      "margin": 1.9558460200248544,
+      "helped": false
+    },
+    "lsm_v3g_wrist": {
+      "gap": 7.537262516422816,
+      "margin": 9.05633190916596,
+      "helped": false
+    }
+  },
+  "galaxy_vs_no_galaxy": {
+    "lsm_v3g_all": {
+      "gap": 1.3625519439279736,
+      "margin": 1.9558460200248544,
+      "helped": false
+    },
+    "lsm_v3g_wrist": {
+      "gap": 7.378426387031878,
+      "margin": 9.05633190916596,
+      "helped": false
+    }
+  },
+  "app_eligible": [],
+  "galaxy_helped": false,
+  "summary": {
+    "real_other_people": {
+      "indistinguishable": {
+        "mean": 71.38177944726938,
+        "sd": 22.92039513188921
+      },
+      "Q": {
+        "mean": 0.09186062823522619,
+        "sd": 0.005812310590877777
+      },
+      "fidelity": {
+        "mean": 0.9153645833333334,
+        "sd": 0.029318568357285683
+      },
+      "coverage": {
+        "mean": 0.91796875,
+        "sd": 0.010334966058846057
+      },
+      "rate_error_median_bpm": {
+        "mean": 1.1749458790363694,
+        "sd": 0.07428811567857284
+      },
+      "rate_within_5bpm": {
+        "mean": 0.7630208333333334,
+        "sd": 0.005966895436140416
+      }
+    },
+    "physiomix": {
+      "indistinguishable": {
+        "mean": 0.6819898078313033,
+        "sd": 1.0899457648495718
+      },
+      "Q": {
+        "mean": 0.8544783013503526,
+        "sd": 0.05090599976570621
+      },
+      "fidelity": {
+        "mean": 0.8255208333333334,
+        "sd": 0.028793417171218725
+      },
+      "coverage": {
+        "mean": 0.2890625,
+        "sd": 0.062009796353076345
+      },
+      "rate_error_median_bpm": {
+        "mean": 1.4871228786053574,
+        "sd": 0.1208628873682633
+      },
+      "rate_within_5bpm": {
+        "mean": 0.6458333333333334,
+        "sd": 0.05157630812588115
+      }
+    },
+    "lsm_gan": {
+      "indistinguishable": {
+        "mean": 0.020424836601303415,
+        "sd": 0.03537685472974995
+      },
+      "Q": {
+        "mean": 1.9924809263451628,
+        "sd": 0.13372962155967896
+      },
+      "fidelity": {
+        "mean": 0.6614583333333334,
+        "sd": 0.5728929919350849
+      },
+      "coverage": {
+        "mean": 0.0,
+        "sd": 0.0
+      },
+      "rate_error_median_bpm": {
+        "mean": 16.725925131273982,
+        "sd": 0.8556953159402051
+      },
+      "rate_within_5bpm": {
+        "mean": 0.11067708333333333,
+        "sd": 0.016263015620829165
+      }
+    },
+    "lsm_v3_all": {
+      "indistinguishable": {
+        "mean": 0.17926096599224137,
+        "sd": 0.1434218801650446
+      },
+      "Q": {
+        "mean": 0.8311787126848221,
+        "sd": 0.03386347653365852
+      },
+      "fidelity": {
+        "mean": 0.984375,
+        "sd": 0.0078125
+      },
+      "coverage": {
+        "mean": 0.005208333333333333,
+        "sd": 0.004510548978043952
+      },
+      "rate_error_median_bpm": {
+        "mean": 14.951109258597688,
+        "sd": 1.600377631091774
+      },
+      "rate_within_5bpm": {
+        "mean": 0.12890625,
+        "sd": 0.02174907954230477
+      }
+    },
+    "lsm_v3g_all": {
+      "indistinguishable": {
+        "mean": 1.541812909920215,
+        "sd": 0.9779230100124272
+      },
+      "Q": {
+        "mean": 0.9528929450782807,
+        "sd": 0.06086421370249707
+      },
+      "fidelity": {
+        "mean": 0.8489583333333334,
+        "sd": 0.21771285008273128
+      },
+      "coverage": {
+        "mean": 0.029947916666666668,
+        "sd": 0.01578692142315383
+      },
+      "rate_error_median_bpm": {
+        "mean": 13.440389028645937,
+        "sd": 1.5241216784590612
+      },
+      "rate_within_5bpm": {
+        "mean": 0.15755208333333334,
+        "sd": 0.04355658511374409
+      }
+    },
+    "lsm_v3g_wrist": {
+      "indistinguishable": {
+        "mean": 7.557687353024119,
+        "sd": 4.52816595458298
+      },
+      "Q": {
+        "mean": 0.7588581560979305,
+        "sd": 0.017421232974885816
+      },
+      "fidelity": {
+        "mean": 0.77734375,
+        "sd": 0.13002591388354093
+      },
+      "coverage": {
+        "mean": 0.07421875,
+        "sd": 0.0234375
+      },
+      "rate_error_median_bpm": {
+        "mean": 10.648512308993963,
+        "sd": 1.4970998990486863
+      },
+      "rate_within_5bpm": {
+        "mean": 0.20442708333333334,
+        "sd": 0.021513947450336336
+      }
+    }
+  },
+  "training": {
+    "lsm_v3_all": {
+      "acf_mmd2": 0.05791158182918377,
+      "log_psd_mmd2": 1.1502642798018683,
+      "mean_log_psd_rmse": 1.322840253993736,
+      "dominant_bpm_median": 84.00000000000001,
+      "dominant_bpm_p05_p95": [
+        67.20000000000002,
+        102.00000000000001
+      ],
+      "above_5hz_power_fraction_mean": 0.007331021595746279,
+      "mean_abs_second_difference": 0.020003432407975197,
+      "mean_pointwise_std": 0.22827987372875214,
+      "best_step": 5800,
+      "steps": 6000,
+      "seconds": 535.4876807779999,
+      "d_real_mean": 0.28812575340270996,
+      "d_fake_mean": 0.11583825200796127,
+      "generator_parameters": 117940,
+      "discriminator_parameters": 692370,
+      "status": "research_only_not_for_DAC",
+      "counts": {
+        "train": 6073,
+        "validation": 1290,
+        "test": 2485
+      },
+      "bandwidths": [
+        54.34244011910008,
+        122.92370222361373
+      ]
+    },
+    "lsm_v3g_all": {
+      "acf_mmd2": 0.06807509246769938,
+      "log_psd_mmd2": 1.167726022602153,
+      "mean_log_psd_rmse": 1.34756763877638,
+      "dominant_bpm_median": 78.0,
+      "dominant_bpm_p05_p95": [
+        66.0,
+        96.0
+      ],
+      "above_5hz_power_fraction_mean": 0.008518898859620094,
+      "mean_abs_second_difference": 0.02182387188076973,
+      "mean_pointwise_std": 0.23921625316143036,
+      "best_step": 3800,
+      "steps": 6000,
+      "seconds": 538.288415578,
+      "d_real_mean": 0.3975120484828949,
+      "d_fake_mean": 0.28400737047195435,
+      "generator_parameters": 117940,
+      "discriminator_parameters": 692370,
+      "status": "research_only_not_for_DAC",
+      "counts": {
+        "train": 7283,
+        "validation": 1290,
+        "test": 2485
+      },
+      "bandwidths": [
+        49.84369909481015,
+        119.67318987699247
+      ]
+    },
+    "lsm_v3g_wrist": {
+      "acf_mmd2": 0.21528761048676626,
+      "log_psd_mmd2": 1.405531634377741,
+      "mean_log_psd_rmse": 1.484780232360372,
+      "dominant_bpm_median": 78.0,
+      "dominant_bpm_p05_p95": [
+        66.0,
+        90.0
+      ],
+      "above_5hz_power_fraction_mean": 0.00957709364593029,
+      "mean_abs_second_difference": 0.01852656900882721,
+      "mean_pointwise_std": 0.2079336792230606,
+      "best_step": 3500,
+      "steps": 6000,
+      "seconds": 440.2842115560002,
+      "d_real_mean": 0.45404282212257385,
+      "d_fake_mean": 0.07371949404478073,
+      "generator_parameters": 117940,
+      "discriminator_parameters": 692370,
+      "status": "research_only_not_for_DAC",
+      "counts": {
+        "train": 1293,
+        "validation": 89,
+        "test": 30
+      },
+      "bandwidths": [
+        27.153319075896224,
+        70.13323228114619
+      ]
+    }
+  },
+  "per_halving": [
+    {
+      "real_other_people": {
+        "indistinguishable": 74.00640705917523,
+        "c2st_auc": 0.6299679647041239,
+        "folds": 4,
+        "Q": 0.09521900144534645,
+        "fidelity": 0.9453125,
+        "coverage": 0.90625,
+        "rate_error_median_bpm": 1.2578311962154984,
+        "rate_within_5bpm": 0.76171875,
+        "rate_error_by_group": {
+          "rest": 1.0011636882508554,
+          "cognitive": 0.9563284367136546,
+          "walking": 42.37925751218509,
+          "jogging_running": 60.405159633101576
+        }
+      },
+      "physiomix": {
+        "indistinguishable": 0.0692246835443111,
+        "c2st_auc": 0.9996538765822784,
+        "folds": 4,
+        "Q": 0.8381820263285653,
+        "fidelity": 0.84765625,
+        "coverage": 0.359375,
+        "rate_error_median_bpm": 1.355481070059568,
+        "rate_within_5bpm": 0.69140625,
+        "rate_error_by_group": {
+          "rest": 1.061524140251528,
+          "cognitive": 1.8213288484107863,
+          "walking": 9.643947595129958,
+          "jogging_running": 12.105055607918331
+        }
+      },
+      "lsm_gan": {
+        "indistinguishable": 0.06127450980391025,
+        "c2st_auc": 0.9996936274509804,
+        "folds": 4,
+        "Q": 1.9515251812479781,
+        "fidelity": 0.984375,
+        "coverage": 0.0,
+        "rate_error_median_bpm": 17.474312770025634,
+        "rate_within_5bpm": 0.10546875,
+        "rate_error_by_group": {
+          "rest": 17.945982687284882,
+          "cognitive": 12.373105511157618,
+          "walking": 8.349321899897355,
+          "jogging_running": 50.51955863789861
+        }
+      },
+      "lsm_v3_all": {
+        "indistinguishable": 0.2265389328808265,
+        "c2st_auc": 0.9988673053355959,
+        "folds": 4,
+        "Q": 0.8680495705606521,
+        "fidelity": 0.9921875,
+        "coverage": 0.0078125,
+        "rate_error_median_bpm": 16.082744139179866,
+        "rate_within_5bpm": 0.1328125,
+        "rate_error_by_group": {
+          "rest": 16.18941801940946,
+          "cognitive": 13.749266190364636,
+          "walking": 18.824649813671606,
+          "jogging_running": 55.3833662406262
+        }
+      },
+      "lsm_v3g_all": {
+        "indistinguishable": 1.8658311167502495,
+        "c2st_auc": 0.9906708444162488,
+        "folds": 4,
+        "Q": 0.9462862530208942,
+        "fidelity": 0.98046875,
+        "coverage": 0.0390625,
+        "rate_error_median_bpm": 14.798054064381489,
+        "rate_within_5bpm": 0.125,
+        "rate_error_by_group": {
+          "rest": 13.619180337423487,
+          "cognitive": 11.66496684268273,
+          "walking": 22.86591324483615,
+          "jogging_running": 55.26174348009348
+        }
+      },
+      "lsm_v3g_wrist": {
+        "indistinguishable": 4.091510394010633,
+        "c2st_auc": 0.9795424480299468,
+        "folds": 4,
+        "Q": 0.7754988426920195,
+        "fidelity": 0.83203125,
+        "coverage": 0.05078125,
+        "rate_error_median_bpm": 12.36957621401885,
+        "rate_within_5bpm": 0.1796875,
+        "rate_error_by_group": {
+          "rest": 10.87693471805818,
+          "cognitive": 11.862655765378918,
+          "walking": 19.49629505264967,
+          "jogging_running": 59.35677169568934
+        }
+      }
+    },
+    {
+      "real_other_people": {
+        "indistinguishable": 92.87687694611049,
+        "c2st_auc": 0.46438438473055244,
+        "folds": 4,
+        "Q": 0.09521373250421039,
+        "fidelity": 0.9140625,
+        "coverage": 0.921875,
+        "rate_error_median_bpm": 1.1526406779100995,
+        "rate_within_5bpm": 0.7578125,
+        "rate_error_by_group": {
+          "rest": 0.9548533635805967,
+          "cognitive": 1.023078345719739,
+          "walking": 36.18847468003514,
+          "jogging_running": 68.59313556361275
+        }
+      },
+      "physiomix": {
+        "indistinguishable": 0.03633720930231732,
+        "c2st_auc": 0.9998183139534884,
+        "folds": 4,
+        "Q": 0.9115370141743295,
+        "fidelity": 0.79296875,
+        "coverage": 0.2421875,
+        "rate_error_median_bpm": 1.5930768518499718,
+        "rate_within_5bpm": 0.58984375,
+        "rate_error_by_group": {
+          "rest": 1.309195380934952,
+          "cognitive": 2.356053308443812,
+          "walking": 4.344140701278903,
+          "jogging_running": 12.132739072296431
+        }
+      },
+      "lsm_gan": {
+        "indistinguishable": 0.0,
+        "c2st_auc": 1.0,
+        "folds": 4,
+        "Q": 2.141899024929488,
+        "fidelity": 0.0,
+        "coverage": 0.0,
+        "rate_error_median_bpm": 16.91043644910812,
+        "rate_within_5bpm": 0.09765625,
+        "rate_error_by_group": {
+          "rest": 17.95065618560988,
+          "cognitive": 11.904465238188756,
+          "walking": 4.62880198748735,
+          "jogging_running": 53.17071111060673
+        }
+      },
+      "lsm_v3_all": {
+        "indistinguishable": 0.01816860465115866,
+        "c2st_auc": 0.9999091569767442,
+        "folds": 4,
+        "Q": 0.8240189177677015,
+        "fidelity": 0.9765625,
+        "coverage": 0.0,
+        "rate_error_median_bpm": 15.650503434948746,
+        "rate_within_5bpm": 0.10546875,
+        "rate_error_by_group": {
+          "rest": 15.894190281577686,
+          "cognitive": 12.471752589698326,
+          "walking": 7.80083612204524,
+          "jogging_running": 54.249325029181136
+        }
+      },
+      "lsm_v3g_all": {
+        "indistinguishable": 0.4430047006432458,
+        "c2st_auc": 0.9977849764967838,
+        "folds": 4,
+        "Q": 1.0167909791965035,
+        "fidelity": 0.59765625,
+        "coverage": 0.01171875,
+        "rate_error_median_bpm": 13.731353463137133,
+        "rate_within_5bpm": 0.140625,
+        "rate_error_by_group": {
+          "rest": 13.106788471463894,
+          "cognitive": 10.187718835300146,
+          "walking": 11.625,
+          "jogging_running": 55.77695457608037
+        }
+      },
+      "lsm_v3g_wrist": {
+        "indistinguishable": 12.680982298049948,
+        "c2st_auc": 0.9365950885097503,
+        "folds": 4,
+        "Q": 0.7407492980706918,
+        "fidelity": 0.87109375,
+        "coverage": 0.07421875,
+        "rate_error_median_bpm": 9.928559102552725,
+        "rate_within_5bpm": 0.21484375,
+        "rate_error_by_group": {
+          "rest": 8.83571956997767,
+          "cognitive": 8.300337373380756,
+          "walking": 12.448366645938556,
+          "jogging_running": 64.27009933267217
+        }
+      }
+    },
+    {
+      "real_other_people": {
+        "indistinguishable": 47.26205433652242,
+        "c2st_auc": 0.2363102716826121,
+        "folds": 4,
+        "Q": 0.08514915075612173,
+        "fidelity": 0.88671875,
+        "coverage": 0.92578125,
+        "rate_error_median_bpm": 1.1143657629835104,
+        "rate_within_5bpm": 0.76953125,
+        "rate_error_by_group": {
+          "rest": 1.0439886121731945,
+          "cognitive": 1.0656238189782101,
+          "walking": 36.380859375,
+          "jogging_running": 64.1591607513091
+        }
+      },
+      "physiomix": {
+        "indistinguishable": 1.9404075306472812,
+        "c2st_auc": 0.9902979623467636,
+        "folds": 4,
+        "Q": 0.8137158635481632,
+        "fidelity": 0.8359375,
+        "coverage": 0.265625,
+        "rate_error_median_bpm": 1.512810713906532,
+        "rate_within_5bpm": 0.65625,
+        "rate_error_by_group": {
+          "rest": 1.2290699945126704,
+          "cognitive": 1.5877451643118263,
+          "walking": 9.768331834654077,
+          "jogging_running": 18.33967509948971
+        }
+      },
+      "lsm_gan": {
+        "indistinguishable": 0.0,
+        "c2st_auc": 1.0,
+        "folds": 4,
+        "Q": 1.884018572858023,
+        "fidelity": 1.0,
+        "coverage": 0.0,
+        "rate_error_median_bpm": 15.793026174688194,
+        "rate_within_5bpm": 0.12890625,
+        "rate_error_by_group": {
+          "rest": 16.63146759935904,
+          "cognitive": 12.327785604366682,
+          "walking": 5.812283806114337,
+          "jogging_running": 56.8717354917076
+        }
+      },
+      "lsm_v3_all": {
+        "indistinguishable": 0.2930753604447389,
+        "c2st_auc": 0.9985346231977763,
+        "folds": 4,
+        "Q": 0.8014676497261126,
+        "fidelity": 0.984375,
+        "coverage": 0.0078125,
+        "rate_error_median_bpm": 13.12008020166445,
+        "rate_within_5bpm": 0.1484375,
+        "rate_error_by_group": {
+          "rest": 13.880368954110324,
+          "cognitive": 10.631468584542112,
+          "walking": 3.78515625,
+          "jogging_running": 56.80053195832218
+        }
+      },
+      "lsm_v3g_all": {
+        "indistinguishable": 2.3166029123671494,
+        "c2st_auc": 0.9884169854381643,
+        "folds": 4,
+        "Q": 0.8956016030174443,
+        "fidelity": 0.96875,
+        "coverage": 0.0390625,
+        "rate_error_median_bpm": 11.791759558419187,
+        "rate_within_5bpm": 0.20703125,
+        "rate_error_by_group": {
+          "rest": 11.566139152598225,
+          "cognitive": 10.026754971465465,
+          "walking": 9.492502644017662,
+          "jogging_running": 60.25317383855072
+        }
+      },
+      "lsm_v3g_wrist": {
+        "indistinguishable": 5.9005693670117765,
+        "c2st_auc": 0.9704971531649411,
+        "folds": 4,
+        "Q": 0.7603263275310799,
+        "fidelity": 0.62890625,
+        "coverage": 0.09765625,
+        "rate_error_median_bpm": 9.647401610410313,
+        "rate_within_5bpm": 0.21875,
+        "rate_error_by_group": {
+          "rest": 8.803989914886742,
+          "cognitive": 8.65603978932242,
+          "walking": 12.719768371683301,
+          "jogging_running": 68.69048863028074
+        }
+      }
+    }
+  ],
+  "wall_seconds": 2090.780268222,
+  "scope": "Engineering evaluation of normalised 30 s wrist PPG shape; LSM-GAN has no rate control; not clinical"
+}

@@ -1,0 +1,67 @@
+{
+ "generated": {
+  "similarity": {
+   "rate_bpm": 0.9315,
+   "acf_peak": 0.8805000000000001,
+   "diff_std": 0.9299999999999999,
+   "diff2_std": 0.895,
+   "skew": 0.9605,
+   "kurtosis": 0.9205,
+   "diff_skew": 0.958,
+   "mean_level": 0.9705,
+   "centroid_hz": 0.897,
+   "power_0.5-1.5 Hz": 0.9515,
+   "power_1.5-3 Hz": 0.962,
+   "power_3-5 Hz": 0.9425,
+   "power_5-8 Hz": 0.895,
+   "power_8-20 Hz": 0.9725
+  },
+  "mean_similarity": 0.9333571428571429,
+  "share_at_least_95": 0.42857142857142855,
+  "classifier": {
+   "logreg": {
+    "auc": 0.63349025,
+    "accuracy": 0.60125
+   },
+   "trees": {
+    "auc": 0.69348975,
+    "accuracy": 0.6385
+   }
+  },
+  "passes": false
+ },
+ "real_other_people": {
+  "similarity": {
+   "rate_bpm": 0.967,
+   "acf_peak": 0.947,
+   "diff_std": 0.971,
+   "diff2_std": 0.9625,
+   "skew": 0.981,
+   "kurtosis": 0.9395,
+   "diff_skew": 0.9475,
+   "mean_level": 0.984,
+   "centroid_hz": 0.952,
+   "power_0.5-1.5 Hz": 0.9410000000000001,
+   "power_1.5-3 Hz": 0.9355,
+   "power_3-5 Hz": 0.9595,
+   "power_5-8 Hz": 0.9735,
+   "power_8-20 Hz": 0.972
+  },
+  "mean_similarity": 0.9595,
+  "share_at_least_95": 0.6428571428571429,
+  "classifier": {
+   "logreg": {
+    "auc": 0.47539575,
+    "accuracy": 0.48375
+   },
+   "trees": {
+    "auc": 0.50001125,
+    "accuracy": 0.5
+   }
+  }
+ },
+ "criteria": {
+  "mean_similarity_at_least": 0.95,
+  "tree_classifier_accuracy_at_most": 0.6
+ }
+}
