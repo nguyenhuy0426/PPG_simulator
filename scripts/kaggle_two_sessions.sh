@@ -13,6 +13,9 @@
 #   scripts/kaggle_two_sessions.sh report                 print both eval/summary.json side by side
 #   scripts/kaggle_two_sessions.sh wait                   status every 10 min until both end, then pull + report
 #
+# The Kaggle CLI is found on PATH, in ~/.local/bin, in a .venv/venv of this worktree or of the main checkout, or in
+# conda; otherwise give it: KAGGLE=/path/to/kaggle scripts/kaggle_two_sessions.sh push
+#
 # Settings by environment: OWNER, SOURCE_OWNER, OUT (default runs/kaggle), PSF_EXTRA and APFT_EXTRA (extra options of
 # pure_gan.py / gan.py as one string), STRICT_SEEDS (strict-judge seeds of the evaluation, default "0").
 set -euo pipefail
@@ -32,9 +35,34 @@ COMMON=(--owner "$OWNER" --source-owner "$SOURCE_OWNER" --stage 0 --shards 1 2 3
 
 slug() { echo "$OWNER/ppg-physigpt-$1-v1"; }
 
+# The Kaggle CLI: $KAGGLE if set, else `kaggle` on PATH, else the usual install places (user bin, a venv of this
+# worktree or of the main checkout, conda), else the kaggle module of python3.
+find_kaggle() {
+  local main c
+  if [[ -n ${KAGGLE:-} ]]; then echo "$KAGGLE"; return; fi
+  if type -P kaggle >/dev/null; then type -P kaggle; return; fi   # a path only: kaggle() below is a function
+  main=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git$##')
+  for c in "$HOME/.local/bin/kaggle" ./.venv/bin/kaggle ./venv/bin/kaggle "${main:-.}/.venv/bin/kaggle" \
+           "${main:-.}/venv/bin/kaggle" "${CONDA_PREFIX:-/nonexistent}/bin/kaggle" "$HOME"/miniconda3/bin/kaggle \
+           "$HOME"/anaconda3/bin/kaggle; do
+    if [[ -x $c ]]; then echo "$c"; return; fi
+  done
+  # find_spec, not import: importing kaggle authenticates and prints
+  if python3 -c "import importlib.util as u, sys; sys.exit(u.find_spec('kaggle') is None)" >/dev/null 2>&1; then echo "python3 -c 'import sys; from kaggle.cli import main; sys.argv[0]=\"kaggle\"; main()'"; return; fi
+  return 1
+}
+
+kaggle() { eval "$KAGGLE_CMD" '"$@"'; }
+
 need_kaggle() {
-  command -v kaggle >/dev/null || { echo "kaggle CLI not found (pip install kaggle)"; exit 1; }
-  kaggle kernels list --mine --page-size 1 >/dev/null || { echo "kaggle CLI is not logged in"; exit 1; }
+  KAGGLE_CMD=$(find_kaggle) || {
+    echo "kaggle CLI not found. Find it with: which -a kaggle; pip show kaggle (Location), ls ~/.local/bin"
+    echo "then run: KAGGLE=/path/to/kaggle $0 ${ARGS[*]}"
+    exit 1
+  }
+  case $KAGGLE_CMD in python3*) ;; *) KAGGLE_CMD=$(printf '%q' "$KAGGLE_CMD") ;; esac
+  echo "kaggle CLI: $KAGGLE_CMD"
+  kaggle kernels list --mine --page-size 1 >/dev/null || { echo "kaggle CLI is not logged in (kaggle auth login)"; exit 1; }
 }
 
 stage_psf() {
@@ -116,6 +144,7 @@ wait_all() {
   pull && report
 }
 
+ARGS=("$@")
 case ${1:-} in
   push) push "${2:-both}" ;;
   status) status ;;
