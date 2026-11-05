@@ -71,6 +71,29 @@ def test_two_process_run_selects_releases_resumes_and_samples(tmp_path):
     np.testing.assert_array_equal(x, pg.generate_release(tmp_path/"run"/"gan_release.pt", 5, 0, "cpu"))
 
 
+def test_non_finite_losses_roll_back_instead_of_killing_the_run(tmp_path, monkeypatch, capsys):
+    """v1 kernel: a critic loss that stayed non-finite drove both GradScalers to 0 and every later step was NaN."""
+    tr.synthetic_shard(tmp_path/"shard")
+    calls, clean = [0], pg.d_loss
+
+    def flaky(real_out, fake_out):   # NaN in critic calls 3-5 and from 9 on
+        calls[0] += 1
+        loss = clean(real_out, fake_out)
+        return loss*float("nan") if 3 <= calls[0] <= 5 or calls[0] >= 9 else loss
+
+    monkeypatch.setattr(pg, "d_loss", flaky)
+    common = ["--data", str(tmp_path/"shard"), "--config", "tiny", "--batch", "4", "--eval-every", "2",
+              "--log-every", "1", "--cpu", "--hr-cond", "--patience", "0", "--nan-patience", "3",
+              "--max-rollbacks", "1", "--steps", "40", "--output", str(tmp_path/"run")]
+    pg.main(common)
+    summary = json.loads((tmp_path/"run"/"gan_summary.json").read_text())
+    events = [json.loads(l) for l in capsys.readouterr().out.splitlines() if l.startswith('{"step"') and '"rollback":' in l]
+    assert [e["rollback"] for e in events] == [1, 2] and events[0]["lr_factor"] == .5
+    assert summary["stop_reason"] == "nonfinite" and summary["rollbacks"] == 2 and summary["steps"] < 40
+    x = pg.generate_release(tmp_path/"run"/"gan_release.pt", 3, 0, "cpu")
+    assert np.isfinite(x).all()
+
+
 def test_kernel_evaluation_reports_percentages_against_real_people(tmp_path):
     people_shard(tmp_path/"shard")
     sizes = dict(fit=60, inner=20, eval=40)

@@ -28,6 +28,7 @@ Selection uses training records only; the decision is the target report on held-
 """
 import argparse
 import json
+import copy
 import math
 from pathlib import Path
 import time
@@ -183,10 +184,13 @@ class Projected(nn.Module):
         self.embed = nn.Linear(64, channels) if hr_cond else None
 
     def forward(self, h, hr):
-        logits = self.final(h).flatten(1)
-        if self.embed is not None:
-            pooled = h.flatten(2).mean(-1)
-            logits = logits+(self.embed(hr_embedding(hr).to(h.dtype))*pooled).sum(1, keepdim=True)
+        # fp32: an LSGAN logit past ~256 overflows fp16 when squared (the v1 PSF-GAN run died of it at step ~4300)
+        with torch.autocast(h.device.type, enabled=False):
+            h = h.float()
+            logits = self.final(h).flatten(1)
+            if self.embed is not None:
+                pooled = h.flatten(2).mean(-1)
+                logits = logits+(self.embed(hr_embedding(hr))*pooled).sum(1, keepdim=True)
         return logits
 
 
@@ -276,14 +280,14 @@ class Discriminators(nn.Module):
 
 
 def d_loss(real_out, fake_out):
-    """Least-squares GAN critic loss summed over the sub-critics."""
-    return sum((r-1).square().mean()+f.square().mean() for (r, _), (f, _) in zip(real_out, fake_out))
+    """Least-squares GAN critic loss summed over the sub-critics (in fp32)."""
+    return sum((r.float()-1).square().mean()+f.float().square().mean() for (r, _), (f, _) in zip(real_out, fake_out))
 
 
 def g_terms(real_out, fake_out):
     """Least-squares generator loss and feature matching of batch means of every critic feature map."""
-    adv = sum((f-1).square().mean() for f, _ in fake_out)
-    fm = sum((rf.detach().mean(0)-ff.mean(0)).abs().mean() for (_, r), (_, f) in zip(real_out, fake_out)
+    adv = sum((f.float()-1).square().mean() for f, _ in fake_out)
+    fm = sum((rf.detach().float().mean(0)-ff.float().mean(0)).abs().mean() for (_, r), (_, f) in zip(real_out, fake_out)
              for rf, ff in zip(r, f))/len(fake_out)
     return adv, fm
 
@@ -322,6 +326,27 @@ def hold_decay(progress, peak, decay_frac, floor=.1):
     return peak if progress < start else peak*(1-(1-floor)*min(1., (progress-start)/max(1e-9, decay_frac)))
 
 
+def logit_max(outs):
+    """Largest |logit| over the sub-critics (a tensor; read it only when logging)."""
+    return torch.stack([o.detach().float().abs().amax() for o, _ in outs]).amax()
+
+
+def to_cpu(state):
+    """A copy of a (nested) state dict with every tensor on the host."""
+    if torch.is_tensor(state):
+        return state.detach().cpu().clone()
+    if isinstance(state, dict):
+        return {k: to_cpu(v) for k, v in state.items()}
+    if isinstance(state, (list, tuple)):
+        return type(state)(to_cpu(v) for v in state)
+    return copy.deepcopy(state)
+
+
+def snapshot(**modules):
+    """Host copies of the state dicts of modules, optimisers and scalers: the state a non-finite run rolls back to."""
+    return {k: to_cpu(m.state_dict()) for k, m in modules.items()}
+
+
 def worker(rank, world, args):
     cuda = torch.cuda.is_available() and not args.cpu
     if world > 1:
@@ -352,12 +377,17 @@ def worker(rank, world, args):
     hr_bank = rate_features(sel)[1].astype(np.float32) if args.hr_cond else None
     del sel
     step, best, stale, stop_reason = 0, dict(step=None, mean_similarity=-math.inf), 0, "steps"
+    # non-finite guard: GradScaler skips a step with inf/NaN gradients and halves its scale, so a loss that stays
+    # non-finite drives the scale to 0 and the run never recovers (v1: from step ~4300 on). After --nan-patience bad
+    # steps in a row the run returns to the last good snapshot with the lr scaled by .5; --max-rollbacks ends it.
+    lr_factor, rollbacks, bad_run, bad_total = 1., 0, 0, 0
     if args.resume:
         state = torch.load(args.resume, map_location=device, weights_only=False)
         G.load_state_dict(state["G"]), D.load_state_dict(state["D"]), ema.load_state_dict(state["ema"])
         g_opt.load_state_dict(state["g_opt"]), d_opt.load_state_dict(state["d_opt"])
         g_scaler.load_state_dict(state["g_scaler"]), d_scaler.load_state_dict(state["d_scaler"])
         step, best, stale = state["step"], state["best"], state["stale"]
+        lr_factor, rollbacks = state.get("lr_factor", 1.), state.get("rollbacks", 0)
         del state
     if rank == 0:
         output.mkdir(parents=True, exist_ok=True)
@@ -376,6 +406,8 @@ def worker(rank, world, args):
     log = (output/"metrics.jsonl").open("a") if rank == 0 else None
     gen = torch.Generator(device).manual_seed(args.seed*1_000_003+rank)
     last_save, tick, step_seconds = time.time(), None, None
+    nets = dict(G=G, D=D, ema=ema, g_opt=g_opt, d_opt=d_opt, g_scaler=g_scaler, d_scaler=d_scaler)
+    good = snapshot(**nets)
 
     def checkpoint_select(at):
         nonlocal best, stale
@@ -404,11 +436,11 @@ def worker(rank, world, args):
         if world > 1:
             dist.broadcast(progress, 0)   # rank 0's clock: the same rate on every rank
         progress = float(progress)
-        lr_g = hold_decay(progress, args.lr, args.decay_frac)
+        lr_g = lr_factor*hold_decay(progress, args.lr, args.decay_frac)
         for group in g_opt.param_groups:
             group["lr"] = lr_g
         for group in d_opt.param_groups:
-            group["lr"] = hold_decay(progress, args.d_lr, args.decay_frac)
+            group["lr"] = lr_factor*hold_decay(progress, args.d_lr, args.decay_frac)
         real = windows.draw(args.batch, gen)
         hr_real = window_rate(real) if args.hr_cond else None
         hr_fake = hr_real[torch.randperm(args.batch, device=device, generator=gen)] if args.hr_cond else None
@@ -418,7 +450,10 @@ def worker(rank, world, args):
         D.requires_grad_(True)
         with torch.autocast("cuda", torch.float16, enabled=cuda):
             fake = G.windows(z, hr_fake, gen)
-            loss_d = d_loss(D(real, hr_real), D(fake.detach(), hr_fake))
+            d_real_out, d_fake_out = D(real, hr_real), D(fake.detach(), hr_fake)
+            loss_d = d_loss(d_real_out, d_fake_out)
+        d_max = torch.maximum(logit_max(d_real_out), logit_max(d_fake_out))
+        del d_real_out, d_fake_out
         d_opt.zero_grad(set_to_none=True)
         d_scaler.scale(loss_d).backward()
         average(d_params, world)
@@ -442,6 +477,30 @@ def worker(rank, world, args):
         g_grad = torch.nn.utils.clip_grad_norm_(g_params, args.clip)
         g_scaler.step(g_opt)
         g_scaler.update()
+        # a loss or an (unscaled) gradient norm that is not finite; one now and then is the scaler finding its level
+        bad = (~torch.isfinite(loss_d.detach()+loss_g.detach()+d_grad+g_grad)).float()
+        if world > 1:
+            dist.all_reduce(bad, op=dist.ReduceOp.MAX)
+        if bad.item():
+            bad_run, bad_total = bad_run+1, bad_total+1
+        else:
+            bad_run = 0
+        if bad_run >= args.nan_patience:
+            rollbacks += 1
+            if rollbacks > args.max_rollbacks:
+                stop_reason = "nonfinite"
+            else:
+                for k, m in nets.items():
+                    m.load_state_dict(good[k])
+                lr_factor *= .5
+                bad_run = 0
+            if rank == 0:
+                print(json.dumps(dict(step=step+1, rollback=rollbacks, lr_factor=lr_factor, stop_reason=stop_reason,
+                                      d_logit_max=float(d_max))), flush=True)
+            if stop_reason != "steps":
+                break
+            step += 1
+            continue
         with torch.no_grad():
             decay = min(args.ema, (1+step)/(10+step))
             for e, p in zip(ema.parameters(), G.parameters()):
@@ -460,9 +519,10 @@ def worker(rank, world, args):
             dist.broadcast(stop, 0)
         stop = bool(stop.item())
         if rank == 0 and (logging or stop):
-            record = dict(step=step, loss_d=float(loss_d), adv=float(adv), fm=float(fm), feat=float(feat),
-                          d_grad=float(d_grad), g_grad=float(g_grad), lr=lr_g, g_scale=float(g_scaler.get_scale()),
-                          d_scale=float(d_scaler.get_scale()), hours=round((time.time()-begin)/3600, 4),
+            record = dict(step=step, loss_d=float(loss_d.detach()), adv=float(adv.detach()), fm=float(fm.detach()),
+                          feat=float(feat.detach()), d_grad=float(d_grad), g_grad=float(g_grad), lr=lr_g, g_scale=float(g_scaler.get_scale()),
+                          d_scale=float(d_scaler.get_scale()), d_logit_max=float(d_max), bad_steps=bad_total,
+                          rollbacks=rollbacks, lr_factor=lr_factor, hours=round((time.time()-begin)/3600, 4),
                           step_seconds=step_seconds, windows_per_second=None if not step_seconds else
                           round(args.batch*world/step_seconds),
                           max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30 if cuda else None)
@@ -473,6 +533,8 @@ def worker(rank, world, args):
             print(json.dumps(record), flush=True)
         if step % args.eval_every == 0 or step == args.steps or stop:
             checkpoint_select(step)
+            if bad_run == 0:
+                good = snapshot(**nets)
             exhausted = torch.tensor(float(args.patience > 0 and stale >= args.patience), device=device)
             if world > 1:
                 dist.broadcast(exhausted, 0)
@@ -483,14 +545,15 @@ def worker(rank, world, args):
         if rank == 0 and (time.time()-last_save > args.save_minutes*60 or step == args.steps or stop_reason != "steps"):
             save_state(output/"last.pt", G=G.state_dict(), D=D.state_dict(), ema=ema.state_dict(),
                        g_opt=g_opt.state_dict(), d_opt=d_opt.state_dict(), g_scaler=g_scaler.state_dict(),
-                       d_scaler=d_scaler.state_dict(), step=step, best=best, stale=stale, config=args.config)
+                       d_scaler=d_scaler.state_dict(), step=step, best=best, stale=stale, config=args.config,
+                       lr_factor=lr_factor, rollbacks=rollbacks)
             last_save = time.time()
         if stop_reason != "steps":
             break
     if rank == 0:
         save_json(output/"gan_summary.json", dict(
             steps=step, planned=args.steps, hours=(time.time()-begin)/3600, stop_reason=stop_reason, best=best,
-            stale_evals=stale, patience=args.patience, step_seconds=step_seconds, hr_cond=args.hr_cond,
+            stale_evals=stale, patience=args.patience, bad_steps=bad_total, rollbacks=rollbacks, lr_factor=lr_factor, step_seconds=step_seconds, hr_cond=args.hr_cond,
             windows_per_second=None if not step_seconds else round(args.batch*world/step_seconds),
             max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30 if cuda else None,
             note="selection on training records only; the decision is the target report on held-out people"))
@@ -548,6 +611,9 @@ def main(argv=None):
     parser.add_argument("--eval-every", type=int, default=2000)
     parser.add_argument("--patience", type=int, default=10,
                         help="stop after this many evaluations in a row without a new best (0: no early stop)")
+    parser.add_argument("--nan-patience", type=int, default=20,
+                        help="non-finite steps in a row before the run returns to its last good snapshot")
+    parser.add_argument("--max-rollbacks", type=int, default=3, help="rollbacks before the run ends (stop: nonfinite)")
     parser.add_argument("--threads", type=int, default=4, help="CPU threads shared by the ranks")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--port", type=int, default=29531)

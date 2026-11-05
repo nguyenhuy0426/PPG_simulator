@@ -148,6 +148,23 @@ checked, not assumed: the copy check against all training windows. Underfitting 
 stops rising while the losses still move; the lr decay over the last 20 % of the time and the EMA are the levers
 before a larger model.
 
+### First Kaggle run (`ppg-physigpt-psf-gan-v1`): died of non-finite losses at step ~4300
+
+From the kernel log (read off the Kaggle page while it ran): 478 windows/s at batch 256 per T4, 10.8 GB per T4,
+selection 0.861 at step 2000 (training records), `hr_mae` 4-8 bpm. `d_scale` fell 1024 -> 128 over steps 2000-4200,
+then between the logs of steps 4201 and 4401 both scales went from 1024 / 128 to 1e-42 and to 0, and every later loss
+was NaN. `hr_mae` stayed 7-12 bpm, and a NaN generator gives 200 bpm there (`window_rate` of NaN windows), so the
+generator was still finite: the non-finite values came from the critic side. Most probable cause (inference, not
+measured in the kernel): the LSGAN losses squared fp16 logits, and a logit past ~256 squares to inf in fp16; the raw
+critic gradient norm (300-950 against a clip of 10) shows the critics growing sharp. GradScaler skips such a step and
+halves its scale, so a loss that stays inf takes the scale to 0, and from there no step can succeed.
+
+Fixes in `pure_gan.py`: the critic heads (`Projected`) and both losses in fp32; `d_logit_max` logged; a guard that
+counts steps with a non-finite loss or gradient norm, and after `--nan-patience` (20) in a row restores the last
+finite snapshot (G, D, EMA, optimisers, scalers, taken at each selection) with the lr halved, and after
+`--max-rollbacks` (3) ends the run with `stop_reason: nonfinite` so the kernel evaluates its best release instead of
+spending its quota on NaN steps. Tested on CPU with injected NaN losses; the fp16 path itself is untested off a GPU.
+
 ### Sampling speed (both models)
 
 `PhysiGPT.sample_patches` keeps a key/value cache, so each of the 30 steps runs the transformer on one new token
