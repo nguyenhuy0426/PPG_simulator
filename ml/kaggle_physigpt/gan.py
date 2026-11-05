@@ -131,12 +131,9 @@ def rollout(model, n, steps, generator, device, hr=None):
     cfg = model.cfg
     noise = torch.randn(n, cfg.patches, cfg.patch, device=device, generator=generator)
     domain = torch.zeros(n, dtype=torch.long, device=device)
-    patches = torch.zeros(n, cfg.patches, cfg.patch, device=device)
-    with torch.no_grad():
-        for i in range(cfg.patches):
-            h = model.hidden(patches[:, :i+1], domain, hr)[:, i]
-            patches[:, i] = ((model.integrate(noise[:, i], h, steps)+1)/2).clamp(0, 1)
-    return patches, noise
+    with torch.no_grad():   # key/value cache: one token per transformer call instead of the whole prefix
+        patches = model.sample_patches(noise, steps, domain, hr)
+    return patches.float(), noise
 
 
 def regenerate(model, patches, noise, steps, use_checkpoint=True, hr=None, head_only=False):

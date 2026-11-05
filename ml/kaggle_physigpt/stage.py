@@ -46,7 +46,10 @@ SOURCES["judge"] = SOURCES["train"]+["ml/kaggle_physigpt/judge_physigpt.py", "ml
 SOURCES["sample"] = SOURCES["judge"]
 # APFT-GAN: the judge's modules (signal features, StrictCritic) plus PhysioGAN-R's loss and augmentation
 SOURCES["gan"] = SOURCES["judge"]+["ml/kaggle_multidomain/physiogan_r.py", "ml/kaggle_multidomain/data_r.py",
-                                   "ml/kaggle_physigpt/gan.py"]
+                                   "ml/kaggle_physigpt/gan.py", "ml/kaggle_physigpt/kernel_eval.py"]
+# PSF-GAN, the pure GAN (pure_gan.py): APFT-GAN's helpers and the in-kernel evaluation
+SOURCES["puregan"] = SOURCES["gan"]+["ml/kaggle_physigpt/pure_gan.py"]
+EVAL_HOURS = dict(gan=1.0, puregan=.75)   # after training: 9,000 windows, the feature tier and one strict-judge fit
 # RSR-FlowGAN (ml/kaggle_multidomain/rsr_flowgan.py) on the v3 pack and the app bundle: its module-level imports
 SOURCES["rsrgan"] = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_physigpt/mimic_wdb.py", "ml/kaggle_physigpt/model.py",
                      "ml/kaggle_physigpt/train.py", "ml/kaggle_physigpt/judge_physigpt.py",
@@ -85,6 +88,14 @@ def solotrain_slug(k):
     return f"ppg-physigpt-solo{k}-train-v1"
 
 
+def evaluation(sampler, strict_seeds):
+    """Kernel lines after training: the release's windows on the held-out people (kernel_eval), into /kaggle/working/eval.
+    sampler defines sample(n, seed) -> windows."""
+    return (sampler+"from ml.kaggle_physigpt.kernel_eval import evaluate, generated_sets\n"
+            "import torch\ntorch.cuda.empty_cache()\n"
+            f"evaluate(generated_sets(sample), data, '/kaggle/working/eval', 'cuda', {list(strict_seeds)!r})")
+
+
 def mount_lookup(owner):
     """Run-time lookup of a mounted kernel output or dataset, failing before any GPU time is spent. Kaggle mounts a
     kernel output under notebooks/<owner>/<slug>; the dataset path is not documented, so the owner level of
@@ -101,7 +112,8 @@ def mount_lookup(owner):
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
               config="base", epochs=4., extra=(), smoke_only=False, solos=(), datasets=(), owner=OWNER,
               kernel_hours=KERNEL_HOURS, checkpoint="release.pt", judge_seeds=3, decay_steps=0, from_slug=None,
-              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag="", generated_slug=None, cpu=False):
+              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag="", generated_slug=None, cpu=False,
+              strict_seeds=(0,)):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
@@ -150,9 +162,25 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 "if len(init) != 1:\n    raise FileNotFoundError(f'expected one release.pt, found {init}')\n"
                 f"data = [mounted(slug) for slug in {slugs!r}]\n"
                 "print('smoke', json.dumps(smoke('/tmp/gan_smoke')), flush=True)\n"
-                f"left = {kernel_hours} - (time.time()-begin)/3600\n"
+                f"left = {kernel_hours} - (time.time()-begin)/3600 - {EVAL_HOURS['gan']}\n"
                 f"gan(['--data', *data, '--init', str(init[0]), '--output', '/kaggle/working/gan', '--config', {config!r}, "
-                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])")
+                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
+                + evaluation("from ml.kaggle_physigpt.judge_physigpt import generate\n"
+                             "release = '/kaggle/working/gan/gan_release.pt'\n"
+                             f"sample = lambda n, seed: generate(release, n, seed, 'cuda', steps={gen_steps})\n",
+                             strict_seeds))
+    if kind == "puregan":
+        slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
+        return ("import time\nfrom ml.kaggle_physigpt.pure_gan import main as puregan, smoke, generate_release\n"
+                "begin = time.time()\n"
+                + mount_lookup(owner)
+                + f"data = [mounted(slug) for slug in {slugs!r}]\n"
+                "print('smoke', json.dumps(smoke('/tmp/puregan_smoke')), flush=True)\n"
+                f"left = {kernel_hours} - (time.time()-begin)/3600 - {EVAL_HOURS['puregan']}\n"
+                f"puregan(['--data', *data, '--output', '/kaggle/working/gan', '--config', 'base', "
+                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
+                + evaluation("release = '/kaggle/working/gan/gan_release.pt'\n"
+                             "sample = lambda n, seed: generate_release(release, n, seed, 'cuda')\n", strict_seeds))
     if kind == "sample":
         if len(datasets) != 1:
             raise ValueError("sample: --datasets names the one dataset holding the checkpoint")
@@ -275,8 +303,8 @@ def stage(output, kind, owner=OWNER, source_owner=None, **kw):
     script = "# Generated by ml/kaggle_physigpt/stage.py\nif __name__ == '__main__':\n" + \
         "\n".join("    "+line for line in body.splitlines())+"\n"
     compile(script, "run.py", "exec")
-    dataset_sources = ([f"{source_owner if kind == 'gan' else owner}/{d}" for d in kw.get("datasets", ())]
-                       if kind in ("tpu", "train", "judge", "decay", "gan", "sample") else [])
+    dataset_sources = ([f"{source_owner if kind in ('gan', 'puregan') else owner}/{d}" for d in kw.get("datasets", ())]
+                       if kind in ("tpu", "train", "judge", "decay", "gan", "puregan", "sample") else [])
     if kw.get("generated_slug"):
         dataset_sources.append(f"{owner}/{kw['generated_slug']}")
     if kind == "data":
@@ -308,6 +336,11 @@ def stage(output, kind, owner=OWNER, source_owner=None, **kw):
                     kernel_sources=[f"{source_owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
                     + [f"{source_owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
                     + [f"{source_owner}/{kw['from_slug']}"])
+    elif kind == "puregan":
+        name = f"ppg-physigpt-{kw.get('tag') or 'psf-gan'}-v1"
+        meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4",
+                    kernel_sources=[f"{source_owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
+                    + [f"{source_owner}/{solo_slug(s)}" for s in kw.get("solos", ())])
     elif kind == "sample":
         name = f"ppg-physigpt-{kw['tag']}-sample-v1"
         meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4", kernel_sources=[])
@@ -403,15 +436,17 @@ def main(argv=None):
     parser.add_argument("--gan-steps", type=int, default=0, help="gan: gan.py --steps (0: its default)")
     parser.add_argument("--adv-weight", type=float, default=0., help="gan: gan.py --adv-weight (0: its default)")
     parser.add_argument("--patience", type=int, default=0, help="gan: gan.py --patience (0: no early stop)")
+    parser.add_argument("--strict-seeds", type=int, nargs="*", default=[0],
+                        help="gan/puregan: strict-judge seeds of the in-kernel evaluation (none: feature tier only)")
     parser.add_argument("--gan-extra", default="",
-                        help="gan: further gan.py options as one string, given with = (--gan-extra=\"--hr-cond --feature-weight 1\")")
+                        help="gan/puregan: further gan.py / pure_gan.py options as one string, given with = (--gan-extra=\"--hr-cond --feature-weight 1\")")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
                  epochs=args.epochs, datasets=tuple(args.datasets), kernel_hours=args.kernel_hours,
                  checkpoint=args.checkpoint, judge_seeds=args.judge_seeds, decay_steps=args.decay_steps,
                  from_slug=args.from_slug, gen_steps=args.gen_steps, skip_controls=args.skip_controls, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag,
-                 generated_slug=args.generated_slug, cpu=args.cpu)
+                 generated_slug=args.generated_slug, cpu=args.cpu, strict_seeds=tuple(args.strict_seeds))
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
@@ -425,6 +460,10 @@ def main(argv=None):
                                   + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
                                   + (["--patience", str(args.patience)] if args.patience else [])
                                   + ["--gen-steps", str(args.gen_steps)] + shlex.split(args.gan_extra)))
+    puregan = dict(train, extra=tuple((["--steps", str(args.gan_steps)] if args.gan_steps else [])
+                                      + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
+                                      + (["--patience", str(args.patience)] if args.patience else [])
+                                      + shlex.split(args.gan_extra)))
     rsrgan = dict(kernel_hours=args.kernel_hours, tag=args.tag,
                   extra=tuple((["--steps", str(args.gan_steps)] if args.gan_steps else [])
                               + (["--adv-weight", str(args.adv_weight)] if args.adv_weight else [])
@@ -432,7 +471,7 @@ def main(argv=None):
                               + (["--eval-every", str(args.eval_every)] if args.eval_every else [])))
     sample = dict(datasets=tuple(args.datasets), checkpoint=args.checkpoint, gen_steps=args.gen_steps,
                   no_clamp=args.no_clamp, tag=args.tag)
-    kw = dict(data=data, train=train, judge=train, sample=sample, decay=train, gan=gan, rsrgan=rsrgan, rsrfid={}, tpu=dict(train, smoke_only=args.smoke_only),
+    kw = dict(data=data, train=train, judge=train, sample=sample, decay=train, gan=gan, puregan=puregan, rsrgan=rsrgan, rsrfid={}, tpu=dict(train, smoke_only=args.smoke_only),
               solo=dict(data, config=args.config, epochs=args.epochs, extra=tuple(extra)),
               solotrain=dict(shard=args.shard, config=args.config, epochs=args.epochs, extra=tuple(extra)))[args.kind]
     print(stage(args.output, args.kind, args.owner, args.source_owner, **kw))

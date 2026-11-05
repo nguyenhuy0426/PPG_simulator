@@ -84,27 +84,29 @@ The rate label is the feature tier's autocorrelation rate (30-200 bpm, integer l
 ~150 bpm). A conditional checkpoint keeps the selection's real rates (`hr_bank`); the judge samples rates from it,
 so the judge compares the same rate distribution as before.
 
-## 5. Next runs (need Kaggle; not runnable from the cloud session, see the end)
+## 5. Next runs: two Kaggle sessions (`scripts/kaggle_two_sessions.sh`)
 
-From the `claude/model-benchmark-*` branch on the machine with the Kaggle CLI (`stage.py` refuses other branches):
+From the repository root on a `claude/model-benchmark-*` branch (`stage.py` refuses other branches), with the Kaggle
+CLI logged in as the account that spends its GPU quota (default `charlesday2612`; the shards and the V1 release of
+`halovie2412` must be shared with it):
 
 ```
-# A: v3 unconditional, the fix alone
-python3 -m ml.kaggle_physigpt.stage <dir> gan --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
-    --datasets ppg-physigpt-shard0-data-v1 --config large --from-slug ppg-physigpt-decay0-large-v1 \
-    --tag apft-gan-v3 --gan-steps 6000 --eval-every 250 --patience 8 --gen-steps 16
-kaggle kernels push -p <dir>
-
-# B: v3 with the heart-rate condition (second account, or after A)
-python3 -m ml.kaggle_physigpt.stage <dir> gan --owner <account> --source-owner halovie2412 --stage 0 \
-    --shards 1 2 3 4 --solos 0 --datasets ppg-physigpt-shard0-data-v1 --config large \
-    --from-slug ppg-physigpt-decay0-large-v1 --tag apft-gan-v3-hr --gan-steps 6000 --eval-every 250 \
-    --patience 8 --gen-steps 16 --gan-extra="--hr-cond"
+scripts/kaggle_two_sessions.sh push      # stages and pushes both kernels (T4 x2 each)
+scripts/kaggle_two_sessions.sh status
+scripts/kaggle_two_sessions.sh wait      # every 10 min until both end, then pull + report
+scripts/kaggle_two_sessions.sh report    # mean similarity %, every feature %, tree accuracy, strict judge
 ```
 
-Then the existing `sample` -> `judge --cpu --generated-slug` -> `compare_target.py` -> `copy_check.py` chain on
-`gan_release.pt`. Pass if the target report passes (mean >= 0.95, floor 0.90, tree acc <= 0.60) and the copy check
-stays at the real baseline. For B, also report hr_mae and the generated-vs-asked rate per bpm band.
+| kernel | what | training | after training |
+|---|---|---|---|
+| `ppg-physigpt-psf-gan-v1` | PSF-GAN, the pure GAN (section 6), `--hr-cond --batch 256` | ~10.7 h budget, lr decay over the last 20 % of the time, `--patience 10` evaluations of 2000 steps | 9,000 windows of the EMA generator, target report on the 180 held-out people, strict judge seed 0 |
+| `ppg-physigpt-apft-gan-v3-hr-v1` | APFT-GAN v3 from V1 large, `--hr-cond` | up to 20,000 steps, `--patience 8` evaluations of 250 steps | the same, sampled at 16 Heun steps |
+
+Each kernel writes `eval/summary.json` (`kernel_eval.py`): the 22-feature mean similarity (1 - KS) in percent next
+to real vs real, every feature, tree accuracy, strict-judge AUC and the verdict against the target (mean >= 95 %,
+floor 90 %, tree accuracy <= 0.60). The copy check (`copy_check.py`) is still a separate kernel; a model is not
+accepted before it passes it. Kaggle's concurrent GPU-session limit and how a T4 x2 session is counted against the
+weekly quota are not checked here.
 
 What to read from the first log lines: `grad_backbone` vs `grad_head`, `lam`, `lam_feat`, and whether
 `median_shift` of power 5-8 Hz and diff2_std moves toward 0 while template_corr holds. If the selection score does
@@ -115,14 +117,51 @@ Colab: `colab_run.py` is a Drive-resumed supervisor for `train.py` stages, not f
 GPU) can run `gan.py` single-process with `--batch 32 --anchor 64` (v1 used 7.9 GB per T4 at 64/128), but that path
 has not been run.
 
-## 6. Pi 4 deployment (not measured on the Pi)
+## 6. PSF-GAN: the pure GAN (`ml/kaggle_physigpt/pure_gan.py`)
+
+Why the earlier pure GANs failed (from the repository's code and reports; P5/PhysioGAN-R was trained but no result was
+ever recorded, so this is engineering reading, not a measured diagnosis):
+
+- **data**: PhysioMix/RSH-GAN, LSM-GAN and P5 trained on the multi-domain packs (thousands of windows, a few hundred
+  people). A critic memorises that, so P5 needed ADA and a halved critic rate. PSF-GAN trains on the 2.18 M training
+  windows of the physiGPT shards, held on the GPUs, with no augmentation;
+- **rhythm**: a convolutional up-sampler has to agree on every beat time over 30 s from a 25-sample seed; RSH-GAN's
+  worst features on the benchmark were beat regularity (amp_cv 0.739, 11 features below the floor, tree accuracy
+  0.975). PSF-GAN is source-filter: a pulse phase from the mean rate (the heart-rate condition) and a smooth learnt
+  rate variability (+-30 %), whose first 4 harmonics drive every fine block; the network shapes the pulse, amplitude
+  and baseline around it. With `--hr-cond`, the generated rate follows the asked rate by construction
+  (`tests/test_psf_gan.py` checks the excitation's frequency);
+- **view**: the generator writes a 40 s record; the v3 band-pass (|H|^2 of the 4th-order Butterworth, in the frequency
+  domain) and a centre crop give the 30 s window, then min-max, so no network learns the stop band;
+- **critics**: HiFi-GAN multi-period (periods 2, 3, 5, 7, 11) and multi-scale (x1, x2, x4) critics plus a log-STFT
+  critic, weight-normalised, each with projection on the heart rate; least-squares loss, feature matching of the
+  critics' batch-mean features, and APFT-GAN v3's feature-distribution term;
+- **training**: fp16 with one scaler per network, fused AdamW (0.8, 0.99), EMA generator (0.999) for selection and
+  release, one process per T4 with one flat all-reduce per network, the data resident on each GPU (half the rows
+  per rank, ~2.6 GB), selection every 2000 steps on the 22 features of training records, early stop by patience.
+
+Sizes: generator 7.22 M, critics 4.51 M parameters (base, `--hr-cond`). Speed on a T4 is not measured; the kernel
+logs `windows_per_second` and `max_memory_gb`. On the cloud session's CPU, one base step at batch 32 took 2.1 s.
+
+Over- and underfitting: the critics see 2.18 M windows, so memorisation is less likely than on the packs, but it is
+checked, not assumed: the copy check against all training windows. Underfitting shows as a selection score that
+stops rising while the losses still move; the lr decay over the last 20 % of the time and the EMA are the levers
+before a larger model.
+
+### Sampling speed (both models)
+
+`PhysiGPT.sample_patches` keeps a key/value cache, so each of the 30 steps runs the transformer on one new token
+instead of the whole prefix (same windows for a seed; `tests/test_psf_gan.py`). On the cloud CPU, 64 large windows
+at 16 Heun steps took 7.6 s instead of 17.8 s. APFT-GAN's rollout and the evaluation sampling use it.
+
+## 7. Pi 4 deployment (not measured on the Pi)
 
 Generation is autoregressive: 30 transformer passes and, per patch, 2x16-1 = 31 flow-head calls. For one large
 window that is roughly 2 x 85 M x (1+...+30 tokens, ~465) ~ 80 GFLOP for the backbone without a KV cache, plus the
 head.
 
 Measured on the cloud session's x86 CPU (4 threads, PyTorch 2.15 fp32, random weights, which cost the same as trained
-ones): one 30 s window took 0.9 s (base) and 2.1 s (large) at 16 Heun steps. This is not a Pi measurement. A Pi 4
+ones): one 30 s window took 0.9 s (base) and 2.1 s (large) at 16 Heun steps before the key/value cache, 0.6 s and 1.7 s with it. This is not a Pi measurement. A Pi 4
 (4x Cortex-A72) is several times slower than that CPU per core; by that ratio, large would take on the order of
 10-20 s and base a few seconds per 30 s window. That is an extrapolation and has to be timed on the Pi. Even at that
 speed, generation keeps up with 30 s of output if it runs ahead of playback (a buffer of windows produced off the DAC

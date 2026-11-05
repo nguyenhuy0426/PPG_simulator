@@ -5,7 +5,7 @@ Results of the unconditional patch transformer in `ml/kaggle_physigpt/` (design 
 These are engineering evaluations of normalised 30 s, 40 Hz PPG shape (0.5-8 Hz view, min-max), not clinical
 validation, and nothing here was measured on the Pi/DAC/OPT101.
 
-Why APFT-GAN v1 did not improve on V1 large, the v3 fixes (not trained yet) and the next runs: [APFT_GAN_V3.md](APFT_GAN_V3.md).
+Why APFT-GAN v1 did not improve on V1 large, the v3 fixes (not trained yet), the pure GAN PSF-GAN and the two-session Kaggle script: [APFT_GAN_V3.md](APFT_GAN_V3.md).
 
 ## Setup
 

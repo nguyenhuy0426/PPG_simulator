@@ -112,6 +112,20 @@ class Block(nn.Module):
         gate, up = self.gate_up(self.norm2(x)).chunk(2, -1)
         return x+self.down(F.silu(gate)*up)
 
+    def step(self, x, pos, cache, cos, sin):
+        """One new token x [B, 1, d] at position pos with the keys and values of positions < pos in cache (k, v:
+        [B, heads, patches, head_dim], filled here at pos). Same result as forward over the whole prefix."""
+        b, _, d = x.shape
+        q, k, v = self.qkv(self.norm1(x)).view(b, 1, 3, self.heads, d//self.heads).permute(2, 0, 3, 1, 4)
+        c, s = cos[pos:pos+1], sin[pos:pos+1]
+        q, k = rotate(q, c, s).type_as(v), rotate(k, c, s).type_as(v)
+        keys, values = cache
+        keys[:, :, pos:pos+1], values[:, :, pos:pos+1] = k, v
+        att = F.scaled_dot_product_attention(q, keys[:, :, :pos+1], values[:, :, :pos+1])
+        x = x+self.out(att.transpose(1, 2).reshape(b, 1, d))
+        gate, up = self.gate_up(self.norm2(x)).chunk(2, -1)
+        return x+self.down(F.silu(gate)*up)
+
 
 def time_embedding(t, dim):
     half = dim//2
@@ -187,6 +201,40 @@ class PhysiGPT(nn.Module):
             x = block(x, self.cos, self.sin)
         return self.norm(x)
 
+    def new_cache(self, n, device, dtype):
+        """Empty key/value cache for n windows (one pair per layer)."""
+        cfg = self.cfg
+        shape = (n, cfg.heads, cfg.patches, cfg.dim//cfg.heads)
+        return [(torch.empty(shape, device=device, dtype=dtype), torch.empty(shape, device=device, dtype=dtype))
+                for _ in self.blocks]
+
+    def hidden_step(self, prev, pos, domain, cache, hr=None):
+        """h of position pos [B, dim] from the patch at pos-1 (prev [B, 40] in [0, 1]; ignored at pos 0) and the
+        cache of positions < pos: the incremental form of hidden (one token per call instead of the whole prefix)."""
+        x = self.start(domain) if pos == 0 else self.embed(2*prev-1)
+        if self.cfg.hr_cond:
+            if hr is None:
+                raise ValueError("this model is heart-rate conditioned: pass hr (bpm)")
+            x = x+self.hr(hr_embedding(hr).to(x.dtype))
+        x = x[:, None]
+        for block, layer_cache in zip(self.blocks, cache):
+            x = block.step(x, pos, layer_cache, self.cos, self.sin)
+        return self.norm(x)[:, 0]
+
+    def sample_patches(self, noise, steps, domain, hr=None, clamp=True):
+        """Autoregressive sampling with the key/value cache: noise [n, 30, 40] (the start noise of every patch) ->
+        patches [n, 30, 40] in [0, 1] (unclipped if not clamp)."""
+        n = len(noise)
+        patches = torch.zeros_like(noise)
+        # fp16 under CUDA autocast (the dtype the attention projections then produce), else the weights' dtype
+        dtype = torch.float16 if noise.is_cuda and torch.is_autocast_enabled() else self.embed.weight.dtype
+        cache = self.new_cache(n, noise.device, dtype)
+        for i in range(self.cfg.patches):
+            h = self.hidden_step(patches[:, i-1] if i else None, i, domain, cache, hr)
+            x = (self.integrate(noise[:, i], h, steps)+1)/2
+            patches[:, i] = x.clamp(0, 1) if clamp else x
+        return patches
+
     def laplace_nll(self, h, patches):
         """Per-sample logit-Laplace negative log density of x (in nats, including the 0.1 + 0.8 x Jacobian)."""
         mu, log_b = self.laplace(h).float().chunk(2, -1)
@@ -252,13 +300,11 @@ class PhysiGPT(nn.Module):
         domain = torch.full((n,), domain, dtype=torch.long, device=device)
         if hr is not None:
             hr = torch.as_tensor(hr, dtype=torch.float32, device=device).expand(n).contiguous()
-        patches = torch.zeros(n, 1, self.cfg.patch, device=device)
-        for i in range(self.cfg.patches):
-            h = self.hidden(patches, domain, hr)[:, i]
-            patches[:, i] = self.sample_patch(h, steps, generator, clamp)
-            if i < self.cfg.patches-1:
-                patches = torch.cat((patches, torch.zeros_like(patches[:, :1])), 1)
-        x = patches.reshape(n, -1)
+        # the start noise in the order the uncached sampler drew it (one [n, 40] draw per patch), so a seed gives the
+        # same windows as before the cache
+        noise = torch.stack([torch.randn(n, self.cfg.patch, device=device, generator=generator)
+                             for _ in range(self.cfg.patches)], 1)
+        x = self.sample_patches(noise, steps, domain, hr, clamp).reshape(n, -1)
         lo, hi = x.min(1, keepdim=True).values, x.max(1, keepdim=True).values
         return (x-lo)/(hi-lo).clamp_min(1e-6)
 
