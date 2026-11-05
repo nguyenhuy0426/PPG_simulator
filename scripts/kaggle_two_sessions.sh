@@ -103,21 +103,25 @@ push() {
   fi
 }
 
+# The status line of one kernel; the CLI's version warnings are not it.
+kstatus() { kaggle kernels status "$(slug "$1")" 2>&1 | grep -v -i '^warning' | tail -1; }
+finished() { kstatus "$1" | grep -qiE 'complete|error|cancel'; }
+
 status() {
   need_kaggle
   for tag in "$PSF_TAG" "$APFT_TAG"; do
-    printf '%-28s ' "$tag"; kaggle kernels status "$(slug "$tag")" 2>&1 | tail -1
+    printf '%-28s %s\n' "$tag" "$(kstatus "$tag")"
   done
 }
 
 pull() {
   need_kaggle
   for tag in "$PSF_TAG" "$APFT_TAG"; do
-    if kaggle kernels status "$(slug "$tag")" 2>&1 | grep -qiE 'complete|error|cancel'; then
+    if finished "$tag"; then
       mkdir -p "$OUT/$tag/output"
       kaggle kernels output "$(slug "$tag")" -p "$OUT/$tag/output" --force >/dev/null && echo "pulled $tag"
     else
-      echo "$tag is still running"
+      echo "$tag has not ended: $(kstatus "$tag")"
     fi
   done
 }
@@ -155,7 +159,17 @@ PY
 }
 
 wait_all() {
-  while status | grep -qiE 'running|queued'; do sleep 600; done
+  need_kaggle
+  local tag pending
+  while :; do
+    pending=0
+    for tag in "$PSF_TAG" "$APFT_TAG"; do
+      finished "$tag" || pending=1
+    done
+    (( pending )) || break
+    echo "$(date '+%F %T') $(for tag in "$PSF_TAG" "$APFT_TAG"; do printf '%s: %s; ' "$tag" "$(kstatus "$tag")"; done)"
+    sleep 600
+  done
   pull && report
 }
 
