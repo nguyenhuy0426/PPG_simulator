@@ -62,16 +62,31 @@ need_kaggle() {
   }
   case $KAGGLE_CMD in python3*) ;; *) KAGGLE_CMD=$(printf '%q' "$KAGGLE_CMD") ;; esac
   echo "kaggle CLI: $KAGGLE_CMD"
-  kaggle kernels list --mine --page-size 1 >/dev/null || { echo "kaggle CLI is not logged in (kaggle auth login)"; exit 1; }
+  local mine me
+  mine=$(kaggle kernels list --mine --page-size 20 --csv 2>&1) || { echo "kaggle CLI is not logged in (kaggle auth login)"; exit 1; }
+  # The account the CLI is logged in as spends the GPU quota, whatever OWNER the kernel ids carry: the owner of its own
+  # kernels names it (unknown if it has none yet).
+  me=$(grep -oE '^[A-Za-z0-9_-]+/' <<<"$mine" | head -1 | tr -d /)
+  if [[ -n $me && $me != "$OWNER" ]]; then
+    echo "The kaggle CLI is logged in as '$me', not '$OWNER'; the push would spend $me's GPU quota."
+    echo "Log in as $OWNER for this shell: export KAGGLE_API_TOKEN=<a token made at kaggle.com/settings/api while"
+    echo "signed in as $OWNER>, or set OWNER=$me to run under that account."
+    exit 1
+  fi
+  echo "kaggle account: ${me:-unknown (no kernels yet)}"
 }
 
+# The kernel is staged into OUT/<tag>/kernel, a fresh directory each push (stage.py refuses an existing one); pull
+# writes OUT/<tag>/output.
 stage_psf() {
-  python3 -m ml.kaggle_physigpt.stage "$OUT/$PSF_TAG" puregan "${COMMON[@]}" --tag "$PSF_TAG" \
+  rm -rf "$OUT/$PSF_TAG/kernel"
+  python3 -m ml.kaggle_physigpt.stage "$OUT/$PSF_TAG/kernel" puregan "${COMMON[@]}" --tag "$PSF_TAG" \
     --gan-extra="$PSF_EXTRA" >/dev/null
 }
 
 stage_apft() {
-  python3 -m ml.kaggle_physigpt.stage "$OUT/$APFT_TAG" gan "${COMMON[@]}" --config large \
+  rm -rf "$OUT/$APFT_TAG/kernel"
+  python3 -m ml.kaggle_physigpt.stage "$OUT/$APFT_TAG/kernel" gan "${COMMON[@]}" --config large \
     --from-slug ppg-physigpt-decay0-large-v1 --tag "$APFT_TAG" --gan-steps 20000 --eval-every 250 --patience 8 \
     --gen-steps 16 --gan-extra="$APFT_EXTRA" >/dev/null
 }
@@ -81,10 +96,10 @@ push() {
   local which=${1:-both}
   mkdir -p "$OUT"
   if [[ $which == psf || $which == both ]]; then
-    stage_psf && kaggle kernels push -p "$OUT/$PSF_TAG"
+    stage_psf && kaggle kernels push -p "$OUT/$PSF_TAG/kernel"
   fi
   if [[ $which == apft || $which == both ]]; then
-    stage_apft && kaggle kernels push -p "$OUT/$APFT_TAG"
+    stage_apft && kaggle kernels push -p "$OUT/$APFT_TAG/kernel"
   fi
 }
 
