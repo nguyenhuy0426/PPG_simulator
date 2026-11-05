@@ -42,7 +42,7 @@ find_kaggle() {
   if [[ -n ${KAGGLE:-} ]]; then echo "$KAGGLE"; return; fi
   if type -P kaggle >/dev/null; then type -P kaggle; return; fi   # a path only: kaggle() below is a function
   main=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's#/\.git$##')
-  for c in "$HOME/.local/bin/kaggle" ./.venv/bin/kaggle ./venv/bin/kaggle "${main:-.}/.venv/bin/kaggle" \
+  for c in "$HOME/.local/bin/kaggle" "$HOME/.venvs/kaggle/bin/kaggle" ./.venv/bin/kaggle ./venv/bin/kaggle "${main:-.}/.venv/bin/kaggle" \
            "${main:-.}/venv/bin/kaggle" "${CONDA_PREFIX:-/nonexistent}/bin/kaggle" "$HOME"/miniconda3/bin/kaggle \
            "$HOME"/anaconda3/bin/kaggle; do
     if [[ -x $c ]]; then echo "$c"; return; fi
