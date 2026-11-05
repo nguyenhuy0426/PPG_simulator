@@ -1,0 +1,14 @@
+{
+  "seed": 42,
+  "steps": 5490,
+  "planned": 6000,
+  "step_seconds": 2.1112330834070843,
+  "hours": 6.677813688516617,
+  "best": {
+    "step": 5000,
+    "mean_similarity": 0.9252848378615249
+  },
+  "generator_updates": 5190,
+  "rt_ema": 0.8103006026085955,
+  "max_memory_gb": 5.035006523132324
+}

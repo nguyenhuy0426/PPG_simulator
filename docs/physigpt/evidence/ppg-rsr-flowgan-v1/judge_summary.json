@@ -1,0 +1,416 @@
+{
+  "split": "validation",
+  "judge": "strict",
+  "judge_seeds": [
+    0,
+    1
+  ],
+  "summary": {
+    "rsr_flow_app": {
+      "auc": [
+        1.0,
+        1.0
+      ],
+      "mean_auc": 1.0
+    },
+    "rsr_flowgan_seed42": {
+      "auc": [
+        1.0,
+        0.999981789265379
+      ],
+      "mean_auc": 0.9999908946326894
+    },
+    "rsr_flowgan_seed123": {
+      "auc": [
+        0.9999908946326895,
+        0.9999089463268949
+      ],
+      "mean_auc": 0.9999499204797921
+    },
+    "real_other_people": {
+      "auc": [
+        0.4725518702424456,
+        0.44557570202381963
+      ],
+      "mean_auc": 0.4590637861331326
+    }
+  },
+  "rows": [
+    {
+      "judge": "strict",
+      "source": "rsr_flowgan_seed42",
+      "seed": 0,
+      "seconds": 363.80200345900084,
+      "auc": 1.0,
+      "indistinguishable": 0.0,
+      "balanced_accuracy": 100.0,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "real_other_people",
+      "seed": 0,
+      "seconds": 376.4467712779988,
+      "auc": 0.4725518702424456,
+      "indistinguishable": 94.51037404848913,
+      "balanced_accuracy": 48.519163763066196,
+      "per_domain": {
+        "bidmc": {
+          "auc": 0.504991477964451,
+          "indistinguishable": 99.0017044071098,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 0.474151611328125,
+          "indistinguishable": 94.830322265625,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 0.16913214990138067,
+          "indistinguishable": 33.82642998027614,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 0.54541015625,
+          "indistinguishable": 90.91796875,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 0.04125,
+          "indistinguishable": 8.250000000000002,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 0.7695997980053023,
+          "indistinguishable": 46.08004039893954,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "rsr_flowgan_seed42",
+      "seed": 1,
+      "seconds": 374.85635564100085,
+      "auc": 0.999981789265379,
+      "indistinguishable": 0.0036421469242098325,
+      "balanced_accuracy": 99.91289198606272,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "real_other_people",
+      "seed": 1,
+      "seconds": 376.22480938100125,
+      "auc": 0.44557570202381963,
+      "indistinguishable": 89.11514040476392,
+      "balanced_accuracy": 45.64459930313589,
+      "per_domain": {
+        "bidmc": {
+          "auc": 0.3116630143657171,
+          "indistinguishable": 62.332602873143415,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 0.51544189453125,
+          "indistinguishable": 96.91162109375,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 0.26347797501643655,
+          "indistinguishable": 52.69559500328731,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 0.5755615234375,
+          "indistinguishable": 84.8876953125,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 0.063125,
+          "indistinguishable": 12.624999999999996,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 0.6139376341371039,
+          "indistinguishable": 77.21247317257922,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "rsr_flow_app",
+      "seed": 0,
+      "seconds": 380.85319186500055,
+      "auc": 1.0,
+      "indistinguishable": 0.0,
+      "balanced_accuracy": 99.12891986062718,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "rsr_flowgan_seed123",
+      "seed": 0,
+      "seconds": 378.73858402899714,
+      "auc": 0.9999908946326895,
+      "indistinguishable": 0.001821073462093814,
+      "balanced_accuracy": 98.60627177700349,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 0.9998779296875,
+          "indistinguishable": 0.0244140625,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "rsr_flow_app",
+      "seed": 1,
+      "seconds": 378.7507762860005,
+      "auc": 1.0,
+      "indistinguishable": 0.0,
+      "balanced_accuracy": 100.0,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    },
+    {
+      "judge": "strict",
+      "source": "rsr_flowgan_seed123",
+      "seed": 1,
+      "seconds": 376.8992041640013,
+      "auc": 0.9999089463268949,
+      "indistinguishable": 0.01821073462102696,
+      "balanced_accuracy": 99.39024390243902,
+      "per_domain": {
+        "bidmc": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 111,
+          "fake": 111
+        },
+        "gxu_finger": {
+          "auc": 0.9998779296875,
+          "indistinguishable": 0.0244140625,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 78,
+          "fake": 78
+        },
+        "perform_large": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 128,
+          "fake": 128
+        },
+        "perform_non_af": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 40,
+          "fake": 40
+        },
+        "wrist": {
+          "auc": 1.0,
+          "indistinguishable": 0.0,
+          "real": 89,
+          "fake": 89
+        }
+      }
+    }
+  ]
+}

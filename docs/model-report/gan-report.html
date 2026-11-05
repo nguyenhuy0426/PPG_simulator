@@ -34,7 +34,7 @@
 <nav class="toc" aria-label="Mục lục">
   <div class="brand">PPG Simulator · GAN</div>
   <div class="sub">Giám khảo nghiêm · PhysioFlow-GAN</div>
-  <a class="back" href="chi-tiet.html">← Báo cáo kỹ thuật đầy đủ</a>
+  <a class="back" href="trinh-bay.html">← Báo cáo cho khách hàng</a>
   <div class="links">
     <a href="#summary">0. Tóm tắt và quyết định</a>
     <a href="#models-kept">Mô hình giữ / đã loại</a>
@@ -91,7 +91,7 @@
       <td><span class="tag ai">giữ</span></td><td>Mô hình duy nhất giảm rõ từ mức 1,0; là nền của R1F</td></tr>
       <tr><td>R1F (R1 train tiếp bằng loss flow)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
       <tr><td>PhysioGAN-R (P5)</td><td>chưa có</td><td><span class="tag ai">giữ</span></td><td>Đang train trong P5</td></tr>
-      <tr><td>PPG-physiGPT large (kiểu GPT-PPG, 99,9M)</td><td>1,00 (d′ 8,6; 2 seed)</td><td><span class="tag ai">V1</span></td><td>Đạt V1 ở tầng đặc trưng (98,1 % mức người thật); chưa đạt V2 (0,95 tuyệt đối); giám khảo nghiêm vẫn tách hết (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
+      <tr><td>PPG-physiGPT large (kiểu GPT-PPG, 99,9M)</td><td>1,00 (d′ 8,6; 2 seed)</td><td><span class="tag ai">V1</span></td><td>Chưa đạt tiêu chí mới (22 đặc trưng 0,938 &lt; 0,95; cây 0,638 &gt; 0,60); số 98,1 % là tiêu chí tương đối cũ; giám khảo nghiêm vẫn tách hết (<a href="#physigpt-sec">chi tiết</a>)</td></tr>
       <tr><td>LSM-GAN <code>lsm_author_v3</code></td><td>1,00</td><td><span class="tag hw">baseline</span></td><td>Giữ nguyên làm baseline (không train lại)</td></tr>
       <tr><td>PhysioMix (app, vòng 9)</td><td>0,999</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
       <tr><td>PhysioFlow (app, vòng 10)</td><td>1,00</td><td><span class="tag off">đã loại</span></td><td>Gỡ khỏi app</td></tr>
@@ -197,21 +197,38 @@
 </section>
 
 <section id="physigpt-sec">
-  <h2>PPG-physiGPT <span class="tag ai">V1 đạt (ngưỡng tương đối) · V2 chưa</span></h2>
+  <h2>PPG-physiGPT <span class="tag ai">chưa đạt mốc 95 % (tiêu chí mới)</span></h2>
   <p class="lead">Mô hình kiểu GPT (theo GPT-PPG 2025): <b>vẽ sóng PPG 30 s từng giây một</b>, học từ PPG bệnh viện (MIMIC-III), train trên Kaggle 2 × T4.
   Sinh không điều kiện (không điều khiển nhịp tim).</p>
 
   <div class="cards">
-    <div class="card stat"><div class="num">98,1 %</div><div class="lbl">độ giống đặc trưng của bản large (1 − KS 0,941) so với người thật khác (0,960); V1 cần ≥ 95 %</div></div>
+    <div class="card stat"><div class="num">0,938</div><div class="lbl">trung bình 1 − KS của 22 đặc trưng, bản large (người thật khác 0,958); mốc 0,95 chưa đạt. Số 98,1 % cũ là 0,941 / 0,960 trên 14 đặc trưng, theo ngưỡng tương đối</div></div>
     <div class="card stat"><div class="num">1,00</div><div class="lbl">AUC giám khảo nghiêm, mọi biến thể (d′ tốt nhất 7,5; người thật khác 0,14)</div></div>
     <div class="card stat"><div class="num">0,0575</div><div class="lbl">flow loss held-out của bản large sau decay (base tốt nhất 0,0578)</div></div>
   </div>
+
+  <h3>Cập nhật 02/11/2026: tiêu chí đạt mới và bốn mô hình</h3>
+  <p class="small"><b>Tiêu chí đạt</b>: trung bình 1 − KS của 22 đặc trưng ≥ 0,95; từng đặc trưng ≥ 0,90 (hoặc mức người thật nếu thấp hơn); độ chính xác của cây ≤ 0,60.
+  Giám khảo nghiêm không còn là tiêu chí đạt, chỉ là giới hạn đã biết (người thật so với người thật: AUC khoảng 0,5). Bốn mô hình chấm trên cùng 180 người MIMIC chưa từng train:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mô hình</th><th>22 đặc trưng (khoảng tin cậy 95 %)</th><th>Cây (acc.)</th><th>Đặc trưng dưới sàn</th><th>Kết luận</th></tr></thead>
+    <tbody>
+      <tr><td>V1 large</td><td>0,9379 (0,9122–0,9574)</td><td>0,638</td><td>2</td><td>chưa đạt</td></tr>
+      <tr><td>APFT-GAN</td><td>0,9363 (0,9112–0,9549)</td><td>0,658</td><td>3</td><td>chưa đạt</td></tr>
+      <tr><td>RSR-Flow (tên cũ PhysioFlow)</td><td>0,9040 (0,8828–0,9236)</td><td>0,780</td><td>8</td><td>chưa đạt</td></tr>
+      <tr><td>RSH-GAN (tên cũ PhysioMix)</td><td>0,8882 (0,8640–0,9087)</td><td>0,975</td><td>11</td><td>chưa đạt</td></tr>
+      <tr><td>người thật so với người thật khác</td><td>0,9583 (0,9403–0,9728)</td><td>0,50</td><td></td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">V1 large và APFT-GAN không tách được nhau (hiệu ghép cặp +0,0016, khoảng 95 % −0,0112 đến +0,0146) và cùng hơn hai mô hình trong app. RSH-GAN và RSR-Flow được cấp điều kiện
+  <code>perform_large</code> nên bị bất lợi ở bộ này; kết quả chưa chứng minh chúng kém hơn trên dữ liệu của chính chúng. Số liệu: <code>docs/physigpt/results.json</code> (khối <code>benchmark</code>).
+  RSR-FlowGAN (hai seed, bộ đa miền 14 đặc trưng, không so được với bảng trên) không cải thiện RSR-Flow: 0,8252 và 0,8273 so với 0,8285.</p>
 
   <h3>Hai tầng đánh giá</h3>
   <p class="small">Cả hai tầng dùng người chưa từng train. <b>Giám khảo nghiêm</b> (C2ST, 3,6M tham số, 3 nhánh thời gian / phổ / tự tương quan) giữ nguyên;
   AUC đã bão hoà ở 1,0 nên báo thêm d′ = (điểm trung bình sóng sinh − điểm trung bình sóng thật) / độ lệch chuẩn gộp, tính từ điểm thô của giám khảo.
   <b>Tầng đặc trưng</b>: với mỗi đặc trưng tính 1 − KS giữa 2.000 cửa sổ sinh ra và 180 người thật held-out, cộng bộ phân loại chỉ nhìn đặc trưng.
-  <b>V1</b> (đang dùng): trung bình ≥ 95 % mức của người thật so với người thật khác. <b>V2</b> (mục tiêu sau): trung bình ≥ 0,95 tuyệt đối và độ chính xác của cây ≤ 0,60.</p>
+  <b>V1 tương đối</b> (tiêu chí cũ, 14 đặc trưng, chỉ còn cho các biến thể bên dưới): trung bình ≥ 95 % mức của người thật so với người thật khác; mức này không bằng 0,95 tuyệt đối. Tiêu chí hiện tại là tiêu chí tuyệt đối ở trên.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Biến thể</th><th>Bước</th><th>Flow held-out</th><th>AUC nghiêm</th><th>d′ (theo seed)</th><th>1 − KS (so với mốc thật)</th><th>Cây (acc.)</th></tr></thead>
     <tbody>

@@ -1,0 +1,5 @@
+Generators fix the beat sequence and learn only pulse shape and texture
+Rate error below 1 bpm from 40 to 180 bpm for both GAN and rectified flow
+Rectified flow was harder to detect than the GAN on finger and ICU data
+Neither model transferred to everyday wrist PPG from an unseen device
+Selection rules fixed before training kept the deployed model unchanged

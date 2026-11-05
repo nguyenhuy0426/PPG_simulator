@@ -39,7 +39,7 @@
   "spo2_coeff_a": 110.0,
   "spo2_coeff_b": 25.0,
   "spo2_coupling_enabled": true,
-  "theme": "dark",
+  "theme": "light",
   "variability_enabled": true,
   "waveform": "ppg"
 }
