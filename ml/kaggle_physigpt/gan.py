@@ -21,6 +21,26 @@ discriminator and Flow-GAN / Denoising Diffusion GAN pair an iterative sampler w
   The judge's real class (the shards' held-out records) is used neither in training nor in selection.
   --patience N stops after N evaluations in a row without a new best (0, the default: no early stop); an evaluation
   counts only if the generator moved since the last one, and gan_summary.json says why the run stopped;
+v3 (this file's defaults), after the v1 run's record (docs/physigpt, evidence/ppg-physigpt-apft-gan-v1):
+- the adaptive weight was ~1e-4 for the whole run: the flow loss's gradient at the head's output layer was ~0.012
+  and the adversarial one ~170, so it balanced the two at that one layer only. Through the 16-step ODE and the
+  context h into the transformer, the total gradient norm was 5-7 against a clip of 1.0, so the update was set by the
+  adversarial term in the backbone and the flow anchor was scaled down ~6x. The selection score peaked at step 1500
+  and fell to 0.715 at step 3000; on held-out people the beat features dropped (template_corr 0.903 -> 0.851).
+  The critic's gradient does not reach a patch's effect on later contexts (truncated), so it cannot carry the beat-to-
+  beat structure the backbone holds. --adv-scope head (default) therefore gives the adversarial and feature terms
+  the flow head only (h detached); the anchor still trains every parameter. The adaptive weights compare gradient
+  norms over all head parameters, not one layer;
+- a feature-distribution term (--feature-weight): a differentiable copy of the feature tier's per-window signal
+  features (band powers, centroid, difference SDs, moments, ACF peak) and the 1-D Wasserstein distance (sorted
+  values) between the generated and real batch per feature, scaled by the real SD. It targets the tier's largest
+  gaps (5-8 Hz power, second-difference SD, centroid, ACF peak) on training records; held-out people still decide;
+- the adversarial term is applied only while the critic separates (rt gate); the anchor and feature terms move the
+  generator from --critic-warmup on;
+- --hr-cond: the heart-rate condition of model.py, learnt here from the anchor (rate labels of the real windows);
+  generated batches ask for the rates of a real batch, so their marginal is the data's. hr_mae logs how far the
+  generated rate is from the asked one; gan_release.pt keeps the selection's rates (hr_bank) for sampling;
+- the selection record keeps the generated-minus-real median per feature, so the direction of each gap is known.
 Two T4s: one process per GPU with gradients averaged by all-reduce. Not DDP: the generator and critic steps freeze
 each other's parameters, which DDP's fixed gradient buckets do not allow. fp16 autocast for the generator, fp32
 critic. Engineering evaluation of normalised 30 s waveform shape; not clinical validation.
@@ -40,7 +60,10 @@ from ml.kaggle_lsm.train_lsm import save_json
 from ml.kaggle_multidomain.physiogan_r import Balanced, d_loss, g_loss, penalty
 from ml.kaggle_multidomain.strict_judge import JudgeCritic, StrictCritic
 from ml.kaggle_physigpt.judge_physigpt import BEAT_DIAGNOSTIC, all_features, finite_similarity
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
+from dataclasses import replace
+
+from ml.kaggle_physigpt.mimic_wdb import rate_features
+from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe, load_init, window_rate
 from ml.kaggle_physigpt.train import Windows, evaluate, synthetic_shard, warm_cache
 
 CRITIC = dict(width=32, minibatch_std=True, band=True)
@@ -54,7 +77,55 @@ def windows_of(patches):
     return (x-lo)/(hi-lo).clamp_min(1e-6)
 
 
-def rollout(model, n, steps, generator, device):
+FEATURE_BANDS = ((.5, 1.5), (1.5, 3.), (3., 5.), (5., 8.), (8., 20.))
+
+
+def soft_features(x, fs=40):
+    """Differentiable per-window features of windows x [n, L] in [0, 1], as judge_physigpt.signal_features (rate and
+    the beat layer excluded: they are not differentiable). Returns [n, features]."""
+    x = x.float()
+    centered = x-x.mean(1, keepdim=True)
+    spectrum = torch.fft.rfft(centered, dim=1).abs().square()
+    freq = torch.fft.rfftfreq(x.shape[1], 1/fs).to(x.device)
+    power = spectrum/spectrum[:, 1:].sum(1, keepdim=True).clamp_min(1e-12)
+    sd = centered.square().mean(1).clamp_min(1e-12).sqrt()
+    z = centered/sd[:, None]
+    d1 = torch.diff(x, 1, 1)
+    d1c = d1-d1.mean(1, keepdim=True)
+    acf = torch.fft.irfft(torch.fft.rfft(centered, 2*x.shape[1], dim=1).abs().square(), dim=1)[:, :x.shape[1]]
+    acf = acf/acf[:, :1].clamp_min(1e-12)
+    cols = [torch.log10(power[:, (freq >= lo) & (freq < hi)].sum(1)+1e-9) for lo, hi in FEATURE_BANDS]
+    cols += [(power*freq).sum(1), torch.log(d1.std(1)+1e-6), torch.log(torch.diff(x, 2, 1).std(1)+1e-6),
+             z.pow(3).mean(1), z.pow(4).mean(1)-3, (d1c/d1c.square().mean(1, keepdim=True).clamp_min(1e-12).sqrt()
+                                                    ).pow(3).mean(1),
+             x.mean(1), acf[:, 12:80].amax(1)]
+    return torch.stack(cols, 1)
+
+
+def feature_distance(fake, real):
+    """Mean over features of the 1-D Wasserstein distance between the batches (sorted values, equal sizes), each in
+    units of the real batch's SD."""
+    f, r = soft_features(fake), soft_features(real).detach()
+    n = min(len(f), len(r))
+    f, r = f[:n].sort(0).values, r[:n].sort(0).values
+    return ((f-r).abs().mean(0)/(r.std(0)+1e-6)).mean()
+
+
+def grad_norm(loss, params, scale=1.):
+    """Norm of d(loss*scale)/d(params) divided by scale (a parameter the loss does not reach counts as zero)."""
+    grads = torch.autograd.grad(loss*scale, params, retain_graph=True, allow_unused=True)
+    total = sum(float(g.float().square().sum()) for g in grads if g is not None)
+    return math.sqrt(total)/scale
+
+
+def adaptive(n_anchor, n_term, cap):
+    """Esser et al. 2021's weight from two gradient norms; an overflow gives no weight, not the cap."""
+    if not (math.isfinite(n_anchor) and math.isfinite(n_term)):
+        return 0.
+    return min(n_anchor/(n_term+1e-8), cap)
+
+
+def rollout(model, n, steps, generator, device, hr=None):
     """Autoregressive sampling as PhysiGPT.generate, without gradient: the clipped patches [n, 30, 40] and the start
     noise of every patch."""
     cfg = model.cfg
@@ -63,34 +134,50 @@ def rollout(model, n, steps, generator, device):
     patches = torch.zeros(n, cfg.patches, cfg.patch, device=device)
     with torch.no_grad():
         for i in range(cfg.patches):
-            h = model.hidden(patches[:, :i+1], domain)[:, i]
+            h = model.hidden(patches[:, :i+1], domain, hr)[:, i]
             patches[:, i] = ((model.integrate(noise[:, i], h, steps)+1)/2).clamp(0, 1)
     return patches, noise
 
 
-def regenerate(model, patches, noise, steps, use_checkpoint=True):
+def regenerate(model, patches, noise, steps, use_checkpoint=True, hr=None, head_only=False):
     """The windows of rollout again, now differentiable: the contexts of all patches in one teacher-forced pass over
-    the sampled patches, then the ODE from the same start noise."""
+    the sampled patches, then the ODE from the same start noise. head_only: the contexts without gradient, so only
+    the flow head is differentiated."""
     n, p, d = patches.shape
-    h = model.hidden(patches, torch.zeros(n, dtype=torch.long, device=patches.device)).reshape(n*p, -1)
+    with torch.set_grad_enabled(torch.is_grad_enabled() and not head_only):
+        h = model.hidden(patches, torch.zeros(n, dtype=torch.long, device=patches.device), hr).reshape(n*p, -1)
     flow = (lambda x, t, c: checkpoint(model.flow, x, t, c, use_reentrant=False)) if use_checkpoint else None
     x = model.integrate(noise.reshape(n*p, d), h, steps, flow)
     return windows_of(((x+1)/2).clamp(0, 1).view(n, p, d))
 
 
-def similarity(real_features, windows):
+def similarity(real_features, windows, fake=None):
     """Per-feature 1 - KS of generated windows against the selection's real windows, on the target's scored features."""
-    fake = all_features(windows)
+    fake = all_features(windows) if fake is None else fake
     return {k: finite_similarity(real_features[k], fake[k]) for k in real_features if k not in BEAT_DIAGNOSTIC}
 
 
-def select_score(model, real_features, steps, device):
+def selection_rates(n, bank, seed):
+    """Rates (bpm) asked of n selection windows, drawn from the selection's real rates; None for an unconditional model."""
+    return None if bank is None else np.random.default_rng(seed).choice(bank, n)
+
+
+def select_score(model, real_features, steps, device, hr_bank=None):
     model.eval()
-    parts = [model.generate(min(256, SELECT_FAKE-i), steps=steps, seed=SELECT_SEED+i, device=device).float().cpu().numpy()
+    asked = selection_rates(SELECT_FAKE, hr_bank, SELECT_SEED)
+    parts = [model.generate(min(256, SELECT_FAKE-i), steps=steps, seed=SELECT_SEED+i, device=device,
+                            hr=None if asked is None else asked[i:i+256]).float().cpu().numpy()
              for i in range(0, SELECT_FAKE, 256)]
     model.train()
-    sim = similarity(real_features, np.concatenate(parts))
-    return dict(mean_similarity=float(np.mean(list(sim.values()))), similarity=sim)
+    windows = np.concatenate(parts)
+    fake = all_features(windows)
+    sim = similarity(real_features, windows, fake)
+    # generated minus real median: the sign says which way each feature is off
+    shift = {k: float(np.nanmedian(fake[k])-np.nanmedian(real_features[k])) for k in sim}
+    out = dict(mean_similarity=float(np.mean(list(sim.values()))), similarity=sim, median_shift=shift)
+    if asked is not None:
+        out["hr_mae"] = float(np.mean(np.abs(rate_features(windows)[1]-asked)))
+    return out
 
 
 def average(params, world):
@@ -136,13 +223,15 @@ def worker(rank, world, args):
         torch.backends.cuda.matmul.allow_tf32 = True
     begin, output = time.time(), Path(args.output)
     torch.manual_seed(args.seed)   # same critic initialisation on every rank
-    model = PhysiGPT(CONFIGS[args.config]).to(device)
+    model = PhysiGPT(replace(CONFIGS[args.config], hr_cond=args.hr_cond)).to(device)
     critic = Balanced(JudgeCritic() if args.critic == "judge" else StrictCritic(**CRITIC)).to(device)
     if args.init:
         state = torch.load(args.init, map_location=device, weights_only=False)
         if state["config"] != args.config:
             raise ValueError(f"--init config {state['config']} != {args.config}")
-        model.load_state_dict(state["model"])
+        added = load_init(model, state)
+        if rank == 0 and added:
+            print(f"--init: {len(added)} rate-embedding tensors start at their (zero) initialisation", flush=True)
         del state
     g_opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(.5, .99), weight_decay=0.)
     d_opt = torch.optim.Adam(critic.parameters(), lr=args.d_lr, betas=(0., .99))
@@ -150,7 +239,10 @@ def worker(rank, world, args):
     data = Windows(args.data)
     selection = np.sort(np.random.default_rng(SELECT_SEED).choice(data.train, min(SELECT_REAL, len(data.train)),
                                                                     replace=False))
-    real_features = all_features(data.rows(selection).astype(np.float32)/65535)
+    selection_windows = data.rows(selection).astype(np.float32)/65535
+    real_features = all_features(selection_windows)
+    hr_bank = rate_features(selection_windows)[1].astype(np.float32) if args.hr_cond else None
+    del selection_windows
     step, best, rt_ema, g_updates = 0, dict(step=None, mean_similarity=-math.inf), None, 0
     stale, scored_updates, stop_reason = 0, 0, "steps"
     if args.resume:
@@ -175,7 +267,7 @@ def worker(rank, world, args):
     if world > 1:
         dist.barrier()
     params, critic_params = list(model.parameters()), list(critic.parameters())
-    last_layer = model.flow.outp.weight
+    head_params = list(model.flow.parameters())
     log = (output/"metrics.jsonl").open("a") if rank == 0 else None
     last_save, step_seconds, tick = time.time(), None, None
 
@@ -183,12 +275,13 @@ def worker(rank, world, args):
         """Rank 0 scores the selection and keeps the best state; the others wait."""
         nonlocal best, stale, scored_updates
         if rank == 0:
-            record = dict(step=at, select=select_score(model, real_features, args.gen_steps, device),
+            record = dict(step=at, select=select_score(model, real_features, args.gen_steps, device, hr_bank),
                           **evaluate(model, data, device, cuda), hours=round((time.time()-begin)/3600, 4))
             if record["select"]["mean_similarity"] > best["mean_similarity"]:
                 best, stale = dict(step=at, mean_similarity=record["select"]["mean_similarity"]), 0
                 torch.save(dict(model=model.state_dict(), config=args.config, describe=describe(model), step=at,
-                                gen_steps=args.gen_steps, select=record["select"]), output/"gan_release.pt")
+                                gen_steps=args.gen_steps, select=record["select"], hr_cond=args.hr_cond,
+                                hr_bank=hr_bank), output/"gan_release.pt")
             elif g_updates > scored_updates:   # a generator that did not move says nothing about further training
                 stale += 1
             scored_updates = g_updates
@@ -206,8 +299,12 @@ def worker(rank, world, args):
         x = torch.from_numpy(data.rows(rng.choice(data.train, args.batch+args.anchor)).astype(np.float32)/65535).to(device)
         real, anchor = x[:args.batch], x[args.batch:]
         generator = torch.Generator(device).manual_seed(args.seed*1_000_003+step*world+rank)
+        # a conditional model is asked for the rates of the real batch, in another order
+        hr_anchor = window_rate(anchor) if args.hr_cond else None
+        hr_fake = (window_rate(real)[torch.randperm(len(real), device=device, generator=generator)]
+                   if args.hr_cond else None)
         with torch.autocast("cuda", torch.float16, enabled=cuda):
-            patches, noise = rollout(model, args.batch, args.gen_steps, generator, device)
+            patches, noise = rollout(model, args.batch, args.gen_steps, generator, device, hr_fake)
         fake = windows_of(patches).float()
 
         # critic: relativistic pairing, R1 and R2 every --lazy steps (scaled by lazy); --d-steps updates per step, the
@@ -233,40 +330,55 @@ def worker(rank, world, args):
         record = dict(step=step+1, loss_d=float(loss_d.detach()), rt=rt, rt_ema=rt_ema, ada_p=float(critic.augment.p),
                       d_grad=float(d_grad), d_real=float(r.detach().mean()), d_fake=float(f.detach().mean()),
                       g_updates=g_updates)
-        # The generator moves only once the critic separates the classes (rt_ema >= --rt-gate): a critic at chance
-        # gives a gradient of noise, which the adaptive weight would scale up (v1 runs: loss_d stayed at ln 2).
-        if step >= args.critic_warmup and rt_ema >= args.rt_gate:
+        # The adversarial term counts only while the critic separates the classes (rt_ema >= --rt-gate): a critic at
+        # chance gives a gradient of noise, which the adaptive weight would scale up (v1 runs: loss_d stayed at ln 2).
+        # The anchor and the feature term move the generator from --critic-warmup on.
+        use_adv = rt_ema >= args.rt_gate and args.adv_weight > 0
+        if step >= args.critic_warmup and (use_adv or args.feature_weight > 0):
             critic.requires_grad_(False)
             with torch.no_grad():
                 r_now = critic(real[:, None], None)
             with torch.autocast("cuda", torch.float16, enabled=cuda):
-                fake_g = regenerate(model, patches, noise, args.gen_steps)
+                fake_g = regenerate(model, patches, noise, args.gen_steps, hr=hr_fake,
+                                    head_only=args.adv_scope == "head").float()
                 fm, parts = model(anchor, torch.zeros(len(anchor), dtype=torch.long, device=device), aux=args.aux,
-                                  repeats=args.repeats, generator=generator)
-            adv = g_loss(r_now, critic(fake_g.float()[:, None], None))
-            # Adaptive weight (Esser et al. 2021). The flow loss's gradient is taken at the scaler's scale (its fp16
-            # gradients underflow unscaled), the adversarial one unscaled: at the scale it overflowed fp16 on every
-            # step of the v2 RSR run (lam 0 throughout) once the critic separated the classes.
+                                  repeats=args.repeats, generator=generator, hr=hr_anchor)
+            adv = g_loss(r_now, critic(fake_g[:, None], None)) if use_adv else fm.new_zeros(())
+            feat = feature_distance(fake_g, real) if args.feature_weight > 0 else fm.new_zeros(())
+            # Adaptive weights (Esser et al. 2021) over every flow-head parameter, the part all three terms reach. The
+            # flow loss's gradient is taken at the scaler's scale (its fp16 gradients underflow unscaled), the others
+            # unscaled: at the scale the adversarial one overflowed fp16 in the v2 RSR run.
             s = scaler.get_scale() if cuda else 1.
-            g_fm, = torch.autograd.grad(fm*s, last_layer, retain_graph=True)
-            g_adv, = torch.autograd.grad(adv, last_layer, retain_graph=True)
-            n_fm, n_adv = float(g_fm.float().norm())/s, float(g_adv.float().norm())
-            # a remaining overflow gives no weight, not the max_lambda cap
-            lam = min(n_fm/(n_adv+1e-4), args.max_lambda) if math.isfinite(n_fm) and math.isfinite(n_adv) else 0.
-            lam = mean_over_ranks(lam, world, device)
+            n_fm = grad_norm(fm, head_params, s)
+            n_adv = grad_norm(adv, head_params) if use_adv else 0.
+            n_feat = grad_norm(feat, head_params) if args.feature_weight > 0 else 0.
+            lam = mean_over_ranks(adaptive(n_fm, n_adv, args.max_lambda) if use_adv else 0., world, device)
+            lam_f = mean_over_ranks(adaptive(n_fm, n_feat, args.max_lambda) if args.feature_weight > 0 else 0., world,
+                                    device)
             for group in g_opt.param_groups:
                 group["lr"] = args.lr*min(1., (g_updates+1)/max(1, args.warmup))
-            loss_g = fm+args.adv_weight*lam*adv
+            loss_g = fm+args.adv_weight*lam*adv+args.feature_weight*lam_f*feat
             g_opt.zero_grad(set_to_none=True)
             scaler.scale(loss_g).backward()
             average(params, world)   # before unscale_, so an overflow on one rank skips the step on every rank
             scaler.unscale_(g_opt)
+            head_ids = {id(p) for p in head_params}
+            g_head = math.sqrt(sum(float(p.grad.float().square().sum()) for p in params
+                                   if p.grad is not None and id(p) in head_ids))
+            g_back = math.sqrt(sum(float(p.grad.float().square().sum()) for p in params
+                                   if p.grad is not None and id(p) not in head_ids))
             g_grad = torch.nn.utils.clip_grad_norm_(params, args.clip)
             scaler.step(g_opt)
             scaler.update()
             g_updates += 1
-            record.update(adv=float(adv), lam=lam, grad_norm_fm=n_fm, grad_norm_adv=n_adv, loss_g=float(loss_g), g_grad=float(g_grad), lr=g_opt.param_groups[0]["lr"],
-                          scale=float(scaler.get_scale()), **{k: float(v) for k, v in parts.items()})
+            record.update(adv=float(adv.detach()), lam=lam, feat=float(feat.detach()), lam_feat=lam_f, use_adv=bool(use_adv),
+                          grad_norm_fm=n_fm, grad_norm_adv=n_adv, grad_norm_feat=n_feat, grad_head=g_head,
+                          grad_backbone=g_back, loss_g=float(loss_g.detach()), g_grad=float(g_grad),
+                          lr=g_opt.param_groups[0]["lr"], scale=float(scaler.get_scale()),
+                          **{k: float(v) for k, v in parts.items()})
+            if args.hr_cond:
+                with torch.no_grad():
+                    record["hr_mae"] = float((window_rate(fake_g.detach())-hr_fake).abs().mean())
         step += 1
         if step == 10:
             tick = time.time()
@@ -304,7 +416,7 @@ def worker(rank, world, args):
         save_json(output/"gan_summary.json", dict(steps=step, planned=args.steps, hours=(time.time()-begin)/3600,
                                                   stop_reason=stop_reason, patience=args.patience, stale_evals=stale,
                                                   step_seconds=step_seconds, best=best, gen_steps=args.gen_steps,
-                                                  generator_updates=g_updates, rt_ema=rt_ema,
+                                                  generator_updates=g_updates, rt_ema=rt_ema, hr_cond=args.hr_cond,
                                                   max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30
                                                   if cuda else None,
                                                   note="selection on training records only; realism is judged by the "
@@ -323,7 +435,7 @@ def smoke(root, steps=6):
         synthetic_shard(root/"shard")
     main(["--data", str(root/"shard"), "--output", str(root/"run"), "--config", "tiny", "--steps", str(steps),
           "--batch", "8", "--anchor", "8", "--critic-warmup", "2", "--gen-steps", "2", "--eval-every", "3",
-          "--log-every", "1", "--port", "29523", "--rt-gate", "-1"])
+          "--log-every", "1", "--port", "29523", "--rt-gate", "-1", "--hr-cond"])
     return json.loads((root/"run"/"gan_summary.json").read_text())
 
 
@@ -347,7 +459,14 @@ def main(argv=None):
                         help="the generator moves only while the critic's rt (EMA) is at least this (-1: always)")
     parser.add_argument("--warmup", type=int, default=200, help="generator learning-rate warmup (generator updates)")
     parser.add_argument("--critic-warmup", type=int, default=300, help="critic-only steps before the generator moves")
-    parser.add_argument("--adv-weight", type=float, default=.5, help="factor on the adaptive adversarial weight")
+    parser.add_argument("--adv-weight", type=float, default=.5,
+                        help="factor on the adaptive adversarial weight (0: no adversarial term)")
+    parser.add_argument("--adv-scope", default="head", choices=("head", "all"),
+                        help="head (v3): adversarial and feature gradients reach the flow head only; all: v1")
+    parser.add_argument("--feature-weight", type=float, default=.5,
+                        help="factor on the adaptive weight of the feature-distribution term (0: off, as v1)")
+    parser.add_argument("--hr-cond", action="store_true",
+                        help="add the heart-rate condition (model.py) and learn it in this run")
     parser.add_argument("--max-lambda", type=float, default=1.,
                         help="cap of the adaptive weight (v1: 1e4 let it reach ~10 on a critic at chance)")
     parser.add_argument("--gamma", type=float, default=0.,

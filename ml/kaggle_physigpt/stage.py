@@ -24,6 +24,7 @@ import argparse
 import base64
 import hashlib
 import json
+import shlex
 from pathlib import Path
 import re
 import subprocess
@@ -402,6 +403,8 @@ def main(argv=None):
     parser.add_argument("--gan-steps", type=int, default=0, help="gan: gan.py --steps (0: its default)")
     parser.add_argument("--adv-weight", type=float, default=0., help="gan: gan.py --adv-weight (0: its default)")
     parser.add_argument("--patience", type=int, default=0, help="gan: gan.py --patience (0: no early stop)")
+    parser.add_argument("--gan-extra", default="",
+                        help="gan: further gan.py options as one string, given with = (--gan-extra=\"--hr-cond --feature-weight 1\")")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
@@ -421,7 +424,7 @@ def main(argv=None):
                                   + (["--lr", str(args.lr)] if args.lr else [])
                                   + (["--eval-every", str(args.eval_every)] if args.eval_every else [])
                                   + (["--patience", str(args.patience)] if args.patience else [])
-                                  + ["--gen-steps", str(args.gen_steps)]))
+                                  + ["--gen-steps", str(args.gen_steps)] + shlex.split(args.gan_extra)))
     rsrgan = dict(kernel_hours=args.kernel_hours, tag=args.tag,
                   extra=tuple((["--steps", str(args.gan_steps)] if args.gan_steps else [])
                               + (["--adv-weight", str(args.adv_weight)] if args.adv_weight else [])

@@ -59,7 +59,9 @@ def test_gan_patience_running_out_on_the_last_step_is_a_full_run(tmp_path, resto
 
 def test_gan_evaluations_of_a_generator_that_did_not_move_do_not_count(tmp_path, restore_select_score):
     script_gan([.5])
-    summary, selected = run_gan(tmp_path, "run", "--steps", "6", "--patience", "1", "--rt-gate", "2")
+    # v3 moves the generator by the anchor and feature terms without the critic: with them off, nothing moves it
+    summary, selected = run_gan(tmp_path, "run", "--steps", "6", "--patience", "1", "--rt-gate", "2",
+                                "--feature-weight", "0")
     assert summary["generator_updates"] == 0 and summary["stale_evals"] == 0
     assert summary["stop_reason"] == "steps" and selected == [0, 2, 4, 6]
 

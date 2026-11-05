@@ -15,10 +15,14 @@ Changed, and why:
   jointly: a residual MLP with adaptive layer norm on the token's hidden state and the flow time predicts the
   velocity of a straight path from Gaussian noise to the patch. Sampling is autoregressive over the 30 patches with
   a Heun ODE per patch. The logit-Laplace head stays as an auxiliary loss and gives GPT-PPG's likelihood.
+- optional heart-rate condition (Config.hr_cond, off in every released checkpoint): a Fourier embedding of the
+  window's rate in bpm, through a zero-initialised MLP, added to every input token, so a model built with it starts
+  exactly as the checkpoint it is loaded from (load_init) and learns the condition at fine-tuning. The rate label of a
+  real window is window_rate, the autocorrelation rate of the feature tier's rate_bpm (30-200 bpm).
 Sizes are chosen for two T4s (fp16): "base" 30.7 M parameters (backbone 25.3 M), "large" 99.9 M (backbone 85.0 M,
 GPT-PPG's 85 M class).
 """
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import math
 
 import torch
@@ -27,6 +31,26 @@ import torch.nn.functional as F
 
 DOMAINS = ("mimic3_icu",)  # index = domain id; later domains are appended, never reordered
 LAPLACE_LO, LAPLACE_SPAN = .1, .8
+HR_FEATURES = 32                       # Fourier pairs of the rate embedding
+RATE_LAGS = (12, 80)                   # 40 Hz lags 0.3-2.0 s, as mimic_wdb.RATE_LAGS (30-200 bpm)
+
+
+def window_rate(x, fs=40):
+    """Autocorrelation rate (bpm) of windows x [n, L], as mimic_wdb.rate_features (the feature tier's rate_bpm)."""
+    x = x.float()
+    centered = x-x.mean(1, keepdim=True)
+    spectrum = torch.fft.rfft(centered, 2*x.shape[1], dim=1)
+    acf = torch.fft.irfft(spectrum.abs().square(), dim=1)[:, :x.shape[1]]
+    lo, hi = RATE_LAGS
+    lag = lo+acf[:, lo:hi].argmax(1)
+    return 60.*fs/lag.float()
+
+
+def hr_embedding(bpm):
+    """[n] bpm -> [n, 2*HR_FEATURES] Fourier features of log(bpm/30), which spans 0..~2 over 30-200 bpm."""
+    u = torch.log(bpm.float().clamp(20., 250.)/30.)
+    freq = torch.exp(torch.linspace(0., math.log(64.), HR_FEATURES, device=bpm.device))
+    return torch.cat(((u[:, None]*freq).sin(), (u[:, None]*freq).cos()), -1)
 
 
 @dataclass(frozen=True)
@@ -41,6 +65,7 @@ class Config:
     head_width: int = 512
     head_blocks: int = 3
     rope_base: float = 10000.
+    hr_cond: bool = False
 
 
 CONFIGS = {"tiny": Config(dim=64, layers=2, heads=4, ffn=176, head_width=64, head_blocks=1),
@@ -137,6 +162,8 @@ class PhysiGPT(nn.Module):
         self.norm = RMSNorm(cfg.dim)
         self.laplace = nn.Linear(cfg.dim, 2*cfg.patch)
         self.flow = FlowHead(cfg)
+        if cfg.hr_cond:
+            self.hr = nn.Sequential(nn.Linear(2*HR_FEATURES, cfg.dim), nn.SiLU(), nn.Linear(cfg.dim, cfg.dim))
         cos, sin = rope_tables(cfg.patches, cfg.dim//cfg.heads, cfg.rope_base)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
@@ -144,11 +171,18 @@ class PhysiGPT(nn.Module):
             if p.dim() == 2 and not name.startswith("flow."):
                 nn.init.normal_(p, std=.02/math.sqrt(2*cfg.layers) if name.endswith(("out.weight", "down.weight"))
                                 else .02)
+        if cfg.hr_cond:   # zero output: a loaded unconditional model is unchanged until fine-tuning moves it
+            nn.init.zeros_(self.hr[2].weight), nn.init.zeros_(self.hr[2].bias)
 
-    def hidden(self, patches, domain):
-        """patches [B, n<=30, 40] of x in [0, 1] -> h [B, n, dim]; h_i depends on the domain and patches < i only."""
+    def hidden(self, patches, domain, hr=None):
+        """patches [B, n<=30, 40] of x in [0, 1] -> h [B, n, dim]; h_i depends on the domain, the rate hr [B] (bpm,
+        hr_cond models only) and patches < i only."""
         x = self.embed(2*patches[:, :-1]-1)
         x = torch.cat((self.start(domain)[:, None], x), 1)
+        if self.cfg.hr_cond:
+            if hr is None:
+                raise ValueError("this model is heart-rate conditioned: pass hr (bpm)")
+            x = x+self.hr(hr_embedding(hr).to(x.dtype))[:, None]
         for block in self.blocks:
             x = block(x, self.cos, self.sin)
         return self.norm(x)
@@ -180,9 +214,9 @@ class PhysiGPT(nn.Module):
         err = (1-t[:, None])*error
         return flow, (torch.diff(err, 1, -1).square().mean()+torch.diff(err, 2, -1).square().mean())
 
-    def forward(self, signal, domain, aux=.1, repeats=4, generator=None, diff=0.):
+    def forward(self, signal, domain, aux=.1, repeats=4, generator=None, diff=0., hr=None):
         patches = signal.view(len(signal), self.cfg.patches, self.cfg.patch)
-        h = self.hidden(patches, domain)
+        h = self.hidden(patches, domain, hr)
         nll = self.laplace_nll(h, patches).mean()
         flow, sharp = self.flow_loss(h, patches, repeats, generator, diff)
         parts = dict(flow=flow.detach(), laplace_nll=nll.detach())
@@ -210,20 +244,38 @@ class PhysiGPT(nn.Module):
         return x.clamp(0, 1) if clamp else x
 
     @torch.no_grad()
-    def generate(self, n, domain=0, steps=32, seed=0, device="cpu", clamp=True):
+    def generate(self, n, domain=0, steps=32, seed=0, device="cpu", clamp=True, hr=None):
         """n windows [n, 1200], each min-max normalised like the training windows. clamp=False leaves the sampled
-        patches (also the context fed back) unclipped to [0, 1]; the window min-max then sets the range."""
+        patches (also the context fed back) unclipped to [0, 1]; the window min-max then sets the range. hr: the
+        rate (bpm) per window, [n] or a number, for hr_cond models."""
         generator = torch.Generator(device).manual_seed(seed)
         domain = torch.full((n,), domain, dtype=torch.long, device=device)
+        if hr is not None:
+            hr = torch.as_tensor(hr, dtype=torch.float32, device=device).expand(n).contiguous()
         patches = torch.zeros(n, 1, self.cfg.patch, device=device)
         for i in range(self.cfg.patches):
-            h = self.hidden(patches, domain)[:, i]
+            h = self.hidden(patches, domain, hr)[:, i]
             patches[:, i] = self.sample_patch(h, steps, generator, clamp)
             if i < self.cfg.patches-1:
                 patches = torch.cat((patches, torch.zeros_like(patches[:, :1])), 1)
         x = patches.reshape(n, -1)
         lo, hi = x.min(1, keepdim=True).values, x.max(1, keepdim=True).values
         return (x-lo)/(hi-lo).clamp_min(1e-6)
+
+
+def build(state):
+    """The model of a saved state dict (config name, hr_cond flag) with its weights."""
+    model = PhysiGPT(replace(CONFIGS[state["config"]], hr_cond=bool(state.get("hr_cond", False))))
+    model.load_state_dict(state["model"])
+    return model
+
+
+def load_init(model, state):
+    """Weights of state into model; only an added rate embedding (hr.*) may be missing, nothing may be unexpected."""
+    missing, unexpected = model.load_state_dict(state["model"], strict=False)
+    if unexpected or any(not k.startswith("hr.") for k in missing):
+        raise ValueError(f"--init does not fit this model: missing {missing}, unexpected {unexpected}")
+    return [k for k in missing]
 
 
 def describe(model):

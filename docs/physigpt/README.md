@@ -5,6 +5,8 @@ Results of the unconditional patch transformer in `ml/kaggle_physigpt/` (design 
 These are engineering evaluations of normalised 30 s, 40 Hz PPG shape (0.5-8 Hz view, min-max), not clinical
 validation, and nothing here was measured on the Pi/DAC/OPT101.
 
+Why APFT-GAN v1 did not improve on V1 large, the v3 fixes (not trained yet) and the next runs: [APFT_GAN_V3.md](APFT_GAN_V3.md).
+
 ## Setup
 
 - Data: MIMIC-III Waveform Database v1.0, shards 0-4 and solo 0 (stage 0), 2% of records held out for the flow loss.

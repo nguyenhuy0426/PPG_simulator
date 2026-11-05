@@ -717,10 +717,12 @@ def test_apft_gan_two_process_run_fine_tunes_a_release_and_keeps_the_best_select
     summary = json.loads((tmp_path/"gan"/"gan_summary.json").read_text())
     assert release["config"] == "tiny" and release["step"] == summary["best"]["step"] and summary["steps"] == 4
     assert summary["generator_updates"] == 3
-    # a critic that never separates the classes (gate above any reachable rt) never moves the generator
+    # a critic that never separates the classes (gate above any reachable rt) never moves the generator, once the
+    # feature term (v3), which moves it without the critic, is off
     gan.main(["--data", str(tmp_path/"shard0"), "--init", str(tmp_path/"v1"/"release.pt"), "--config", "tiny",
               "--output", str(tmp_path/"gated"), "--steps", "3", "--batch", "4", "--anchor", "4", "--critic-warmup", "0",
-              "--gen-steps", "2", "--eval-every", "3", "--cpu", "--port", "29534", "--rt-gate", "2"])
+              "--gen-steps", "2", "--eval-every", "3", "--cpu", "--port", "29534", "--rt-gate", "2",
+              "--feature-weight", "0"])
     gated = json.loads((tmp_path/"gated"/"gan_summary.json").read_text())
     assert gated["generator_updates"] == 0 and gated["best"]["step"] == 0
 

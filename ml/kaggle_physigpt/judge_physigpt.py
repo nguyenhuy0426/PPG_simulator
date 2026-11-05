@@ -32,7 +32,7 @@ import torch
 from ml.kaggle_lsm.train_lsm import FS, LENGTH
 from ml.kaggle_multidomain import control, strict_judge as sj
 from ml.kaggle_physigpt.mimic_wdb import rate_features
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT
+from ml.kaggle_physigpt.model import build
 from ml.kaggle_physigpt.train import Windows
 
 SEED = 20261029
@@ -406,11 +406,13 @@ def target_inputs(output, real, held_rows, other_rows, fit_rows, gen_eval):
 
 # ------------------------------------------------------------------ generation
 def generate(checkpoint, n, seed, device, batch=250, steps=32, clamp=True):
+    """n windows of a checkpoint; a heart-rate conditioned one (APFT-GAN --hr-cond) is asked for rates drawn from the
+    real rates it keeps (hr_bank), so the generated rate distribution is the training records'."""
     state = torch.load(checkpoint, map_location="cpu", weights_only=False)
-    model = PhysiGPT(CONFIGS[state["config"]]).to(device).eval()
-    model.load_state_dict(state["model"])
-    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device,
-                           clamp=clamp).float().cpu().numpy()
+    model = build(state).to(device).eval()
+    asked = (np.random.default_rng(seed).choice(np.asarray(state["hr_bank"]), n) if state.get("hr_cond") else None)
+    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device, clamp=clamp,
+                            hr=None if asked is None else asked[i:i+batch]).float().cpu().numpy()
              for i in range(0, n, batch)]
     return np.concatenate(parts)
 
