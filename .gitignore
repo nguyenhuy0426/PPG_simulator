@@ -48,3 +48,7 @@ dist/
 credentials.json
 secrets.json
 .claude/
+
+# LaTeX build artifacts
+docs/paper/*.log
+docs/paper/*.blg
