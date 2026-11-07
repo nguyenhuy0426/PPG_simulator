@@ -8,6 +8,7 @@ Usage:
     python3 main.py --no-ble               # Diagnostic GUI mode without BLE
     python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
     python3 main.py --rx-mode tdm          # RED+IR in one chamber, one OPT101 (A0)
+    python3 main.py --ble-secure           # BLE commands only from a paired phone
 """
 
 import sys
@@ -25,6 +26,11 @@ parser.add_argument("--no-ble", action="store_true",
                     help="Disable the BLE GATT server (diagnostics only)")
 parser.add_argument("--ble-only", action="store_true",
                     help="Headless mode: engine + BLE server, no GUI (Ctrl+C to stop)")
+# None keeps comm.ble_server.SECURE_WRITES_DEFAULT (currently off).
+parser.add_argument("--ble-secure", action=argparse.BooleanOptionalAction, default=None,
+                    help="Accept BLE command writes only over an encrypted link, i.e. from "
+                         "a phone that has paired with the Pi (docs/ble_protocol.md); "
+                         "--no-ble-secure accepts them from any central (current default)")
 parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
                     default="Pathology", help="Initial GUI page; output stays off")
 parser.add_argument("--rx-mode", choices=("dual", "tdm"),
@@ -57,18 +63,19 @@ from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
 
 
-def start_ble(engine, enabled=True):
+def start_ble(engine, enabled=True, secure_writes=None):
     """Create the BLE GATT server and start it if enabled.
 
     Returns None only when the code cannot be loaded. A failed start keeps the
     server object: Settings shows the error and can retry it.
+    secure_writes=None keeps comm.ble_server.SECURE_WRITES_DEFAULT.
     """
     try:
         from comm.ble_server import BleServer
     except ImportError as exc:
         log.error(f"BLE unavailable ({exc}) — install with: pip install -r requirements/ble.txt")
         return None
-    ble = BleServer(engine)
+    ble = BleServer(engine, secure_writes=secure_writes)
     if enabled:
         try:
             ble.start()
@@ -138,7 +145,8 @@ def main():
     # harmless compatibility flag for existing launchers.
     ble_server = None
     if not args.no_ble or args.ble_only:
-        ble_server = start_ble(engine, args.ble_only or config.get("ble_enabled", True))
+        ble_server = start_ble(engine, args.ble_only or config.get("ble_enabled", True),
+                              secure_writes=args.ble_secure)
 
     # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
     if args.ble_only:
