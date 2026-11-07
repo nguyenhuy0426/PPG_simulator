@@ -15,20 +15,24 @@ Sources judged by the same procedure (a fresh judge per source and seed; AUC sco
 - generated: windows from the model (seeds differ between fit, inner and final sets).
 Scores: AUC, balanced accuracy / accuracy / precision / recall / F1 at logit 0 with generated or damaged = positive,
 ROC points. Engineering evaluation of normalised waveform shape at 40 Hz; not clinical validation.
+Mode features is the pass criterion of the feature goal (target_report): the 14 signal features and the beat layer
+against held-out people, written to target.json. The strict judge stays as a record and no longer decides a pass.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import time
 
 import numpy as np
 from scipy import stats
+from scipy.signal import find_peaks
 import torch
 
 from ml.kaggle_lsm.train_lsm import FS, LENGTH
 from ml.kaggle_multidomain import control, strict_judge as sj
 from ml.kaggle_physigpt.mimic_wdb import rate_features
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT
+from ml.kaggle_physigpt.model import build
 from ml.kaggle_physigpt.train import Windows
 
 SEED = 20261029
@@ -60,9 +64,9 @@ class Real:
     def people(self, role):
         return len(np.unique(self.record[self.rows[role]]))
 
-    def draw(self, role, n):
-        """n windows of the role, each record weighted equally. Training roles never repeat a window (the sets stay
-        disjoint); the evaluation roles (held_out, control_eval) return the same windows on every call."""
+    def pick(self, role, n):
+        """Sorted rows of n windows of the role, each record weighted equally. Training roles never repeat a window (the
+        sets stay disjoint); the evaluation roles (held_out, control_eval) return the same rows on every call."""
         evaluation = role in EVAL_ROLES
         rows = self.rows[role]
         if not evaluation and self.used:
@@ -75,7 +79,13 @@ class Real:
         pick = rng.choice(rows, n, replace=False, p=weight/weight.sum())
         if not evaluation:
             self.used.update(pick.tolist())
-        return (self.data.rows(np.sort(pick)).astype(np.float32)/65535).copy()
+        return np.sort(pick)
+
+    def windows(self, rows):
+        return (self.data.rows(rows).astype(np.float32)/65535).copy()
+
+    def draw(self, role, n):
+        return self.windows(self.pick(role, n))
 
 
 def damaged(real, damage):
@@ -179,30 +189,32 @@ def feature_matrix(x):
     return list(f), np.stack([f[k] for k in f], 1)
 
 
-def fidelity_report(real_fit, real_held, real_other, gen_fit, gen_eval):
-    """Per-feature similarity and feature-only classifiers (train: real_fit vs gen_fit; test: held-out people)."""
+def classify(train_real, train_fake, test_real, test_fake, seed=None):
+    """Feature-only classifiers, real against generated: fitted on the train sets, scored on the test sets."""
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.linear_model import LogisticRegression
+    x = np.vstack([train_real, train_fake])
+    y = np.r_[np.zeros(len(train_real)), np.ones(len(train_fake))]
+    mu, sd = x.mean(0), x.std(0)+1e-9
+    yt = np.r_[np.zeros(len(test_real)), np.ones(len(test_fake))]
+    out = {}
+    for name, model in (("logreg", LogisticRegression(max_iter=3000)),
+                        ("trees", HistGradientBoostingClassifier(max_iter=200, random_state=seed))):
+        score = model.fit((x-mu)/sd, y).predict_proba((np.vstack([test_real, test_fake])-mu)/sd)[:, 1]
+        order = np.argsort(np.argsort(score))+1
+        pos = yt == 1
+        out[name] = dict(auc=float((order[pos].sum()-pos.sum()*(pos.sum()+1)/2)/(pos.sum()*(~pos).sum())),
+                         accuracy=float(((score > .5) == pos).mean()))
+    return out
+
+
+def fidelity_report(real_fit, real_held, real_other, gen_fit, gen_eval):
+    """Per-feature similarity and feature-only classifiers (train: real_fit vs gen_fit; test: held-out people)."""
     names, held = feature_matrix(real_held)
     other, fit, gfit, geval = (feature_matrix(x)[1] for x in (real_other, real_fit, gen_fit, gen_eval))
 
     def similarity(a, b):
         return np.array([1-stats.ks_2samp(a[:, j], b[:, j]).statistic for j in range(a.shape[1])])
-
-    def classify(train_real, train_fake, test_real, test_fake):
-        x = np.vstack([train_real, train_fake])
-        y = np.r_[np.zeros(len(train_real)), np.ones(len(train_fake))]
-        mu, sd = x.mean(0), x.std(0)+1e-9
-        yt = np.r_[np.zeros(len(test_real)), np.ones(len(test_fake))]
-        out = {}
-        for name, model in (("logreg", LogisticRegression(max_iter=3000)),
-                            ("trees", HistGradientBoostingClassifier(max_iter=200))):
-            score = model.fit((x-mu)/sd, y).predict_proba((np.vstack([test_real, test_fake])-mu)/sd)[:, 1]
-            order = np.argsort(np.argsort(score))+1
-            pos = yt == 1
-            out[name] = dict(auc=float((order[pos].sum()-pos.sum()*(pos.sum()+1)/2)/(pos.sum()*(~pos).sum())),
-                             accuracy=float(((score > .5) == pos).mean()))
-        return out
 
     def summary(s, c2st):
         return dict(similarity=dict(zip(names, s.tolist())), mean_similarity=float(s.mean()),
@@ -220,13 +232,187 @@ def fidelity_report(real_fit, real_held, real_other, gen_fit, gen_eval):
                               relative_mean_similarity_at_least=FIDELITY_REL))
 
 
+# ------------------------------------------------------------------ beat morphology
+# A layer of its own, not part of signal_features: gan.py and rsr_flowgan.py select checkpoints on the mean over
+# signal_features, and the 14-feature scores on record must stay comparable. Measured on the v3 view (0.5-8 Hz,
+# min-max, 40 Hz), so these describe the filtered waveform, not raw physiology: an 8 Hz band limit and 25 ms samples
+# bound how short a rise can look. Engineering shape features; not clinical measurements.
+BEAT_MIN_S, BEAT_MAX_S = .3, 2.     # beat length, the 30-200 bpm of RATE_LAGS
+# Of the window's 5-95 percentile span, as labels.beat_stats. On real perform_large windows 0.2-0.5 left the shape
+# medians nearly unchanged; ibi_cv is the sensitive one (median 0.058 at 0.2, 0.061 at 0.3, 0.088 at 0.5).
+BEAT_PROMINENCE = .3
+BEAT_SMOOTH = 3                     # samples of moving average, for finding peaks only
+BEAT_MIN_BEATS = 3                  # two intervals, the fewest that have a spread
+BEAT_POINTS = 64                    # samples per beat when beats are compared with their template
+BEAT_SLOPE = 5                      # template points over which the slope of the fall is taken
+BEAT_SCORED = ("beat_coverage", "rise_time_s", "systolic_fraction", "width_50_s", "area_fraction", "template_corr",
+               "amp_cv", "ibi_cv")
+# Dicrotic notch traces, reported but outside every score: under 1% noise the Spearman correlation with the clean value
+# is 0.69 and 0.86 on real perform_large windows, against at least 0.96 for the scored features, and most of these
+# band-limited windows have no rebound at all (median 0.000).
+BEAT_DIAGNOSTIC = ("dicrotic_rebound", "descent_flatness")
+
+
+def crossing(y, top, level, step):
+    """Interpolated sample where y first falls below level, walking from top by step (-1 back, +1 ahead)."""
+    i = top
+    while 0 <= i+step < len(y) and y[i+step] >= level:
+        i += step
+    if not 0 <= i+step < len(y):
+        return float(i)
+    return i+step*(y[i]-level)/max(y[i]-y[i+step], 1e-12)
+
+
+def beats_of(x):
+    """(foot, next foot, peak offset, amplitude, beat with the foot line removed and peak 1) of each whole beat."""
+    span = np.percentile(x, 95)-np.percentile(x, 5)
+    smooth = np.convolve(x, np.ones(BEAT_SMOOTH)/BEAT_SMOOTH, mode="same")
+    peaks = find_peaks(smooth[1:-1], distance=int(BEAT_MIN_S*FS), prominence=max(BEAT_PROMINENCE*span, 1e-9))[0]+1
+    feet = [lo+int(np.argmin(x[lo:hi+1])) for lo, hi in zip(peaks, peaks[1:])]
+    beats = []
+    for a, b in zip(feet, feet[1:]):
+        if not BEAT_MIN_S*FS <= b-a <= BEAT_MAX_S*FS:
+            continue
+        y = x[a:b+1]-(x[a]+(x[b]-x[a])*np.arange(b-a+1)/(b-a))
+        top = int(np.argmax(y))
+        if y[top] > 0 and 0 < top < b-a:
+            beats.append((a, b, top, y[top], y/y[top]))
+    return beats
+
+
+def window_beats(x):
+    """Medians over the beats of one window; beat_coverage alone is defined when the window has too few beats."""
+    x = np.asarray(x, np.float64)
+    out = dict.fromkeys(BEAT_SCORED+BEAT_DIAGNOSTIC, np.nan)
+    beats = beats_of(x) if np.isfinite(x).all() else []
+    out["beat_coverage"] = sum(b-a for a, b, *_ in beats)/len(x)
+    if len(beats) < BEAT_MIN_BEATS:
+        return out
+    rise, fraction, width, area, amplitude, shape, peak = [], [], [], [], [], [], []
+    for a, b, top, amp, y in beats:
+        rise.append((crossing(y, top, .9, -1)-crossing(y, top, .1, -1))/FS)
+        fraction.append(top/(b-a))
+        width.append((crossing(y, top, .5, 1)-crossing(y, top, .5, -1))/FS)
+        area.append(y.mean())
+        amplitude.append(amp)
+        shape.append(np.interp(np.linspace(0, b-a, BEAT_POINTS), np.arange(b-a+1), y))
+        i, curve = a+top, x[a+top-1]-2*x[a+top]+x[a+top+1]   # interpolated: 25 ms steps alone give a CV near 0.01
+        peak.append(i+(.5*(x[i-1]-x[i+1])/curve if curve < 0 else 0.))
+    shape, interval = np.array(shape), np.diff(peak)/FS
+    template = np.median(shape, 0)
+    fall = template[int(np.argmax(template)):]
+    slope = (fall[BEAT_SLOPE:]-fall[:-BEAT_SLOPE])/BEAT_SLOPE*(BEAT_POINTS-1)
+    middle = (fall[:-BEAT_SLOPE] < .8) & (fall[:-BEAT_SLOPE] > .2)
+    z = (shape-shape.mean(1, keepdims=True))/np.maximum(shape.std(1, keepdims=True), 1e-9)
+    out.update(rise_time_s=np.median(rise), systolic_fraction=np.median(fraction), width_50_s=np.median(width),
+               area_fraction=np.median(area), amp_cv=np.std(amplitude)/max(np.mean(amplitude), 1e-9),
+               template_corr=np.mean(z@((template-template.mean())/max(template.std(), 1e-9))/BEAT_POINTS),
+               ibi_cv=interval.std()/interval.mean(), dicrotic_rebound=(fall-np.minimum.accumulate(fall)).max(),
+               descent_flatness=slope[middle].max() if middle.any() else np.nan)
+    return out
+
+
+def beat_features(x):
+    """Per-window beat features, name to array ([n, LENGTH] in [0, 1]). NaN marks a window with too few beats; that is
+    data, not a gap to fill: beat_coverage carries it into the comparison."""
+    rows = [window_beats(w) for w in x]
+    return {k: np.array([r[k] for r in rows], np.float64) for k in BEAT_SCORED+BEAT_DIAGNOSTIC}
+
+
+# ------------------------------------------------------------------ target: features like the dataset's
+# The pass criterion of the feature goal. The strict judge (raw-waveform C2ST) is no longer a pass criterion: it reaches
+# AUC 1.0 on every model and on 1% noise while real against real stays near 0.53. Its code and evidence stay as a
+# record. All three values below are proposals awaiting the user's decision (see the hand-over report).
+TARGET_MEAN = FIDELITY_SIM      # mean 1 - KS over signal_features + BEAT_SCORED
+TARGET_FLOOR = .90              # every scored feature, or what real people reach against other real people if lower
+TARGET_ACC = FIDELITY_ACC       # accuracy of the feature classifier on held-out people (0.5 = indistinguishable)
+
+
+def finite_similarity(a, b):
+    """1 - KS over the finite values; 0 when one side has none (no beats found is as far as a feature can be)."""
+    a, b = a[np.isfinite(a)], b[np.isfinite(b)]
+    return float(1-stats.ks_2samp(a, b).statistic) if len(a) and len(b) else 0.
+
+
+def all_features(x):
+    return {**signal_features(x), **beat_features(x)}
+
+
+def target_matrix(features, fill=None):
+    """Scored features as a matrix for the classifiers, NaN filled with the given medians (default: its own)."""
+    names = [k for k in features if k not in BEAT_DIAGNOSTIC]
+    m = np.stack([features[k] for k in names], 1)
+    fill = np.nanmedian(m, 0) if fill is None else fill
+    return np.where(np.isfinite(m), m, fill), fill
+
+
+def target_verdict(mean, floors_missed, accuracy, reference_mean):
+    """pass; fail; or inconclusive when real people themselves miss the mean on this set, so the set cannot show it."""
+    if mean >= TARGET_MEAN and not floors_missed and accuracy <= TARGET_ACC:
+        return "pass"
+    return "inconclusive" if reference_mean < TARGET_MEAN else "fail"
+
+
+def target_report(real_fit, real_held, real_other, gen_fit, gen_eval, seed=0):
+    """Generated windows against held-out people on the 14 features and the beat layer, reported apart and together.
+    Same sets as fidelity_report, so its 14-feature mean is this report's fourteen.mean_similarity."""
+    held, other, geval = all_features(real_held), all_features(real_other), all_features(gen_eval)
+    fourteen = [k for k in held if k not in BEAT_SCORED+BEAT_DIAGNOSTIC]
+    scored = [*fourteen, *BEAT_SCORED]
+
+    def similarity(side):
+        return {k: finite_similarity(held[k], side[k]) for k in held}
+
+    def part(sim, keys):
+        return dict(mean_similarity=float(np.mean([sim[k] for k in keys])), features=len(keys))
+
+    def summary(side):
+        sim = similarity(side)
+        return dict(similarity=sim, fourteen=part(sim, fourteen), beat=part(sim, BEAT_SCORED), full=part(sim, scored),
+                    windows_with_beats=float(np.isfinite(side["rise_time_s"]).mean()),
+                    lowest=min(scored, key=sim.get))
+
+    generated, reference = summary(geval), summary(other)
+    fit, fill = target_matrix(all_features(real_fit))
+    gfit = target_matrix(all_features(gen_fit), fill)[0]
+    generated["classifier"] = classify(fit, gfit, target_matrix(held, fill)[0], target_matrix(geval, fill)[0], seed)
+    floor = {k: min(TARGET_FLOOR, reference["similarity"][k]) for k in scored}
+    generated["below_floor"] = sorted(k for k in scored if generated["similarity"][k] < floor[k])
+    generated["relative_similarity"] = generated["full"]["mean_similarity"]/reference["full"]["mean_similarity"]
+    verdict = target_verdict(generated["full"]["mean_similarity"], generated["below_floor"],
+                             generated["classifier"]["trees"]["accuracy"], reference["full"]["mean_similarity"])
+    return dict(verdict=verdict, generated=generated, real_other_people=reference, floor=floor,
+                diagnostic_only=list(BEAT_DIAGNOSTIC), windows=dict(held=len(real_held), other=len(real_other),
+                                                                    generated=len(gen_eval)),
+                criteria=dict(mean_similarity_at_least=TARGET_MEAN, floor_at_least=TARGET_FLOOR,
+                              tree_classifier_accuracy_at_most=TARGET_ACC))
+
+
+def target_inputs(output, real, held_rows, other_rows, fit_rows, gen_eval):
+    """What compare_target needs after the kernel is gone: per-window features with each real window's record, and
+    digests that show two runs scored the same real windows. Features only, no waveforms."""
+    sets = {}
+    for role, rows in (("held", held_rows), ("other", other_rows), ("fit", fit_rows)):
+        sets[role] = dict(windows=len(rows), people=len(np.unique(real.record[rows])),
+                          rows_sha256=hashlib.sha256(np.asarray(rows, np.int64).tobytes()).hexdigest(),
+                          records_sha256=hashlib.sha256(np.asarray(real.record[rows], np.int64).tobytes()).hexdigest(),
+                          windows_sha256=hashlib.sha256(real.data.rows(rows).tobytes()).hexdigest())
+    arrays = dict(held_person=real.record[held_rows], other_person=real.record[other_rows])
+    for side, x in (("held", real.windows(held_rows)), ("other", real.windows(other_rows)), ("generated", gen_eval)):
+        arrays.update({f"{side}/{k}": v for k, v in all_features(x).items()})
+    np.savez_compressed(Path(output)/"target_inputs.npz", **arrays)
+    (Path(output)/"real_sets.json").write_text(json.dumps(sets, indent=1))
+
+
 # ------------------------------------------------------------------ generation
 def generate(checkpoint, n, seed, device, batch=250, steps=32, clamp=True):
+    """n windows of a checkpoint; a heart-rate conditioned one (APFT-GAN --hr-cond) is asked for rates drawn from the
+    real rates it keeps (hr_bank), so the generated rate distribution is the training records'."""
     state = torch.load(checkpoint, map_location="cpu", weights_only=False)
-    model = PhysiGPT(CONFIGS[state["config"]]).to(device).eval()
-    model.load_state_dict(state["model"])
-    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device,
-                           clamp=clamp).float().cpu().numpy()
+    model = build(state).to(device).eval()
+    asked = (np.random.default_rng(seed).choice(np.asarray(state["hr_bank"]), n) if state.get("hr_cond") else None)
+    parts = [model.generate(min(batch, n-i), steps=steps, seed=seed+i, device=device, clamp=clamp,
+                            hr=None if asked is None else asked[i:i+batch]).float().cpu().numpy()
              for i in range(0, n, batch)]
     return np.concatenate(parts)
 
@@ -287,12 +473,17 @@ def main(argv=None):
     cut = np.cumsum([SIZES["fit"], SIZES["inner"]])
     fakes = tuple(np.split(generated, cut))
     if args.mode == "features":
-        real_eval = real.draw("held_out", SIZES["eval"])
+        held_rows = real.pick("held_out", SIZES["eval"])
+        real_eval = real.windows(held_rows)
         report = feature_report(real_eval, real.draw("control_eval", SIZES["eval"]), fakes[2])
         (output/"features.json").write_text(json.dumps(report, indent=1))
-        fidelity = fidelity_report(real.draw("fit", SIZES["fit"]), real_eval, real.draw("control_eval", SIZES["eval"]),
-                                   fakes[0], fakes[2])
+        fit_rows, other_rows = real.pick("fit", SIZES["fit"]), real.pick("control_eval", SIZES["eval"])
+        real_fit, real_other = real.windows(fit_rows), real.windows(other_rows)
+        fidelity = fidelity_report(real_fit, real_eval, real_other, fakes[0], fakes[2])
         (output/"fidelity.json").write_text(json.dumps(fidelity, indent=1))
+        target = target_report(real_fit, real_eval, real_other, fakes[0], fakes[2])
+        (output/"target.json").write_text(json.dumps(target, indent=1))
+        target_inputs(output, real, held_rows, other_rows, fit_rows, fakes[2])
         return
     result = judge_source("generated", real, fakes, args.kind, args.seeds, args.device, output)
     (output/"generated_judge.json").write_text(json.dumps(dict(info=info, result=result)))

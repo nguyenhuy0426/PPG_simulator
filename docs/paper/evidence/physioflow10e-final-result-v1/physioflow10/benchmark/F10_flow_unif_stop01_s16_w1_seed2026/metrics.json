@@ -1,0 +1,699 @@
+{
+  "arm": "F10_flow_unif_stop01_s16_w1",
+  "seed": 2026,
+  "best_step": 8000,
+  "checkpoint_score": 0.3327161228700524,
+  "config": {
+    "diffusion": false,
+    "osc": false,
+    "dc": false,
+    "guidance": 1.0,
+    "sample_steps": 16,
+    "lr": 0.0003,
+    "schedule": "cosine",
+    "rel": false,
+    "beat": false,
+    "domloss": false,
+    "pad": 0,
+    "r1_scaled_clip": false,
+    "r1_weight": 1.0,
+    "motion": false,
+    "flow": true,
+    "deriv": 1.0,
+    "width": 1.0,
+    "flag_scaffold": true,
+    "t_dist": "uniform",
+    "t_end": 0.0,
+    "finish_filter": false,
+    "spectral": 0.1,
+    "spectral_stop": true,
+    "input_noise": 0.0,
+    "latency_limit_ms": 5000.0,
+    "version": "v2"
+  },
+  "training_seconds": 8264.928796418999,
+  "generator_parameters": 6923137,
+  "training_device": "cuda:0",
+  "worker_pid": 25,
+  "stability": {
+    "updates": 20000,
+    "nonfinite_losses": 0,
+    "max_grad_norm": 65.9183578491211,
+    "clipped": 6765
+  },
+  "scaffolds": {
+    "bidmc": 0.9870759289176091,
+    "gxu_finger": 0.9704377487208641,
+    "perform_af": 0.6375266524520256,
+    "perform_large": 0.9301552106430155,
+    "perform_non_af": 0.954233409610984,
+    "wrist": 0.13253012048192772
+  },
+  "peak_cuda_bytes": 4436999680,
+  "S_arm": 0.4499461952236889,
+  "S_real_fresh": 0.3320133799326254,
+  "C_fresh": 0.025186018931641487,
+  "c2st_derivative_auc": 0.7106796116504854,
+  "control": {
+    "C": 0.025186018931641487,
+    "mae_in": 0.2282726024072039,
+    "mae_ext": 0.5505204667173692,
+    "spearman": 1.0,
+    "lock_rate": 0.0,
+    "nan_rate": 0.0,
+    "auc_irr": 0.9999624914266118,
+    "irr_cv_at_sigma_0_2": 0.21160713387175362,
+    "acf_vs_beat_median_abs_bpm": 0.05447111949609251,
+    "grid_bpm": [
+      40.0,
+      50.0,
+      60.0,
+      70.0,
+      80.0,
+      90.0,
+      100.0,
+      110.0,
+      120.0,
+      130.0,
+      140.0,
+      150.0,
+      160.0,
+      170.0,
+      180.0
+    ],
+    "per_domain": {
+      "bidmc": {
+        "median_hr": [
+          39.95648554186359,
+          50.16402918704961,
+          60.030226690835306,
+          70.0103888304734,
+          80.05651039019662,
+          89.87483310235383,
+          100.01966508589865,
+          109.88564239097846,
+          119.9936332008904,
+          129.99545847956097,
+          139.78851906446891,
+          150.36376988368377,
+          160.1839709616659,
+          169.7451168463543,
+          180.015513381974
+        ],
+        "spearman": 1.0
+      },
+      "gxu_finger": {
+        "median_hr": [
+          40.04160478646661,
+          50.16844375387243,
+          60.06186975444075,
+          70.01403892507732,
+          80.05807130856412,
+          89.87244385310301,
+          100.03012732950204,
+          109.89030447413407,
+          119.99796234896675,
+          129.9965731749645,
+          139.7869322298067,
+          150.3592662050857,
+          160.18202329668554,
+          169.74893319292926,
+          180.02574830546718
+        ],
+        "spearman": 1.0
+      },
+      "perform_af": {
+        "median_hr": [
+          44.28050583716484,
+          50.168409726889905,
+          60.030216662840154,
+          70.01278350356547,
+          80.0578571874549,
+          89.86880278418074,
+          100.03149508688833,
+          109.89189184697683,
+          119.99331152699295,
+          129.99341393543338,
+          139.78920296766688,
+          150.36912314618013,
+          160.18594282528932,
+          169.7508497486459,
+          180.0221514563964
+        ],
+        "spearman": 1.0
+      },
+      "perform_large": {
+        "median_hr": [
+          39.96042187387227,
+          50.16527835872384,
+          60.02641646490801,
+          70.01379373027198,
+          80.05634503493663,
+          89.87226149268471,
+          100.02405591287553,
+          109.8874129272325,
+          119.99432693341375,
+          129.9943540261966,
+          139.78681578138668,
+          150.36206209865634,
+          160.18041482052075,
+          169.73698559124512,
+          180.02303657300513
+        ],
+        "spearman": 1.0
+      },
+      "perform_non_af": {
+        "median_hr": [
+          39.95904352764455,
+          50.16550465856203,
+          60.02132001624916,
+          70.01210571891735,
+          80.05903495830746,
+          89.86998504979522,
+          100.03119157083486,
+          109.89260517969097,
+          119.99679332435602,
+          129.99596835614756,
+          139.78955843862744,
+          150.3658443293731,
+          160.18766136466735,
+          169.75585100705246,
+          180.02010975404102
+        ],
+        "spearman": 1.0
+      },
+      "wrist": {
+        "median_hr": [
+          41.08518826072997,
+          50.16127834240973,
+          60.031467262376836,
+          70.07616114115646,
+          80.05609942054693,
+          89.86390435379869,
+          100.03157898537262,
+          109.88315121968449,
+          119.99841060128088,
+          129.9912927978131,
+          139.78489790550668,
+          150.35694847033483,
+          160.1872728234847,
+          169.76613275764817,
+          180.05349849563476
+        ],
+        "spearman": 1.0
+      }
+    },
+    "estimator": "relative-prominence beat span rate; NaN counts as 20 bpm error"
+  },
+  "prompted_validation": {
+    "S_real": 0.3320133799326254,
+    "rho": 0.8766319375222701,
+    "pools": {
+      "gxu_finger": {
+        "acf_mmd2": 0.012105405194122065,
+        "log_psd_mmd2": 0.041904783963985004,
+        "morphology_mmd2": 0.01322227084889982,
+        "total_mmd": 0.06723246000700689,
+        "precision": 0.9609375,
+        "recall": 0.94140625,
+        "one_nn": 0.712890625,
+        "wasserstein": {
+          "peak_rate_bpm": 0.3046144654851716,
+          "ibi_cv": 0.06948132406697179,
+          "median_width_seconds": 0.27882309718364684,
+          "median_rise_seconds": 0.28002120668462477,
+          "signal_std": 0.06194073794805141,
+          "skew": 0.17340229310576835,
+          "mean_abs_slope": 0.11981460328268244,
+          "mean_abs_curvature": 0.11214963804291642,
+          "above_5hz_fraction": 0.11050102573076216
+        },
+        "Q": 0.10629496000700689
+      },
+      "perform_large": {
+        "acf_mmd2": 0.008564691315853024,
+        "log_psd_mmd2": 0.03900760641130474,
+        "morphology_mmd2": 0.005233105866195853,
+        "total_mmd": 0.05280540359335362,
+        "precision": 0.94140625,
+        "recall": 0.8984375,
+        "one_nn": 0.7109375,
+        "wasserstein": {
+          "peak_rate_bpm": 0.13049025075513432,
+          "ibi_cv": 0.10121740272156939,
+          "median_width_seconds": 0.06814063024805607,
+          "median_rise_seconds": 0.10926577891169403,
+          "signal_std": 0.18214783463585257,
+          "skew": 0.1256673064438976,
+          "mean_abs_slope": 0.14821992183984095,
+          "mean_abs_curvature": 0.10310598946603489,
+          "above_5hz_fraction": 0.1277416609238521
+        },
+        "Q": 0.11823509109335362
+      },
+      "bidmc": {
+        "acf_mmd2": 0.21430694603801315,
+        "log_psd_mmd2": 0.12169167121683877,
+        "morphology_mmd2": 0.05633808493038206,
+        "total_mmd": 0.392336702185234,
+        "precision": 0.4954954954954955,
+        "recall": 0.6756756756756757,
+        "one_nn": 0.8783783783783784,
+        "wasserstein": {
+          "peak_rate_bpm": 0.4072799982644689,
+          "ibi_cv": 0.12591787235361446,
+          "median_width_seconds": 0.47944723588794297,
+          "median_rise_seconds": 0.3989155416692169,
+          "signal_std": 0.27940001561987926,
+          "skew": 0.3494437385673296,
+          "mean_abs_slope": 0.4070846266319864,
+          "mean_abs_curvature": 0.5880880095906027,
+          "above_5hz_fraction": 0.14112118830934534
+        },
+        "Q": 0.6806249904735222
+      },
+      "perform_cohort": {
+        "acf_mmd2": 0.03962956950560215,
+        "log_psd_mmd2": 0.11873867720712372,
+        "morphology_mmd2": 0.06298433894473843,
+        "total_mmd": 0.2213525856574643,
+        "precision": 0.2966101694915254,
+        "recall": 0.8305084745762712,
+        "one_nn": 0.8983050847457628,
+        "wasserstein": {
+          "peak_rate_bpm": 0.6251364202352582,
+          "ibi_cv": 0.16061777393621757,
+          "median_width_seconds": 0.5691383996174759,
+          "median_rise_seconds": 0.3838885528222559,
+          "signal_std": 0.22432112929703626,
+          "skew": 0.3379744765339116,
+          "mean_abs_slope": 0.397580439917565,
+          "mean_abs_curvature": 0.3656824557478151,
+          "above_5hz_fraction": 0.13513879615338123
+        },
+        "Q": 0.4819458059964473
+      },
+      "wrist": {
+        "acf_mmd2": 0.04804459453246124,
+        "log_psd_mmd2": 0.21487041706417398,
+        "morphology_mmd2": 0.06938134838895338,
+        "total_mmd": 0.3322963599855886,
+        "precision": 0.5280898876404494,
+        "recall": 0.7415730337078652,
+        "one_nn": 0.8202247191011236,
+        "wasserstein": {
+          "peak_rate_bpm": 0.46296218550263785,
+          "ibi_cv": 0.3254166225499927,
+          "median_width_seconds": 0.8719039123553564,
+          "median_rise_seconds": 0.28884378583980164,
+          "signal_std": 0.3680329689818989,
+          "skew": 0.4468166855271457,
+          "mean_abs_slope": 0.3783674751935179,
+          "mean_abs_curvature": 0.5721446903359637,
+          "above_5hz_fraction": 1.047728585241303
+        },
+        "Q": 0.5794873712215436
+      }
+    }
+  },
+  "gates": {
+    "finite": true,
+    "flat": false,
+    "rho_ok": true,
+    "d_clipped_ok": true,
+    "trace_ok": true,
+    "latency_ok": true
+  },
+  "eligible": true,
+  "latency": {
+    "median_ms": 1716.6671534996567,
+    "p95_ms": 1739.5091685979423,
+    "cpu_threads": 1,
+    "hardware_scope": "Kaggle host CPU; Pi not measured"
+  },
+  "samplers": {
+    "F10_flow_unif_stop01_s16_w1": {
+      "S_arm": 0.4499461952236889,
+      "S_real": 0.3320133799326254,
+      "C": 0.025186018931641487,
+      "auc": 0.7106796116504854,
+      "eligible": true,
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "d_clipped_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "latency": {
+        "median_ms": 1716.6671534996567,
+        "p95_ms": 1739.5091685979423,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU; Pi not measured"
+      },
+      "wrist_Q": 0.5794873712215436
+    }
+  },
+  "unconditional": false,
+  "hr_control": true,
+  "gxu_fresh_test": {
+    "windows": 388,
+    "subjects": 22,
+    "acf_mmd2": 0.00810285359698848,
+    "log_psd_mmd2": 0.04592963162222907,
+    "morphology_mmd2": 0.020837222707577707,
+    "total_mmd": 0.07486970792679526,
+    "precision": 0.94921875,
+    "recall": 0.9304123711340206,
+    "one_nn": 0.717391304347826,
+    "wasserstein": {
+      "peak_rate_bpm": 0.09670596878623693,
+      "ibi_cv": 0.07148373097605577,
+      "median_width_seconds": 0.25727150144158034,
+      "median_rise_seconds": 0.3504586187340055,
+      "signal_std": 0.04140058665357515,
+      "skew": 0.4024650232014554,
+      "mean_abs_slope": 0.18766304707975154,
+      "mean_abs_curvature": 0.32433031518792527,
+      "above_5hz_fraction": 0.18822367637407122
+    },
+    "Q": 0.12235883485978494,
+    "subject_bootstrap_total_mmd_ci95": [
+      0.06646821760938891,
+      0.13589455679736004
+    ],
+    "states": {
+      "gxu_rest": {
+        "windows": 129,
+        "acf_mmd2": 0.015024478325769586,
+        "log_psd_mmd2": 0.06041091635091034,
+        "morphology_mmd2": 0.023747493838622402,
+        "total_mmd": 0.09918288851530233,
+        "precision": 0.86328125,
+        "recall": 0.8372093023255814,
+        "one_nn": 0.8103896103896104,
+        "wasserstein": {
+          "peak_rate_bpm": 0.192794854134539,
+          "ibi_cv": 0.07853025709576693,
+          "median_width_seconds": 0.1866552314708976,
+          "median_rise_seconds": 0.412153137991987,
+          "signal_std": 0.042227283220231865,
+          "skew": 0.3060076189008447,
+          "mean_abs_slope": 0.12094875297212848,
+          "mean_abs_curvature": 0.28671965713780684,
+          "above_5hz_fraction": 0.15117378830739187
+        },
+        "Q": 0.2147579248525116
+      },
+      "gxu_post_exercise_a": {
+        "windows": 128,
+        "acf_mmd2": 0.014292711394853441,
+        "log_psd_mmd2": 0.039082156181697636,
+        "morphology_mmd2": 0.019418707016635395,
+        "total_mmd": 0.07279357459318647,
+        "precision": 0.828125,
+        "recall": 0.9765625,
+        "one_nn": 0.7604166666666666,
+        "wasserstein": {
+          "peak_rate_bpm": 0.10167536888491538,
+          "ibi_cv": 0.13672887039095916,
+          "median_width_seconds": 0.18793782726389907,
+          "median_rise_seconds": 0.4313122851777397,
+          "signal_std": 0.07593441014808071,
+          "skew": 0.29546261314299377,
+          "mean_abs_slope": 0.16882621818828064,
+          "mean_abs_curvature": 0.2778575454667116,
+          "above_5hz_fraction": 0.12546365004229945
+        },
+        "Q": 0.12748107459318647
+      },
+      "gxu_post_exercise_b": {
+        "windows": 131,
+        "acf_mmd2": 0.012941876325392565,
+        "log_psd_mmd2": 0.04381111788136982,
+        "morphology_mmd2": 0.037699960723114545,
+        "total_mmd": 0.09445295492987693,
+        "precision": 0.9140625,
+        "recall": 0.9694656488549618,
+        "one_nn": 0.7286821705426356,
+        "wasserstein": {
+          "peak_rate_bpm": 0.09844194320940228,
+          "ibi_cv": 0.08566187793842377,
+          "median_width_seconds": 0.43998230102457603,
+          "median_rise_seconds": 0.36906621469285983,
+          "signal_std": 0.12683206682444237,
+          "skew": 0.6204849139031313,
+          "mean_abs_slope": 0.3081918982787642,
+          "mean_abs_curvature": 0.435305842667944,
+          "above_5hz_fraction": 0.3284836634940706
+        },
+        "Q": 0.13120450550239604
+      }
+    }
+  },
+  "c2st_raw_auc": 0.6569811832645389,
+  "exploratory_old_test": {
+    "bidmc": {
+      "acf_mmd2": 0.09252839060759532,
+      "log_psd_mmd2": 0.11351804197092918,
+      "morphology_mmd2": 0.07399839695551713,
+      "total_mmd": 0.28004482953404164,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 7,
+      "sampled_windows": 111,
+      "feature_precision": 0.36036036036036034,
+      "feature_recall": 0.9819819819819819,
+      "two_sample_1nn_accuracy": 0.8288288288288288,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.3541152432462632,
+        "ibi_cv": 0.40526249042324186,
+        "median_width_seconds": 0.8292058299372446,
+        "median_rise_seconds": 0.4050370077817882,
+        "signal_std": 0.4107454890946922,
+        "skew": 0.7164178703088134,
+        "mean_abs_slope": 0.42553397129344467,
+        "mean_abs_curvature": 0.2528592502470494,
+        "above_5hz_fraction": 0.14584736158082443
+      }
+    },
+    "gxu_finger": {
+      "acf_mmd2": 0.02020692717837469,
+      "log_psd_mmd2": 0.11880252144691728,
+      "morphology_mmd2": 0.1110618441113238,
+      "total_mmd": 0.25007129273661577,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 22,
+      "sampled_windows": 128,
+      "feature_precision": 0.7421875,
+      "feature_recall": 0.9375,
+      "two_sample_1nn_accuracy": 0.8203125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.40505491086136325,
+        "ibi_cv": 0.6098366375799329,
+        "median_width_seconds": 0.5208252117864631,
+        "median_rise_seconds": 0.5255374305550303,
+        "signal_std": 0.384742150686898,
+        "skew": 0.6923972947461495,
+        "mean_abs_slope": 0.7695425424321595,
+        "mean_abs_curvature": 0.731878048398717,
+        "above_5hz_fraction": 0.3139120391251149
+      }
+    },
+    "perform_af": {
+      "acf_mmd2": 0.04530202205620326,
+      "log_psd_mmd2": 0.11751792147702789,
+      "morphology_mmd2": 0.08869723304719535,
+      "total_mmd": 0.2515171765804265,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 2,
+      "sampled_windows": 80,
+      "feature_precision": 0.075,
+      "feature_recall": 1.0,
+      "two_sample_1nn_accuracy": 0.9125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.4017617815047668,
+        "ibi_cv": 0.5951620516517652,
+        "median_width_seconds": 0.8302855484433017,
+        "median_rise_seconds": 0.6525865467632836,
+        "signal_std": 0.47347497916745046,
+        "skew": 0.5800508414047049,
+        "mean_abs_slope": 0.41168943210577397,
+        "mean_abs_curvature": 0.4702883073665943,
+        "above_5hz_fraction": 0.2507600681471716
+      }
+    },
+    "perform_large": {
+      "acf_mmd2": 0.008543862205810049,
+      "log_psd_mmd2": 0.06537613936002717,
+      "morphology_mmd2": 0.02413216462280854,
+      "total_mmd": 0.09805216618864576,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 108,
+      "sampled_windows": 128,
+      "feature_precision": 0.8828125,
+      "feature_recall": 0.9453125,
+      "two_sample_1nn_accuracy": 0.6484375,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.14325112701194553,
+        "ibi_cv": 0.15575356324739859,
+        "median_width_seconds": 0.46614676737112565,
+        "median_rise_seconds": 0.1725249140710958,
+        "signal_std": 0.12212832104165389,
+        "skew": 0.48392258511383657,
+        "mean_abs_slope": 0.15213409144341197,
+        "mean_abs_curvature": 0.09968959716495003,
+        "above_5hz_fraction": 0.0949468766375011
+      }
+    },
+    "perform_non_af": {
+      "acf_mmd2": 0.6295353953826806,
+      "log_psd_mmd2": 0.48699608662237814,
+      "morphology_mmd2": 0.24512377900407367,
+      "total_mmd": 1.3616552610091324,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 1,
+      "sampled_windows": 40,
+      "feature_precision": 0.175,
+      "feature_recall": 1.0,
+      "two_sample_1nn_accuracy": 0.9125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 1.0985879533605754,
+        "ibi_cv": 1.032266775230717,
+        "median_width_seconds": 1.1859250692185046,
+        "median_rise_seconds": 0.8182104642715357,
+        "signal_std": 0.5065247378647515,
+        "skew": 0.910345652949869,
+        "mean_abs_slope": 0.8915504443535265,
+        "mean_abs_curvature": 0.581061800807918,
+        "above_5hz_fraction": 0.412908934296851
+      }
+    },
+    "wrist": {
+      "acf_mmd2": 0.10724335212200176,
+      "log_psd_mmd2": 0.4592311357136325,
+      "morphology_mmd2": 0.6157061105007479,
+      "total_mmd": 1.182180598336382,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 2,
+      "sampled_windows": 30,
+      "feature_precision": 0.4666666666666667,
+      "feature_recall": 1.0,
+      "two_sample_1nn_accuracy": 0.9666666666666667,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 1.8406397683803088,
+        "ibi_cv": 0.7247952591821731,
+        "median_width_seconds": 1.366466510791588,
+        "median_rise_seconds": 1.1815449841614332,
+        "signal_std": 0.7727123821260811,
+        "skew": 0.5900970340735082,
+        "mean_abs_slope": 1.6453248592771792,
+        "mean_abs_curvature": 2.445889118152371,
+        "above_5hz_fraction": 2.791127063946408
+      }
+    }
+  },
+  "exploratory_external": {
+    "capnobase": {
+      "acf_mmd2": 0.06864911598446444,
+      "log_psd_mmd2": 0.19744340708869934,
+      "morphology_mmd2": 0.16298938882453085,
+      "total_mmd": 0.4290819118976946,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 40,
+      "sampled_windows": 128,
+      "feature_precision": 0.7734375,
+      "feature_recall": 0.8359375,
+      "two_sample_1nn_accuracy": 0.8828125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.4009384991656178,
+        "ibi_cv": 0.6927400510781906,
+        "median_width_seconds": 0.7405846703862674,
+        "median_rise_seconds": 0.41936825266512523,
+        "signal_std": 1.1887360447460091,
+        "skew": 0.895493996895526,
+        "mean_abs_slope": 0.9891283023907335,
+        "mean_abs_curvature": 0.4752220979077341,
+        "above_5hz_fraction": 0.07376979128458087
+      }
+    },
+    "ptt_run": {
+      "acf_mmd2": 0.022095578226138946,
+      "log_psd_mmd2": 0.12327903827819209,
+      "morphology_mmd2": 0.26493847682031535,
+      "total_mmd": 0.4103130933246464,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 22,
+      "sampled_windows": 128,
+      "feature_precision": 0.1640625,
+      "feature_recall": 0.96875,
+      "two_sample_1nn_accuracy": 0.94140625,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.40011521682646856,
+        "ibi_cv": 0.20211589433961163,
+        "median_width_seconds": 0.48830773822831336,
+        "median_rise_seconds": 2.1163056126054425,
+        "signal_std": 0.48428383650923695,
+        "skew": 0.5487521414977219,
+        "mean_abs_slope": 0.1774014815736597,
+        "mean_abs_curvature": 0.3671605233668536,
+        "above_5hz_fraction": 0.2051276893461031
+      }
+    },
+    "ptt_sit": {
+      "acf_mmd2": 0.05054549987941259,
+      "log_psd_mmd2": 0.12136895592229902,
+      "morphology_mmd2": 0.46435780347761024,
+      "total_mmd": 0.6362722592793219,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 22,
+      "sampled_windows": 128,
+      "feature_precision": 0.046875,
+      "feature_recall": 0.875,
+      "two_sample_1nn_accuracy": 0.98828125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.36883048793880235,
+        "ibi_cv": 0.44126218671012196,
+        "median_width_seconds": 0.5810372882433292,
+        "median_rise_seconds": 3.185960079846236,
+        "signal_std": 0.27580083008646783,
+        "skew": 0.3515558485254645,
+        "mean_abs_slope": 0.2810398727973352,
+        "mean_abs_curvature": 0.3969096723364535,
+        "above_5hz_fraction": 0.17040729188108217
+      }
+    },
+    "ptt_walk": {
+      "acf_mmd2": 0.033470474169989384,
+      "log_psd_mmd2": 0.12464370637901401,
+      "morphology_mmd2": 0.21145099079600094,
+      "total_mmd": 0.36956517134500433,
+      "patient_bootstrap_total_ci95": null,
+      "sampled_patients": 22,
+      "sampled_windows": 128,
+      "feature_precision": 0.2421875,
+      "feature_recall": 0.9609375,
+      "two_sample_1nn_accuracy": 0.89453125,
+      "morphology_wasserstein_standardized": {
+        "peak_rate_bpm": 0.3186102652507065,
+        "ibi_cv": 0.5917423846459796,
+        "median_width_seconds": 0.3427694689143514,
+        "median_rise_seconds": 1.8305335754517806,
+        "signal_std": 0.6078196243947849,
+        "skew": 0.503285470010764,
+        "mean_abs_slope": 0.11234976568697944,
+        "mean_abs_curvature": 0.38737724869436574,
+        "above_5hz_fraction": 0.2571101854030763
+      }
+    }
+  },
+  "diagnostics": {
+    "finite": true,
+    "flat_fraction": 0.0,
+    "morphology_pairwise_distance_median": 3.40402072725351,
+    "train_morphology_pairwise_distance_median": 3.6928177841854564,
+    "nearest_train_feature_distance_median": 0.6250560856212077,
+    "nearest_train_waveform_rmse_p05": 0.1168524248047628,
+    "memorization_reference": "512 subject/domain-balanced training draws; screening, not a privacy guarantee"
+  }
+}

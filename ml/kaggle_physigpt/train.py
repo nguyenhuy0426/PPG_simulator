@@ -32,7 +32,7 @@ import torch.distributed as dist
 
 from ml.kaggle_lsm.train_lsm import FS, LENGTH, save_json
 from ml.kaggle_physigpt.mimic_wdb import PROTOCOL, ShardWriter, rate_features
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
+from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe, window_rate
 
 VALID_WINDOWS = 8192
 SAMPLE_WINDOWS = 1024
@@ -46,8 +46,11 @@ class Windows:
     """Memory-mapped windows of every shard found under the given roots, split by the shard's validation flag."""
 
     def __init__(self, roots):
+        # By record range, not by path: Kaggle may mount the same inputs under other paths, and row numbers (so every
+        # seeded draw of rows) follow this order.
         manifests = sorted({p for root in roots for p in Path(root).rglob("manifest.json")
-                            if json.loads(p.read_text()).get("protocol") == PROTOCOL})
+                            if json.loads(p.read_text()).get("protocol") == PROTOCOL},
+                           key=lambda p: (json.loads(p.read_text())["record_range"], str(p)))
         if not manifests:
             raise FileNotFoundError(f"No {PROTOCOL} shard under {roots}")
         self.signal, self.shards, metas = [], [], []
@@ -146,7 +149,9 @@ def evaluate(model, data, device, amp):
         for part in np.array_split(index, max(1, len(index)//512)):
             x = torch.from_numpy(data.rows(part).astype(np.float32)/65535).to(device)
             with torch.autocast("cuda", torch.float16, enabled=amp):
-                _, parts = model(x, torch.zeros(len(x), dtype=torch.long, device=device), generator=generator)
+                # a heart-rate conditioned model (APFT-GAN --hr-cond) is scored given each window's own rate
+                hr = window_rate(x) if model.cfg.hr_cond else None
+                _, parts = model(x, torch.zeros(len(x), dtype=torch.long, device=device), generator=generator, hr=hr)
             for k in totals:
                 totals[k] += float(parts[k])*len(x)
             count += len(x)

@@ -1,0 +1,39 @@
+{
+  "domain": "perform_large",
+  "prompts": "training people, person-balanced, Conditions.for_ids",
+  "device": "cpu",
+  "sets": {
+    "fit": 6000,
+    "inner": 1000,
+    "eval": 2000
+  },
+  "pack_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "models": {
+    "rsh_gan_app": {
+      "variant": "physiomix_r9_motion_dom",
+      "arm": "L3_rel_beat_lr_crop_r1w_motion_dom",
+      "seed": 123,
+      "best_step": 3500,
+      "file": "physiomix_generator.ts",
+      "sha256": "8a10436251d8f32e82ef918e74c22593d79c8c020b9f074725fe2361164ee073",
+      "seconds": 48.01189657798386,
+      "min": 0.0,
+      "max": 1.0,
+      "non_finite": 0,
+      "generated_sha256": "c0df0a36d40b9b3ec411fe16e01b7e1431f3e1c4890d5f556419055f66086da5"
+    },
+    "rsr_flow_app": {
+      "variant": "physioflow_r10_unif",
+      "arm": "F6_flow_flag_deriv_unif_s16_w1",
+      "seed": 42,
+      "best_step": 8000,
+      "file": "physioflow_generator.ts",
+      "sha256": "48d1888afd3e07e59652bd7d14cf810812b75e8d5a7692c51b63f6638acf8c52",
+      "seconds": 2479.459845746984,
+      "min": 0.0,
+      "max": 1.0,
+      "non_finite": 0,
+      "generated_sha256": "e25ea0620759c193d3be5192b73198dcda4d171ea329e609db8dc893ae9c8978"
+    }
+  }
+}

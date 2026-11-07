@@ -1,0 +1,336 @@
+{
+ "train_total": 2184676,
+ "train_compared": 2184676,
+ "train_fraction": 1.0,
+ "whole_train_set": true,
+ "stopped_by_budget": false,
+ "limit": null,
+ "bound_pairs": 13177965632,
+ "exact_pairs": 1699974801,
+ "minutes": 111.01207477251688,
+ "threshold": 0.99,
+ "sources": {
+  "apft_gan": {
+   "windows": 2000,
+   "median": 0.8068409860134125,
+   "p95": 0.9732919543981552,
+   "above_0_99": 0.001,
+   "above_0_99_count": 2,
+   "max": 0.9927768111228943,
+   "nearest_records": 1650
+  },
+  "v1_large": {
+   "windows": 2000,
+   "median": 0.8255184590816498,
+   "p95": 0.9759588927030564,
+   "above_0_99": 0.0035,
+   "above_0_99_count": 7,
+   "max": 0.9922996163368225,
+   "nearest_records": 1652
+  },
+  "held_out_people": {
+   "windows": 2000,
+   "median": 0.8630048930644989,
+   "p95": 0.9785895973443985,
+   "above_0_99": 0.001,
+   "above_0_99_count": 2,
+   "max": 0.9957715272903442,
+   "nearest_records": 1634
+  },
+  "control_copy": {
+   "windows": 32,
+   "median": 0.9990949928760529,
+   "p95": 0.9994233936071396,
+   "above_0_99": 1.0,
+   "above_0_99_count": 32,
+   "max": 0.9994352459907532,
+   "nearest_records": 32
+  }
+ },
+ "held_rows_sha256": "02e3709011268ddc77a976a3c7393eb8140777b2050c2a17d839205382e0ffed",
+ "held_people": 180,
+ "shards": [
+  {
+   "path": "/kaggle/input/datasets/halovie2412/ppg-physigpt-shard0-data-v1",
+   "record_range": [
+    0,
+    990
+   ],
+   "windows": 149089,
+   "chunks": [
+    "31bd04678a8f5fd59e7163acf184fb95c696ff6e68ac9a90c07d29f2160b49ba",
+    "c3d0af5e0f42125882c1f74870189aef2ee7854224c0bfabc3e55a2ba7dab838",
+    "b94c4832cf235b287dd3a4c691a7612db21cc054aa84d14bd755f5736c9e1b3a"
+   ]
+  },
+  {
+   "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard1-v1/shard",
+   "record_range": [
+    5000,
+    8520
+   ],
+   "windows": 534452,
+   "chunks": [
+    "c0804b6d9e0363749eb3543512919b901df2c71a9288bf58a987438e043e3aa0",
+    "4e16deea153d58190c054fdcad15f9708341d82f106ae026dbcb47ee943a9fdf",
+    "2702a8c4bd311d444e65da746161a98a8e4bd847610d8fb8457c777f00da0859",
+    "2d458d3a52cacb5e435bc3fdb9beb6ab1615e07434a692e60736747229003eb3",
+    "46bf1735236dc32bb9a459e5f79b70da0502c33b99b70aa188c96e1379a1a165",
+    "43cf7921809c43bbab7f83b8c6f0e0a4e035b767099f7d93155bdafbb55c526a",
+    "90c75b6435ab7bc11f5bac37fbc4055c2c0e3b6370383c04e673c12567defb25",
+    "94dcda7d3d3bd2e9fd3254bdb55066ee061d8991bed6e70019f0fbb9a92edf4c",
+    "19a6d078b1d7f74969eca12fa0af7a58ef09a72e24d134b1151f40f3ecfced1f"
+   ]
+  },
+  {
+   "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard2-v1/shard",
+   "record_range": [
+    10000,
+    13456
+   ],
+   "windows": 519840,
+   "chunks": [
+    "c60c315114f817916b9e6365dec39592a42eecba8ed8aa884eb5822d21057e78",
+    "fe37865c4710ad9c2e33d65bf4706379c2a4e5190e2d7a26558538768e4e1aab",
+    "50fe09b5203b6b9fdacb4d5f5d0bb35605779e0725e7bc76e3e8c13bff455983",
+    "4a38219246200d344d202a7d0917f00c42a6200b803672475c4642cea41fa2ac",
+    "f54b0304d0173095a59f95a0668023ae66a51e4414cc8aa38b4ebeb283e73130",
+    "2a9ad569d5beb397ac0cb90559f9e3ecee54e4a585ad565c900acf772cf0455c",
+    "2592f6106c020c299c2565710ba13ff68244db7aeb5f5f8d375563e5618efc0b",
+    "8a13ae1473c6fcbdfdf9c6d363b2c1244ab2f300a1952222de886b40e5e59f01"
+   ]
+  },
+  {
+   "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard3-v1/shard",
+   "record_range": [
+    15000,
+    17492
+   ],
+   "windows": 369542,
+   "chunks": [
+    "e2a2cb9ad4382d6993374f29fd7e6a81c9c6b3e5d039aa8614e248f180e9c39e",
+    "cbbdbd7fdb39c03f540b3032097f47891893674d5683296c11135c70462b5c1f",
+    "1bddb353fc979cb0480ac94be8b4a806326c5c35d759fe578dc33838e2beaf09",
+    "9cb4955d529d0b28ed640c70da4759f9d251d4b117927dc19a0fbd62447272b5",
+    "d907c6bf59a27c26db7994b6ad24acf88497a779dc7cbc8d812de9c84742e611",
+    "cfb4f6b2a7ae04b7e4ce4ec2668d623c22fcbf3c5891d8191d2f48669b420c52"
+   ]
+  },
+  {
+   "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-mimic3-shard4-v1/shard",
+   "record_range": [
+    20000,
+    23699
+   ],
+   "windows": 570136,
+   "chunks": [
+    "b2dd87d5af0c842e12e9e3264a8f548b360b6acae5a0eac7f2972e082ec4ab3c",
+    "3a9f900f07079d5da149fd9b3d1d8e6910a780969ba41344789877a9a83c4844",
+    "4ca94d045fc39a3eb1ff9c3105a9924132a98ff3341ac00d5e9f8efaefddc831",
+    "c292a0f89cc56d486db4ef270fbada747d522979c76f9157a5d854bb8a754d79",
+    "1b9a5e683f16294b13b9ca6de34988702fb802febca1c2dfc4959bc03796782b",
+    "09d70de8b23d2670b61ba60cbb84b5ba291d0e5145ac8d370fdd84eb33c5cc24",
+    "94aac14a54f3467e28eb75b8fd76be8e739f62f754c261bc69204ab9b0fbe92b",
+    "ec59d94414fc85c6d81f31e599a91be0b4bd8cc493fb885a4b6bbc3749697961",
+    "41d1792c4f7f2aff1f18b05b5d5950d8004eb89c377e7e846f1af124b1b223db"
+   ]
+  },
+  {
+   "path": "/kaggle/input/notebooks/halovie2412/ppg-physigpt-solo0-v1/shard",
+   "record_range": [
+    45000,
+    45628
+   ],
+   "windows": 88869,
+   "chunks": [
+    "72210b3c17fe63bbe59563805a93055c824969a953e40f1927daaea14bb22ffd",
+    "87b2bb6cea8cd132ae2974f230ba289bff92ab8c12d971c1a8a29e7b17c6b2f2"
+   ]
+  }
+ ],
+ "control_found": 32,
+ "control_planted": 32,
+ "top": {
+  "apft_gan": [
+   {
+    "index": 357,
+    "r": 0.9927768111228943,
+    "row": 8980,
+    "shift": 251,
+    "record": 3501613
+   },
+   {
+    "index": 1080,
+    "r": 0.9918411374092102,
+    "row": 1022604,
+    "shift": 338,
+    "record": 3793149
+   },
+   {
+    "index": 121,
+    "r": 0.9896577000617981,
+    "row": 1683802,
+    "shift": 722,
+    "record": 3822330
+   },
+   {
+    "index": 1369,
+    "r": 0.9894145727157593,
+    "row": 918798,
+    "shift": 36,
+    "record": 3912316
+   },
+   {
+    "index": 959,
+    "r": 0.9891030192375183,
+    "row": 1432308,
+    "shift": 1190,
+    "record": 3283968
+   },
+   {
+    "index": 333,
+    "r": 0.9889527559280396,
+    "row": 122550,
+    "shift": 22,
+    "record": 3904335
+   }
+  ],
+  "v1_large": [
+   {
+    "index": 358,
+    "r": 0.9922996163368225,
+    "row": 900509,
+    "shift": 66,
+    "record": 3985507
+   },
+   {
+    "index": 142,
+    "r": 0.9919068813323975,
+    "row": 959306,
+    "shift": 325,
+    "record": 3110294
+   },
+   {
+    "index": 1539,
+    "r": 0.9916675090789795,
+    "row": 785557,
+    "shift": 212,
+    "record": 3538612
+   },
+   {
+    "index": 332,
+    "r": 0.991568922996521,
+    "row": 1663943,
+    "shift": 1190,
+    "record": 3122289
+   },
+   {
+    "index": 125,
+    "r": 0.9910260438919067,
+    "row": 1222889,
+    "shift": 1118,
+    "record": 3954884
+   },
+   {
+    "index": 1252,
+    "r": 0.9903426170349121,
+    "row": 1044870,
+    "shift": 132,
+    "record": 3977894
+   }
+  ],
+  "held_out_people": [
+   {
+    "index": 744,
+    "r": 0.9957715272903442,
+    "row": 1388296,
+    "shift": 1050,
+    "record": 3866713
+   },
+   {
+    "index": 1022,
+    "r": 0.9920782446861267,
+    "row": 590522,
+    "shift": 1041,
+    "record": 3476173
+   },
+   {
+    "index": 1069,
+    "r": 0.9898433685302734,
+    "row": 1421701,
+    "shift": 1144,
+    "record": 3967283
+   },
+   {
+    "index": 1020,
+    "r": 0.9893187880516052,
+    "row": 590555,
+    "shift": 1000,
+    "record": 3476173
+   },
+   {
+    "index": 1752,
+    "r": 0.9891905784606934,
+    "row": 1399152,
+    "shift": 7,
+    "record": 3118418
+   },
+   {
+    "index": 500,
+    "r": 0.989034116268158,
+    "row": 612504,
+    "shift": 726,
+    "record": 3944969
+   }
+  ],
+  "control_copy": [
+   {
+    "index": 13,
+    "r": 0.9994352459907532,
+    "row": 949025,
+    "shift": 4,
+    "record": 3899257
+   },
+   {
+    "index": 28,
+    "r": 0.9994295239448547,
+    "row": 1855215,
+    "shift": 1153,
+    "record": 3996846
+   },
+   {
+    "index": 1,
+    "r": 0.9994183778762817,
+    "row": 71427,
+    "shift": 707,
+    "record": 3062866
+   },
+   {
+    "index": 24,
+    "r": 0.9993813037872314,
+    "row": 1655342,
+    "shift": 425,
+    "record": 3047957
+   },
+   {
+    "index": 17,
+    "r": 0.9993727803230286,
+    "row": 1117462,
+    "shift": 687,
+    "record": 3391751
+   },
+   {
+    "index": 18,
+    "r": 0.999369740486145,
+    "row": 1175963,
+    "shift": 193,
+    "record": 3819825
+   }
+  ]
+ },
+ "generated_sha256": {
+  "apft_gan": "82eb376f1c3487b2a7c41103a993deb8c16dea3882c13f6c55e5e0e9cdcd546a",
+  "v1_large": "2f46ba12b3be970e4c1bafe5a837edeaf2a95377fcf8ed8af7b539db247c20db"
+ },
+ "held_skew_median": 0.51994389295578
+}
