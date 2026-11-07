@@ -13,13 +13,17 @@ def route_board(b, parts):
     def trace(net,pts,layer=p.F_Cu,width=.35):
         for a,c in zip(pts,pts[1:]):
             t=p.PCB_TRACK(b); t.SetStart(vec(*a)); t.SetEnd(vec(*c)); t.SetLayer(layer); t.SetWidth(p.FromMM(width)); t.SetNet(nets[net]); b.Add(t)
-    # Straight parallel buses in the module area; no zig-zag between headers.
-    for net,y,width in [('SCL',15.08,.35),('SDA',17.62,.35),('3V3',20.16,.6)]:
-        target={'SCL':16.5,'SDA':18.5,'3V3':20.5}[net]
-        trace(net,[(7,y),(26,y),(26,target),(29,target),(31,target),(31,y),(40,y)],width=width)
-    trace('DAC_IR',[(7,10),(29,10)],p.B_Cu)
+    # Each MCP4725 keeps its own four-wire harness copper.  The two harnesses
+    # meet only at the Pi's I2C controller, not in this board.
+    for ch,x0,x1 in [('IR',7,29),('RED',40,62)]:
+        for net,y0,y1,width in [('SCL',15.08,15.08,.35),('SDA',17.62,17.08,.35),('3V3',20.16,19.08,.6)]:
+            trace(f'{net}_{ch}',[(x0,y0),(x1-3,y0),(x1-3,y1),(x1,y1)],width=width)
+        gnd=f'GND_DAC_{ch}'
+        trace(gnd,[(x0,12.54),(x0+2,12.54),(x0+2,21.08),(x1,21.08)],p.B_Cu,.6)
+        trace(gnd,[(x0,22.70),(x1,22.70),(x1,21.08)],p.B_Cu,.6)
+    trace('DAC_IR',[(7,10),(9,10)],p.B_Cu)
     trace('DAC_IR',[(7,10),(5,12),(5,23),(9,27)],p.B_Cu)
-    trace('DAC_RED',[(40,10),(62,10)],p.B_Cu)
+    trace('DAC_RED',[(40,10),(66,10)],p.B_Cu)
     trace('DAC_RED',[(40,10),(38,12),(38,24.3),(44,24.3),(46,26.3),(46,27)],p.B_Cu)
 
     # Left/IR command, base drive, emitter current and Kelvin feedback branch.

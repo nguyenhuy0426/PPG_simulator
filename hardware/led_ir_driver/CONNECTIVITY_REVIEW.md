@@ -1,4 +1,9 @@
-# Rà soát kết nối — driver v1.6
+# Rà soát kết nối — lưu trữ v1.6
+
+> **Tài liệu lịch sử, không phải pinout v2.0.** Nội dung sau mô tả bus và
+> GND chung của v1.6. V2.0 dùng J2=IR và J8=RED, mỗi header 1×4 2,00 mm có
+> thứ tự SCL/SDA/3V3/GND_DAC; các miền này không nối `GND` LED/LM358 trên
+> carrier. Chỉ dùng `README.md` và `PIN_MAP.md` v2.0 khi lắp.
 
 Rà soát ngày 2026-09-29: xem `ELECTRICAL_AUDIT.md`. Không phát hiện nối sai
 trong 17 net hiện tại; tất cả 92 đoạn đồng được giữ nguyên sau khi kiểm tra.

@@ -1,9 +1,11 @@
-# Tra chân PCB driver v1.9
+# Tra chân driver v2.0 — hợp đồng source
 
 Số chân dưới đây đọc trực tiếp từ PCB đã đi dây. Hai hình trong wiring_guide.png
 đều nhìn từ mặt linh kiện; mặt đồng B.Cu được nhìn xuyên board, không lật ảnh.
 Tên net giống nhau nghĩa là nối điện với nhau. Khác lớp nối qua lỗ mạ của đầu nối/socket hoặc via.
-GND là vùng đồng mặt dưới, được ẩn trong hình để dễ nhìn đường tín hiệu.
+`GND` là mass LED/LM358. `GND_DAC_IR` và `GND_DAC_RED` là hai miền đồng
+riêng, không nối với `GND` trên carrier. Bảng này là hợp đồng source v2.0;
+PCB/Gerber cần được sinh lại bằng KiCad trước khi dùng để sản xuất.
 
 Nét đứt xám nối hai pad R/C chỉ biểu diễn thân linh kiện, không phải đường đồng.
 
@@ -13,13 +15,14 @@ Nét đứt xám nối hai pad R/C chỉ biểu diễn thân linh kiện, không
 | C4 | DNP loop comp | 1 → AMP_RED, 2 → SENSE_RED |
 | C5 | 100nF X7R 50V | 1 → 5V, 2 → GND |
 | C7 | 10uF 16V | 1 → 5V, 2 → GND |
-| J1 | MCP4725 IR 0x60 | 1 → DAC_IR, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
-| J2 | PI I2C INPUT / IR OUT | 1 → DAC_IR, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
-| J3 | MCP4725 RED 0x61 | 1 → DAC_RED, 2 → GND, 3 → SCL, 4 → SDA, 5 → 3V3, 6 → GND |
-| J4 | RED DAC OUT / GND | 1 → DAC_RED, 2 → GND |
+| J1 | MCP4725 IR 0x60 | 1 → DAC_IR, 2 → GND_DAC_IR, 3 → SCL_IR, 4 → SDA_IR, 5 → 3V3_IR, 6 → GND_DAC_IR |
+| J2 | PI I2C / IR | 1 → SCL_IR, 2 → SDA_IR, 3 → 3V3_IR, 4 → GND_DAC_IR |
+| J3 | MCP4725 RED 0x61 | 1 → DAC_RED, 2 → GND_DAC_RED, 3 → SCL_RED, 4 → SDA_RED, 5 → 3V3_RED, 6 → GND_DAC_RED |
+| J4 | RED DAC OUT / DAC GND | 1 → DAC_RED, 2 → GND_DAC_RED |
 | J5 | IR LED A / K | 1 → 5V, 2 → LED_K_IR |
 | J6 | RED LED A / K | 1 → 5V, 2 → LED_K_RED |
 | J7 | 5V INPUT / GND | 1 → 5V, 2 → GND |
+| J8 | PI I2C / RED | 1 → SCL_RED, 2 → SDA_RED, 3 → 3V3_RED, 4 → GND_DAC_RED |
 | Q1 | 2N4401 / E-B-C | 1 → SENSE_IR, 2 → BASE_IR, 3 → LED_K_IR |
 | Q2 | 2N4401 / E-B-C | 1 → SENSE_RED, 2 → BASE_RED, 3 → LED_K_RED |
 | R1 | 10k 1% | 1 → DAC_IR, 2 → CMD_IR |

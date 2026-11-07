@@ -17,14 +17,15 @@ def check(name,condition):
 
 for ch,socket,cable,base,div,shunt,sense,qref,led,cmdcap,loopcap,rbe,amp_p,minus_p,plus_p in [
  ('IR','J1','J2','R3','R1','R2','R4','Q1','J5','C1','C2','R5','1','2','3'),
- ('RED','J3',None,'R8','R6','R7','R9','Q2','J6','C3','C4','R10','7','6','5'),
+ ('RED','J3','J8','R8','R6','R7','R9','Q2','J6','C3','C4','R10','7','6','5'),
 ]:
-    for pin,net in enumerate([f'DAC_{ch}','GND','SCL','SDA','3V3','GND'],1):
-        required={(socket,str(pin))}
-        if cable: required.add((cable,str(pin)))
-        check(f'{socket}'+(f'/{cable}' if cable else '')+f' pin {pin}: {net}',required<=nets[net])
+    gnd=f'GND_DAC_{ch}'
+    for pin,net in enumerate([f'DAC_{ch}',gnd,f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',gnd],1):
+        check(f'{socket} pin {pin}: {net}',{(socket,str(pin))}<=nets[net])
+    for pin,net in enumerate([f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',gnd],1):
+        check(f'{cable} pin {pin}: {net}',{(cable,str(pin))}<=nets[net])
     expected={
-      'DAC':({(socket,'1'),(div,'1')} | ({(cable,'1')} if cable else {('J4','1')})),
+      'DAC':({(socket,'1'),(div,'1')} | ({('J4','1')} if ch=='RED' else set())),
       'CMD':{(div,'2'),(shunt,'1'),('U1',plus_p)},
       'AMP':{('U1',amp_p),(base,'1'),(loopcap,'1')},
       'BASE':{(base,'2'),(qref,'2')},
@@ -33,16 +34,18 @@ for ch,socket,cable,base,div,shunt,sense,qref,led,cmdcap,loopcap,rbe,amp_p,minus
     }
     for prefix,pins in expected.items(): check(ch+' '+prefix+' exact net',nets[prefix+'_'+ch]==pins)
 check('5V isolated from all module/cable pins',nets['5V']=={('J7','1'),('J5','1'),('J6','1'),('U1','8'),('C5','1'),('C7','1')})
-check('3V3 only module/cable supply',nets['3V3']=={(j,'5') for j in ('J1','J2','J3')})
-check('I2C SDA shared on pin4',nets['SDA']=={(j,'4') for j in ('J1','J2','J3')})
-check('I2C SCL shared on pin3',nets['SCL']=={(j,'3') for j in ('J1','J2','J3')})
-check('Ground exact pin set',nets['GND']==({(j,pin) for j in ('J1','J2','J3') for pin in ('2','6')} | {('U1','4'),('R2','2'),('R4','2'),('R7','2'),('R9','2'),('C5','2'),('C7','2'),('J7','2'),('J4','2')}))
-critical=['GND','3V3','5V','SCL','SDA','DAC_IR','DAC_RED']
+for ch,socket,cable in [('IR','J1','J2'),('RED','J3','J8')]:
+    gnd=f'GND_DAC_{ch}'
+    check(ch+' DAC ground exact pins',nets[gnd]=={(socket,'2'),(socket,'6'),(cable,'4')} | ({('J4','2')} if ch=='RED' else set()))
+    for net in (gnd,f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}'):
+        check(net+' is not LED-driver GND',nets[net].isdisjoint(nets['GND']))
+check('Ground exact pin set',nets['GND']=={('U1','4'),('R2','2'),('R4','2'),('R7','2'),('R9','2'),('C5','2'),('C7','2'),('J7','2')})
+critical=['GND','GND_DAC_IR','GND_DAC_RED','3V3_IR','3V3_RED','5V','SCL_IR','SCL_RED','SDA_IR','SDA_RED','DAC_IR','DAC_RED']
 for i,a in enumerate(critical):
     for other in critical[i+1:]:
         check(a+' and '+other+' have no shared pins',nets[a].isdisjoint(nets[other]))
-check('J4 is RED output and ground only',nets['DAC_RED'] >= {('J4','1')} and nets['GND'] >= {('J4','2')})
-check('Four-wire cable maps to J2 pads 3..6',all(('J2',str(pin)) in nets[net] for pin,net in [(3,'SCL'),(4,'SDA'),(5,'3V3'),(6,'GND')]))
+check('J4 is RED output and its DAC return only',nets['DAC_RED'] >= {('J4','1')} and nets['GND_DAC_RED'] >= {('J4','2')})
+check('Two dedicated four-wire headers',all(('J2',str(pin)) in nets[net] for pin,net in [(1,'SCL_IR'),(2,'SDA_IR'),(3,'3V3_IR'),(4,'GND_DAC_IR')]) and all(('J8',str(pin)) in nets[net] for pin,net in [(1,'SCL_RED'),(2,'SDA_RED'),(3,'3V3_RED'),(4,'GND_DAC_RED')]))
 fps={fp.GetReference():fp for fp in board.GetFootprints()}
 check('All resistor/capacitor pads are SMD',all(
     pad.GetAttribute()==p.PAD_ATTRIB_SMD
@@ -58,12 +61,18 @@ for ref,fp in fps.items():
         if pad.GetNumber(): check(ref+'.'+pad.GetNumber()+' PCB/netlist match',(ref,pad.GetNumber()) in nets[pad.GetNetname().lstrip('/')])
 j4pads=sorted(fps['J4'].Pads(),key=lambda pad:pad.GetNumber())
 check('J4 has two pins at 2.54 mm pitch',len(j4pads)==2 and abs(p.ToMM(j4pads[1].GetPosition().y-j4pads[0].GetPosition().y)-2.54)<1e-6)
-for ref in ('J1','J2','J3'):
+for ref in ('J1','J3'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' has six holes',len(pads)==6)
     for i in range(1,6):
         a=pads[str(i)].GetPosition(); b=pads[str(i+1)].GetPosition()
-        check(ref+f' pitch {i}',abs(p.ToMM(b.y-a.y)-((2.54,3.96,2.0,2.0,2.0)[i-1] if ref=='J2' else 2.54))<1e-6 and a.x==b.x)
+        check(ref+f' pitch {i}',abs(p.ToMM(b.y-a.y)-2.54)<1e-6 and a.x==b.x)
+for ref in ('J2','J8'):
+    pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
+    check(ref+' has four holes',len(pads)==4)
+    for i in range(1,4):
+        a=pads[str(i)].GetPosition(); b=pads[str(i+1)].GetPosition()
+        check(ref+f' pitch {i}',abs(p.ToMM(b.y-a.y)-2.0)<1e-6 and a.x==b.x)
 for ref in ('Q1','Q2'):
     pads={pad.GetNumber():pad for pad in fps[ref].Pads()}
     check(ref+' physical pin order 1=E,2=B,3=C',pads['1'].GetPosition().x<pads['2'].GetPosition().x<pads['3'].GetPosition().x)

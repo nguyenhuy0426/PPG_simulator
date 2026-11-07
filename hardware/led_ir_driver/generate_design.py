@@ -23,6 +23,7 @@ def fx(size=1.0): return f'(effects (font (size {size} {size})))'
 # Pin numbers are PCB pad numbers, including module header rather than DAC IC.
 PINS={
  'Conn6':[(str(i+1),n,'passive',-12.7,12.7-i*5.08,0) for i,n in enumerate(['OUT','GND','SCL','SDA','3V3','GND'])],
+ 'Conn4':[(str(i+1),n,'passive',-12.7,2.54-i*5.08,0) for i,n in enumerate(['SCL','SDA','3V3','GND'])],
  'Conn2':[('1','1','passive',-10.16,2.54,0),('2','2','passive',-10.16,-2.54,0)],
  'LM358P':[('1','OUT_A','output',15.24,10.16,180),('2','IN_A-','input',-15.24,5.08,0),('3','IN_A+','input',-15.24,10.16,0),('4','V-','power_in',-15.24,-10.16,0),('5','IN_B+','input',-15.24,-2.54,0),('6','IN_B-','input',-15.24,-7.62,0),('7','OUT_B','output',15.24,-2.54,180),('8','V+','power_in',15.24,-10.16,180)],
  'NPN':[('1','E','passive',0,-7.62,90),('2','B','input',-7.62,0,0),('3','C','passive',0,7.62,270)],
@@ -34,6 +35,7 @@ PINS={
 }
 FPS={
  'Socket6':'Connector_PinSocket_2.54mm.pretty/PinSocket_1x06_P2.54mm_Vertical.kicad_mod',
+ 'Header4P2':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
  'Header2':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
  'DIP8':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
  'NPN':'Package_TO_SOT_THT.pretty/TO-92_Inline_Wide.kicad_mod',
@@ -48,13 +50,15 @@ def part(ref,kind,value,nets,fp,xy,sch,angle=0,dnp=False):
     PARTS.append(dict(ref=ref,kind=kind,value=value,nets=nets,fp=fp,xy=xy,sch=sch,angle=angle,dnp=dnp))
 
 for ch,s,x in [('IR','J1',7),('RED','J3',40)]:
-    ns=[f'DAC_{ch}','GND','SCL','SDA','3V3','GND']
+    gnd=f'GND_DAC_{ch}'
+    ns=[f'DAC_{ch}',gnd,f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',gnd]
     part(s,'Conn6',f'MCP4725 {ch} '+('0x60' if ch=='IR' else '0x61'),ns,'Socket6',(x,10),(43.18 if ch=='IR' else 228.6,50.8))
-# One cable input is sufficient because both DACs deliberately share the same
-# Pi I2C bus, 3.3 V rail and ground. Pins 1/2 remain a 1:1 breakout of J1.
-part('J2','Conn6','PI I2C INPUT / IR OUT',['DAC_IR','GND','SCL','SDA','3V3','GND'],'HeaderMixed',(29,10),(116.84,50.8))
+# Keep the two DAC cable harnesses separate on this carrier.  They join only
+# at the Raspberry Pi I2C bus, never in the LED-driver copper.
+part('J2','Conn4','PI I2C / IR',['SCL_IR','SDA_IR','3V3_IR','GND_DAC_IR'],'Header4P2',(29,15.08),(116.84,50.8))
+part('J8','Conn4','PI I2C / RED',['SCL_RED','SDA_RED','3V3_RED','GND_DAC_RED'],'Header4P2',(62,15.08),(320.04,50.8))
 
-part('J4','Conn2','RED DAC OUT / GND',['DAC_RED','GND'],'Header2',(62,10),(330.2,40.64))
+part('J4','Conn2','RED DAC OUT / DAC GND',['DAC_RED','GND_DAC_RED'],'Header2',(66,10),(330.2,40.64))
 
 part('U1','LM358P','LM358P / DIP8 socket',['AMP_IR','SENSE_IR','CMD_IR','GND','CMD_RED','SENSE_RED','AMP_RED','5V'],'DIP8',(31.19,30.19),(193.04,139.7))
 for i,ch in enumerate(['IR','RED']):
@@ -117,29 +121,6 @@ def board(share,cli):
                 dest=HERE/'3dmodels'/suffix; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(source,dest)
                 s=s.replace(model,'${KIPRJMOD}/3dmodels/'+suffix)
         (lib/f'{name}.kicad_mod').write_text(s)
-    # Two separate male strips in one logical connector: OUT/GND 2.54 mm,
-    # SCL/SDA/3V3/GND 2.00 mm. Socket footprints remain unchanged.
-    mixed=['(footprint "HeaderMixed" (version 20240108) (generator pcbnew) (layer "F.Cu")',
-           '(attr through_hole)',
-           '(property "Reference" "REF**" (at 0 -2.5) (layer "F.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))))',
-           '(property "Value" "HeaderMixed" (at 0 15) (layer "F.Fab") (effects (font (size 0.8 0.8) (thickness 0.12))))']
-    for pin,y in enumerate((0,2.54,6.5,8.5,10.5,12.5),1):
-        size=1.7 if pin<=2 else 1.35
-        drill=1.0 if pin<=2 else 0.8
-        shape='rect' if pin in (1,3) else 'oval'
-        mixed.append(f'(pad "{pin}" thru_hole {shape} (at 0 {y}) (size {size} {size}) (drill {drill}) (layers "*.Cu" "*.Mask"))')
-    for x,y0,y1 in ((1.35,-1.35,3.89),(1.1,5.4,13.6)):
-        mixed.append(f'(fp_rect (start {-x} {y0}) (end {x} {y1}) (stroke (width 0.12) (type default)) (fill none) (layer "F.SilkS"))')
-        mixed.append(f'(fp_rect (start {-x-.2} {y0-.2}) (end {x+.2} {y1+.2}) (stroke (width 0.05) (type default)) (fill none) (layer "F.CrtYd"))')
-    for suffix,offset in (
-        ('Connector_PinHeader_2.54mm.3dshapes/PinHeader_1x02_P2.54mm_Vertical.step',0),
-        ('Connector_PinHeader_2.00mm.3dshapes/PinHeader_1x04_P2.00mm_Vertical.step',-6.5),
-    ):
-        dest=HERE/'3dmodels'/suffix; dest.parent.mkdir(parents=True,exist_ok=True)
-        shutil.copy2(share/'3dmodels'/suffix,dest)
-        mixed.append(f'(model "${{KIPRJMOD}}/3dmodels/{suffix}" (offset (xyz 0 {offset} 0)) (scale (xyz 1 1 1)) (rotate (xyz 0 0 0)))')
-    mixed.append(')')
-    (lib/'HeaderMixed.kicad_mod').write_text('\n'.join(mixed))
     (HERE/'fp-lib-table').write_text('(fp_lib_table (version 7) (lib (name "TX") (type "KiCad") (uri "${KIPRJMOD}/TX.pretty") (options "") (descr "Driver local footprints")))')
     footprints={}
     for d in PARTS:
@@ -173,23 +154,19 @@ def board(share,cli):
     for x,ch,addr in [(7,'IR','0x60'),(40,'RED','0x61')]:
         silk('MCP4725 '+ch+' '+addr,x+9,4.6,.85)
         silk('ADDR='+('GND' if ch=='IR' else 'VCC'),x+9,6.3,.8)
-        for i,label in enumerate(['OUT','GND','SCL','SDA','3V3','GND']): silk(label,x+5.5,10+i*2.54,.8)
+        for i,label in enumerate(['OUT','DAC_GND','SCL','SDA','3V3','DAC_GND']): silk(label,x+5.5,10+i*2.54,.8)
         # Module body projection is an assembly guide, not a measured outline.
         for a,c in [((x+1,6),(x+19,6)),((x+19,6),(x+19,23)),((x+19,23),(x+1,23))]: line(a,c,p.Dwgs_User)
-    silk('RED OUT',62,7.5,.8)
-    silk('OUT',66,10,.8); silk('GND',66,12.54,.8)
-    silk('J4 RED OUT',62,7.5,.8,True)
-    silk('OUT',66,10,.8,True); silk('GND',66,12.54,.8,True)
+    silk('RED OUT',66,7.5,.8)
+    silk('OUT',66,10,.8); silk('DAC GND',66,12.54,.8)
+    silk('J4 RED OUT',66,7.5,.8,True)
+    silk('OUT',66,10,.8,True); silk('DAC GND',66,12.54,.8,True)
     silk('IR A+ K-',24,53.5,.8); silk('RED A+ K-',47,53.5,.8); silk('5V GND',35,53.5,.8)
     silk('DAC: 3.3V ONLY',35,6.5,.9)
-    silk('SAME Pi BUS',35,8,.8)
-    for i,label in enumerate(['OUT','GND','SCL','SDA','3V3','GND']):
-        silk(label,32,(10,12.54,16.5,18.5,20.5,22.5)[i],.8)
-    # Bracket only pins 3..6: the four-wire I2C cable must not occupy 1..4.
-    for x in (29,):
-        for a,c in [((x-1.8,15.2),(x-2.3,15.2)),((x-2.3,15.2),(x-2.3,23.8)),((x-2.3,23.8),(x-1.8,23.8))]:
-            line(a,c,p.F_SilkS)
-    silk('J2 PI: SCL SDA 3V3 GND',35,54,.8,True)
+    silk('SEPARATE PI CABLES',35,8,.8)
+    for x,ch in ((29,'IR'),(62,'RED')):
+        silk(f'J{2 if ch=="IR" else 8} PI {ch}',x,13.2,.8)
+        for i,label in enumerate(['SCL','SDA','3V3','DAC GND']): silk(label,x+3,(15.08,17.08,19.08,21.08)[i],.7)
     silk('C2 / C4: DNP',35,41.5,.8)
     silk('100R',15.8,48.2,.8); silk('100R',51.8,48.2,.8)
     for x in (18,47):
@@ -199,9 +176,11 @@ def board(share,cli):
         pad=next(x for x in footprints[ref].Pads() if x.GetNumber()==str(pin)); pos=pad.GetPosition(); return p.ToMM(pos.x)-100,p.ToMM(pos.y)-100
     # Rear labels use signal names only; connector/component references remain.
     for ref,title,labels,label_x in (
-        ('J1','J1 IR DAC',('IR_OUT','GND','SCL','SDA','3V3','GND'),12),
-        ('J2','J2 PI',('IR_OUT','GND','SCL','SDA','3V3','GND'),34),
-        ('J3','J3 RED DAC',('RED_OUT','GND','SCL','SDA','3V3','GND'),45),
+        ('J1','J1 IR DAC',('IR_OUT','DAC_GND','SCL','SDA','3V3','DAC_GND'),12),
+        ('J2','J2 PI IR',('SCL','SDA','3V3','DAC_GND'),34),
+        ('J3','J3 RED DAC',('RED_OUT','DAC_GND','SCL','SDA','3V3','DAC_GND'),45),
+        ('J4','J4 RED OUT',('RED_OUT','DAC_GND'),66),
+        ('J8','J8 PI RED',('SCL','SDA','3V3','DAC_GND'),64),
     ):
         x0,_=pad_local(ref,1); silk(title,x0,7.8,.8,True)
         for pin,label in enumerate(labels,1):

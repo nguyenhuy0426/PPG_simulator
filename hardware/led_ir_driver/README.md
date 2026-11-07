@@ -1,11 +1,12 @@
-# DATN: PPG-Simulator — LED / IR driver v1.9
+# DATN: PPG-Simulator — LED / IR driver v2.0
 
 Mở `led_ir_driver.kicad_pro` bằng KiCad 10. Board hai lớp, **70 × 40 mm**,
 FR4 1,6 mm; socket module, socket IC và header xuyên lỗ; toàn bộ điện trở và tụ điện là linh kiện dán.
 Thư viện symbol, footprint, mô hình 3D đi kèm trong thư mục dự án.
-Schematic v1.9 dùng dây nối trực tiếp cho từng kênh và nhãn net cho bus chung,
-không kéo dây xuyên qua thân header. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả
-rà soát điện, cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
+Schematic v2.0 dùng hai harness DAC riêng: mỗi MCP4725 có một header I²C 4-pin
+2,00 mm riêng và không có đường đồng chung giữa hai harness hoặc với mass
+LED/LM358 trên carrier. Đọc `ELECTRICAL_AUDIT.md` để xem kết quả rà soát điện,
+cấu hình ADDR và các điều kiện trước khi cấp nguồn. Đọc
 `COMPONENT_RATIONALE.md` để hiểu lựa chọn linh kiện và `PIN_MAP.md` để tra
 chân nối; `reports/wiring_guide.png` thể hiện đường đồng hai lớp có màu.
 
@@ -23,25 +24,50 @@ pad vuông SCL trên chính module không phải dấu pin 1 của socket PCB.
 Module nằm ngang, mặt linh kiện hướng lên; thân module mở rộng sang phải
 của hàng socket như ảnh. Hàn hàng chân đực xuống mặt dưới module để cắm.
 
-| Pad | J1 socket IR / J2 đầu cáp Pi | J3 socket Red |
+| Pad | J1 socket IR | J3 socket Red |
 |---|---|---|
 | 1 | OUT IR | OUT Red |
-| 2 | GND | GND |
+| 2 | GND_DAC_IR | GND_DAC_RED |
 | 3 | SCL | SCL |
 | 4 | SDA | SDA |
 | 5 | 3,3 V | 3,3 V |
-| 6 | GND | GND |
+| 6 | GND_DAC_IR | GND_DAC_RED |
 
-J1–J2 nối **1:1 đủ sáu chân**. J3 dùng chung GND, 3,3 V, SCL và SDA
-với J1/J2; OUT Red chỉ đi từ J3 vào mạch Red, không nối OUT IR.
-J2 là header đực duy nhất để đưa I²C/3,3 V từ Pi vào board.
-**Bẹ I²C bốn lõi vào chân 3–6: SCL, SDA, 3V3, GND; không vào 1–4.**
-J4 là header đực 1×2 bước 2,54 mm: chân 1 = OUT_RED, chân 2 = GND. J2.1/J2.2 là OUT_IR/GND. Nhóm I²C 2,00 mm của J2 vẫn là đầu cáp Pi dùng chung.
+J2 là header đực IR 1×4 bước 2,00 mm, J8 là header đực RED 1×4 bước
+2,00 mm. **Cả hai cùng thứ tự chân: SCL, SDA, 3V3, GND_DAC.** J2 chỉ nối
+J1.3–6; J8 chỉ nối J3.3–6. Không có đường đồng chung SCL, SDA, 3V3 hoặc
+GND_DAC giữa hai header trên carrier. J4 là header đực 1×2 bước 2,54 mm:
+chân 1 = OUT_RED, chân 2 = GND_DAC_RED. OUT IR chỉ có tại J1.1.
 Pin OUT là ngõ ra DAC để đo/lấy tín hiệu, không nối vào ngõ ra khác.
 
-Hai chân GND của mỗi module (pin 2 và pin 6) nối vào vùng đồng GND mặt dưới.
-Vùng này cũng nối J2.2/J2.6, LM358 pin 4, đầu dưới các điện trở sense,
-cực âm C5/C7 và J7.2. Vì vậy nguồn 5 V tại J7 phải chung GND với Pi.
+Hai chân GND của mỗi module (pin 2 và pin 6) chỉ nối về miền đồng
+`GND_DAC_IR` hoặc `GND_DAC_RED` tương ứng và chân 4 của header Pi tương ứng.
+Chúng **không** nối vào `GND` của LM358, LED, nguồn 5 V, C5/C7 hoặc J7 trên
+PCB này.
+
+> Cảnh báo kỹ thuật: tách đồng như trên không tạo cách ly galvanic và không
+> tự khắc phục lỗi I²C. Hai cáp cắm cùng Raspberry Pi vẫn chung GND tại Pi;
+> hơn nữa OUT của MCP4725 được LM358 tham chiếu theo GND LED/LM358. Không cấp
+> nguồn hay đánh giá mạch là hoạt động cho đến khi đo xác nhận mốc OUT/GND và
+> xử lý cách ly đúng kiến trúc (isolator I²C + nguồn cách ly + giao tiếp analog)
+> nếu thật sự cần hai miền mass độc lập.
+
+## Sau sự cố I²C: khoanh vùng trước khi cắm lại
+
+Không cắm lại driver vào HAT trước khi HAT tự vượt qua các bước sau. Tắt Pi,
+tháo toàn bộ thiết bị ngoài GPIO, kiểm tra bằng đồng hồ rằng không có chập
+điện trở thấp bất thường giữa 3V3–GND, SDA–GND hoặc SCL–GND trên driver.
+Sau đó boot Pi chỉ với HAT, xác nhận I²C đã bật rồi chạy `i2cdetect -y 1`.
+HAT STM32 phải được tìm là `0x04`; bản MM32 là `0x08` — phải quét cả hai,
+không chỉ `0x08`. Nếu cả hai vắng mặt khi driver đã tháo, đo tại chân Pi 3
+(SDA) và 5 (SCL): hai line phải ở mức nhàn rỗi gần 3,3 V. Nếu một line thấp,
+tắt nguồn và tháo HAT để phân biệt HAT kéo bus hay Pi/GPIO đã hỏng.
+
+Chỉ khi HAT hoạt động lại, cắm **một** MCP4725 đã biết tốt với 3,3 V, GND,
+SDA, SCL; xác nhận địa chỉ trước khi cắm MCP còn lại hoặc nguồn LED 5 V.
+Không cấp 5 V vào 3V3/SDA/SCL; GPIO2/3 của Pi có pull-up 3,3 V sẵn. Ghi lại
+điện áp và kết quả quét ở từng bước — việc thấy một địa chỉ không chứng minh
+mạch dòng LED hay mass đã an toàn.
 
 Đặt jumper địa chỉ trên module: **IR = 0x60, Red = 0x61** theo cấu hình source.
 Với module MCP4725A0: IR đặt ADDR về GND, RED đặt ADDR về VCC (3,3 V).
@@ -123,7 +149,7 @@ Số lượng/cỡ lỗ theo `reports/drill.rpt`; bốn lỗ bắt vít Ø3,2 mm
 - `reports/drc.rpt`: DRC và parity schematic/PCB.
 - `reports/pin_contract.json`: kiểm tra độc lập pinout, nguồn, hồi tiếp,
   header 1:1, footprint, DNP và kích thước.
-- `fabrication/`: Gerber và drill. `../PPG_LED_IR_driver.zip`: gói board lẻ. Panel ghép mới nằm trong `../PPG_3boards_VCUT_panel.zip`.
+- `fabrication/`: Gerber và drill. `../PPG_LED_IR_driver.zip`: gói board lẻ. Panel ghép mới nằm trong `../PPG_2boards_VCUT_panel.zip`.
 - `BOM.csv`: danh sách footprint trên board; mua thêm hai module MCP4725,
   một LM358P và hai socket cái 1×6, một socket DIP-8 theo BOM.
 
@@ -146,9 +172,12 @@ datasheet MCP4725 và LM358 trong `docs/ds_linhkien/`.
 Footprint/model từ KiCad 10: CC-BY-SA 4.0 với ngoại lệ sử dụng trong thiết kế
 điện tử, [KiCad Library License](https://www.kicad.org/libraries/license/).
 
-## J2 revision v1.4
+## Header I²C revision v2.0
 
-J2 gồm hai đoạn header đực rời: OUT/GND (pad 1–2) bước 2,54 mm; SCL/SDA/3V3/GND (pad 3–6) bước 2,00 mm. Khoảng cách tâm pad 2 đến pad 3 là 3,96 mm để tách hai thân nhựa. Mua một header 1×2 2,54 mm và một header 1×4 2,00 mm, không dùng một thanh 1×6. Socket cái J1/J3 vẫn bước 2,54 mm.
+Mua **hai** header 1×4 2,00 mm: J2 cho IR và J8 cho RED; không dùng header
+chia sẻ hoặc mắc song song hai module trên carrier. Socket cái J1/J3 vẫn bước
+2,54 mm. Cáp mỗi header phải đi tới đúng module/harness Pi tương ứng và giữ
+thứ tự SCL, SDA, 3V3, GND_DAC.
 
 ## Bố trí bản thu gọn hiện tại
 

@@ -5,11 +5,27 @@
       "pass": true
     },
     {
+      "check": "Exactly OPT101 and LED/IR driver sources",
+      "pass": true
+    },
+    {
+      "check": "No BPW34 footprints or nets",
+      "pass": true
+    },
+    {
       "check": "Only outer rectangle is routed; no milling on score lines",
       "pass": true
     },
     {
-      "check": "Exactly two full-width score centre-lines",
+      "check": "Panel outline is 70 x 60 mm",
+      "pass": true
+    },
+    {
+      "check": "Exactly one full-width score centre-line",
+      "pass": true
+    },
+    {
+      "check": "Footprint inventory contains only the two sources",
       "pass": true
     },
     {
@@ -458,758 +474,6 @@
     },
     {
       "check": "OPT all tracks/vias match source exactly",
-      "pass": true
-    },
-    {
-      "check": "BPW current source hash",
-      "pass": true
-    },
-    {
-      "check": "BPW exact footprint inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW J2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW J2 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW J2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J2.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW D2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW D2 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW D2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW D2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW D2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW D2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW D2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW J1 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW J1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J1.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW J3 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW J3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW J3.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW D1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW D1 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW D1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW D1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW D1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW D1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW D1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C2 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C8 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C8 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C8 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C8.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C8.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C8.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C8.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R2 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C7 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C7 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C7 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C7.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C7.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C7.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C7.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R6 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R6 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R6 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R6.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R6.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R6.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R6.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R3 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R3.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R3.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R3.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R3.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW U1 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW U1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.5 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U1.5 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R4 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R4 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R4.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C3 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C3 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C3 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C3.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C3.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C3.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C3.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C4 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C4 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C4 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C4.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C4.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C4.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C4.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R7 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R7 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R7 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R7.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R7.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R7.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R7.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R1 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C5 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C5 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C5 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C5.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C5.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C5.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C5.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U2 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW U2 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW U2 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.3 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.3 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.4 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.4 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.5 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW U2.5 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R5 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R5 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R5 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R5.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R5.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R5.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R5.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R8 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW R8 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW R8 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW R8.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R8.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW R8.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW R8.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C6 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C6 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C6 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C6.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C6.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C6.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C6.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C1 fitted value",
-      "pass": true
-    },
-    {
-      "check": "BPW C1 placement",
-      "pass": true
-    },
-    {
-      "check": "BPW C1 pad inventory",
-      "pass": true
-    },
-    {
-      "check": "BPW C1.1 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C1.1 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW C1.2 isolated net",
-      "pass": true
-    },
-    {
-      "check": "BPW C1.2 physical pad/drill",
-      "pass": true
-    },
-    {
-      "check": "BPW all tracks/vias match source exactly",
       "pass": true
     },
     {
@@ -2105,7 +1369,7 @@
       "pass": true
     },
     {
-      "check": "BPW/GND_IR zone filled",
+      "check": "OPT/GND_IR zone filled",
       "pass": true
     },
     {
@@ -2113,55 +1377,7 @@
       "pass": true
     },
     {
-      "check": "BPW/GND_RED zone filled",
-      "pass": true
-    },
-    {
-      "check": "OPT/GND_IR zone filled",
-      "pass": true
-    },
-    {
-      "check": "TX_C5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R6 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R3 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_C1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "OPT_C2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
       "check": "TX_R9 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_R4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "TX_C2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2173,75 +1389,43 @@
       "pass": true
     },
     {
-      "check": "BPW_C7 footprint envelope >=2mm from score",
+      "check": "TX_C5 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_C2 footprint envelope >=2mm from score",
+      "check": "TX_R1 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_C4 footprint envelope >=2mm from score",
+      "check": "TX_R6 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "OPT_R1 footprint envelope >=2mm from score",
+      "check": "TX_R4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "OPT_R2 footprint envelope >=2mm from score",
+      "check": "OPT_C1 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_R1 footprint envelope >=2mm from score",
+      "check": "OPT_C2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "OPT_C4 footprint envelope >=2mm from score",
+      "check": "TX_R2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "TX_C7 footprint envelope >=2mm from score",
+      "check": "TX_C4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_C6 footprint envelope >=2mm from score",
+      "check": "TX_R3 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_C1 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R8 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R3 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R4 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R2 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C5 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_C3 footprint envelope >=2mm from score",
-      "pass": true
-    },
-    {
-      "check": "BPW_R6 footprint envelope >=2mm from score",
+      "check": "TX_C2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2249,11 +1433,19 @@
       "pass": true
     },
     {
-      "check": "BPW_R7 footprint envelope >=2mm from score",
+      "check": "OPT_C4 footprint envelope >=2mm from score",
       "pass": true
     },
     {
-      "check": "BPW_C8 footprint envelope >=2mm from score",
+      "check": "OPT_R1 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "TX_C7 footprint envelope >=2mm from score",
+      "pass": true
+    },
+    {
+      "check": "OPT_R2 footprint envelope >=2mm from score",
       "pass": true
     },
     {
@@ -2265,7 +1457,7 @@
       "pass": true
     }
   ],
-  "passed": 566,
+  "passed": 364,
   "source_geometry": {
     "OPT": {
       "widths_mm": {
@@ -2294,49 +1486,6 @@
         ],
         "/RAW_IR": [
           0.35
-        ]
-      },
-      "track_to_mounting_drill_edge_mm": {}
-    },
-    "BPW": {
-      "widths_mm": {
-        "/OUT_IR": [
-          0.3
-        ],
-        "/3V3_IR": [
-          0.35
-        ],
-        "/GND_IR": [
-          0.25,
-          0.35,
-          0.4
-        ],
-        "/SUM_IR": [
-          0.25
-        ],
-        "/OUT_RED": [
-          0.3
-        ],
-        "/3V3_RED": [
-          0.35
-        ],
-        "/GND_RED": [
-          0.25
-        ],
-        "/SUM_RED": [
-          0.25
-        ],
-        "/FB_IR": [
-          0.25
-        ],
-        "/VREF_IR": [
-          0.22
-        ],
-        "/FB_RED": [
-          0.25
-        ],
-        "/VREF_RED": [
-          0.22
         ]
       },
       "track_to_mounting_drill_edge_mm": {}
@@ -2406,50 +1555,34 @@
       }
     }
   },
-  "component_to_vcut_min_mm": 2.095,
+  "component_to_vcut_min_mm": 5.295,
   "component_margins_mm": {
-    "TX_C5": 20.495,
-    "TX_R1": 18.025,
-    "TX_R2": 21.025,
-    "TX_R6": 18.025,
-    "TX_C4": 28.595,
-    "TX_R3": 23.435,
-    "OPT_C1": 15.495,
-    "OPT_C2": 15.495,
     "TX_R9": 31.345,
-    "TX_R4": 35.845,
-    "TX_C2": 28.595,
     "TX_R7": 21.025,
     "TX_R8": 26.025,
-    "BPW_C7": 4.328334,
-    "BPW_C2": 4.645,
-    "BPW_C4": 7.995,
-    "OPT_R1": 5.325,
-    "OPT_R2": 5.325,
-    "BPW_R1": 2.375,
-    "OPT_C4": 5.295,
-    "TX_C7": 12.375,
-    "BPW_C6": 2.095,
-    "BPW_C1": 4.645,
-    "BPW_R8": 8.025,
-    "BPW_R5": 3.825,
-    "BPW_R3": 7.091666,
-    "BPW_R4": 5.725,
-    "BPW_R2": 2.375,
-    "BPW_C5": 2.095,
-    "BPW_C3": 7.995,
-    "BPW_R6": 3.825,
+    "TX_C5": 20.495,
+    "TX_R1": 18.025,
+    "TX_R6": 18.025,
+    "TX_R4": 35.845,
+    "OPT_C1": 15.495,
+    "OPT_C2": 15.495,
+    "TX_R2": 21.025,
+    "TX_C4": 28.595,
+    "TX_R3": 23.435,
+    "TX_C2": 28.595,
     "OPT_C3": 5.295,
-    "BPW_R7": 8.025,
-    "BPW_C8": 4.328334
+    "OPT_C4": 5.295,
+    "OPT_R1": 5.325,
+    "TX_C7": 12.375,
+    "OPT_R2": 5.325
   },
   "copper_to_vcut_min_mm": 1.5,
   "panel_mm": [
     70,
-    80
+    60
   ],
-  "original_area_mm2": 7560,
-  "new_area_mm2": 5600,
-  "area_reduction_percent": 25.925925925925927,
+  "original_area_mm2": 5600,
+  "new_area_mm2": 4200,
+  "area_reduction_percent": 25.0,
   "limitations": "CAD and nominal component checks only; not physical electrical or manufacturing qualification."
 }

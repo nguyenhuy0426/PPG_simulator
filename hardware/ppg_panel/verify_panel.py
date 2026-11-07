@@ -25,11 +25,18 @@ def main():
         checks.append({'check':name,'pass':bool(condition)})
         if not condition: raise AssertionError(name)
     check('2 copper layers',b.GetCopperLayerCount()==2)
+    check('Exactly OPT101 and LED/IR driver sources', [s['prefix'] for s in sources]==['OPT','TX'])
+    check('No BPW34 footprints or nets',not any(f.GetReference().startswith('BPW') for f in b.GetFootprints()) and
+          not any(n.GetNetname().startswith('BPW') for n in b.GetNetsByNetcode().values()))
     edges=[d for d in b.GetDrawings() if d.GetLayer()==p.Edge_Cuts]
     check('Only outer rectangle is routed; no milling on score lines',len(edges)==4)
+    points=[xy(pt) for e in edges for pt in (e.GetStart(),e.GetEnd())]
+    check('Panel outline is 70 x 60 mm',min(x for x,y in points)==50 and max(x for x,y in points)==120 and
+          min(y for x,y in points)==50 and max(y for x,y in points)==110)
     cuts=[d for d in b.GetDrawings() if d.GetLayer()==p.Cmts_User]
-    check('Exactly two full-width score centre-lines',len(cuts)==2 and
-        {tuple(xy(d.GetStart())+xy(d.GetEnd())) for d in cuts}=={(50,70,120,70),(50,90,120,90)})
+    check('Exactly one full-width score centre-line',len(cuts)==1 and
+        {tuple(xy(d.GetStart())+xy(d.GetEnd())) for d in cuts}=={(50,70,120,70)})
+    check('Footprint inventory contains only the two sources',len(list(b.GetFootprints()))==sum(s['footprints'] for s in sources))
     for item in sources:
         source=HERE.parent/item['source']; src=p.LoadBoard(str(source)); prefix=item['prefix']
         check(prefix+' current source hash',hashlib.sha256(source.read_bytes()).hexdigest()==item['sha256'])
@@ -69,25 +76,25 @@ def main():
     margins=[]
     for t in b.GetTracks():
         lo,hi=sorted((mm(t.GetStart().y),mm(t.GetEnd().y))); r=width(t)/2
-        for cut in (70,90): margins.append(interval_distance(lo-r,hi+r,cut))
+        for cut in (70,): margins.append(interval_distance(lo-r,hi+r,cut))
     for f in b.GetFootprints():
         for pad in f.Pads():
             if pad.GetAttribute()==p.PAD_ATTRIB_NPTH: continue
             bb=pad.GetBoundingBox()
-            for cut in (70,90): margins.append(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut))
+            for cut in (70,): margins.append(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut))
     for z in b.Zones():
         if z.GetIsRuleArea(): continue
         poly=z.GetFilledPolysList(z.GetLayer())
         check(z.GetNetname()+' zone filled',poly.OutlineCount()>0)
         for i in range(poly.OutlineCount()):
             chain=poly.COutline(i); ys=[mm(chain.CPoint(j).y) for j in range(chain.PointCount())]
-            for cut in (70,90): margins.append(interval_distance(min(ys),max(ys),cut))
+            for cut in (70,): margins.append(interval_distance(min(ys),max(ys),cut))
     component_margins={}
     for f in b.GetFootprints():
         ref=f.GetReference()
         if ref.split('_')[-1].startswith(('R','C')):
             bb=f.GetBoundingBox(False,False)
-            margin=min(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut) for cut in (70,90))
+            margin=min(interval_distance(mm(bb.GetY()),mm(bb.GetBottom()),cut) for cut in (70,))
             component_margins[ref]=round(margin,6)
             check(ref+' footprint envelope >=2mm from score',margin>=2-1e-5)
     check('All copper >=1.5mm from score centre-lines',min(margins)>=1.5-1e-5)
@@ -96,8 +103,8 @@ def main():
         for net in b.GetNetsByNetcode().values() if net.GetNetCode()))
     report={'checks':checks,'passed':len(checks),'source_geometry':reports,
         'component_to_vcut_min_mm':min(component_margins.values()),'component_margins_mm':component_margins,
-        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,80],
-        'original_area_mm2':7560,'new_area_mm2':5600,'area_reduction_percent':100*(7560-5600)/7560,
+        'copper_to_vcut_min_mm':round(min(margins),6),'panel_mm':[70,60],
+        'original_area_mm2':5600,'new_area_mm2':4200,'area_reduction_percent':25.0,
         'limitations':'CAD and nominal component checks only; not physical electrical or manufacturing qualification.'}
     (HERE/'reports/panel_audit.json').write_text(json.dumps(report,indent=2)+'\n')
     print(f'{len(checks)} checks passed; minimum copper-to-V-cut {min(margins):.3f} mm.')

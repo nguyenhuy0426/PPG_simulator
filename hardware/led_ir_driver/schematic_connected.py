@@ -7,7 +7,7 @@ from collections import Counter
 
 def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
     def mm(v): return round(v*2.54,5)
-    shapes={k:base_symbol(k) for k in ('R','C','CP','NPN','Hole','Flag','Conn2','Conn6')}
+    shapes={k:base_symbol(k) for k in ('R','C','CP','NPN','Hole','Flag','Conn2','Conn4','Conn6')}
     def pin(num,label,typ,x,y,angle,length=2):
         return f'(pin {typ} line (at {mm(x)} {mm(y)} {angle}) (length {mm(length)}) (name {q(label)} {fx()}) (number "{num}" {fx()}))'
     socket=['(symbol "TX:Socket6" (pin_names (offset .5)) (in_bom yes) (on_board yes)',f'(property "Reference" "J" (at 0 18 0) {fx()})',f'(property "Value" "MCP4725" (at 0 16 0) {fx()})','(symbol "Socket6_0_1" (rectangle (start -10.16 15.24) (end 10.16 -15.24) (stroke (width .254) (type default)) (fill (type background))))','(symbol "Socket6_1_1"']
@@ -45,7 +45,7 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         placed.add(ref)
     for offset,ch,jmod,jwire,jled,rtop,rbot,rbase,rsense,qref,comp,unit in [
       (0,'IR','J1','J2','J5','R1','R2','R3','R4','Q1','C2',1),
-      (80,'RED','J3',None,'J6','R6','R7','R8','R9','Q2','C4',2),
+      (80,'RED','J3','J8','J6','R6','R7','R8','R9','Q2','C4',2),
     ]:
         def pt(x,y): return (x+offset,y)
         def w(*pts): wire(*(pt(x,y) for x,y in pts))
@@ -54,18 +54,17 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         text(ch+': MCP4725 '+('0x60' if unit==1 else '0x61')+' -> LM358 -> 2N4401 -> LED',offset+40,6,1.4)
         pl(jmod,15,20,kind='Socket6')
         if jwire: pl(jwire,50,20)
-        for i,net in enumerate([f'DAC_{ch}','GND','SCL','SDA','3V3','GND']):
+        for i,net in enumerate([f'DAC_{ch}',f'GND_DAC_{ch}',f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',f'GND_DAC_{ch}']):
             yy=15+2*i
-            if jwire:
+            if jwire and i >= 2:
                 w((20,yy),(22,yy),(45,yy)); l(net,31,yy)
             else:
                 w((20,yy),(26,yy)); l(net,26,yy)
-        # Equal net labels explicitly join the power and signal-return grounds.
-        # Do not draw a GND wire through the SCL/SDA/VCC rows or socket body.
+        # Each DAC has a separate I2C harness and local return copper.
         text('Module ADDR: '+('GND -> 0x60' if unit==1 else 'VCC -> 0x61'),offset+40,28,1.2)
-        text('Both GND pins share 0 V. OUT is a separate signal.',offset+40,31,1.1)
+        text('GND_DAC is isolated from LED/LM358 GND on this carrier. OUT is a separate signal.',offset+40,31,1.1)
         if jwire:
-            text('J2: OUT/GND = 2.54 mm; SCL/SDA/3V3/GND = 2.00 mm',40,34,1.0)
+            text(jwire+': SCL/SDA/3V3/GND = 2.00 mm dedicated Pi cable',offset+40,34,1.0)
         w((22,15),(22,13),(7,13),(7,47),(14,47))
         pl(rtop,16,47,90); w((18,47),(24,47),(32,47)); l('CMD_'+ch,25,47)
         pl(rbot,24,56); w((24,47),(24,54)); w((24,58),(24,70),(64,70))
@@ -83,10 +82,11 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         pl(comp,40,81,90); w((31,81),(38,81)); w((42,81),(51,81))
         l('AMP_'+ch,31,81); l('SENSE_'+ch,51,81)
         text(comp+': DNP - DO NOT FIT until loop measured',offset+40,85,1.0)
-    # RED output breakout mirrors J2's IR output pair, with a ground return.
+    # RED output breakout has the DAC's local return, not the LED-driver return.
     place('J4',130,16)
     wire((102,15),(126,15))
     wire((100,17),(126,17))
+    label('GND_DAC_RED',126,17)
     # Shared supply shown as actual rails, including both capacitor polarities.
     text('SHARED SUPPLY: U1A + U1B + U1C = ONE LM358 DIP-8',42,91,1.3)
     # J7 has left-facing pins at x=8, y=100/102; route supply around it.
@@ -100,11 +100,11 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
     place('#FLG0',21,108); place('#FLG1',21,94); place('#FLG2',35,23)
     text('C5: ceramic, non-polar. C7: electrolytic, + to 5V.',39,112,1.0)
     for i in range(1,5): place(f'H{i}',70+i*10,97)
-    text('MCP4725 VCC = 3.3 V ONLY; J2 is the only Pi cable input.',112,91,1.1)
+    text('MCP4725 VCC = 3.3 V ONLY; J2 and J8 are dedicated Pi inputs.',112,91,1.1)
     text('ADDR is configured on each module, not by this carrier PCB.',112,94,1.1)
-    text('J2 powers and controls both DAC modules over one shared Pi I2C bus.',94,101,1.1)
+    text('J2 powers IR; J8 powers RED. No I2C/DAC-return copper joins them here.',94,101,1.1)
     text('OUT pins are DAC outputs: never connect them together.',94,104,1.1)
-    text('Matching labels connect SCL, SDA, 3V3 and GND between modules.',94,107,1.1)
+    text('They share the Pi bus only externally; this is not galvanic isolation.',94,107,1.1)
     text('For RED: remove the old ADDR-GND bridge before selecting VCC.',94,110,1.1)
     assert {d['ref'] for d in parts}<=placed
     # Split T junctions into explicit wire endpoints; crossings without endpoints

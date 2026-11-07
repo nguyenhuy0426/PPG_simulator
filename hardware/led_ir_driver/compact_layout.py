@@ -31,7 +31,8 @@ def compact(input_path=FILE):
         return vec(p.ToMM(pt.x), ymap(p.ToMM(pt.y)))
 
     positions = {
-        'J1': (107, 105), 'J2': (129, 105), 'J3': (140, 105), 'J4': (162, 105),
+        'J1': (107, 105), 'J2': (129, 105), 'J3': (140, 105), 'J4': (166, 105),
+        'J8': (162, 105),
         'H1': (104, 124), 'H2': (166, 124), 'H3': (104, 136), 'H4': (166, 136),
         'U1': (131.19, 122.19),
         'Q1': (118, 131.5), 'Q2': (147, 131.5),
@@ -139,12 +140,13 @@ def compact(input_path=FILE):
     silk('RED',151,101.5,.8)
     silk('DATN: PPG-Simulator',135,101.4,.8,True)
     silk('Nguyen Nhat Huy - Pham Thanh Vy',135,102.9,.8,True)
-    for ref,x in (('J1',110.7),('J2',125.0),('J3',143.7),('J4',165.5)):
+    for ref,x in (('J1',110.7),('J2',125.0),('J3',143.7),('J4',168.0),('J8',163.0)):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
-        names={'J1':('IR','GND','SCL','SDA','3V3','GND'),
-               'J2':('IR','GND','SCL','SDA','3V3','GND'),
-               'J3':('RED','GND','SCL','SDA','3V3','GND'),
-               'J4':('RED','GND')}[ref]
+        names={'J1':('IR','DAC_GND','SCL','SDA','3V3','DAC_GND'),
+               'J2':('SCL','SDA','3V3','DAC_GND'),
+               'J3':('RED','DAC_GND','SCL','SDA','3V3','DAC_GND'),
+               'J4':('RED','DAC_GND'),
+               'J8':('SCL','SDA','3V3','DAC_GND')}[ref]
         for number,name in enumerate(names,1):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
@@ -194,7 +196,9 @@ def compact(input_path=FILE):
         return [t.GetNetname(),t.GetLayer(),[round(p.ToMM(t.GetStart().x),6),round(p.ToMM(t.GetStart().y),6)],
                 [round(p.ToMM(t.GetEnd().x),6),round(p.ToMM(t.GetEnd().y),6)],round(p.ToMM(t.GetWidth()),6)]
     for edit in json.loads((HERE/'orthogonal_routes.json').read_text()):
-        t=next(t for t in board.GetTracks() if not isinstance(t,p.PCB_VIA) and signature(t)==edit['original'])
+        t=next((t for t in board.GetTracks() if not isinstance(t,p.PCB_VIA) and signature(t)==edit['original']),None)
+        if t is None:
+            continue
         net=t.GetNet();layer=t.GetLayer();width=t.GetWidth();board.Remove(t)
         for a,b in zip(edit['points'],edit['points'][1:]):
             t=p.PCB_TRACK(board);t.SetNet(net);t.SetLayer(layer);t.SetWidth(width)

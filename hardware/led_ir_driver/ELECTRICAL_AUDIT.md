@@ -1,4 +1,10 @@
-# Kiểm tra điện LED/IR driver v1.6 — 2026-09-29
+# Kiểm tra điện LED/IR driver — lưu trữ v1.6
+
+> **Không dùng các bảng nối dây bên dưới để lắp v2.0.** Chúng ghi lại cấu
+> hình mass/bus chung của v1.6. V2.0 tách J2 (IR), J8 (RED),
+> `GND_DAC_IR` và `GND_DAC_RED` khỏi `GND` LED/LM358 trên carrier; hợp đồng
+> hiện tại ở `generate_design.py`, `verify_design.py`, `PIN_MAP.md` và
+> `README.md`. V2.0 chưa được đo điện hay kiểm tra DRC trong môi trường này.
 
 ## Kết luận và phạm vi
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build one electrically isolated, zero-gap, three-design V-score panel.
+"""Build one electrically isolated, zero-gap, two-design V-score panel.
 
-Run using KiCad 10's Python. Edit the three source projects, then regenerate;
-the panel is a fabrication artifact, not a fourth electrical schematic.
+Run using KiCad 10's Python. Edit the two source projects, then regenerate;
+the panel is a fabrication artifact, not an electrical schematic.
 """
 import hashlib
 import json
@@ -15,7 +15,6 @@ HERE = Path(__file__).resolve().parent
 HARDWARE = HERE.parent
 SOURCES = [
     ('OPT', HARDWARE/'opt101_receiver_kicad/opt101_receiver', 'opt101_receiver', 20),
-    ('BPW', HARDWARE/'bpw34_receiver', 'bpw34_receiver', 20),
     ('TX', HARDWARE/'led_ir_driver', 'led_ir_driver', 40),
 ]
 NAME = 'ppg_panel'
@@ -29,7 +28,7 @@ def main():
     saved_project=project_path.read_bytes() if project_path.exists() else None
     board=p.BOARD(); board.GetDesignSettings().SetCopperLayerCount(2)
     board.GetDesignSettings().SetBoardThickness(p.FromMM(1.6))
-    manifest={'panel_mm':[70,80,1.6], 'vcut_y_from_top_mm':[20,40], 'copper_to_vcut_min_mm':1.5, 'sources':[]}
+    manifest={'panel_mm':[70,60,1.6], 'vcut_y_from_top_mm':[20], 'copper_to_vcut_min_mm':1.5, 'sources':[]}
     # Rebuild vendored libraries/models from source boards to avoid stale
     # through-hole assets after footprint migrations.
     for prefix in ('OPT','BPW','TX'):
@@ -93,9 +92,9 @@ def main():
             'size_mm':[70,height], 'footprints':len(list(src.GetFootprints())),
             'tracks_and_vias':len(list(src.GetTracks()))})
         offset+=height
-    for a,b in [((50,50),(120,50)),((120,50),(120,130)),((120,130),(50,130)),((50,130),(50,50))]:
+    for a,b in [((50,50),(120,50)),((120,50),(120,110)),((120,110),(50,110)),((50,110),(50,50))]:
         line(board,a,b,p.Edge_Cuts)
-    for y in (70,90):
+    for y in (70,):
         # Cmts.User contains score centre-lines ONLY. Do not mill these as slots.
         line(board,(50,y),(120,y),p.Cmts_User)
         z=p.ZONE(board); z.SetIsRuleArea(True); z.SetLayerSet(p.LSET.AllCuMask())
@@ -126,6 +125,6 @@ def main():
     (HERE/'fp-lib-table').write_text(table+')\n')
     (HERE/'reports').mkdir(exist_ok=True)
     (HERE/'reports/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    print('Panel generated: 70 x 80 mm, score lines at 20 and 40 mm; isolated nets.')
+    print('Panel generated: 70 x 60 mm, one score line at 20 mm; OPT/TX isolated nets.')
 
 if __name__=='__main__': main()

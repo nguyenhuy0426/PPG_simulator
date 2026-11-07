@@ -1,12 +1,11 @@
 {
   "panel_mm": [
     70,
-    80,
+    60,
     1.6
   ],
   "vcut_y_from_top_mm": [
-    20,
-    40
+    20
   ],
   "copper_to_vcut_min_mm": 1.5,
   "sources": [
@@ -26,27 +25,12 @@
       "tracks_and_vias": 39
     },
     {
-      "prefix": "BPW",
-      "source": "bpw34_receiver/bpw34_receiver.kicad_pcb",
-      "sha256": "3555564cc3ba7318785af1dce3bcbed47ca9763f508de1c2348b5cb1d1011b4b",
-      "offset_mm": [
-        0,
-        20
-      ],
-      "size_mm": [
-        70,
-        20
-      ],
-      "footprints": 23,
-      "tracks_and_vias": 147
-    },
-    {
       "prefix": "TX",
       "source": "led_ir_driver/led_ir_driver.kicad_pcb",
       "sha256": "dd0edfae5a46783aad165aa33a1a20ad536b6336230318201160c46f61f38d48",
       "offset_mm": [
         0,
-        40
+        20
       ],
       "size_mm": [
         70,
