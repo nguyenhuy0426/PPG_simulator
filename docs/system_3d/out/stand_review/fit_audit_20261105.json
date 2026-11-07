@@ -1,0 +1,32 @@
+{
+  "body_dimensions_xy_mm": {
+    "pi": [
+      120,
+      80
+    ],
+    "chamber": [
+      150,
+      80
+    ]
+  },
+  "hole_pitch_mm": [
+    108,
+    91
+  ],
+  "pi_direct_top_holes_current": 2,
+  "frame_holes": 4,
+  "pairs": {
+    "pi-stand": 7.537860038951552e-05,
+    "pi-frame": 0.0,
+    "pi-chamber": 0.0,
+    "stand-frame": 0.0,
+    "stand-chamber": 0.0,
+    "frame-chamber": 0.0
+  },
+  "m3_shaft_max_intersection_mm3": 0,
+  "hardware_envelope_max_intersection_mm3": 0,
+  "hardware_envelope_note": "OD7 x 2.4 mm envelope, not a supplied real fastener model",
+  "pi_frame_bearing_area_mm2": 860.8844719301687,
+  "frame_chamber_bearing_area_mm2": 2365.3233505354447,
+  "scope": "STL geometry only; no physical fit, tool access, tightening torque, load or creep validation."
+}

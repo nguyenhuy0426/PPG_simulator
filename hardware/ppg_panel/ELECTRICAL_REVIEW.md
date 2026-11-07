@@ -98,3 +98,12 @@ Chưa đo kích thước module MCP4725 và chưa thử in/lắp thực.
 
 Driver có hai vùng đồng /GND trên F.Cu và B.Cu. F.Cu thường hiển thị đỏ: màu chỉ lớp đồng, không biểu thị nguồn dương. Các pad/track 5V, 3V3, OUT/SCL/SDA vẫn tách khỏi GND theo clearance; DRC kiểm tra chập và kết nối.
 Đồng panel cách đường V-cut ít nhất 1,5 mm, bao footprint R/C ít nhất 2 mm. Không bảo đảm tụ gốm chịu được lực bẻ sau khi hàn: tách PCB trần trước khi lắp, dùng dụng cụ hạn chế lực uốn.
+
+## Driver v2.0 — tách I²C (2026-10-31)
+
+Driver bỏ bus SCL/SDA/3V3 chung: mỗi module có header riêng J8/J9, 3V3_IR và
+3V3_RED tách net, GNDI2C_IR/GNDI2C_RED không có đồng nối GND board (vẫn thông
+qua VSS bên trong module khi cắm — không phải cách ly). SCL/SDA đi qua 100 Ω
+hoặc jumper bỏ qua, mặc định hở. Trên cùng lớp, 5 V cách đồng I²C/3V3 mới
+≥ 2,22 mm. Chi tiết ở `../led_ir_driver/ELECTRICAL_AUDIT.md`. Thay đổi này giảm
+rủi ro, không sửa một lỗi đã xác định; chưa đo điện trên board v2.0.

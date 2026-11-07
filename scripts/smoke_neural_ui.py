@@ -33,6 +33,7 @@ def xwd_window(window_id):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=Path('docs/ui/touch-output'))
+    parser.add_argument('--no-screenshots',action='store_true',help='Run functional checks when X11 capture is unavailable')
     args=parser.parse_args(); args.output.mkdir(parents=True,exist_ok=True)
     engine=SignalEngine.get_instance(); engine.begin()
     app=CTkApp(language='vi'); app._save_language=lambda:None
@@ -43,6 +44,8 @@ def main():
             app.update();time.sleep(.01)
         assert not errors,errors
     def capture(name):
+        if args.no_screenshots:
+            return
         pump();x,y=app.winfo_rootx(),app.winfo_rooty()
         try:
             image=ImageGrab.grab(xdisplay=os.environ.get('DISPLAY'),bbox=(x,y,x+app.winfo_width(),y+app.winfo_height()))
@@ -105,7 +108,33 @@ def main():
         assert not engine.is_running and engine.dac_manager.last_ir==0
         app.geometry('1280x800+0+0');app.set_language('vi');pump(1)
         capture('lsm-vi-1280.png')
-        print('PASS: touch-only numerical controls, staged settings survive refresh, LSM native inference, shared DAC dry-run start/stop, page-leave stop, no Classic parameter mutation, vi/en, 1024x600 and 1280x800')
+        panel.change_mode('PSF-GAN · thử nghiệm')
+        deadline=time.monotonic()+30
+        while panel._busy and time.monotonic()<deadline: pump(.1)
+        assert not panel._busy and 'PSF-GAN' in panel.previews,panel.status.cget('text')
+        preview=panel.previews['PSF-GAN']
+        assert preview.hr_target==float(panel.hr_slider.get()) and len(preview.samples)==1200
+        assert panel.previews['Real sequence'].provenance['dataset']=='MIMIC-III Waveform Database'
+        panel.dc_slider._slide(1100);pump(.25)
+        assert panel.previews['PSF-GAN']==preview
+        panel.hr_slider._slide(90);pump(.25)
+        assert 'PSF-GAN' not in panel.previews
+        panel.generate()
+        deadline=time.monotonic()+30
+        while panel._busy and time.monotonic()<deadline: pump(.1)
+        assert panel.previews['PSF-GAN'].hr_target==90
+        capture('psf-vi-1280.png')
+        panel.play_btn.invoke();pump(.3)
+        assert engine.is_waveform_playing
+        panel.play_btn.invoke();pump()
+        assert not engine.is_running and engine.dac_manager.last_ir==0
+        assert config_from_ppg_params(engine.ppg_params)==params
+        panel.change_mode('Gaussian đã fit');panel.hr_slider._slide(100);pump(.25)
+        panel.change_mode('PSF-GAN · thử nghiệm')
+        deadline=time.monotonic()+30
+        while panel._busy and time.monotonic()<deadline: pump(.1)
+        assert panel.previews['PSF-GAN'].hr_target==100
+        print('PASS: touch controls, LSM + PSF CPU inference, PSF requested-HR invalidation, DC-only shape preservation, native 40 Hz / 30 s, shared DAC dry-run start/stop, page-leave stop, no Classic parameter mutation, vi/en; screenshots skipped:',args.no_screenshots)
     finally:
         app.on_closing();engine.shutdown()
 

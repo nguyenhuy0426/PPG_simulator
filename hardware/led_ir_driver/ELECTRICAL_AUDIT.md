@@ -1,3 +1,54 @@
+# Kiểm tra điện LED/IR driver v2.0 — 2026-10-31
+
+## v2.0: I²C riêng từng module
+
+Bus SCL/SDA/3V3 chung và nhóm I²C 2,00 mm của J2 đã bỏ. Mỗi module có cổng
+riêng: J8 → J1 (IR), J9 → J3 (RED), thứ tự Grove SCL/SDA/3V3/GND. SCL và SDA
+mỗi kênh đi qua R 100 Ω 1% 0805 hoặc jumper bỏ qua (JP1–JP4, mặc định hở).
+
+| Net | Chân (đọc từ netlist/PCB) |
+|---|---|
+| DAC_IR / DAC_RED | J1.1, J2.1, R1.1 / J3.1, J4.1, R6.1 |
+| GND | J1.2, J2.2, J3.2, J4.2, U1.4, R2.2, R4.2, R7.2, R9.2, C5.2, C7.2, J7.2 |
+| SCL_H_IR / SDA_H_IR | J8.1, R11.1, JP1.1 / J8.2, R12.1, JP2.1 |
+| SCL_R_IR / SDA_R_IR | R11.2, JP1.3 / R12.2, JP2.3 |
+| SCL_IR / SDA_IR | JP1.2, J1.3 / JP2.2, J1.4 |
+| 3V3_IR / GNDI2C_IR | J8.3, J1.5 / J8.4, J1.6 |
+| SCL_H_RED / SDA_H_RED | J9.1, R13.1, JP3.1 / J9.2, R14.1, JP4.1 |
+| SCL_R_RED / SDA_R_RED | R13.2, JP3.3 / R14.2, JP4.3 |
+| SCL_RED / SDA_RED | JP3.2, J3.3 / JP4.2, J3.4 |
+| 3V3_RED / GNDI2C_RED | J9.3, J3.5 / J9.4, J3.6 |
+
+`GNDI2C_x` không có đường đồng, vùng đồng hay via nối GND board; vùng GND
+cách nó 0,30 mm (khoảng hở zone). `verify_design.py` kiểm tra riêng 16 chân
+GND/3V3/SDA/SCL của J1, J3, J8, J9: không chân nào nằm trên net GND và vùng GND
+hai lớp không chạm bất kỳ đồng I²C/3V3/GNDI2C nào. **Pin 2 và pin 6 trong module MCP4725 là cùng
+một VSS**, nên khi cắm module hai net này thông nhau qua module: đây là tách
+đồng trên PCB, không phải cách ly galvanic. Hai cổng Grove trên cùng HAT vẫn là
+cùng bus I²C của Pi; địa chỉ 0x60/0x61 vẫn phải khác nhau.
+
+Khoảng cách đo trên PCB (KiCad 10.0.6 + shapely, đa giác đồng thực kể cả vùng đồng):
+5 V cách mọi đồng I²C/3V3 mới ≥ 2,22 mm, trên cùng lớp và cả khi chiếu chồng
+hai lớp (pad J3.6 GNDI2C_RED ↔ đồng 5 V gần U1, B.Cu). Các cell R/JP đặt giữa
+header và socket, dưới thân module, không nằm trên C7.
+3V3_IR cách 3V3_RED 9,48 mm. Các số này là hình học CAD, không phải đo điện.
+
+Một Grove Base Hat (MM32, 0x08) đã hỏng sau khi nối bản v1.9; kiểm tra hình
+học đồng v1.9 không thấy chập giữa các net và PCB không giải thích được nguyên
+nhân. v2.0 chỉ giảm rủi ro, không sửa một lỗi đã xác định.
+
+**Pull-up với 100 Ω nối tiếp.** Hai module vẫn có pull-up riêng; carrier
+không thêm pull-up. Khi một phía kéo xuống, mức thấp ở phía bên kia điện trở
+tăng thêm I × 100 Ω, với I là dòng của các pull-up nằm ở phía đó. Ví dụ giả
+định (chưa đo): pull-up Pi 1,8 kΩ + một module 4,7 kΩ ≈ 2,5 mA → thêm khoảng
+0,25 V. Đo mức thấp và sườn xung thật trước khi dùng; nếu biên V_IL hẹp,
+hàn phía BYP. Chỉ hàn một phía của mỗi jumper.
+
+---
+
+Phần dưới là rà soát v1.6 (2026-09-29), giữ làm lịch sử; các mục bus I²C
+chung và cáp J2.3–6 đã được thay bằng phần v2.0 ở trên.
+
 # Kiểm tra điện LED/IR driver v1.6 — 2026-09-29
 
 ## Kết luận và phạm vi

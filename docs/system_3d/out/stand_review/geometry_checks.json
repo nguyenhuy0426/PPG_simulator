@@ -1,0 +1,63 @@
+{
+  "units": "mm",
+  "original_stand_mm3": 41925.57010745658,
+  "repaired_stand_mm3": 47249.87045185541,
+  "frame_mm3": 12788.089109942846,
+  "stand_size_mm": [
+    168.0,
+    126.0,
+    74.0
+  ],
+  "frame_size_mm": [
+    120.0,
+    103.0,
+    4.0
+  ],
+  "chamber_hole_pitch_mm": [
+    108,
+    91
+  ],
+  "hole_centers_assembly_xy": [
+    [
+      6,
+      -6
+    ],
+    [
+      6,
+      85
+    ],
+    [
+      114,
+      -6
+    ],
+    [
+      114,
+      85
+    ]
+  ],
+  "frame_hole_diameter_mm": 3.7,
+  "chamber_translation": [
+    -33,
+    -12,
+    74
+  ],
+  "rear_tab_gap_filled_mm": 1,
+  "frame_translation": [
+    0,
+    0,
+    70
+  ],
+  "mating_input_sha256": {
+    "than_hop_pi4.stl": "9d7a99906661a2da0926f786909ca36f582d0d98c129d9d69740c68700c8cbe8",
+    "01_than_hop_toi.stl": "683a8cd8b9ab744efda8cc3441d997e49a06ac9064d544cff627ace64dbb205d"
+  },
+  "pair_intersection_mm3": {
+    "0-1": 9.053222862043181e-05,
+    "0-2": 0.0,
+    "0-3": 0.0,
+    "1-2": 0.0,
+    "1-3": 0.0,
+    "2-3": 0.0
+  },
+  "validation": "Geometry and M3 shaft clearance only; no physical load test or FEA."
+}

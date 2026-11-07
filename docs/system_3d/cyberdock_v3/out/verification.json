@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "screen_mm": [
+    178,
+    105,
+    10
+  ],
+  "layout": "dark chamber stacked on existing Pi case",
+  "objects": 37,
+  "STL_files": 6,
+  "part_counts": [
+    3,
+    3,
+    8,
+    13,
+    9,
+    1
+  ],
+  "bed_mm": [
+    180,
+    180,
+    180
+  ],
+  "assembly_collisions": false,
+  "M4_module_axes": true,
+  "extraction_samples_mm": [
+    0,
+    5,
+    20,
+    60,
+    120,
+    170
+  ],
+  "not_checked": [
+    "slicing supports/brim",
+    "physical load and PETG creep",
+    "actual cable/connector envelopes and optical calibration"
+  ]
+}

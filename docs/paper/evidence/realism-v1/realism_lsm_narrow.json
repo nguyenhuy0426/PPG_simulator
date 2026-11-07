@@ -1,0 +1,242 @@
+{
+  "data_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "unseen_splits": [
+    "validation",
+    "test"
+  ],
+  "sources": [
+    "round9",
+    "lsm_gan"
+  ],
+  "view": "0.9-5 Hz (LSM-GAN training view)",
+  "realism": {
+    "gxu_finger": {
+      "people": 44,
+      "windows": 256,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.96484375,
+        "coverage": 0.99609375,
+        "c2st_auc": 0.4911813636173335,
+        "c2st_auc_range": [
+          0.483259532235647,
+          0.4982210186127237
+        ],
+        "indistinguishable": 0.982362727234667,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.98046875,
+        "coverage": 0.77734375,
+        "c2st_auc": 0.7600177460417092,
+        "c2st_auc_range": [
+          0.7498537813068611,
+          0.7732891660748106
+        ],
+        "indistinguishable": 0.4799645079165815,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.75390625,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      }
+    },
+    "perform_large": {
+      "people": 191,
+      "windows": 256,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.94921875,
+        "coverage": 0.96875,
+        "c2st_auc": 0.4643521272032505,
+        "c2st_auc_range": [
+          0.4445727494248154,
+          0.48307693209903657
+        ],
+        "indistinguishable": 0.928704254406501,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.9453125,
+        "coverage": 0.69140625,
+        "c2st_auc": 0.692639499584307,
+        "c2st_auc_range": [
+          0.685618897885871,
+          0.7038455129397512
+        ],
+        "indistinguishable": 0.6147210008313858,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 1.0,
+        "coverage": 0.0,
+        "c2st_auc": 0.8840290163999122,
+        "c2st_auc_range": [
+          0.879679450740588,
+          0.8865357041504502
+        ],
+        "indistinguishable": 0.2319419672001756,
+        "c2st_folds": 4
+      }
+    },
+    "bidmc": {
+      "people": 14,
+      "windows": 222,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.44921875,
+        "coverage": 0.8558558558558559,
+        "c2st_auc": 0.5324235714084525,
+        "c2st_auc_range": [
+          0.5101472238319994,
+          0.5609906121942653
+        ],
+        "indistinguishable": 0.935152857183095,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.5703125,
+        "coverage": 0.7117117117117117,
+        "c2st_auc": 0.7172234477350522,
+        "c2st_auc_range": [
+          0.6749117927589919,
+          0.7879781107852605
+        ],
+        "indistinguishable": 0.5655531045298955,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.87890625,
+        "coverage": 0.02252252252252252,
+        "c2st_auc": 0.8170722773331961,
+        "c2st_auc_range": [
+          0.7634576026429521,
+          0.8976116599121918
+        ],
+        "indistinguishable": 0.36585544533360775,
+        "c2st_folds": 4
+      }
+    },
+    "perform_af": {
+      "people": 4,
+      "windows": 158,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.52734375,
+        "coverage": 0.8924050632911392,
+        "c2st_auc": 0.47798493807577863,
+        "c2st_auc_range": [
+          0.4479637754095019,
+          0.5265545478986132
+        ],
+        "indistinguishable": 0.9205638122867397,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.38671875,
+        "coverage": 0.5379746835443038,
+        "c2st_auc": 0.9803453947368421,
+        "c2st_auc_range": [
+          0.9732678865131579,
+          0.9870168585526315
+        ],
+        "indistinguishable": 0.0393092105263159,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.015625,
+        "coverage": 0.16455696202531644,
+        "c2st_auc": 0.9863349780701753,
+        "c2st_auc_range": [
+          0.9783717105263158,
+          0.9924496299342105
+        ],
+        "indistinguishable": 0.027330043859649173,
+        "c2st_folds": 4
+      }
+    },
+    "perform_non_af": {
+      "people": 2,
+      "windows": 80,
+      "compared": 256,
+      "real_other_people": {
+        "fidelity": 0.109375,
+        "coverage": 0.25,
+        "c2st_auc": 0.785160302492458,
+        "c2st_auc_range": [
+          0.7412524305337767,
+          0.8381362737830492
+        ],
+        "indistinguishable": 0.42967939501508384,
+        "c2st_folds": 2
+      },
+      "round9": {
+        "fidelity": 0.15625,
+        "coverage": 0.925,
+        "c2st_auc": 0.6495442708333333,
+        "c2st_auc_range": [
+          0.58095703125,
+          0.70341796875
+        ],
+        "indistinguishable": 0.7009114583333332,
+        "c2st_folds": 2
+      },
+      "lsm_gan": {
+        "fidelity": 0.1015625,
+        "coverage": 0.0,
+        "c2st_auc": 0.9729166666666668,
+        "c2st_auc_range": [
+          0.934765625,
+          0.99296875
+        ],
+        "indistinguishable": 0.054166666666666696,
+        "c2st_folds": 2
+      }
+    },
+    "wrist": {
+      "people": 4,
+      "windows": 119,
+      "compared": 83,
+      "real_other_people": {
+        "fidelity": 0.9397590361445783,
+        "coverage": 0.7142857142857143,
+        "c2st_auc": 0.454012286732875,
+        "c2st_auc_range": [
+          0.41743220015278837,
+          0.4794563279857398
+        ],
+        "indistinguishable": 0.90802457346575,
+        "c2st_folds": 4
+      },
+      "round9": {
+        "fidelity": 0.9518072289156626,
+        "coverage": 0.5462184873949579,
+        "c2st_auc": 0.7973654878618115,
+        "c2st_auc_range": [
+          0.7671286128087599,
+          0.8139199770817418
+        ],
+        "indistinguishable": 0.4052690242763772,
+        "c2st_folds": 4
+      },
+      "lsm_gan": {
+        "fidelity": 0.0,
+        "coverage": 0.0,
+        "c2st_auc": 1.0,
+        "c2st_auc_range": [
+          1.0,
+          1.0
+        ],
+        "indistinguishable": 0.0,
+        "c2st_folds": 4
+      }
+    }
+  }
+}

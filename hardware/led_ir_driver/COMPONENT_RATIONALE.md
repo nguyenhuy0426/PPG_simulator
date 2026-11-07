@@ -1,6 +1,7 @@
-# Vì sao giữ các linh kiện này? — driver v1.6
+# Vì sao giữ các linh kiện này? — driver v2.0
 
-Giá trị linh kiện giữ nguyên từ v1.3; v1.6 đã đối chiếu lại nguồn, cực tụ,
+v2.0 thêm bốn điện trở I²C R11–R14 và bốn jumper JP1–JP4 (mục cuối). Giá trị
+các linh kiện còn lại giữ nguyên từ v1.3; v1.6 đã đối chiếu lại nguồn, cực tụ,
 chân LM358/2N4401 và hai vòng hồi tiếp. Xem `ELECTRICAL_AUDIT.md`.
 
 ## Tụ phân cực và tụ hóa có phải hai nhóm cần lắp riêng?
@@ -84,14 +85,15 @@ thể sáng trước khi phần mềm đặt DAC về 0; board không có khóa 
 
 ## Cách đọc schematic mới
 
-- Hai socket module dùng chung bus qua nhãn SCL/SDA/3V3/GND; J2 nhận cáp Pi.
+- v2.0: mỗi socket module có cổng I²C riêng (J8 cho J1, J9 cho J3) qua R/JP;
+  nhãn SCL_IR/SCL_RED… là các net khác nhau, không còn bus chung.
 - J2.1/2 lấy OUT_IR/GND; J4.1/2 lấy OUT_RED/GND, bước chân 2,54 mm.
 - OUT DAC đi bằng dây liền xuống cầu chia rồi vào chân `+` của LM358.
 - Ngõ ra LM358 qua 1 kΩ đến B; C nối cathode LED; E nối đầu trên R_sense.
 - Dây từ đầu trên R_sense quay về chân `−` chính là hồi tiếp âm.
 - U1A (IR), U1B (Red), U1C (nguồn) là **cùng một LM358 vật lý**.
 - C2/C4 có dấu gạch đỏ và dòng DNP, tách riêng khỏi mạch lắp mặc định.
-- Những tên nguồn/bus giống nhau (5V, GND, SDA, SCL, 3V3) vẫn là cùng net.
+- Những tên giống nhau (5V, GND, DAC_IR…) là cùng net; GNDI2C_x khác GND.
   Dùng nhãn cho nguồn chung giúp tránh kéo dây dài cắt ngang toàn tờ giấy.
 
 ## Cách đọc đường PCB mới
@@ -116,3 +118,21 @@ chính xác chân nào chung net; bảng này được xuất từ PCB đã đi 
 V1.1 đi dây bằng các tuyến tường minh trong `route_board.py`, không dùng
 autorouter. Hình thức gọn và DRC sạch chưa chứng minh nhiễu, dao động hay
 dòng thực; các phép đo đó vẫn cần thực hiện trên board lắp thật.
+
+## R11–R14 và JP1–JP4 (v2.0)
+
+| Linh kiện | Giá trị | Vai trò |
+|---|---|---|
+| R11/R12 (IR), R13/R14 (RED) | 100 Ω 1% 0805 | Nối tiếp SCL/SDA giữa header và module khi hàn JP pad 2–3 |
+| JP1–JP4 | Jumper hàn 3 pad, mặc định hở | Pad 2–3: qua 100 Ω; pad 2–1: bỏ qua; để hở: module không nhận I²C |
+
+100 Ω nối tiếp hạn chế dòng đỉnh khi cắm/rút hoặc khi hai phía cùng lái
+đường, và làm chậm nhẹ sườn xung. Đây là biện pháp giảm rủi ro thông dụng,
+không phải bảo vệ quá áp và không chứng minh được sẽ ngăn hỏng HAT. Giá trị
+nhỏ để mức thấp chỉ tăng I_pull-up × 100 Ω; vẫn phải đo mức thấp và sườn xung
+với pull-up thật. Jumper cho phép quay về nối thẳng (BYP) nếu biên không đủ.
+Jumper không có lỗ paste và không mua linh kiện. Footprint là bản pad bo tròn
+1,0 × 1,5 mm của KiCad (`SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm`) được
+dời pad ngoài ra bước 1,55 mm: khe đồng 0,55 mm (0,50 mm tại góc bo), rộng hơn
+khe 0,25 mm của bản gốc nên khó chạm cầu nhầm, vẫn nối được bằng một cầu thiếc.
+

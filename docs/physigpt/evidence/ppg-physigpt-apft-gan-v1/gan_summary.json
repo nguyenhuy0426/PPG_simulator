@@ -1,0 +1,15 @@
+{
+  "steps": 6000,
+  "planned": 6000,
+  "hours": 6.947409413655599,
+  "step_seconds": 2.410702125231425,
+  "best": {
+    "step": 1500,
+    "mean_similarity": 0.9422433035714286
+  },
+  "gen_steps": 16,
+  "generator_updates": 5700,
+  "rt_ema": 0.9079248511770153,
+  "max_memory_gb": 7.918036937713623,
+  "note": "selection on training records only; realism is judged by the strict judge and the feature tier on held-out people"
+}

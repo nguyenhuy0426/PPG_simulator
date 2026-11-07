@@ -1,0 +1,42 @@
+PPG CYBERDOCK V3 - BO GUI IN 6 STL
+
+Chi gui 6 file BAN_01.stl den BAN_06.stl trong thu muc nay.
+Tong 37 chi tiet roi; moi STL chua nhieu chi tiet da bo tri cung ban.
+Don vi mm. Khong scale. Ban in 180 x 180 x 180 mm.
+BAN_01: 3 chi tiet
+BAN_02: 3 chi tiet
+BAN_03: 8 chi tiet
+BAN_04: 13 chi tiet
+BAN_05: 9 chi tiet
+BAN_06: 1 chi tiet
+Danh tinh tung chi tiet: DANH_SACH_CHI_TIET.json.
+
+Da sua: man hinh khung nhom 178 x 105 x 10 mm; buon toi chong tren
+hop Pi hien tai, 4 lo M4 buoc 108 x 91 mm. Lo day Pi buoc 92 x 34 mm.
+Hai module duoc giu cung khay, rut ra sau khi thao cua sau va oc giu khay.
+Than vo 220 (ngang) x 170 (cao) x 150 (sau) mm. Duong day van can
+kiem tra thuc te, khong suy ra du do dai chi tu viec xep chong.
+
+Vat lieu PETG. Cac moi ghep ket cau dung M4, lo thong 4.5 mm.
+Khong in man hinh: man hinh chi la vat tham chieu, khong nam trong 37 chi tiet.
+Cua va nap/viem man hinh co chi tiet dat dung de gom 6 ban. CAN SLICE
+KIEM TRA SUPPORT VA BRIM: co phan nho/thon cao, khong gui thang may
+in nhu G-code. Can support cho ledge, tai, lo ngang va phan dua ra.
+De nghi support de thao, tranh mat lap ghep va cac lo quang.
+Khoang cach vien mo hinh toi mep ban da chua khoang 4 mm; can kiem
+tra footprint support/brim khong vuot 180 mm. Neu profile brim can lon
+hon thi ben in phai sap xep lai trong slicer.
+
+Gan Pi len khay truoc, dat buon toi len 4 tai tren hop Pi, dung M4 va
+long den. M4 co nhieu chieu dai: chon theo be day kep, nut va long den
+thuc te; khong de dau ren cham PCB/man hinh. Kep man hinh danh cho
+khung nhom day 10 mm. Khong siet ep len mat kinh.
+Truc ben can oc M4 dau luc giac ngoai AF7 giu trong hoc, dai oc AF7
+trong num; doi chieu chieu dai khi lap gear/spacer. Them vong ma sat
+mem va dem cao su chan. Khong coi vong rang la khop khoa rang.
+
+Da kiem tra hinh hoc: khong giao thoa lap rap tren luoi, lo M4 module,
+thu rut khay theo cac moc, 37 khoi kin tach roi trong 6 STL va khong
+vuot 180 mm. Bao cao: ../out/verification.json.
+Chua in/slice thu, thu tai 1 kg, do creep PETG, nhiet, kin sang,
+hieu chuan quang hay do du PCB/cong/day thuc te.

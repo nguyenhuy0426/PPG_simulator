@@ -1,0 +1,25 @@
+{
+  "id": "halovie2412/ppg-physigpt-copy-check-v1",
+  "title": "ppg-physigpt-copy-check-v1",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "competition_sources": [],
+  "model_sources": [],
+  "dataset_sources": [
+    "halovie2412/ppg-physigpt-shard0-data-v1",
+    "halovie2412/ppg-physigpt-apft-gan-generated-v1"
+  ],
+  "kernel_sources": [
+    "halovie2412/ppg-physigpt-mimic3-shard1-v1",
+    "halovie2412/ppg-physigpt-mimic3-shard2-v1",
+    "halovie2412/ppg-physigpt-mimic3-shard3-v1",
+    "halovie2412/ppg-physigpt-mimic3-shard4-v1",
+    "halovie2412/ppg-physigpt-solo0-v1",
+    "halovie2412/ppg-physigpt-judge-decay0-large-v1-fid"
+  ]
+}

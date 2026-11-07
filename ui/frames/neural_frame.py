@@ -12,6 +12,7 @@ from tkinter import filedialog
 import customtkinter as ctk
 
 from core.neural_preview import export_preview, gaussian_preview, reference_preview, sequence_reference_preview, Preview
+from core.psf_preview import DEFAULT_PSF_BUNDLE
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from hw.opt101_rx import OPT101Receiver
@@ -24,34 +25,36 @@ from ui.trace_view import Lane, LaneView
 
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
-               hr='Nhịp tim Gaussian / bpm', dc='DC / mV', ac='AC IR / mV',
-               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò',
+               hr='Nhịp tim yêu cầu / bpm', dc='DC / mV', ac='AC IR / mV',
+               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
                real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
-               info='GAN sinh cả đoạn 30 s, không điều khiển HR/notch. A4 tắt; chưa đo SpO₂.',
+               info='PSF nhận HR yêu cầu; LSM không điều khiển HR. GAN không có điều khiển notch. A4 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
                busy='Đang sinh chuỗi trên CPU…',
                detail='Seed {seed} · 40 Hz · v2 thăm dò · Real = đoạn train 30 s; không gán nhãn bệnh lý.',
+               psf_detail='PSF · seed {seed} · HR yêu cầu {hr:.0f} bpm · 40 Hz · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
-               hr='Gaussian heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
-               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory',
+               hr='Requested heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
+               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
                real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
-               info='GAN generates a whole 30 s strip; no HR/notch control. A4 off; no measured SpO₂.',
+               info='PSF accepts requested HR; LSM has no HR control. GAN has no notch control. A4 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
                busy='Generating sequence on CPU…',
                detail='Seed {seed} · 40 Hz · exploratory v2 · Real = 30 s train strip; no diagnosis labels.',
+               psf_detail='PSF · seed {seed} · requested HR {hr:.0f} bpm · 40 Hz · research simulation; IR/RED not calibrated.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.'),
 }
-GAN_MODES = ('LSM-GAN',)
-MODE_KEYS = {'LSM-GAN': 'lsm'}
+GAN_MODES = ('LSM-GAN', 'PSF-GAN')
+MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf'}
 
 
 class NeuralFrame(ctk.CTkFrame):
@@ -152,7 +155,7 @@ class NeuralFrame(ctk.CTkFrame):
         self.generate_btn.configure(text=t['generate'])
         self.export_btn.configure(text=t['export'])
         self.info.configure(text=self._info_text())
-        self.mode_menu.configure(values=[t['fitted'],t['lsm']])
+        self.mode_menu.configure(values=[t['fitted'],t['lsm'],t['psf']])
         self.mode_menu.set(self._mode_label())
         self._sync_profile_menu()
         self.left_label.configure(text=t['tx'])
@@ -172,12 +175,14 @@ class NeuralFrame(ctk.CTkFrame):
         t=COPY[self.language]
         self.profile_menu.configure(values=[t['with_notch'],t['no_notch']])
         self.profile_menu.set(t['with_notch' if self.profile=='With notch' else 'no_notch'])
-        self.profile_menu.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
+        self.profile_menu.configure(state='disabled' if self.mode in GAN_MODES else 'normal')
 
     def _load_reference(self):
         try:
             if self.mode=='LSM-GAN':
                 self.previews['Real sequence']=sequence_reference_preview()
+            elif self.mode=='PSF-GAN':
+                self.previews['Real sequence']=sequence_reference_preview(DEFAULT_PSF_BUNDLE)
         except (OSError,ValueError,KeyError) as exc:
             self.status.configure(text=str(exc),text_color=T.ERROR)
 
@@ -190,6 +195,9 @@ class NeuralFrame(ctk.CTkFrame):
         self._load_reference()
         self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
         self._sync_profile_menu()
+        if (self.mode=='PSF-GAN' and self.mode in self.previews
+                and self.previews[self.mode].hr_target!=float(self.hr_slider.get())):
+            self.previews.pop(self.mode)
         self.render()
         if self.mode not in self.previews:
             self.generate()
@@ -202,6 +210,8 @@ class NeuralFrame(ctk.CTkFrame):
 
     def adjust(self,key):
         self._stop_owned_output()
+        if key=='hr' and self.mode=='PSF-GAN':
+            self.previews.pop('PSF-GAN',None)
         if self._pending is not None:
             self.after_cancel(self._pending)
         # Only debounce cheap Gaussian rendering. GAN inference never runs on slider events.
@@ -221,12 +231,16 @@ class NeuralFrame(ctk.CTkFrame):
         if self._busy:
             return
         self._busy=True
+        if self.mode=='PSF-GAN':
+            self.hr_slider.configure(state='disabled')
         self.status.configure(text=COPY[self.language]['busy'],text_color=T.MUTED)
         self.generate_btn.configure(state='disabled')
         self.play_btn.configure(state='disabled')
         self._stdout, self._stderr = tempfile.TemporaryFile(), tempfile.TemporaryFile()
         self._started = time.monotonic()
         command=[sys.executable,'-m','core.sequence_worker',str(secrets.randbits(32))]
+        if self.mode=='PSF-GAN':
+            command+=[self.mode,str(self.hr_slider.get())]
         try:
             self._process = subprocess.Popen(
                 command,
@@ -248,6 +262,7 @@ class NeuralFrame(ctk.CTkFrame):
                     stream.close()
             self._process=None
             self._busy=False
+            self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
             self.generate_btn.configure(state='normal')
             self.render()
         if error:
@@ -270,12 +285,14 @@ class NeuralFrame(ctk.CTkFrame):
 
     def _status_detail(self,preview):
         t=COPY[self.language]
+        if self.mode=='PSF-GAN':
+            return t['psf_detail'].format(seed=preview.seed,hr=preview.hr_target)
         if self.mode=='LSM-GAN':
             return t['detail'].format(seed=preview.seed)
         return t['reference']
 
     def _reference_rows(self):
-        ref=self.previews.get('Real sequence' if self.mode=='LSM-GAN' else 'Real reference')
+        ref=self.previews.get('Real sequence' if self.mode in GAN_MODES else 'Real reference')
         return WaveformClip.from_preview(ref,float(self.dc_slider.get()),float(self.ac_slider.get())).samples if ref else ()
 
     def _draw_tx(self,generated,reference):

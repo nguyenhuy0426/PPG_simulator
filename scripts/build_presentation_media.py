@@ -6,7 +6,8 @@
 - PhysioFlow: the sample at every Heun step from noise to waveform (shipped round-10 checkpoint, 16 steps).
 - PhysioMix critic: its score for real validation windows and for generated windows (critic weights at the end of
   the round-9 training run; the checkpoint itself keeps only the generator).
-- Training snapshots (step D, Experiment Snapshots): fixed-noise samples every 500 steps, when a run folder is given.
+- Training clips (step D, Experiment Snapshots): fixed-noise samples every 500 steps up to the step chosen by the run's
+  own checkpoint_score, next to a real validation strip of the same domain (--snapshots, --windows).
 - Judges (step C): copied from the judges.py result, when given.
 
 Needs the local ml/runs folders (not in git). Report only: nothing here trains or selects a model.
@@ -172,23 +173,38 @@ def snapshots(run_dirs):
     return out
 
 
-def write_video(path, frames, titles, fps=4):
-    """frames: list of list of 1-D arrays (one panel per array). Encoded with ffmpeg (libx264, yuv420p)."""
+def write_video(path, frames, titles, fps=4, reference=None, headers=None, labels=None):
+    """frames: list of list of 1-D arrays (one panel per array). Encoded with ffmpeg (libx264, yuv420p).
+
+    reference: optional list of fixed 1-D arrays, one per panel, drawn in a second column next to the moving one.
+    headers: titles of the two columns; labels: y label per row."""
     import matplotlib
     matplotlib.use("Agg")
     from matplotlib import animation, pyplot as plt
-    panels = len(frames[0])
-    fig, axes = plt.subplots(panels, 1, figsize=(8, 1.6*panels+.6), dpi=110, squeeze=False)
+    panels, columns = len(frames[0]), 2 if reference is not None else 1
+    fig, axes = plt.subplots(panels, columns, figsize=(8 if columns == 1 else 9, round((1.6*panels+.9)*55)/55), dpi=110,
+                             squeeze=False)  # whole-pixel even height: libx264 yuv420p needs even sizes
     lines = []
-    for ax, y in zip(axes[:, 0], frames[0]):
+    for r, (ax, y) in enumerate(zip(axes[:, 0], frames[0])):
         t = np.arange(len(y))/FS
         (line,) = ax.plot(t, y, lw=1.4, color="#6b4fbb")
         ax.set_xlim(0, t[-1])
         ax.set_yticks([])
         ax.spines[["top", "right", "left"]].set_visible(False)
+        if labels:
+            ax.set_ylabel(labels[r], fontsize=9)
         lines.append(line)
-    axes[-1, 0].set_xlabel("giây")
-    title = fig.suptitle(titles[0], fontsize=11)
+    if reference is not None:
+        for ax, y in zip(axes[:, 1], reference):
+            ax.plot(np.arange(len(y))/FS, y, lw=1.4, color="#1d7f5f")
+            ax.set_xlim(0, (len(y)-1)/FS)
+            ax.set_yticks([])
+            ax.spines[["top", "right", "left"]].set_visible(False)
+    for c in range(columns):
+        axes[-1, c].set_xlabel("giây")
+        if headers:
+            axes[0, c].set_title(headers[c], fontsize=9)
+    title = fig.suptitle(titles[0], fontsize=10, linespacing=1.4)
 
     def update(i):
         for ax, line, y in zip(axes[:, 0], lines, frames[i]):
@@ -201,6 +217,64 @@ def write_video(path, frames, titles, fps=4):
     writer = animation.FFMpegWriter(fps=fps, codec="libx264", extra_args=["-pix_fmt", "yuv420p", "-crf", "28"])
     animation.FuncAnimation(fig, update, frames=len(frames), blit=False).save(str(path), writer=writer)
     plt.close(fig)
+
+
+def selected_step(folder):
+    """Step the run itself keeps: lowest checkpoint_score in history.json, which must match training_result.json."""
+    folder = Path(folder)
+    history = json.loads(next(folder.rglob("history.json")).read_text())
+    best = min(history, key=lambda r: r["checkpoint_score"])["step"]
+    recorded = json.loads(next(folder.rglob("training_result.json")).read_text())["best_step"]
+    if best != recorded:
+        raise ValueError(f"{folder}: history.json picks step {best}, training_result.json says {recorded}")
+    return best
+
+
+def real_strips(windows_path, domains, seconds=SHOW_S):
+    """One real validation window per domain: the first one by index (fixed rule, not picked for looks).
+    Rows with split == external or test are never used. Each is min-max scaled like the generators' output."""
+    with np.load(windows_path) as w:
+        strips, notes = [], []
+        for domain in domains:
+            index = np.flatnonzero((w["split"] == "validation") & (w["domain"] == domain))
+            if not len(index):
+                raise ValueError(f"no validation windows for domain {domain}")
+            i = int(index[0])
+            if not np.isfinite(w["signal"][i]).all():
+                raise ValueError(f"validation window {i} of {domain} has non-finite samples")
+            strips.append(unit(w["signal"][i])[:int(seconds*FS)])
+            notes.append(f"{domain}: {w['subject'][i]}, cửa sổ {i}")
+    return strips, notes
+
+
+def train_clip(path, name, run_dir, windows_path, source_note, tail_steps=(5000, 10000, 15000, 20000), hold=12):
+    """Training clip up to the selected step (+ a short, labelled tail), generated panels next to real validation strips.
+    Rows whose domain has no real window in windows.npz (wrist_daily, GalaxyPPG) are left out."""
+    with np.load(next(Path(run_dir).rglob("snapshots.npz"))) as s:
+        steps, domains, signals, bpm = s["steps"].tolist(), s["domains"].tolist(), s["signals"], float(s["bpm"])
+    keep = [i for i, d in enumerate(domains) if d in ("gxu_finger", "wrist")]
+    strips, notes = real_strips(windows_path, [domains[i] for i in keep])
+    best = selected_step(run_dir)
+    if best not in steps:
+        raise ValueError(f"{run_dir}: no snapshot at the selected step {best}")
+    shown = [t for t in steps if t <= best] + [t for t in tail_steps if t > best and t in steps]
+    frames, titles = [], []
+    head = f"{name}: bản thử nghiệm bước D ({source_note}), KHÔNG phải model trong app"
+    for t in shown:
+        frame = [unit(signals[steps.index(t), i].astype(np.float64))[:SHOW_S*FS] for i in keep]
+        if t < best:
+            note = f"bước train {t}"
+        elif t == best:
+            note = f"bước train {t} = BƯỚC ĐƯỢC CHỌN (checkpoint_score thấp nhất)"
+        else:
+            note = f"bước train {t}: sau bước được chọn, KHÔNG dùng"
+        repeat = hold if t == best else 1
+        frames += [frame]*repeat
+        titles += [f"{head}\n{note} · lệnh {bpm:g} nhịp/phút"]*repeat
+    write_video(path, frames, titles, fps=6, reference=strips,
+                headers=["mô hình sinh (nhiễu cố định)", "sóng thật: người validation, một đoạn minh hoạ"],
+                labels=[domains[i] for i in keep])
+    return dict(best_step=best, last_step=shown[-1], domains=[domains[i] for i in keep], real=notes)
 
 
 def stages_figure(path, mix):
@@ -231,12 +305,21 @@ def main(argv=None):
     parser.add_argument("--critic-data", default="ml/runs/halovie-datasets-v2")
     parser.add_argument("--output", default="docs/model-report/media")
     parser.add_argument("--snapshots", action="append", default=[], help="name=run folder holding snapshots.npz")
+    parser.add_argument("--windows", default="ml/runs/physio3-data-v1/physio3_data/windows.npz",
+                        help="real windows for the training clips (validation split only)")
+    parser.add_argument("--clips-only", action="store_true", help="only write train-<name>.mp4 from --snapshots")
+    parser.add_argument("--source-note", default="galaxy-d-pilot, seed 42", help="run label written on every clip frame")
     parser.add_argument("--judges", help="judges.py result JSON (step C)")
     parser.add_argument("--daily", help="Step D result folder(s), comma separated")
     a = parser.parse_args(argv)
     torch.set_num_threads(4)
     out = Path(a.output)
     out.mkdir(parents=True, exist_ok=True)
+    runs = dict(x.split("=", 1) for x in a.snapshots)
+    if a.clips_only:
+        for name, folder in runs.items():
+            print(name, train_clip(out/f"train-{name}.mp4", name, ROOT/folder, ROOT/a.windows, a.source_note))
+        return
     pack, _ = load_input(ROOT/a.data, "ppg_physiomix_v3")
     development = {k: v[np.isin(pack["split"], ["train", "validation"])] for k, v in pack.items()}
     conditions = conditions_for(development, "v2")
@@ -258,7 +341,7 @@ def main(argv=None):
                                 frames=[dict(t=round(f["t"], 4), x=short(f["x"]), clean=short(unit(f["clean"])))
                                         for f in trajectory]),
                 critic=critic_scores(ROOT/CRITIC_RUN, critic_pack))
-    data["snapshots"] = snapshots(dict(s.split("=", 1) for s in a.snapshots))
+    data["snapshots"] = snapshots(runs)
     if a.judges:
         data["judges"] = json.loads(Path(a.judges).read_text())
     (out/"presentation.js").write_text("// Generated by scripts/build_presentation_media.py; do not edit by hand.\n"
@@ -268,9 +351,8 @@ def main(argv=None):
                 [[f["x"][:SHOW_S*FS], unit(f["clean"])[:SHOW_S*FS]] for f in trajectory],
                 [f"PhysioFlow: bước {i}/{len(trajectory)-1}, t = {f['t']:.2f} (trên: mẫu hiện tại, dưới: dự đoán sóng sạch)"
                  for i, f in enumerate(trajectory)], fps=3)
-    for name, snap in data["snapshots"].items():
-        write_video(out/f"train-{name}.mp4", [[np.asarray(w) for w in frame] for frame in snap["signals"]],
-                    [f"{name}: bước train {s} (" + ", ".join(snap["domains"]) + ")" for s in snap["steps"]], fps=6)
+    for name, folder in runs.items():
+        train_clip(out/f"train-{name}.mp4", name, ROOT/folder, ROOT/a.windows, a.source_note)
     print("wrote", sorted(p.name for p in out.iterdir()))
 
 

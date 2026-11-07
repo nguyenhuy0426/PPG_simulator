@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 HERE = Path(__file__).resolve().parent
 fig, ax = plt.subplots(figsize=(8.27, 11.69))
-for top, height, title, color in [(0,20,"OPT101 RX v1.5", "#e0f2fe"),(20,20,"BPW34 RX v1.4", "#dcfce7"),(40,40,"LED / IR driver v1.9", "#fef3c7")]:
+for top, height, title, color in [(0,20,"OPT101 RX v1.5", "#e0f2fe"),(20,20,"BPW34 RX v1.4", "#dcfce7"),(40,40,"LED / IR driver v2.0", "#fef3c7")]:
     ax.add_patch(Rectangle((0,top),70,height,facecolor=color,edgecolor="#334155",lw=1))
     ax.text(35,top+height/2,title+f"\n70 x {height} mm",ha="center",va="center",fontsize=13)
 for y in (20,40):
