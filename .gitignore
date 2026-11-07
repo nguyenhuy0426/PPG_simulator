@@ -47,3 +47,7 @@ dist/
 credentials.json
 secrets.json
 .claude/
+
+# Local model weights above the 100 MB GitHub limit and bulky run outputs; keep on disk, never commit.
+assets/apft/generator.pt
+runs/

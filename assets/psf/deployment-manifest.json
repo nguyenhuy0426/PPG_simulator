@@ -1,0 +1,15 @@
+{
+  "release": "psf-fp32-ft-v1",
+  "experimental": true,
+  "files": {
+    "core/psf_preview.py": "77c5fdc1bbba8f5e69c010f86ecb13bde16fa4022f0c2208d416e2e79287f49d",
+    "core/sequence_worker.py": "8a5a9a638611f8f1b5d4e7eaa1031a08aeab4822dd2f1c6ead1e72dc5e7aca16",
+    "ui/frames/neural_frame.py": "bbb3bf99e68f36e7a2af3973847908b37dd24cf00f31dab5045ea1faed68c107",
+    "assets/psf/README.md": "57e7c7d21bab778c0faebc28a12380a019dc9abcac418e16be923f98a3446aa2",
+    "assets/psf/evaluation.json": "01ca9fc162e69855e271305956431b9d18b5c8b3f45d0fbd5c4e6479431747fe",
+    "assets/psf/generator.ts": "0011744979d733398817dfa4c570386d793b8a17b4420a0d28949c0460d766cf",
+    "assets/psf/manifest.json": "b25ae9a42d7cd2d2179ceba17d0644eb6d1302706aefadd7b4a40c6033fd1535",
+    "assets/psf/real_train_strip.json": "fb9aa59d90d30794c3377ab7f92c8ad6ca0b1bbc2f8c9cb83c7409b81ae2eeb1",
+    "assets/psf/runtime-checks.json": "106711d40ff7b2f24b9f1b7f25b86b10a9edcbffe8ddc51f09c282ad9b84b8a2"
+  }
+}

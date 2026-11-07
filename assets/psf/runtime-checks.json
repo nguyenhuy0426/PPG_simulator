@@ -1,0 +1,10 @@
+{
+  "runtime": "local x86_64 CPU, torch 2.10.0+cpu",
+  "load_seconds": 1.123169302009046,
+  "cases": 8,
+  "median_generation_seconds": 0.021850931021617725,
+  "max_generation_seconds": 0.08055747603066266,
+  "repeatable": true,
+  "worker_json_valid": true,
+  "pi_verified": false
+}
