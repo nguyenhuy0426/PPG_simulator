@@ -1,0 +1,61 @@
+{
+  "winner": "F10_flow_unif_stop01_s16_w1",
+  "base": "F10_flow_unif_stop01",
+  "candidates": [
+    {
+      "arm": "F9_flow_unif_stop03",
+      "sampler": "F9_flow_unif_stop03_s16_w1",
+      "S_arm": 0.45736379229026713,
+      "S_real": 0.29775886924618017,
+      "C": 0.14674119116501053,
+      "auc": 0.6724686549231634,
+      "eligible": true,
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "d_clipped_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "latency": {
+        "median_ms": 1311.4320959998622,
+        "p95_ms": 1347.9956650998247,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU; Pi not measured"
+      },
+      "wrist_Q": 0.5014785958238075
+    },
+    {
+      "arm": "F10_flow_unif_stop01",
+      "sampler": "F10_flow_unif_stop01_s16_w1",
+      "S_arm": 0.4492805128241998,
+      "S_real": 0.3142486408875022,
+      "C": 0.06610854747008532,
+      "auc": 0.7039551964033098,
+      "eligible": true,
+      "gates": {
+        "finite": true,
+        "flat": false,
+        "rho_ok": true,
+        "d_clipped_ok": true,
+        "trace_ok": true,
+        "latency_ok": true
+      },
+      "latency": {
+        "median_ms": 1356.7303314998753,
+        "p95_ms": 1443.2360220001556,
+        "cpu_threads": 1,
+        "hardware_scope": "Kaggle host CPU; Pi not measured"
+      },
+      "wrist_Q": 0.5809984981340643
+    }
+  ],
+  "reason": "argmin S_arm over eligible (arm, sampler) pairs, seed 42 within {'wrist_Q': 0.601, 'S_arm': 0.487}",
+  "criterion_sha256": "813c4dd12e7e878dcc29b4f153524d41ad0bcfbef38ad62708aa4bf6ab7086d0",
+  "go_limits": {
+    "wrist_Q": 0.601,
+    "S_arm": 0.487
+  },
+  "go_final": true
+}

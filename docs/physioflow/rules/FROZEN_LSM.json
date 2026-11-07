@@ -1,0 +1,32 @@
+{
+  "rule": "Step B-LSM (seed 42), fixed before training. Report only: LSM-GAN has no condition input, so no LSM arm can replace an app generator. On the 12 GalaxyPPG test people (3 halvings), an arm counts as 'more data helped' if its mean 'indistinguishable' exceeds the app LSM-GAN's by more than 2x the larger halving SD; 'GalaxyPPG helped' if lsm_v3g_all or lsm_v3g_wrist exceeds lsm_v3_all by the same margin.",
+  "rule_sha256": "d3a798a065997452be9ba394f15a94c4817c925423763df51d17c9ef83e63165",
+  "variant": "lsm_repo_corrected",
+  "arms": [
+    "lsm_v3_all",
+    "lsm_v3g_all",
+    "lsm_v3g_wrist"
+  ],
+  "steps": 6000,
+  "batch": 64,
+  "seed": 42,
+  "data_sha256": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+  "galaxy_test_people": [
+    "galaxyppg:P01",
+    "galaxyppg:P03",
+    "galaxyppg:P06",
+    "galaxyppg:P07",
+    "galaxyppg:P09",
+    "galaxyppg:P10",
+    "galaxyppg:P13",
+    "galaxyppg:P16",
+    "galaxyppg:P18",
+    "galaxyppg:P19",
+    "galaxyppg:P23",
+    "galaxyppg:P24"
+  ],
+  "python": "3.13.15",
+  "torch": "2.11.0+cu128",
+  "gpu": "Tesla T4",
+  "cpu_count": 4
+}

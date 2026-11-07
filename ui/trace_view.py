@@ -1,16 +1,28 @@
 """Timestamp-based signal lanes; no generated placeholder traces."""
 import math
+import time
 import tkinter as tk
 from ui import theme as T
 from ui.theme import AXIS, DARK, GRID, IR, PLOT_TEXT, RED  # noqa: F401  (re-exported)
 
 
+# A Pi 4 pays ~0.3 ms per canvas item (Tk + Xwayland), so a lane is drawn with at
+# most one vertex per pixel column; the y-scale still uses every sample.
+MAX_VERTICES_PER_PIXEL = 1.0
+# A render slower than this marks a slow host: the next one then waits twice
+# as long as the last took, so the Tk thread (which also owns the GIL the
+# TDM slot master needs) never spends its whole time redrawing.
+SLOW_RENDER_S = 0.015
+RENDER_BACKOFF = 2.0
+
+
 class Lane:
     """One horizontal strip of a LaneView: its own samples, scale and status."""
-    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s")
+    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s", "badge")
 
-    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None):
+    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None, badge=""):
         self.title, self.color, self.detail = title, color, detail
+        self.badge = badge            # right-aligned header reading, e.g. the received pulse rate
         self.points = points          # [(time_s, value_mV), ...] in time order
         self.message, self.submessage = message, submessage
         self.max_gap_s = max_gap_s    # break the line across gaps longer than this
@@ -31,11 +43,29 @@ class LaneView(tk.Canvas):
         self.window_s = 8.0
         self.end_s = None            # None: follow the newest sample; 0 with relative times
         self.placeholder = ("", "")  # shown once, centred, when no lane has samples
+        self._drawn = None           # what the canvas shows; an identical update is not redrawn
+        self._not_before = 0.0
         self.bind("<Configure>", lambda event: self.render())
 
     def update_lanes(self, lanes, end_s=None):
+        """Redraw only when something visible changed and, on a slow host,
+        not before the backoff from the previous render has passed."""
+        now = time.perf_counter()
+        if now < self._not_before:
+            return
         self.lanes, self.end_s = list(lanes), end_s
+        # Stopped output, an idle receiver or a dry-run status repeat the same picture every tick;
+        # redrawing it costs a full canvas rebuild. Size and theme changes call render() directly.
+        content = (end_s, self.placeholder, [(lane.title, lane.color, lane.detail, lane.badge, lane.message,
+                                              lane.submessage, lane.max_gap_s, list(lane.points))
+                                             for lane in self.lanes])
+        if content == self._drawn:
+            return
+        self._drawn = content
         self.render()
+        cost = time.perf_counter() - now
+        if cost > SLOW_RENDER_S:
+            self._not_before = now + RENDER_BACKOFF * cost
 
     @staticmethod
     def _format(value, lo, hi):
@@ -88,6 +118,8 @@ class LaneView(tk.Canvas):
             if lane.detail:
                 x1 = self.bbox(title_id)[2] + round(8 * scale)
                 self.create_text(x1, header_y, text=lane.detail, fill=AXIS, font=small, anchor="w")
+            if lane.badge:
+                self.create_text(right - 4, header_y, text=lane.badge, fill=lane.color, font=bold, anchor="e")
             plot_top, plot_bottom = y0 + round(26 * scale), y0 + lane_h - round(8 * scale)
             points = [p for p in lane.points if start <= p[0] <= end]
             if not points:
@@ -114,6 +146,13 @@ class LaneView(tk.Canvas):
                                  fill=AXIS, font=small, anchor="e")
             coords, previous = [], None
             width = max(1, round(1.6 * scale))
+            cap = max(2, int((right - left) * MAX_VERTICES_PER_PIXEL))
+            if len(points) > cap:
+                stride = -(-len(points) // cap)
+                last = points[-1]
+                points = points[::stride]
+                if points[-1] is not last:
+                    points.append(last)
             for t, v in points:
                 if lane.max_gap_s is not None and previous is not None and t - previous > lane.max_gap_s:
                     if len(coords) >= 4:

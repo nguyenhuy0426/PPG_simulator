@@ -221,6 +221,80 @@ class LSMSequenceGenerator:
                             hr_control=False, diagnosis_labels=False))
 
 
+def estimate_rate_bpm(values, fs):
+    """Pulse rate of a normalized strip for display, not clinical HR: autocorrelation first,
+    beat intervals when an irregular rhythm leaves no usable autocorrelation peak or locks it
+    onto a multiple of the beat period (AF strips did so in ~40% of synthetic cases)."""
+    rate = _acf_rate_bpm(values, fs)
+    peaks = _beat_peaks(values, fs)
+    beats = _span_rate(peaks, fs)
+    if rate is None or beats is None:
+        return beats if rate is None else rate
+    locked = any(abs(k*rate-beats) <= .12*beats for k in (2, 3))
+    # A reflected (dicrotic) wave also doubles the peak count, but its intervals alternate short/long.
+    return beats if locked and _alternation(peaks) > -.3 else rate
+
+
+def _beat_peaks(values, fs, rel=.3):
+    """Prominent peak indices (numpy only); None for flat, unsmooth or beat-poor strips."""
+    import numpy as np
+    x = np.asarray(values, dtype=np.float64)
+    if len(x) < 3 or not np.isfinite(x).all():
+        return None
+    span = np.percentile(x, 95)-np.percentile(x, 5)
+    # A band-limited pulse strip changes slowly between samples; white noise does not.
+    if span <= 0 or np.std(np.diff(x)) > .8*np.std(x):
+        return None
+    w, base = max(1, round(.3*fs)), max(1, round(.6*fs))
+    peaks = [i for i in range(1, len(x)-1) if x[i] == x[max(0, i-w):i+w+1].max() and x[i] > x[i-1]
+             and x[i]-max(x[max(0, i-base):i].min(), x[i+1:i+base+1].min()) >= rel*span]
+    return peaks if len(peaks) >= 5 else None
+
+
+def _span_rate(peaks, fs):
+    # Used for irregular rhythms, where a long interval is real rather than a missed beat.
+    return None if peaks is None else float(60*(len(peaks)-1)/((peaks[-1]-peaks[0])/fs))
+
+
+def _alternation(peaks):
+    """Lag-1 correlation of successive peak intervals: about -1 when intervals alternate short/long."""
+    import numpy as np
+    ibi = np.diff(peaks).astype(np.float64)
+    if len(ibi) < 4 or ibi[:-1].std() == 0 or ibi[1:].std() == 0:
+        return 0.
+    return float(np.corrcoef(ibi[:-1], ibi[1:])[0, 1])
+
+
+def _beat_rate_bpm(values, fs, rel=.3):
+    """Span rate over prominent peaks; None for flat, unsmooth or beat-poor strips."""
+    return _span_rate(_beat_peaks(values, fs, rel), fs)
+
+
+def _acf_rate_bpm(values, fs):
+    import numpy as np
+    x = np.asarray(values, dtype=np.float64)
+    x = x-x.mean()
+    acf = np.fft.irfft(np.abs(np.fft.rfft(x, 2*len(x)))**2, 2*len(x))[:len(x)]
+    if not np.isfinite(acf).all() or acf[0] <= 0:
+        return None
+    acf /= acf[0]
+    lo, hi = int(fs*60/200), min(int(fs*60/30), len(acf)-2)
+    peaks = [i for i in range(max(lo, 1), hi+1) if acf[i-1] <= acf[i] > acf[i+1] and acf[i] > .2]
+    if not peaks:
+        return None
+    lag = max(peaks, key=lambda i: acf[i])
+    # A non-integer period or reflected wave can make a period multiple win; prefer the
+    # shortest comparable sub-multiple.
+    for k in (4, 3, 2):
+        near = [i for i in peaks if abs(i-lag/k) <= max(1, .1*lag/k) and acf[i] >= .8*acf[lag]]
+        if near:
+            lag = max(near, key=lambda i: acf[i])
+            break
+    a, b, c = acf[lag-1], acf[lag], acf[lag+1]
+    shift = .5*(a-c)/(a-2*b+c) if a-2*b+c else 0.
+    return float(60*fs/(lag+shift))
+
+
 def sequence_reference_preview(bundle=DEFAULT_BUNDLE):
     """One real processed training strip; native timing, never pulse repetition."""
     path=Path(bundle)/'real_train_strip.json'

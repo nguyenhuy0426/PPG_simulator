@@ -23,8 +23,9 @@ def fx(size=1.0): return f'(effects (font (size {size} {size})))'
 # Pin numbers are PCB pad numbers, including module header rather than DAC IC.
 PINS={
  'Conn6':[(str(i+1),n,'passive',-12.7,12.7-i*5.08,0) for i,n in enumerate(['OUT','GND','SCL','SDA','3V3','GND'])],
- 'Conn4':[(str(i+1),n,'passive',-12.7,2.54-i*5.08,0) for i,n in enumerate(['SCL','SDA','3V3','GND'])],
  'Conn2':[('1','1','passive',-10.16,2.54,0),('2','2','passive',-10.16,-2.54,0)],
+ 'Conn4':[(str(i+1),n,'passive',-10.16,7.62-i*5.08,0) for i,n in enumerate(['SCL','SDA','3V3','GND'])],
+ 'SJ3':[('1','BYP','passive',-5.08,0,0),('2','COM','passive',0,-5.08,90),('3','100R','passive',5.08,0,180)],
  'LM358P':[('1','OUT_A','output',15.24,10.16,180),('2','IN_A-','input',-15.24,5.08,0),('3','IN_A+','input',-15.24,10.16,0),('4','V-','power_in',-15.24,-10.16,0),('5','IN_B+','input',-15.24,-2.54,0),('6','IN_B-','input',-15.24,-7.62,0),('7','OUT_B','output',15.24,-2.54,180),('8','V+','power_in',15.24,-10.16,180)],
  'NPN':[('1','E','passive',0,-7.62,90),('2','B','input',-7.62,0,0),('3','C','passive',0,7.62,270)],
  'R':[('1','~','passive',0,5.08,270),('2','~','passive',0,-5.08,90)],
@@ -35,8 +36,9 @@ PINS={
 }
 FPS={
  'Socket6':'Connector_PinSocket_2.54mm.pretty/PinSocket_1x06_P2.54mm_Vertical.kicad_mod',
- 'Header4P2':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
  'Header2':'Connector_PinHeader_2.54mm.pretty/PinHeader_1x02_P2.54mm_Vertical.kicad_mod',
+ 'Header4':'Connector_PinHeader_2.00mm.pretty/PinHeader_1x04_P2.00mm_Vertical.kicad_mod',
+ 'SJ3':'Jumper.pretty/SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm.kicad_mod',
  'DIP8':'Package_DIP.pretty/DIP-8_W7.62mm_Socket.kicad_mod',
  'NPN':'Package_TO_SOT_THT.pretty/TO-92_Inline_Wide.kicad_mod',
  'R':'Resistor_SMD.pretty/R_0805_2012Metric_Pad1.20x1.40mm_HandSolder.kicad_mod',
@@ -46,19 +48,29 @@ FPS={
  'Hole':'MountingHole.pretty/MountingHole_3.2mm_M3.kicad_mod',
 }
 PARTS=[]
-def part(ref,kind,value,nets,fp,xy,sch,angle=0,dnp=False):
-    PARTS.append(dict(ref=ref,kind=kind,value=value,nets=nets,fp=fp,xy=xy,sch=sch,angle=angle,dnp=dnp))
+# anchor=False: v2.0 parts placed directly on the compact board; they have no
+# legacy 7.62 mm THT routing anchor for route_board to fan out from.
+def part(ref,kind,value,nets,fp,xy,sch,angle=0,dnp=False,anchor=True):
+    PARTS.append(dict(ref=ref,kind=kind,value=value,nets=nets,fp=fp,xy=xy,sch=sch,angle=angle,dnp=dnp,anchor=anchor))
 
 for ch,s,x in [('IR','J1',7),('RED','J3',40)]:
-    gnd=f'GND_DAC_{ch}'
-    ns=[f'DAC_{ch}',gnd,f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',gnd]
+    # v2.0: each module has its own I2C header. Socket pin 6 is the module's
+    # I2C ground (same VSS as pin 2 inside the module), not the board GND net.
+    ns=[f'DAC_{ch}','GND',f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',f'GNDI2C_{ch}']
     part(s,'Conn6',f'MCP4725 {ch} '+('0x60' if ch=='IR' else '0x61'),ns,'Socket6',(x,10),(43.18 if ch=='IR' else 228.6,50.8))
-# Keep the two DAC cable harnesses separate on this carrier.  They join only
-# at the Raspberry Pi I2C bus, never in the LED-driver copper.
-part('J2','Conn4','PI I2C / IR',['SCL_IR','SDA_IR','3V3_IR','GND_DAC_IR'],'Header4P2',(29,15.08),(116.84,50.8))
-part('J8','Conn4','PI I2C / RED',['SCL_RED','SDA_RED','3V3_RED','GND_DAC_RED'],'Header4P2',(62,15.08),(320.04,50.8))
+part('J2','Conn2','IR DAC OUT / GND',['DAC_IR','GND'],'Header2',(29,10),(116.84,50.8))
+# Per-channel I2C input: header -> 100R or bypass (3-pad solder jumper) -> module.
+# Jumpers ship open; the module sees no SCL/SDA until one side is bridged.
+# Each R/JP pair sits between its 2.00 mm header and its module socket (under
+# the plugged module body). xy is the compact-board position plus the 5 mm
+# offset removed after routing.
+for ch,j,x,dx,refs in [('IR','J8',29,0,(11,12,1,2)),('RED','J9',62,33,(13,14,3,4))]:
+    part(j,'Conn4',f'I2C {ch}: SCL SDA 3V3 GND',[f'SCL_H_{ch}',f'SDA_H_{ch}',f'3V3_{ch}',f'GNDI2C_{ch}'],'Header4',(x,16.5),(0,0),anchor=False)
+    for sig,r,jp,cx in [('SCL',refs[0],refs[2],13+dx),('SDA',refs[1],refs[3],21+dx)]:
+        part(f'R{r}','R','100R 1%',[f'{sig}_H_{ch}',f'{sig}_R_{ch}'],'R',(cx,9.6),(0,0),anchor=False)
+        part(f'JP{jp}','SJ3',f'{sig} {ch} 1-2 BYP / 2-3 100R',[f'{sig}_H_{ch}',f'{sig}_{ch}',f'{sig}_R_{ch}'],'SJ3',(cx,12.6),(0,0),anchor=False)
 
-part('J4','Conn2','RED DAC OUT / DAC GND',['DAC_RED','GND_DAC_RED'],'Header2',(66,10),(330.2,40.64))
+part('J4','Conn2','RED DAC OUT / GND',['DAC_RED','GND'],'Header2',(62,10),(330.2,40.64))
 
 part('U1','LM358P','LM358P / DIP8 socket',['AMP_IR','SENSE_IR','CMD_IR','GND','CMD_RED','SENSE_RED','AMP_RED','5V'],'DIP8',(31.19,30.19),(193.04,139.7))
 for i,ch in enumerate(['IR','RED']):
@@ -80,13 +92,19 @@ for i,xy in enumerate([(4,4),(66,4),(4,51),(66,51)],1):
     part(f'H{i}','Hole','M3 / 3.2mm',[],'Hole',xy,(30.48+i*22.86,264.16))
 
 def symbol(kind):
-    ref={'R':'R','C':'C','CP':'C','NPN':'Q','LM358P':'U','Flag':'#FLG','Hole':'H'}.get(kind,'J')
-    out=[f'(symbol "TX:{kind}" (pin_names (offset 0.5)) (in_bom yes) (on_board yes)',f'(property "Reference" "{ref}" (at 0 18 0) {fx()})',f'(property "Value" "{kind}" (at 0 16 0) {fx()})',f'(symbol "{kind}_0_1"']
-    if kind in ('Conn6','Conn2','LM358P'):
-        w,h=(10.16,15.24) if kind!='Conn2' else (5.08,5.08)
+    ref={'R':'R','C':'C','CP':'C','NPN':'Q','LM358P':'U','Flag':'#FLG','Hole':'H','SJ3':'JP'}.get(kind,'J')
+    names='(pin_names (offset 0.5) (hide yes))' if kind=='SJ3' else '(pin_names (offset 0.5))'
+    out=[f'(symbol "TX:{kind}" {names} (in_bom yes) (on_board yes)',f'(property "Reference" "{ref}" (at 0 18 0) {fx()})',f'(property "Value" "{kind}" (at 0 16 0) {fx()})',f'(symbol "{kind}_0_1"']
+    if kind in ('Conn6','Conn2','Conn4','LM358P'):
+        w,h={'Conn2':(5.08,5.08),'Conn4':(5.08,10.16)}.get(kind,(10.16,15.24))
         out.append(f'(rectangle (start {-w} {h}) (end {w} {-h}) (stroke (width 0.254) (type default)) (fill (type background)))')
     elif kind=='R':
         out.append('(rectangle (start -1.27 3.81) (end 1.27 -3.81) (stroke (width 0.254) (type default)) (fill (type none)))')
+    elif kind=='SJ3':
+        # Three pads with two open gaps; COM is the middle pad.
+        for x0 in (-2.54,-.635,1.27):
+            out.append(f'(rectangle (start {x0} 1.27) (end {x0+1.27} -1.27) (stroke (width 0.254) (type default)) (fill (type none)))')
+        out.append('(polyline (pts (xy 0 -1.27) (xy 0 -2.54)) (stroke (width 0.254) (type default)) (fill (type none)))')
     elif kind in ('C','CP'):
         for yy in (-.762,.762): out.append(f'(polyline (pts (xy -2.54 {yy}) (xy 2.54 {yy})) (stroke (width 0.254) (type default)) (fill (type none)))')
         if kind=='CP': out.append(f'(text "+" (at -3.5 2.5 0) {fx()})')
@@ -96,9 +114,28 @@ def symbol(kind):
     else: out.append('(circle (center 0 0) (radius 1.27) (stroke (width .254) (type default)) (fill (type none)))')
     out+=[')',f'(symbol "{kind}_1_1"']
     for num,name,typ,x,y,ang in PINS[kind]:
-        length=0 if kind=='Flag' else (1.27 if kind=='R' else (4.318 if kind in ('C','CP') else (2.54 if kind=='NPN' else 5.08)))
+        length=0 if kind=='Flag' else (1.27 if kind=='R' else (4.318 if kind in ('C','CP') else (2.54 if kind in ('NPN','SJ3') else 5.08)))
         out.append(f'(pin {typ} line (at {x} {y} {ang}) (length {length}) (name {q(name)} {fx()}) (number "{num}" {fx()}))')
     return '\n'.join(out+['))'])
+
+def widen_jumper(s,pitch=1.55):
+    """KiCad rounded 3-pad jumper (1.3 mm pitch) re-pitched to `pitch` mm.
+
+    Pad shapes are unchanged (1.0 x 1.5 mm, rounded outer ends); the outer pads
+    move outward, giving a pitch-1.0 mm copper gap (0.55 mm; 0.50 mm at the
+    rounded corners). Graphics outside the centre
+    pad's 0.75 mm half-width move with the outer pads.
+    """
+    shift=pitch-1.3
+    head,pads=s.split('\t(pad ',1)
+    def move(m):
+        x=float(m.group(2))
+        if abs(x)>=.85: x+=shift if x>0 else -shift
+        return f'({m.group(1)} {round(x,6):g} '
+    head=re.sub(r'\((start|end|mid) (-?[\d.]+) ',move,head)
+    head=head.replace('1.3mm',f'{pitch:g}mm').replace('0.3mm gap',f'{pitch-1:.2f}mm gap')
+    pads=('\t(pad '+pads).replace('(at -1.3 0)',f'(at {-pitch:g} 0)').replace('(at 1.3 0)',f'(at {pitch:g} 0)')
+    return head+pads
 
 def board(share,cli):
     import pcbnew as p
@@ -120,7 +157,12 @@ def board(share,cli):
             if source.exists():
                 dest=HERE/'3dmodels'/suffix; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(source,dest)
                 s=s.replace(model,'${KIPRJMOD}/3dmodels/'+suffix)
+        if name=='SJ3': s=widen_jumper(s)
+        # Fab rule: THT pad >= drill + 0.6 mm. KiCad's 2.00 mm header has
+        # 1.35 mm pads on 0.8 mm drills; 1.5 mm leaves 0.5 mm between pads.
+        if name=='Header4': s=s.replace('(size 1.35 1.35)','(size 1.5 1.5)')
         (lib/f'{name}.kicad_mod').write_text(s)
+    (lib/'HeaderMixed.kicad_mod').unlink(missing_ok=True)
     (HERE/'fp-lib-table').write_text('(fp_lib_table (version 7) (lib (name "TX") (type "KiCad") (uri "${KIPRJMOD}/TX.pretty") (options "") (descr "Driver local footprints")))')
     footprints={}
     for d in PARTS:
@@ -128,7 +170,7 @@ def board(share,cli):
         x,y=d['xy']; fp.SetPosition(vec(100+x,100+y)); fp.SetOrientationDegrees(d['angle'])
         # SMD packages are centred between the original routing anchors.
         # Preserve those anchors for short straight fanouts in route_board.
-        if d['kind'] in ('R','C','CP'):
+        if d['kind'] in ('R','C','CP') and d['anchor']:
             import math
             half={'R':3.81,'C':1.25,'CP':1.0}[d['kind']]
             a=math.radians(d['angle'])
@@ -154,19 +196,17 @@ def board(share,cli):
     for x,ch,addr in [(7,'IR','0x60'),(40,'RED','0x61')]:
         silk('MCP4725 '+ch+' '+addr,x+9,4.6,.85)
         silk('ADDR='+('GND' if ch=='IR' else 'VCC'),x+9,6.3,.8)
-        for i,label in enumerate(['OUT','DAC_GND','SCL','SDA','3V3','DAC_GND']): silk(label,x+5.5,10+i*2.54,.8)
+        for i,label in enumerate(['OUT','GND','SCL','SDA','3V3','GND']): silk(label,x+5.5,10+i*2.54,.8)
         # Module body projection is an assembly guide, not a measured outline.
         for a,c in [((x+1,6),(x+19,6)),((x+19,6),(x+19,23)),((x+19,23),(x+1,23))]: line(a,c,p.Dwgs_User)
-    silk('RED OUT',66,7.5,.8)
-    silk('OUT',66,10,.8); silk('DAC GND',66,12.54,.8)
-    silk('J4 RED OUT',66,7.5,.8,True)
-    silk('OUT',66,10,.8,True); silk('DAC GND',66,12.54,.8,True)
+    silk('RED OUT',62,7.5,.8)
+    silk('OUT',66,10,.8); silk('GND',66,12.54,.8)
+    silk('J4 RED OUT',62,7.5,.8,True)
+    silk('OUT',66,10,.8,True); silk('GND',66,12.54,.8,True)
     silk('IR A+ K-',24,53.5,.8); silk('RED A+ K-',47,53.5,.8); silk('5V GND',35,53.5,.8)
     silk('DAC: 3.3V ONLY',35,6.5,.9)
-    silk('SEPARATE PI CABLES',35,8,.8)
-    for x,ch in ((29,'IR'),(62,'RED')):
-        silk(f'J{2 if ch=="IR" else 8} PI {ch}',x,13.2,.8)
-        for i,label in enumerate(['SCL','SDA','3V3','DAC GND']): silk(label,x+3,(15.08,17.08,19.08,21.08)[i],.7)
+    for i,label in enumerate(['OUT','GND']):
+        silk(label,32,(10,12.54)[i],.8)
     silk('C2 / C4: DNP',35,41.5,.8)
     silk('100R',15.8,48.2,.8); silk('100R',51.8,48.2,.8)
     for x in (18,47):
@@ -176,11 +216,9 @@ def board(share,cli):
         pad=next(x for x in footprints[ref].Pads() if x.GetNumber()==str(pin)); pos=pad.GetPosition(); return p.ToMM(pos.x)-100,p.ToMM(pos.y)-100
     # Rear labels use signal names only; connector/component references remain.
     for ref,title,labels,label_x in (
-        ('J1','J1 IR DAC',('IR_OUT','DAC_GND','SCL','SDA','3V3','DAC_GND'),12),
-        ('J2','J2 PI IR',('SCL','SDA','3V3','DAC_GND'),34),
-        ('J3','J3 RED DAC',('RED_OUT','DAC_GND','SCL','SDA','3V3','DAC_GND'),45),
-        ('J4','J4 RED OUT',('RED_OUT','DAC_GND'),66),
-        ('J8','J8 PI RED',('SCL','SDA','3V3','DAC_GND'),64),
+        ('J1','J1 IR DAC',('IR_OUT','GND','SCL','SDA','3V3','I2CGND'),12),
+        ('J2','J2 IR OUT',('IR_OUT','GND'),34),
+        ('J3','J3 RED DAC',('RED_OUT','GND','SCL','SDA','3V3','I2CGND'),45),
     ):
         x0,_=pad_local(ref,1); silk(title,x0,7.8,.8,True)
         for pin,label in enumerate(labels,1):
@@ -239,7 +277,6 @@ def board(share,cli):
         txt=t.GetText()
         if txt=='PPG TX  v1.6': t.SetText('PPG TX v1.8'); t.SetPosition(vec(135,100.9)); t.SetTextSize(vec(.8,.8))
         if txt=='DAC: 3.3V ONLY': b.Remove(t); continue; t.SetTextSize(vec(.8,.8))
-        if txt=='SAME Pi BUS': t.SetPosition(vec(135,102.7))
         if txt.startswith('MCP4725'): t.SetPosition(vec(p.ToMM(t.GetPosition().x),101.0))
         if txt.startswith('ADDR='): t.SetPosition(vec(p.ToMM(t.GetPosition().x),102.8))
         if txt=='DATN: PPG-Simulator': t.SetPosition(vec(135,100.9))
@@ -248,7 +285,6 @@ def board(share,cli):
         if t.GetLayer()==p.B_SilkS and txt=='5V' and p.ToMM(t.GetPosition().x)>160: t.SetPosition(vec(161,125.19))
     for t in b.GetDrawings():
         if not isinstance(t,p.PCB_TEXT): continue
-        if t.GetText()=='J2 PI: SCL SDA 3V3 GND': b.Remove(t); continue
         if t.GetText() in ('IR A+ K-','RED A+ K-','5V GND'):
             b.Remove(t); continue
         elif p.ToMM(t.GetPosition().y)>147.0:
@@ -268,6 +304,6 @@ def main():
     compact()
     with (HERE/'BOM.csv').open('w') as f:
         w=csv.writer(f,lineterminator="\n"); w.writerow(['Reference','Value','Footprint','Fit'])
-        for d in PARTS: w.writerow([d['ref'],d['value'],'TX:'+d['fp'],'DNP' if d['dnp'] else 'YES'])
+        for d in PARTS: w.writerow([d['ref'],d['value'],'TX:'+d['fp'],'DNP' if d['dnp'] else ('BRIDGE' if d['kind']=='SJ3' else 'YES')])
 
 if __name__=='__main__': main()

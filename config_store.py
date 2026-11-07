@@ -21,7 +21,8 @@ from comm.logger import log
 # Phase 3 AC/DC/polarity defaults. Sourced from the model so there is a single
 # source of truth for the default per-channel DC and polarity. models.ppg_model
 # does not import config_store, so this module-level import introduces no cycle.
-from models.ppg_model import DEFAULT_DC_BASELINE_V, POLARITY_ABOVE_DC, POLARITY_BELOW_DC
+from models.ppg_model import (DEFAULT_DC_BASELINE_V, DEFAULT_SPO2, POLARITY_ABOVE_DC, POLARITY_BELOW_DC,
+                              PPG_BASE_DICROTIC_DEPTH)
 
 _DEFAULT_DC_MV = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
 
@@ -30,13 +31,14 @@ _DEFAULT_DC_MV = DEFAULT_DC_BASELINE_V * 1000.0    # 1500.0 mV
 _DEFAULTS = {
     "language": "en",  # UI-only setting; not copied into PPGParameters.
     "theme": "light",  # UI-only setting: "light" or "dark".
+    "rx_mode": "dual",  # "dual" (one OPT101 per LED) or "tdm" (one shared OPT101).
     "condition": 0,
     "heart_rate": 75.0,
     "perfusion_index": 3.0,
-    "spo2": 98.0,
+    "spo2": DEFAULT_SPO2,
     "resp_rate": 16.0,
     "noise_level": 0.0,
-    "dicrotic_notch": 0.25,
+    "dicrotic_notch": PPG_BASE_DICROTIC_DEPTH,
     "amplification": 1.0,
     "edit_mode": 0,
     # SpO2 calibration coefficients (SpO2 = A - B*R). Added in Phase 2.
@@ -83,6 +85,7 @@ def load_config() -> dict:
         from ui.i18n import normalise_language
         merged["language"] = normalise_language(merged.get("language"))
         merged["theme"] = merged.get("theme") if merged.get("theme") in ("light", "dark") else "light"
+        merged["rx_mode"] = merged.get("rx_mode") if merged.get("rx_mode") in ("dual", "tdm") else "dual"
         log.info(f"Configuration loaded from {CONFIG_JSON_PATH}")
         log.debug(f"Loaded config: {merged}")
         return merged
@@ -166,10 +169,10 @@ def apply_config_to_params(config: dict, params):
     params.condition = config.get("condition", 0)
     params.heart_rate = config.get("heart_rate", 75.0)
     params.perfusion_index = config.get("perfusion_index", 3.0)
-    params.spo2 = config.get("spo2", 98.0)
+    params.spo2 = config.get("spo2", DEFAULT_SPO2)
     params.resp_rate = config.get("resp_rate", 16.0)
     params.noise_level = config.get("noise_level", 0.0)
-    params.dicrotic_notch = config.get("dicrotic_notch", 0.25)
+    params.dicrotic_notch = config.get("dicrotic_notch", PPG_BASE_DICROTIC_DEPTH)
     params.amplification = config.get("amplification", 1.0)
 
     # SpO2 calibration coefficients: validate on load; fall back to defaults on

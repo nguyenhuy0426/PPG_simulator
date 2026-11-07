@@ -1,0 +1,18 @@
+{
+  "kernel": "charlesday2612/ppg-physiomix3-data-v1 (version 1, COMPLETE)",
+  "windows_sha256": "5036fb647d0460a00c388b29043b708f711c9627331cf2911cde7cbbce766433",
+  "checks": {
+    "load_input_checksum_and_validate_pack": "pass",
+    "windows": 11556,
+    "finite_and_0_1_range": "pass",
+    "check_pack_train_validation_test_domains": "pass",
+    "subject_disjoint_splits_every_domain": "pass",
+    "gxu_test_subjects": 22,
+    "gxu_test_subject_sha256": "a0d0c0e982ab31f265ab02853efe93c26ab8d547df68eef2576f8489079ebb45",
+    "gxu_polarity_consistent": "433/444",
+    "conditions_v2_gxu_ppg_vs_ecg_median_abs_bpm": 0.471,
+    "conditions_v2_wrist_ppg_vs_ecg_median_abs_bpm": 52.3,
+    "wrist_note": "Exercise wrist PPG periodicity is motion-dominated (~40 bpm vs ECG 96-125 bpm); ECG gating masks 86% of wrist rate labels. Coverage guard changed from 20% to >=5 windows and >=5% known labels; low coverage recorded in metadata."
+  },
+  "verified_on": "2026-10-10, local laptop CPU, before any GPU training"
+}

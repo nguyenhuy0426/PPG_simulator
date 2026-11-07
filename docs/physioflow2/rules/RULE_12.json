@@ -1,0 +1,27 @@
+{
+  "rule": "Round 12 (PhysioFlow-2 U2, longer training), fixed after round 11 and before training. Same pack, recipe, gates, checkpointing and scoring as round 11 except 32000 steps (the cosine schedule spans the 32000 steps). U2 at seeds 42, 123 and 2026. Decisions D1 and D2 exactly as RULE_11's final rule. If D1 is not met, no further round is run on this validation set; a further change needs fresh validation people.",
+  "round": {
+    "arm": "U2",
+    "steps": 32000,
+    "seeds": [
+      42,
+      123,
+      2026
+    ]
+  },
+  "recipe": {
+    "lr": 0.0003,
+    "schedule": "cosine",
+    "steps": 32000,
+    "batch": 128,
+    "interval": 2000,
+    "warmup": 500,
+    "sample_steps": 16,
+    "deriv": 1.0,
+    "spectral": 0.1,
+    "t_dist": "uniform",
+    "cond_drop": 0.1,
+    "scaffold_drop": 0.15,
+    "latency_limit_ms": 5000.0
+  }
+}

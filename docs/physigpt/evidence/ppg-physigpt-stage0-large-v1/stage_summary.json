@@ -1,0 +1,43 @@
+{
+  "stage_id": "08222da2d3349849",
+  "steps": 22000,
+  "plan": [
+    22000,
+    22000
+  ],
+  "hours": 7.69430201265547,
+  "step_seconds": 1.0911386108398438,
+  "windows_per_second": 938.4692190590089,
+  "max_memory_gb": 6.87319803237915,
+  "compile": true,
+  "best": {
+    "step": 22000,
+    "valid_flow": 0.061853264924138784
+  },
+  "stopped_at_best": true,
+  "final": {
+    "valid_flow": 0.061853264924138784,
+    "valid_laplace_nll": -1.9174807146191597
+  },
+  "samples": {
+    "generated": {
+      "acf_peak_mean": 0.5864635705947876,
+      "rate_bpm_quartiles": [
+        42.10526315789474,
+        57.142857142857146,
+        77.41935483870968
+      ],
+      "diff_std": 0.05791139975190163
+    },
+    "valid_real": {
+      "acf_peak_mean": 0.6692923307418823,
+      "rate_bpm_quartiles": [
+        50.0,
+        66.66666666666667,
+        92.3076923076923
+      ],
+      "diff_std": 0.06654976308345795
+    }
+  },
+  "note": "fit and sanity statistics only, on held-out records that also chose best.pt and the plateau; realism is judged by the strict judge on separate people in a later round"
+}

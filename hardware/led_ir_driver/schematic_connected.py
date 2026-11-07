@@ -1,4 +1,4 @@
-"""Readable wired schematic: one Pi cable input, two DACs, two current sinks.
+"""Readable wired schematic: two DACs, each with its own I2C header, two current sinks.
 
 Drawing coordinates use a 2.54 mm grid. U1A, U1B and U1C are units of the
 same physical LM358P; only one DIP8 footprint is assigned on the PCB.
@@ -7,7 +7,7 @@ from collections import Counter
 
 def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
     def mm(v): return round(v*2.54,5)
-    shapes={k:base_symbol(k) for k in ('R','C','CP','NPN','Hole','Flag','Conn2','Conn4','Conn6')}
+    shapes={k:base_symbol(k) for k in ('R','C','CP','NPN','Hole','Flag','Conn2','Conn4','Conn6','SJ3')}
     def pin(num,label,typ,x,y,angle,length=2):
         return f'(pin {typ} line (at {mm(x)} {mm(y)} {angle}) (length {mm(length)}) (name {q(label)} {fx()}) (number "{num}" {fx()}))'
     socket=['(symbol "TX:Socket6" (pin_names (offset .5)) (in_bom yes) (on_board yes)',f'(property "Reference" "J" (at 0 18 0) {fx()})',f'(property "Value" "MCP4725" (at 0 16 0) {fx()})','(symbol "Socket6_0_1" (rectangle (start -10.16 15.24) (end 10.16 -15.24) (stroke (width .254) (type default)) (fill (type background))))','(symbol "Socket6_1_1"']
@@ -19,14 +19,14 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         op.extend([pin(plus,'+','input',-5,2,0),pin(minus,'-','input',-5,-2,0),pin(outpin,'OUT','output',5,0,180),')'])
     op+=['(symbol "LM358P_3_1" (rectangle (start -5.08 7.62) (end 5.08 -7.62) (stroke (width .254) (type default)) (fill (type background)))',pin(8,'V+','power_in',0,5,270),pin(4,'V-','power_in',0,-5,90),'))']
     shapes['LM358P']='\n'.join(op)
-    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "1.9") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 40 mm"))','(lib_symbols',*shapes.values(),')']
+    out=[f'(kicad_sch (version 20250114) (generator "eeschema") (uuid {root}) (paper "A3")','(title_block (title "DATN: PPG-Simulator - LED / IR driver") (rev "2.0") (comment 1 "Nguyen Nhat Huy - Pham Thanh Vy") (comment 2 "70 x 40 mm"))','(lib_symbols',*shapes.values(),')']
     byref={d['ref']:d for d in parts}; segments=[]; placed=set(); anchors=set()
     def wire(*points): segments.extend(zip(points,points[1:]))
     def label(net,x,y):
         anchors.add((x,y))
         out.append(f'(label {q(net)} (at {mm(x)} {mm(y)} 0) (effects (font (size 1 1)) (justify left bottom)) (uuid {uid("label"+net+str((x,y)))}))')
     def text(s,x,y,size=1.27): out.append(f'(text {q(s)} (at {mm(x)} {mm(y)} 0) {fx(size)} (uuid {uid("text"+s)}))')
-    def place(ref,x,y,angle=0,kind=None,unit=1):
+    def place(ref,x,y,angle=0,kind=None,unit=1,at=None):
         if ref.startswith('#'):
             d=dict(kind='Flag',value='PWR_FLAG',fp='',dnp=False)
             anchors.add((x,y))
@@ -39,32 +39,48 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         else:
             px=x; py=y-(8 if k in ('Socket6','Conn6') else (5.5 if k=='Conn2' else 7)); valy=py+1.8
         if k=='LM358P' and unit==3: px=x+6; py=y-1; valy=y+1
+        # at: explicit horizontal, left-justified text for the compact I2C cells.
+        if at: px,py=at; valy=py+1.8
+        # Field angles are relative to the symbol: keep cell text horizontal.
+        tangle=(360-angle)%180 if at else angle
         for prop,val,xx,yy,hide in [('Reference',ref,px,py,False),('Value',d['value'],px,valy,False),('Footprint','TX:'+d['fp'] if d['fp'] else '',x,y,True)]:
-            out.append(f'(property "{prop}" {q(val)} (at {mm(xx)} {mm(yy)} {angle}) (effects (font (size 1.1 1.1)) {"(justify left)" if (k in ("R","C","CP","NPN","Hole") and angle==0) or (k=="LM358P" and unit==3) else ""} {"(hide yes)" if hide or ref.startswith("#") else ""}))')
+            out.append(f'(property "{prop}" {q(val)} (at {mm(xx)} {mm(yy)} {tangle}) (effects (font (size 1.1 1.1)) {"(justify left)" if at or (k in ("R","C","CP","NPN","Hole") and angle==0) or (k=="LM358P" and unit==3) else ""} {"(hide yes)" if hide or ref.startswith("#") or (prop=="Value" and k=="SJ3") else ""}))')
         out.append(f'(instances (project "{name}" (path "/{root}" (reference "{ref}") (unit {unit})))))')
         placed.add(ref)
-    for offset,ch,jmod,jwire,jled,rtop,rbot,rbase,rsense,qref,comp,unit in [
-      (0,'IR','J1','J2','J5','R1','R2','R3','R4','Q1','C2',1),
-      (80,'RED','J3','J8','J6','R6','R7','R8','R9','Q2','C4',2),
+    for offset,ch,jmod,jout,jled,rtop,rbot,rbase,rsense,qref,comp,unit,jhdr,cells in [
+      (0,'IR','J1','J2','J5','R1','R2','R3','R4','Q1','C2',1,'J8',(('SCL','R11','JP1'),('SDA','R12','JP2'))),
+      (80,'RED','J3','J4','J6','R6','R7','R8','R9','Q2','C4',2,'J9',(('SCL','R13','JP3'),('SDA','R14','JP4'))),
     ]:
         def pt(x,y): return (x+offset,y)
         def w(*pts): wire(*(pt(x,y) for x,y in pts))
         def l(net,x,y): label(net,x+offset,y)
-        def pl(ref,x,y,angle=0,kind=None,u=1): place(ref,x+offset,y,angle,kind,u)
+        def pl(ref,x,y,angle=0,kind=None,u=1,at=None): place(ref,x+offset,y,angle,kind,u,at and (at[0]+offset,at[1]))
         text(ch+': MCP4725 '+('0x60' if unit==1 else '0x61')+' -> LM358 -> 2N4401 -> LED',offset+40,6,1.4)
         pl(jmod,15,20,kind='Socket6')
-        if jwire: pl(jwire,50,20)
-        for i,net in enumerate([f'DAC_{ch}',f'GND_DAC_{ch}',f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',f'GND_DAC_{ch}']):
+        pl(jout,50,16)
+        for i,net in enumerate([f'DAC_{ch}','GND',f'SCL_{ch}',f'SDA_{ch}',f'3V3_{ch}',f'GNDI2C_{ch}']):
             yy=15+2*i
-            if jwire and i >= 2:
-                w((20,yy),(22,yy),(45,yy)); l(net,31,yy)
+            if i<2:
+                w((20,yy),(22,yy),(46,yy)); l(net,31,yy)
             else:
                 w((20,yy),(26,yy)); l(net,26,yy)
-        # Each DAC has a separate I2C harness and local return copper.
+        # Per-module I2C header -> 3-pad jumper (pin 1 bypass, pin 3 via 100R).
+        pl(jhdr,76,20)
+        for i,net in ((2,f'3V3_{ch}'),(3,f'GNDI2C_{ch}')):
+            w((72,17+2*i),(69,17+2*i)); l(net,69,17+2*i)
+        for (sig,rref,jref),y,hdr in zip(cells,(12,21),((72,17),(72,19))):
+            pl(jref,60,y,180,at=(64,y-1)); pl(rref,60,y+3,270,at=(64,y+1.8))
+            w((62,y),(62,y+3)); w((58,y),(58,y+3))
+            w((58,y+1.5),(55,y+1.5)); l(f'{sig}_R_{ch}',55,y+1.5)
+            l(f'{sig}_{ch}',60,y-2)
+            if sig=='SCL': w((62,y+3),(62,17),hdr); l(f'SCL_H_{ch}',67,17)
+            else: w(hdr,(68,19),(68,26),(62,26),(62,y+3)); l(f'SDA_H_{ch}',69,19)
+        text(jhdr+': SCL SDA 3V3 GND, 2.00 mm',offset+66,6.5,1.0)
+        text('JP 2-3 = 100R, JP 2-1 = bypass; both OPEN',offset+66,8,1.0)
+        # Socket pins 2 and 6 are one VSS inside the module: separate PCB nets
+        # only, not galvanic isolation once the module is plugged in.
         text('Module ADDR: '+('GND -> 0x60' if unit==1 else 'VCC -> 0x61'),offset+40,28,1.2)
-        text('GND_DAC is isolated from LED/LM358 GND on this carrier. OUT is a separate signal.',offset+40,31,1.1)
-        if jwire:
-            text(jwire+': SCL/SDA/3V3/GND = 2.00 mm dedicated Pi cable',offset+40,34,1.0)
+        text('Pin 2 = board GND; pin 6 = GNDI2C. Same VSS inside module.',offset+40,31,1.0)
         w((22,15),(22,13),(7,13),(7,47),(14,47))
         pl(rtop,16,47,90); w((18,47),(24,47),(32,47)); l('CMD_'+ch,25,47)
         pl(rbot,24,56); w((24,47),(24,54)); w((24,58),(24,70),(64,70))
@@ -82,11 +98,6 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
         pl(comp,40,81,90); w((31,81),(38,81)); w((42,81),(51,81))
         l('AMP_'+ch,31,81); l('SENSE_'+ch,51,81)
         text(comp+': DNP - DO NOT FIT until loop measured',offset+40,85,1.0)
-    # RED output breakout has the DAC's local return, not the LED-driver return.
-    place('J4',130,16)
-    wire((102,15),(126,15))
-    wire((100,17),(126,17))
-    label('GND_DAC_RED',126,17)
     # Shared supply shown as actual rails, including both capacitor polarities.
     text('SHARED SUPPLY: U1A + U1B + U1C = ONE LM358 DIP-8',42,91,1.3)
     # J7 has left-facing pins at x=8, y=100/102; route supply around it.
@@ -97,14 +108,14 @@ def write_schematic(here,name,root,parts,uid,q,fx,base_symbol):
     place('C5',48,101); wire((48,94),(48,99)); wire((48,103),(48,108))
     place('U1',64,101,unit=3); wire((64,94),(64,96)); wire((64,106),(64,108))
     label('5V',21,94); label('GND',21,108)
-    place('#FLG0',21,108); place('#FLG1',21,94); place('#FLG2',35,23)
+    place('#FLG0',21,108); place('#FLG1',21,94)
     text('C5: ceramic, non-polar. C7: electrolytic, + to 5V.',39,112,1.0)
     for i in range(1,5): place(f'H{i}',70+i*10,97)
-    text('MCP4725 VCC = 3.3 V ONLY; J2 and J8 are dedicated Pi inputs.',112,91,1.1)
+    text('MCP4725 VCC = 3.3 V ONLY; J8 feeds IR, J9 feeds RED.',112,91,1.1)
     text('ADDR is configured on each module, not by this carrier PCB.',112,94,1.1)
-    text('J2 powers IR; J8 powers RED. No I2C/DAC-return copper joins them here.',94,101,1.1)
+    text('No shared I2C, 3V3 or I2C-ground copper between the two modules.',94,101,1.1)
     text('OUT pins are DAC outputs: never connect them together.',94,104,1.1)
-    text('They share the Pi bus only externally; this is not galvanic isolation.',94,107,1.1)
+    text('GNDI2C_x has no PCB copper to GND; joined only inside its module.',94,107,1.1)
     text('For RED: remove the old ADDR-GND bridge before selecting VCC.',94,110,1.1)
     assert {d['ref'] for d in parts}<=placed
     # Split T junctions into explicit wire endpoints; crossings without endpoints

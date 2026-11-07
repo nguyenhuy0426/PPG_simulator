@@ -70,11 +70,13 @@ class DACManager:
             self._ready = False
             return False
 
-    def set_values(self, value_ir: int, value_red: int):
+    def set_values(self, value_ir: int, value_red: int, red_first: bool = False):
         """Write 12-bit values to both DACs — IR first, then Red.
 
         Each write is one 2-byte fast-mode I2C transaction, so Red always
         updates one transaction time after IR within the same 1 kHz tick.
+        `red_first` reverses that order; TDM uses it to switch the outgoing
+        LED off before the incoming one turns on (break-before-make).
         A write failure on one channel must not block the other channel.
         """
         value_ir = max(0, min(DAC_MAX_VALUE, int(value_ir)))
@@ -89,18 +91,28 @@ class DACManager:
             return
 
         with self._write_lock:
-            try:
-                self._dac_ir.raw_value = value_ir
-            except Exception as e:
-                self._error_count_ir += 1
-                if self._error_count_ir % ERROR_LOG_INTERVAL == 1:
-                    log.error(f"[DACManager] IR DAC (0x{DAC_ADDR_IR:02X}) write error #{self._error_count_ir}: {e}")
-            try:
-                self._dac_red.raw_value = value_red
-            except Exception as e:
-                self._error_count_red += 1
-                if self._error_count_red % ERROR_LOG_INTERVAL == 1:
-                    log.error(f"[DACManager] Red DAC (0x{DAC_ADDR_RED:02X}) write error #{self._error_count_red}: {e}")
+            if red_first:
+                self._write_red(value_red)
+                self._write_ir(value_ir)
+            else:
+                self._write_ir(value_ir)
+                self._write_red(value_red)
+
+    def _write_ir(self, value: int):
+        try:
+            self._dac_ir.raw_value = value
+        except Exception as e:
+            self._error_count_ir += 1
+            if self._error_count_ir % ERROR_LOG_INTERVAL == 1:
+                log.error(f"[DACManager] IR DAC (0x{DAC_ADDR_IR:02X}) write error #{self._error_count_ir}: {e}")
+
+    def _write_red(self, value: int):
+        try:
+            self._dac_red.raw_value = value
+        except Exception as e:
+            self._error_count_red += 1
+            if self._error_count_red % ERROR_LOG_INTERVAL == 1:
+                log.error(f"[DACManager] Red DAC (0x{DAC_ADDR_RED:02X}) write error #{self._error_count_red}: {e}")
 
     def shutdown(self):
         """Drive both channels to the safe idle level (0 V → LEDs off) and

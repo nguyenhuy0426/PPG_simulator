@@ -13,6 +13,7 @@ class SetpointCard(ctk.CTkFrame):
         self.limit, self.step, self.decimals, self.command = limit, step, decimals, command
         self._value = limit.default
         self._enabled = True
+        self._badge_text = None
         self._ui = ui
         pad = ui(10)
         self.grid_columnconfigure(1, weight=1)
@@ -80,6 +81,10 @@ class SetpointCard(ctk.CTkFrame):
 
     def set_badge(self, text):
         """Show a short state (e.g. 'RED AC decoupled') instead of the range."""
+        # Called every GUI tick; re-gridding an unchanged badge re-runs the card's layout.
+        if text == getattr(self, "_badge_shown", False):
+            return
+        self._badge_shown = text
         if text:
             self.badge.configure(text=f" {text} ")
             self.badge.grid(row=0, column=2, sticky="e", padx=(self._ui(4), self._ui(10)), pady=(self._ui(8), 0))

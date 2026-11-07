@@ -1,0 +1,982 @@
+[
+ {
+  "ref": "BPW_C1",
+  "value": "22pF C0G",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 69.0,
+  "y": -75.65,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C2",
+  "value": "22pF C0G",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 101.0,
+  "y": -75.65,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C3",
+  "value": "100nF X7R",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 55.5,
+  "y": -79.9,
+  "rot": -90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C4",
+  "value": "100nF X7R",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 114.5,
+  "y": -79.9,
+  "rot": -90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C5",
+  "value": "100nF X7R",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 55.5,
+  "y": -73.1,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C6",
+  "value": "100nF X7R",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 114.5,
+  "y": -73.1,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C7",
+  "value": "1uF X7R 16V",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 64.0,
+  "y": -84.666666,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_C8",
+  "value": "1uF X7R 16V",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 107.0,
+  "y": -84.666666,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_D1",
+  "value": "BPW34 RED",
+  "footprint": "BPW34_THT",
+  "side": "top",
+  "x": 65.75,
+  "y": -81.7,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "BPW_D2",
+  "value": "BPW34 IR",
+  "footprint": "BPW34_THT",
+  "side": "top",
+  "x": 104.25,
+  "y": -81.7,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "BPW_J1",
+  "value": "A2 / RED",
+  "footprint": "Header_1x04_P2mm",
+  "side": "top",
+  "x": 60.5,
+  "y": -86.666666,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "BPW_J2",
+  "value": "A0 / IR",
+  "footprint": "Header_1x04_P2mm",
+  "side": "top",
+  "x": 103.5,
+  "y": -86.666666,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "BPW_J3",
+  "value": "ADS1115: RED/GND/IR/GND",
+  "footprint": "Header_1x04_P2.54mm",
+  "side": "top",
+  "x": 72.0,
+  "y": -86.666666,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "BPW_R1",
+  "value": "1M 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 69.0,
+  "y": -73.35,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R2",
+  "value": "1M 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 101.0,
+  "y": -73.35,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R3",
+  "value": "1k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 74.5,
+  "y": -78.066666,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R4",
+  "value": "1k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 105.5,
+  "y": -76.7,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R5",
+  "value": "100k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 58.5,
+  "y": -75.7,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R6",
+  "value": "100k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 111.5,
+  "y": -75.7,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R7",
+  "value": "10k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 58.5,
+  "y": -79.9,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_R8",
+  "value": "10k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 111.5,
+  "y": -79.9,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_U1",
+  "value": "OPA333AIDBVR",
+  "footprint": "SOT23_5_Hand",
+  "side": "bottom",
+  "x": 69.0,
+  "y": -78.7,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "BPW_U2",
+  "value": "OPA333AIDBVR",
+  "footprint": "SOT23_5_Hand",
+  "side": "bottom",
+  "x": 101.0,
+  "y": -78.7,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_C1",
+  "value": "100nF 50V X7R ceramic",
+  "footprint": "C0805_Hand",
+  "side": "top",
+  "x": 76.0,
+  "y": -53.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_C2",
+  "value": "100nF 50V X7R ceramic",
+  "footprint": "C0805_Hand",
+  "side": "top",
+  "x": 94.0,
+  "y": -53.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_C3",
+  "value": "1uF X7R 16V",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 74.0,
+  "y": -63.7,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_C4",
+  "value": "1uF X7R 16V",
+  "footprint": "C0805_Hand",
+  "side": "bottom",
+  "x": 96.0,
+  "y": -63.7,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_J1",
+  "value": "A2 / RED",
+  "footprint": "Header_1x04_P2mm",
+  "side": "top",
+  "x": 63.0,
+  "y": -66.5,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "OPT_J2",
+  "value": "A0 / IR",
+  "footprint": "Header_1x04_P2mm",
+  "side": "top",
+  "x": 101.0,
+  "y": -66.5,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "OPT_J3",
+  "value": "ADS1115 outputs",
+  "footprint": "Header_1x02_P2.54mm",
+  "side": "top",
+  "x": 76.0,
+  "y": -66.5,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "OPT_R1",
+  "value": "1k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 65.75,
+  "y": -63.7,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_R2",
+  "value": "1k 1%",
+  "footprint": "R0805_Hand",
+  "side": "bottom",
+  "x": 104.25,
+  "y": -63.7,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "OPT_U1",
+  "value": "OPT101P",
+  "footprint": "DIP8_Socket",
+  "side": "top",
+  "x": 61.94,
+  "y": -54.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "OPT_U2",
+  "value": "OPT101P",
+  "footprint": "DIP8_Socket",
+  "side": "top",
+  "x": 100.44,
+  "y": -54.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_C2",
+  "value": "DNP loop comp",
+  "footprint": "C",
+  "side": "top",
+  "x": 77.0,
+  "y": -120.5,
+  "rot": -90.0,
+  "dnp": true,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_C4",
+  "value": "DNP loop comp",
+  "footprint": "C",
+  "side": "top",
+  "x": 93.0,
+  "y": -120.5,
+  "rot": -90.0,
+  "dnp": true,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_C5",
+  "value": "100nF X7R 50V",
+  "footprint": "C",
+  "side": "top",
+  "x": 94.0,
+  "y": -111.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_C7",
+  "value": "10uF 16V",
+  "footprint": "CP",
+  "side": "bottom",
+  "x": 84.3,
+  "y": -106.35,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_H1",
+  "value": "M3 / 3.2mm",
+  "footprint": "Hole",
+  "side": "top",
+  "x": 54.0,
+  "y": -114.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "npth"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_H2",
+  "value": "M3 / 3.2mm",
+  "footprint": "Hole",
+  "side": "top",
+  "x": 116.0,
+  "y": -114.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "npth"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_H3",
+  "value": "M3 / 3.2mm",
+  "footprint": "Hole",
+  "side": "top",
+  "x": 54.0,
+  "y": -126.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "npth"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_H4",
+  "value": "M3 / 3.2mm",
+  "footprint": "Hole",
+  "side": "top",
+  "x": 116.0,
+  "y": -126.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "npth"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J1",
+  "value": "MCP4725 IR 0x60",
+  "footprint": "Socket6",
+  "side": "top",
+  "x": 57.0,
+  "y": -95.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J2",
+  "value": "IR DAC OUT / GND",
+  "footprint": "Header2",
+  "side": "top",
+  "x": 79.0,
+  "y": -95.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J3",
+  "value": "MCP4725 RED 0x61",
+  "footprint": "Socket6",
+  "side": "top",
+  "x": 90.0,
+  "y": -95.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J4",
+  "value": "RED DAC OUT / GND",
+  "footprint": "Header2",
+  "side": "top",
+  "x": 112.0,
+  "y": -95.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J5",
+  "value": "IR LED A / K",
+  "footprint": "Header2",
+  "side": "top",
+  "x": 73.0,
+  "y": -127.0,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J6",
+  "value": "RED LED A / K",
+  "footprint": "Header2",
+  "side": "top",
+  "x": 96.0,
+  "y": -127.0,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J7",
+  "value": "5V INPUT / GND",
+  "footprint": "Header2",
+  "side": "top",
+  "x": 84.0,
+  "y": -127.0,
+  "rot": 90.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J8",
+  "value": "I2C IR: SCL SDA 3V3 GND",
+  "footprint": "Header4",
+  "side": "top",
+  "x": 79.0,
+  "y": -101.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_J9",
+  "value": "I2C RED: SCL SDA 3V3 GND",
+  "footprint": "Header4",
+  "side": "top",
+  "x": 112.0,
+  "y": -101.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_JP1",
+  "value": "SCL IR 1-2 BYP / 2-3 100R",
+  "footprint": "SJ3",
+  "side": "top",
+  "x": 63.0,
+  "y": -97.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_JP2",
+  "value": "SDA IR 1-2 BYP / 2-3 100R",
+  "footprint": "SJ3",
+  "side": "top",
+  "x": 71.0,
+  "y": -97.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_JP3",
+  "value": "SCL RED 1-2 BYP / 2-3 100R",
+  "footprint": "SJ3",
+  "side": "top",
+  "x": 96.0,
+  "y": -97.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_JP4",
+  "value": "SDA RED 1-2 BYP / 2-3 100R",
+  "footprint": "SJ3",
+  "side": "top",
+  "x": 104.0,
+  "y": -97.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_Q1",
+  "value": "2N4401 / E-B-C",
+  "footprint": "NPN",
+  "side": "top",
+  "x": 68.0,
+  "y": -121.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_Q2",
+  "value": "2N4401 / E-B-C",
+  "footprint": "NPN",
+  "side": "top",
+  "x": 97.0,
+  "y": -121.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ },
+ {
+  "ref": "TX_R1",
+  "value": "10k 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 62.81,
+  "y": -109.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R11",
+  "value": "100R 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 63.0,
+  "y": -94.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R12",
+  "value": "100R 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 71.0,
+  "y": -94.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R13",
+  "value": "100R 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 96.0,
+  "y": -94.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R14",
+  "value": "100R 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 104.0,
+  "y": -94.6,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R2",
+  "value": "10k 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 62.81,
+  "y": -112.0,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R3",
+  "value": "1k",
+  "footprint": "R",
+  "side": "top",
+  "x": 73.0,
+  "y": -115.31,
+  "rot": -90.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R4",
+  "value": "100R 1% 0.25W",
+  "footprint": "RSense",
+  "side": "top",
+  "x": 61.0,
+  "y": -127.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R6",
+  "value": "10k 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 99.81,
+  "y": -109.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R7",
+  "value": "10k 1%",
+  "footprint": "R",
+  "side": "top",
+  "x": 99.81,
+  "y": -112.0,
+  "rot": 180.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R8",
+  "value": "1k",
+  "footprint": "R",
+  "side": "top",
+  "x": 99.81,
+  "y": -117.0,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_R9",
+  "value": "100R 1% 0.25W",
+  "footprint": "RSense",
+  "side": "top",
+  "x": 111.0,
+  "y": -122.5,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "smd"
+  ],
+  "paste": true
+ },
+ {
+  "ref": "TX_U1",
+  "value": "LM358P / DIP8 socket",
+  "footprint": "DIP8",
+  "side": "top",
+  "x": 81.19,
+  "y": -112.19,
+  "rot": 0.0,
+  "dnp": false,
+  "pads": [
+   "tht"
+  ],
+  "paste": false
+ }
+]

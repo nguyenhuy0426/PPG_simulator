@@ -175,8 +175,8 @@ RESP_RATE = Limit(1.0, 150.0, 16.0, 1.0, " BrPM", "Respiration rate")
 """AECG100 Table 7 respiration: 1-150 BrPM, default 20 (we keep 16, the
 adult-normal midpoint already used by this project's config default)."""
 
-SPO2 = Limit(0.0, 100.0, 98.0, 1.0, " %", "SpO2")
-"""AECG100 Table 10: 0-100 %, step 1, default 98."""
+SPO2 = Limit(0.0, 100.0, 99.0, 1.0, " %", "SpO2")
+"""AECG100 Table 10: 0-100 %, step 1 (AECG100 default 98; this app defaults to 99, the IntelliVue reference screen)."""
 
 # ---------------------------------------------------------------------------
 # Amplitude parameters (per channel)
@@ -226,7 +226,7 @@ AC span (1500 mV, like AC_LEVEL_MV), and 0 is included so a feature can be
 switched off entirely (the AECG100 has no 'no dicrotic notch' setting; this
 project's condition presets do)."""
 
-DICROTIC_NOTCH_DEPTH = Limit(0.0, 1.0, 0.25, 0.01, "", "Local notch attenuation")
+DICROTIC_NOTCH_DEPTH = Limit(0.0, 1.0, 0.65, 0.01, "", "Local notch attenuation")
 """Project control: fractional attenuation of the local Gaussian envelope.
 0 disables the extra indentation; 1 reaches the baseline at the notch centre
 (an extreme test setting, not a healthy reference). This is NOT DN/SP or a

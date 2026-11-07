@@ -1,9 +1,25 @@
-# Rà soát kết nối — lưu trữ v1.6
+# Rà soát kết nối — driver v2.0
 
-> **Tài liệu lịch sử, không phải pinout v2.0.** Nội dung sau mô tả bus và
-> GND chung của v1.6. V2.0 dùng J2=IR và J8=RED, mỗi header 1×4 2,00 mm có
-> thứ tự SCL/SDA/3V3/GND_DAC; các miền này không nối `GND` LED/LM358 trên
-> carrier. Chỉ dùng `README.md` và `PIN_MAP.md` v2.0 khi lắp.
+## v2.0 (2026-10-31): mỗi module một cổng I²C
+
+- J2 chỉ còn OUT_IR/GND 1×2 bước 2,54 mm, giống J4 cho RED.
+- J8 (IR) và J9 (RED): header 1×4 bước 2,00 mm, pin 1 SCL, 2 SDA, 3 3V3, 4 GND.
+- J8.3 → J1.5 (`3V3_IR`), J9.3 → J3.5 (`3V3_RED`); hai net không nối với nhau.
+- J8.4 → J1.6 (`GNDI2C_IR`), J9.4 → J3.6 (`GNDI2C_RED`); không chạm vùng GND,
+  không có via xuống GND. Trong module, pin 2 và pin 6 là cùng VSS, nên đây
+  không phải cách ly galvanic.
+- SCL/SDA: header → R 100 Ω (pad 1) và JP pad 1; R pad 2 → JP pad 3; JP pad 2
+  → chân module. Hàn 2–3 = qua 100 Ω, hàn 2–1 = bỏ qua. Mặc định hở cả hai.
+- Pin 1 OUT và pin 2 GND của J1/J3 nối như v1.9.
+
+Cắm cáp: J8/J9 là header trần 2,00 mm, không phải socket Grove có khóa. Kiểm tra
+thứ tự SCL/SDA/3V3/GND của cáp bằng đồng hồ trước khi cắm; không suy ra bằng màu
+dây. Mỗi cổng chỉ cấp 3,3 V; không đưa 5 V vào J8/J9.
+
+Bảng net đầy đủ ở `ELECTRICAL_AUDIT.md` và `PIN_MAP.md`. Các mục dưới đây
+mô tả v1.6 (bus chung qua J2.3–6) và chỉ còn giá trị lịch sử.
+
+# Rà soát kết nối — driver v1.6 (lịch sử)
 
 Rà soát ngày 2026-09-29: xem `ELECTRICAL_AUDIT.md`. Không phát hiện nối sai
 trong 17 net hiện tại; tất cả 92 đoạn đồng được giữ nguyên sau khi kiểm tra.

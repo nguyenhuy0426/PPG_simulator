@@ -1,0 +1,48 @@
+{
+  "rule": "Step B pilot (seed 42), fixed before training. A retrained model goes to a 3-seed final only if, on the 12 GalaxyPPG test people (never trained on; 3 halvings), its mean 'indistinguishable' exceeds the app PhysioMix's by more than 2x the larger halving SD, its Q is lower than the app PhysioMix's, and its median |rate error| is not worse by more than 2 bpm; AND on the original validation it passes every gate with S_arm <= 0.559 and wrist Q <= 0.587 (no regression beyond round 9's seed spread). Otherwise the app models stay.",
+  "rule_sha256": "c8a9c996642ba908b7cd13ed44ecae2387e87e335b7d55ff6996d4658c3a4b15",
+  "recipes": {
+    "physiomix_g": {
+      "arm": "L3_rel_beat_lr_crop_r1w_motion_dom",
+      "sampler": "L3_rel_beat_lr_crop_r1w_motion_dom",
+      "steps": 20000,
+      "batch": 32,
+      "interval": 500,
+      "frozen": null
+    },
+    "physioflow_g": {
+      "arm": "F10_flow_unif_stop01",
+      "sampler": "F10_flow_unif_stop01_s16_w1",
+      "steps": 20000,
+      "batch": 128,
+      "interval": 2000,
+      "frozen": {
+        "samplers": [
+          "F10_flow_unif_stop01_s16_w1"
+        ]
+      }
+    }
+  },
+  "data_sha256": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+  "galaxy_test_people": [
+    "galaxyppg:P01",
+    "galaxyppg:P03",
+    "galaxyppg:P06",
+    "galaxyppg:P07",
+    "galaxyppg:P09",
+    "galaxyppg:P10",
+    "galaxyppg:P13",
+    "galaxyppg:P16",
+    "galaxyppg:P18",
+    "galaxyppg:P19",
+    "galaxyppg:P23",
+    "galaxyppg:P24"
+  ],
+  "python": "3.13.15",
+  "torch": "2.11.0+cu128",
+  "gpus": [
+    "Tesla T4",
+    "Tesla T4"
+  ],
+  "cpu_count": 4
+}

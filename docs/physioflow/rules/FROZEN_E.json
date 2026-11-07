@@ -1,0 +1,68 @@
+{
+  "rule": "Step E, fixed before training. Pack ppg_physiomix_v3e: the verified v3g pack with GalaxyPPG as domain 'wrist_daily', 6 of the 12 GalaxyPPG training people (seed 20261017) as everyday-wrist validation and the rest training, content sha256 39b26706eaf884ffeaa2fbc96cd7280701cb308139315e3dd71c690c417b9534. Recipe F10_flow_unif_stop01 (sampler F10_flow_unif_stop01_s16_w1, 20000 steps, batch 128) at seeds 42, 123, 2026. Selection on validation only. PhysioFlow replaces the app's PhysioMix round 9 only if (1) every seed passes every gate on the original validation and the seed means satisfy S_arm <= 0.559 and wrist-exercise Q <= 0.587; (2) on the 6 everyday-wrist validation people (5 halvings), prompted as the everyday-wrist domain, the seed-mean 'indistinguishable' exceeds the app PhysioMix's (prompted as wrist) by more than 2x the largest of the seed SD, the mean per-seed halving SD and the app's halving SD; (3) the seed-mean Q is lower than the app PhysioMix's; (4) the seed-mean median |rate error| is not worse by more than 2 bpm. The shipped seed is the one with the highest everyday-wrist validation 'indistinguishable' among the seeds that pass the original-validation limits on their own. The 12 GalaxyPPG test people are reported only.",
+  "rule_sha256": "62a9ec27ac5d9aa63881221fe4c35dda44d06f2011fd66527f5f988c47037a89",
+  "recipe": {
+    "arm": "F10_flow_unif_stop01",
+    "sampler": "F10_flow_unif_stop01_s16_w1",
+    "steps": 20000,
+    "batch": 128,
+    "interval": 2000,
+    "frozen": {
+      "samplers": [
+        "F10_flow_unif_stop01_s16_w1"
+      ]
+    }
+  },
+  "seeds": [
+    42,
+    123,
+    2026
+  ],
+  "halvings": 5,
+  "c2st_steps": 600,
+  "galaxy_samples": 256,
+  "eval_samples": 256,
+  "steps": 20000,
+  "data_sha256": "996abac8290943d69bea110db2b2a6af980e7a9c842ceb9b47272f421cff839a",
+  "content_sha256": "39b26706eaf884ffeaa2fbc96cd7280701cb308139315e3dd71c690c417b9534",
+  "galaxy_people": {
+    "train": [
+      "galaxyppg:P02",
+      "galaxyppg:P05",
+      "galaxyppg:P11",
+      "galaxyppg:P12",
+      "galaxyppg:P14",
+      "galaxyppg:P17"
+    ],
+    "validation": [
+      "galaxyppg:P04",
+      "galaxyppg:P08",
+      "galaxyppg:P15",
+      "galaxyppg:P20",
+      "galaxyppg:P21",
+      "galaxyppg:P22"
+    ],
+    "external": [
+      "galaxyppg:P01",
+      "galaxyppg:P03",
+      "galaxyppg:P06",
+      "galaxyppg:P07",
+      "galaxyppg:P09",
+      "galaxyppg:P10",
+      "galaxyppg:P13",
+      "galaxyppg:P16",
+      "galaxyppg:P18",
+      "galaxyppg:P19",
+      "galaxyppg:P23",
+      "galaxyppg:P24"
+    ]
+  },
+  "smoke": false,
+  "python": "3.13.15",
+  "torch": "2.11.0+cu128",
+  "gpus": [
+    "Tesla T4",
+    "Tesla T4"
+  ],
+  "cpu_count": 4
+}

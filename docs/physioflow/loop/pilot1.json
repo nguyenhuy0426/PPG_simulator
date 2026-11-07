@@ -1,0 +1,295 @@
+{
+ "loop": 1,
+ "change": "PhysioFlow gốc: khung nhịp luôn bật; thử có/không loss đạo hàm; 16 000 bước.",
+ "conclusion": "Học được (GXU, PERform Large ngang PhysioMix; AUC 0,75) nhưng cổ tay rất kém: khung nhịp bị ép lên cả các cửa sổ vốn không đo được nhịp. Loss đạo hàm học nhanh hơn nhưng nhịp 140–180 bpm lệch dần.",
+ "candidates": [
+  {
+   "arm": "F1_flow",
+   "sampler": "F1_flow_s8_w1",
+   "S_arm": 0.654,
+   "S_real": 0.511,
+   "C": 0.032,
+   "auc": 0.755,
+   "eligible": true,
+   "latency_ms": 691,
+   "Q": {
+    "gxu_finger": 0.223,
+    "perform_large": 0.19,
+    "bidmc": 0.83,
+    "perform_cohort": 0.598,
+    "wrist": 1.263
+   },
+   "mae_ext": 0.78
+  },
+  {
+   "arm": "F1_flow",
+   "sampler": "F1_flow_s8_w1.5",
+   "S_arm": 0.69,
+   "S_real": 0.542,
+   "C": 0.052,
+   "auc": 0.746,
+   "eligible": true,
+   "latency_ms": 1201,
+   "Q": {
+    "gxu_finger": 0.244,
+    "perform_large": 0.248,
+    "bidmc": 0.901,
+    "perform_cohort": 0.678,
+    "wrist": 1.259
+   },
+   "mae_ext": 1.5
+  },
+  {
+   "arm": "F1_flow",
+   "sampler": "F1_flow_s16_w1",
+   "S_arm": 0.61,
+   "S_real": 0.468,
+   "C": 0.033,
+   "auc": 0.75,
+   "eligible": true,
+   "latency_ms": 1466,
+   "Q": {
+    "gxu_finger": 0.192,
+    "perform_large": 0.163,
+    "bidmc": 0.768,
+    "perform_cohort": 0.531,
+    "wrist": 1.18
+   },
+   "mae_ext": 0.84
+  },
+  {
+   "arm": "F2_flow_deriv",
+   "sampler": "F2_flow_deriv_s8_w1",
+   "S_arm": 0.614,
+   "S_real": 0.427,
+   "C": 0.095,
+   "auc": 0.78,
+   "eligible": true,
+   "latency_ms": 673,
+   "Q": {
+    "gxu_finger": 0.16,
+    "perform_large": 0.175,
+    "bidmc": 0.712,
+    "perform_cohort": 0.513,
+    "wrist": 1.128
+   },
+   "mae_ext": 3.01
+  },
+  {
+   "arm": "F2_flow_deriv",
+   "sampler": "F2_flow_deriv_s8_w1.5",
+   "S_arm": 0.64,
+   "S_real": 0.43,
+   "C": 0.151,
+   "auc": 0.769,
+   "eligible": true,
+   "latency_ms": 1186,
+   "Q": {
+    "gxu_finger": 0.167,
+    "perform_large": 0.175,
+    "bidmc": 0.648,
+    "perform_cohort": 0.53,
+    "wrist": 1.38
+   },
+   "mae_ext": 3.7
+  }
+ ],
+ "curves": {
+  "F1_flow": [
+   {
+    "step": 4000,
+    "S_real": 0.862,
+    "C": 0.02,
+    "Q": {
+     "gxu_finger": 0.668,
+     "perform_large": 0.536,
+     "bidmc": 1.09,
+     "perform_cohort": 0.935,
+     "wrist": 1.617
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.726,
+    "C": 0.02,
+    "Q": {
+     "gxu_finger": 0.504,
+     "perform_large": 0.419,
+     "bidmc": 0.996,
+     "perform_cohort": 0.787,
+     "wrist": 1.419
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.639,
+    "C": 0.021,
+    "Q": {
+     "gxu_finger": 0.399,
+     "perform_large": 0.337,
+     "bidmc": 0.892,
+     "perform_cohort": 0.733,
+     "wrist": 1.341
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.587,
+    "C": 0.023,
+    "Q": {
+     "gxu_finger": 0.331,
+     "perform_large": 0.271,
+     "bidmc": 0.867,
+     "perform_cohort": 0.658,
+     "wrist": 1.351
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.556,
+    "C": 0.023,
+    "Q": {
+     "gxu_finger": 0.288,
+     "perform_large": 0.226,
+     "bidmc": 0.832,
+     "perform_cohort": 0.625,
+     "wrist": 1.368
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.539,
+    "C": 0.027,
+    "Q": {
+     "gxu_finger": 0.261,
+     "perform_large": 0.208,
+     "bidmc": 0.807,
+     "perform_cohort": 0.6,
+     "wrist": 1.399
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.531,
+    "C": 0.03,
+    "Q": {
+     "gxu_finger": 0.247,
+     "perform_large": 0.199,
+     "bidmc": 0.771,
+     "perform_cohort": 0.575,
+     "wrist": 1.463
+    }
+   }
+  ],
+  "F2_flow_deriv": [
+   {
+    "step": 4000,
+    "S_real": 0.523,
+    "C": 0.048,
+    "Q": {
+     "gxu_finger": 0.266,
+     "perform_large": 0.222,
+     "bidmc": 0.714,
+     "perform_cohort": 0.569,
+     "wrist": 1.608
+    }
+   },
+   {
+    "step": 6000,
+    "S_real": 0.457,
+    "C": 0.059,
+    "Q": {
+     "gxu_finger": 0.195,
+     "perform_large": 0.168,
+     "bidmc": 0.763,
+     "perform_cohort": 0.527,
+     "wrist": 1.324
+    }
+   },
+   {
+    "step": 8000,
+    "S_real": 0.419,
+    "C": 0.07,
+    "Q": {
+     "gxu_finger": 0.182,
+     "perform_large": 0.144,
+     "bidmc": 0.7,
+     "perform_cohort": 0.496,
+     "wrist": 1.09
+    }
+   },
+   {
+    "step": 10000,
+    "S_real": 0.398,
+    "C": 0.185,
+    "Q": {
+     "gxu_finger": 0.154,
+     "perform_large": 0.118,
+     "bidmc": 0.704,
+     "perform_cohort": 0.463,
+     "wrist": 1.05
+    }
+   },
+   {
+    "step": 12000,
+    "S_real": 0.407,
+    "C": 0.188,
+    "Q": {
+     "gxu_finger": 0.149,
+     "perform_large": 0.12,
+     "bidmc": 0.76,
+     "perform_cohort": 0.477,
+     "wrist": 1.024
+    }
+   },
+   {
+    "step": 14000,
+    "S_real": 0.402,
+    "C": 0.222,
+    "Q": {
+     "gxu_finger": 0.147,
+     "perform_large": 0.109,
+     "bidmc": 0.775,
+     "perform_cohort": 0.476,
+     "wrist": 0.983
+    }
+   },
+   {
+    "step": 16000,
+    "S_real": 0.402,
+    "C": 0.226,
+    "Q": {
+     "gxu_finger": 0.144,
+     "perform_large": 0.121,
+     "bidmc": 0.772,
+     "perform_cohort": 0.484,
+     "wrist": 0.96
+    }
+   }
+  ]
+ },
+ "selection": "not written: the run stopped while scoring samplers (trace memory)",
+ "configuration": {
+  "input_root": "/kaggle/input",
+  "output": "/kaggle/working/physioflow10",
+  "stage": "pilot",
+  "pilot_root": null,
+  "incumbent_root": null,
+  "arms": [
+   "F1_flow",
+   "F2_flow_deriv"
+  ],
+  "samplers": null,
+  "steps": 16000,
+  "seeds": [
+   42,
+   123,
+   2026
+  ],
+  "batch": 128,
+  "interval": 2000,
+  "eval_samples": 256,
+  "bootstrap": 200,
+  "allow_cpu": false
+ }
+}

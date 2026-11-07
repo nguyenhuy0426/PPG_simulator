@@ -66,7 +66,29 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 ### Neural waveform models
 
-The current **04 PPG morphology** page keeps the original three-Gaussian
+The app's Neural page offers the fitted three-Gaussian shaper and the LSM-GAN sequence (normalized 30 s strip at 40 Hz,
+BIDMC, no rate control, no paired IR/RED, no calibrated SpO₂); `assets/neural/manifest.json` lists the packaged files.
+
+PhysioMix (round 9) and PhysioFlow (round 10) were removed from the app with every research generator that did not
+improve on them. A strict real-vs-generated judge retrained per source on unseen people (C2ST, validation AUC; 0.5 =
+indistinguishable, the real-vs-real control is about 0.45) still separated them at 0.99–1.00, as it did PhysioMix with
+the strict critic, LSM-GAN-S, the flow-GANs G1–G3, BeatGen and the spectral-finish variants (0.95–1.00). Kept for
+further work: PhysioFlow-R (R1, mean 0.759 over seeds 0.745–0.785 at 16 Heun steps, the only clear gain), its fine-tune R1F and PhysioGAN-R
+(P5, in training), and the LSM-GAN author topology as the unchanged baseline. The removed models' results stay in
+`ml/runs`, [docs/model-report](docs/model-report/README.md) and [docs/physioflow/REPORT_VI.md](docs/physioflow/REPORT_VI.md);
+their code is in git history. These are engineering evaluations of normalized waveform shape, not clinical
+validation, and they were not measured on the Pi/DAC/OPT101.
+
+PPG-physiGPT (`ml/kaggle_physigpt/`, research only, not in the app) is an unconditional GPT-PPG-style patch
+transformer with a flow-matching head, pretrained on MIMIC-III WDB on Kaggle 2 x T4. The strict judge still separates
+every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people),
+the 99.9M large model reaches 0.941 against 0.933 for the best 30.7M base, where real people score 0.960. It is the
+V1 release: V1 asks for 95% of the real-vs-real similarity (large: 98.1%). The V2 target, absolute 0.95 with a
+feature-only tree classifier at most 0.60 accurate (large: 0.618), is not met; the gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
+
+#### Earlier models (history)
+
+The **04 PPG morphology** page keeps the original three-Gaussian
 generator and offers the LSM-GAN sequence as an experimental model. The
 cWGAN-GP checkpoint below is retained for research comparison; it is not the
 current sequence source. Both neural models were trained from BIDMC 1.0.0 PPG
@@ -135,7 +157,7 @@ electrically independent boards.
 |---|---:|---|---|
 | OPT101 receiver | 70 × 20 mm | Two OPT101P in DIP-8 sockets; 2 mm Grove A2/RED and A0/IR headers; ADS1115 signal header; supply bypass and output RC | [Schematic, PCB and assembly notes](hardware/opt101_receiver_kicad/opt101_receiver/README.md) |
 | BPW34 receiver | 70 × 20 mm | Two BPW34, two OPA333 TIAs, 1 MΩ/22 pF feedback, 2 mm Grove headers, ADS1115 signal/GND header | [Schematic, PCB and assembly notes](hardware/bpw34_receiver/README.md) |
-| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
+| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers. v2.0 adds a separate I²C header per module (J8 IR, J9 RED) with a 100 Ω / bypass solder jumper, open by default | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
 
 | OPT101 receiver | BPW34 receiver | LED/IR driver |
 |---|---|---|
@@ -148,6 +170,23 @@ that accepts three designs on one panel. Standalone packages are available for
 [OPT101](hardware/PPG_OPT101_receiver.zip), [BPW34](hardware/PPG_BPW34_receiver.zip)
 and the [driver](hardware/PPG_LED_IR_driver.zip). Confirm V-score capability and pricing with the board house;
 separate the bare boards before soldering.
+
+**Driver-only order and assembly.** The driver can be ordered on its own from the
+[driver ZIP](hardware/PPG_LED_IR_driver.zip) (Gerber in `hardware/led_ir_driver/fabrication/`).
+Its SMT files (BOM with 14 placements, CPL, DNP list) are in
+[`hardware/led_ir_driver/assembly/`](hardware/led_ir_driver/assembly/README.md).
+After the board house's review the driver uses a 0.5 mm GND-pour clearance and
+1.5 mm pads for the 0.8 mm-drill 2.00 mm headers (J8/J9). **The three-board panel
+and its ZIP were not rebuilt with these rules**, so they still carry the earlier
+driver copy (0.3 mm pour clearance, 1.35 mm J8/J9 pads). Rebuild the panel
+before ordering it. These are CAD checks (ERC, DRC, connectivity), not
+measurements on assembled boards.
+
+**Assembled 3D views.** [`hardware/renders_original/`](hardware/renders_original/README.md)
+shows the original driver (before v2.0, no jumpers, shared I²C header) and the
+OPT101 receiver with the chips and MCP4725 modules fitted, both sides;
+[`hardware/renders_v2.1/`](hardware/renders_v2.1/README.md) shows the v2.x driver.
+The module and OPT101P bodies are approximate stand-in models.
 
 ![Three-board V-cut fabrication panel](hardware/ppg_panel/reports/pcb_top.png)
 ![V-cut positions and dimensions](hardware/ppg_panel/reports/vcut_drawing.png)
@@ -340,6 +379,34 @@ plotting an 8-second rolling window for A0 (IR) and A2 (Red). Sensor readings di
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 
+**Single-sensor TDM mode (Setup → RX sensor → 1 × OPT101, or `--rx-mode tdm`):**
+when only one OPT101 is available, put both LEDs in one chamber in front of the A0
+sensor. [docs/system_3d/README_TDM.md](docs/system_3d/README_TDM.md) adds a
+dual-LED carrier (RED + IR, toed in to meet at the sensor, with swappable IR
+masks) for the IR lane of the existing rectangular v4 box; the 70 × 20 mm
+receiver PCB is used with only socket U2 (A0) populated. The Setup switch is locked while output runs, is
+saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
+The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
+IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
+first, so the two LEDs are never commanded on together. A0 is read once per slot,
+`PPG_TDM_READ_DELAY_MS` after the switch (default 6 ms of a 10 ms
+`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
+The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
+next to them. Nothing is subtracted. TDM reads the sensor only while output
+runs, and the LEDs pulse instead of glowing steadily.
+The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
+(τ = 1 ms) needs about 6–7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
+slow for 10 ms slots. Measure it with the app stopped:
+
+```bash
+.venv/bin/python scripts/measure_tdm_settling.py --output docs/hardware-validation/tdm-settling
+```
+
+`suggested_read_delay_ms` in its summary is the slowest observed edge plus 25 %.
+If it does not fit, lengthen `PPG_TDM_SLOT_MS` (lower per-channel rate) or reduce
+the RC. These checks establish timing only, not SpO₂ calibration: both channels
+now share one photodiode's responsivity, so the R ratio differs from dual mode.
+
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
 between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN
 continuous pulse sequence. Clips automatically stop at 30 seconds or upon navigating away.
@@ -402,6 +469,11 @@ command path, and offers the older 10k/10k divider hypothesis separately. Its
 `I ≈ Vcmd/R` readout is an ideal estimate; current, compliance and optical response
 must be measured on the actual assembly. No wiring, transistor or resistor is
 changed by this software update.
+
+## References
+
+The datasheets, papers and web sources used by the hardware, PPG model and
+neural-model work are collected in [docs/REFERENCES.md](docs/REFERENCES.md).
 
 ## 👨‍💻 Authors
 

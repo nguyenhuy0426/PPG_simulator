@@ -1,12 +1,23 @@
 """Shared read-only view of the existing receiver; never starts ADC or DAC IO."""
 import time
 
+from core.rx_heart_rate import estimate_rx_rate
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from ui import theme as T
 from ui.trace_view import Lane, LaneView
 
 RX_CHANNELS = ((0, "IR", T.IR), (2, "RED", T.RED))
 REFRESH_S = 0.1
+DEFAULT_MAX_GAP_S = 0.05
+RATE_REFRESH_S = 1.0   # rate recomputed at most once a second per channel (~3 ms each on the x86 laptop; Pi unmeasured)
+
+# Received pulse rate shown in each live lane header: (label, reasons there is none).
+_RATE = {
+    "vi": ("Nhịp RX", {"short": "cần ≥ 5 s liên tục", "saturated": "chạm trần ADC", "weak": "tín hiệu yếu",
+                       "unclear": "không rõ nhịp đều"}),
+    "en": ("RX rate", {"short": "needs ≥ 5 s gap-free", "saturated": "ADC clipping", "weak": "weak signal",
+                       "unclear": "no clear regular rhythm"}),
+}
 
 # Short lane-header state plus the centred explanation shown in an empty lane.
 _PANEL = {
@@ -19,6 +30,7 @@ _PANEL = {
         "invalid": ("Lỗi", "Mẫu ADC không hợp lệ", ""),
         "disconnected": ("Mất kết nối", "Mất kết nối ADC", "Kiểm tra Grove Base Hat 0x08 và cáp"),
         "ok": ("Trực tiếp", "", ""), "saturated": ("Chạm trần ADC", "", ""),
+        "tdm_idle": "TDM chỉ đọc cảm biến khi đang phát TX",
     },
     "en": {
         "disabled": ("Off", "No sensor installed", "Channel stays off until the {name} sensor is fitted"),
@@ -29,6 +41,7 @@ _PANEL = {
         "invalid": ("Error", "Invalid ADC sample", ""),
         "disconnected": ("Disconnected", "ADC disconnected", "Check the Grove Base Hat 0x08 and cable"),
         "ok": ("Live", "", ""), "saturated": ("ADC full scale", "", ""),
+        "tdm_idle": "TDM reads the sensor only while output runs",
     },
 }
 
@@ -57,6 +70,7 @@ class RXPanel(LaneView):
         self.channels = tuple(channels)
         self.end_s = 0.0
         self._last_update = 0.0
+        self._rates = {}       # channel -> (computed_at, RxRate)
 
     def set_language(self, language):
         self.language = language
@@ -68,15 +82,40 @@ class RXPanel(LaneView):
             return
         self._last_update = now
         copy = _PANEL["vi" if self.language == "vi" else "en"]
+        # TDM: both lanes come from one sensor, one sample per slot frame.
+        tdm = getattr(self.receiver, "mode", "dual") == "tdm"
+        period = getattr(self.receiver, "sample_period_s", 0.0)
+        max_gap = max(DEFAULT_MAX_GAP_S, 1.5 * period)
+        dark = self.receiver.get_dark_samples(1) if tdm else ()
         lanes = []
         for channel, name, color in self.channels:
             status, samples = channel_view(self.receiver, channel, now, self.window_s)
             state, message, sub = copy.get(status, (status, status, ""))
+            if tdm and status in ("init", "stale"):
+                sub = copy["tdm_idle"]
             detail = state
             if samples and status in ("ok", "saturated"):
                 detail = f"{state}   {raw_to_millivolts(samples[-1].raw):.0f} mV"
-            lanes.append(Lane(f"A{channel}  {name}", color, detail,
+                if dark:
+                    detail += f"   dark {raw_to_millivolts(dark[-1].raw):.0f} mV"
+            title = (f"A{self.receiver.physical_channel(channel)} TDM  {name}" if tdm
+                     else f"A{channel}  {name}")
+            lanes.append(Lane(title, color, detail,
                               [(s.timestamp - now, raw_to_millivolts(s.raw)) for s in samples],
                               message if not samples else "", sub.format(name=name) if not samples else "",
-                              max_gap_s=0.05))
+                              max_gap_s=max_gap, badge=self.rate_badge(channel, status, samples, now)))
         self.update_lanes(lanes, end_s=0.0)
+
+    def rate_badge(self, channel, status, samples, now):
+        """Pulse rate of the received samples; empty when there are no real samples (dry-run, off)."""
+        if not samples or status not in ("ok", "saturated"):
+            self._rates.pop(channel, None)
+            return ""
+        computed_at, rate = self._rates.get(channel, (None, None))
+        if computed_at is None or now - computed_at >= RATE_REFRESH_S:
+            rate = estimate_rx_rate(samples)
+            self._rates[channel] = (now, rate)
+        label, reasons = _RATE["vi" if self.language == "vi" else "en"]
+        if rate.bpm is None:
+            return f"{label}  — {reasons.get(rate.reason, rate.reason)}"
+        return f"{label}  {rate.bpm:.0f} bpm"

@@ -1,6 +1,7 @@
 """Explicit, reviewable routing: coordinates in mm from board top-left.
 
-Signals 0.35 mm; 3V3 bus 0.6 mm; 5V branches 0.6/0.8 mm.
+Signals 0.35 mm; 5V branches 0.6/0.8 mm. The v2.0 per-channel I2C nets
+(SCL/SDA/3V3/GNDI2C) are routed on the compact board in routing_paths.json.
 Feedback is a separate branch ending on the sense resistor's upper pad.
 The bottom GND pour supplies the return path without routing LED return
 current through the receiver board.
@@ -13,17 +14,9 @@ def route_board(b, parts):
     def trace(net,pts,layer=p.F_Cu,width=.35):
         for a,c in zip(pts,pts[1:]):
             t=p.PCB_TRACK(b); t.SetStart(vec(*a)); t.SetEnd(vec(*c)); t.SetLayer(layer); t.SetWidth(p.FromMM(width)); t.SetNet(nets[net]); b.Add(t)
-    # Each MCP4725 keeps its own four-wire harness copper.  The two harnesses
-    # meet only at the Pi's I2C controller, not in this board.
-    for ch,x0,x1 in [('IR',7,29),('RED',40,62)]:
-        for net,y0,y1,width in [('SCL',15.08,15.08,.35),('SDA',17.62,17.08,.35),('3V3',20.16,19.08,.6)]:
-            trace(f'{net}_{ch}',[(x0,y0),(x1-3,y0),(x1-3,y1),(x1,y1)],width=width)
-        gnd=f'GND_DAC_{ch}'
-        trace(gnd,[(x0,12.54),(x0+2,12.54),(x0+2,21.08),(x1,21.08)],p.B_Cu,.6)
-        trace(gnd,[(x0,22.70),(x1,22.70),(x1,21.08)],p.B_Cu,.6)
-    trace('DAC_IR',[(7,10),(9,10)],p.B_Cu)
+    trace('DAC_IR',[(7,10),(29,10)],p.B_Cu)
     trace('DAC_IR',[(7,10),(5,12),(5,23),(9,27)],p.B_Cu)
-    trace('DAC_RED',[(40,10),(66,10)],p.B_Cu)
+    trace('DAC_RED',[(40,10),(62,10)],p.B_Cu)
     trace('DAC_RED',[(40,10),(38,12),(38,24.3),(44,24.3),(46,26.3),(46,27)],p.B_Cu)
 
     # Left/IR command, base drive, emitter current and Kelvin feedback branch.
@@ -71,7 +64,7 @@ def route_board(b, parts):
     fps={f.GetReference():f for f in b.GetFootprints()}
     original_tracks=list(b.GetTracks())
     for d in parts:
-        if d['kind'] not in ('R','C','CP'): continue
+        if d['kind'] not in ('R','C','CP') or not d['anchor']: continue
         pitch={'R':7.62,'C':2.5,'CP':2.0}[d['kind']]
         angle=math.radians(d['angle'])
         for pad in fps[d['ref']].Pads():

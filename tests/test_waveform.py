@@ -91,19 +91,25 @@ class TestSimpleShapes(unittest.TestCase):
                                        shaper.sample(kind, -0.75), places=9)
 
 
+# Well-separated components (the former preset): the default IntelliVue preset overlaps its local attenuation
+# with the systolic fall by design (docs/ppg_morphology.md), so component-locality tests state their morphology.
+SEPARATED = dict(systolic_width=0.055, notch_width=0.02, diastolic_width=0.10, diastolic_amplitude=0.4,
+                 dicrotic_depth=0.25)
+
+
 class TestPulseMorphology(unittest.TestCase):
-    def test_defaults_preserve_project_component_positions(self):
+    def test_defaults_are_the_intellivue_preset(self):
         morph = PulseMorphology()
-        self.assertAlmostEqual(morph.systolic_pos, 0.15)
-        self.assertAlmostEqual(morph.notch_pos, 0.30)
-        self.assertAlmostEqual(morph.diastolic_pos, 0.40)
+        self.assertAlmostEqual(morph.systolic_pos, 0.240)
+        self.assertAlmostEqual(morph.notch_pos, 0.257)
+        self.assertAlmostEqual(morph.diastolic_pos, 0.536)
 
     def test_times_are_expressed_at_60_bpm(self):
         """AECG100 quotes feature times in ms at 60 BPM = a 1000 ms cycle."""
         morph = PulseMorphology()
-        self.assertAlmostEqual(morph.systolic_time_ms, 150.0)
-        self.assertAlmostEqual(morph.notch_time_ms, 300.0)
-        self.assertAlmostEqual(morph.diastolic_time_ms, 400.0)
+        self.assertAlmostEqual(morph.systolic_time_ms, 240.0)
+        self.assertAlmostEqual(morph.notch_time_ms, 257.0)
+        self.assertAlmostEqual(morph.diastolic_time_ms, 536.0)
 
     def test_from_times_ms_round_trips(self):
         morph = PulseMorphology.from_times_ms(150.0, 360.0, 460.0)
@@ -119,7 +125,7 @@ class TestPulseMorphology(unittest.TestCase):
     def test_replace_returns_new_object(self):
         morph = PulseMorphology()
         other = morph.replace(diastolic_amplitude=0.6)
-        self.assertAlmostEqual(morph.diastolic_amplitude, 0.4)
+        self.assertAlmostEqual(morph.diastolic_amplitude, 0.1557)
         self.assertAlmostEqual(other.diastolic_amplitude, 0.6)
 
     def test_is_frozen(self):
@@ -198,13 +204,13 @@ class TestPpgShape(unittest.TestCase):
 
     def test_systolic_peak_lands_near_configured_time(self):
         shaper = PulseShaper()
-        shaper.morphology = PulseMorphology.from_times_ms(250.0, 400.0, 500.0)
+        shaper.morphology = PulseMorphology.from_times_ms(250.0, 400.0, 500.0, **SEPARATED)
         values = _sweep(lambda p: shaper.sample(waveform.WAVE_PPG, p), 1000)
         peak_phase = values.index(max(values)) / 1000.0
         self.assertAlmostEqual(peak_phase, 0.25, delta=0.02)
 
     def test_notch_creates_a_local_minimum(self):
-        shaper = PulseShaper()
+        shaper = PulseShaper(PulseMorphology(systolic_pos=0.15, notch_pos=0.30, diastolic_pos=0.40, **SEPARATED))
         notch_phase = shaper.morphology.notch_pos
         at_notch = shaper.sample(waveform.WAVE_PPG, notch_phase)
         before = shaper.sample(waveform.WAVE_PPG, notch_phase - 0.05)
