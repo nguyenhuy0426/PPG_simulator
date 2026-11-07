@@ -44,6 +44,41 @@ def test_excitation_runs_at_the_asked_heart_rate():
     torch.testing.assert_close(bpm, hr)
 
 
+def test_spectral_critic_does_not_amplify_empty_stop_band_gradients():
+    t = torch.arange(pg.WINDOW)/pg.FS
+    x = (.5+.4*torch.sin(2*torch.pi*1.25*t))[None].requires_grad_()
+    critic = pg.SpectralD(8, False)
+    inputs = []
+    handle = critic.convs[0].register_forward_pre_hook(lambda module, args: inputs.append(args[0]))
+    critic(x, None)
+    handle.remove()
+    inputs[0].mean().backward()
+    assert torch.isfinite(x.grad).all() and 0 < float(x.grad.abs().max()) < 1
+    flat, _ = critic(torch.full_like(x, .5), None)
+    assert torch.isfinite(flat).all()
+
+
+def test_invalid_backward_never_changes_parameters_or_adam_state():
+    parameter = torch.nn.Parameter(torch.tensor([1.]))
+    optimizer = torch.optim.AdamW([parameter], lr=.01)
+    scaler = torch.amp.GradScaler('cuda', enabled=False)
+    norm = pg.backward_step(parameter.square().sum()*float('nan'), [parameter], optimizer, scaler, 1, 10.)
+    assert not torch.isfinite(norm) and parameter.item() == 1. and not optimizer.state
+    norm = pg.backward_step(parameter.square().sum(), [parameter], optimizer, scaler, 1, 10.)
+    assert torch.isfinite(norm) and parameter.item() < 1. and optimizer.state
+
+
+def test_smoke_rejects_a_generator_that_never_learns(tmp_path, monkeypatch):
+    run = tmp_path/'run'
+    run.mkdir()
+    (run/'gan_summary.json').write_text(json.dumps(dict(stop_reason='steps')))
+    (run/'metrics.jsonl').write_text(json.dumps(dict(g_grad=0.))+'\n')
+    monkeypatch.setattr(pg, 'synthetic_shard', lambda path: None)
+    monkeypatch.setattr(pg, 'main', lambda argv: None)
+    with pytest.raises(RuntimeError, match='no finite nonzero generator gradient'):
+        pg.smoke(tmp_path, fp32=True)
+
+
 def test_device_windows_return_the_stored_uint16_values(tmp_path):
     people_shard(tmp_path/"s", per=4)
     data = tr.Windows([str(tmp_path/"s")])
@@ -94,6 +129,31 @@ def test_non_finite_losses_roll_back_instead_of_killing_the_run(tmp_path, monkey
     assert np.isfinite(x).all()
 
 
+def test_warm_start_preserves_release_and_starts_new_optimizer_state(tmp_path):
+    tr.synthetic_shard(tmp_path/'shard')
+    model = pg.SourceFilterGenerator(hr_cond=True, **pg.CONFIGS['tiny'])
+    release = dict(kind='pure_gan', config='tiny', hr_cond=True, generator=model.state_dict(), step=4000)
+    path = tmp_path/'release.pt'
+    torch.save(release, path)
+    common = ['--data', str(tmp_path/'shard'), '--config', 'tiny', '--hr-cond', '--cpu', '--fp32',
+              '--init', str(path), '--batch', '4', '--eval-every', '1', '--log-every', '1']
+    pg.main(common+['--output', str(tmp_path/'zero'), '--steps', '0'])
+    initial = torch.load(tmp_path/'zero'/'gan_release.pt', weights_only=False)
+    for name, weight in model.state_dict().items():
+        torch.testing.assert_close(initial['generator'][name], weight, rtol=0, atol=0)
+    pg.main(common+['--output', str(tmp_path/'one'), '--steps', '1'])
+    state = torch.load(tmp_path/'one'/'last.pt', weights_only=False)
+    assert state['step'] == 1 and not state['g_scaler']
+    assert all(float(v['step']) == 1 for v in state['g_opt']['state'].values())
+    assert any(not torch.equal(state['G'][k], v) for k, v in model.state_dict().items())
+    with pytest.raises(ValueError, match='same config'):
+        pg.main([v for v in common if v != '--hr-cond']+['--output', str(tmp_path/'bad'), '--steps', '0'])
+    release['generator']['out.bias'].fill_(float('nan'))
+    torch.save(release, path)
+    with pytest.raises(ValueError, match='non-finite weights'):
+        pg.main(common+['--output', str(tmp_path/'nan'), '--steps', '0'])
+
+
 def test_kernel_evaluation_reports_percentages_against_real_people(tmp_path):
     people_shard(tmp_path/"shard")
     sizes = dict(fit=60, inner=20, eval=40)
@@ -103,18 +163,24 @@ def test_kernel_evaluation_reports_percentages_against_real_people(tmp_path):
     assert 0 <= summary["mean_similarity_percent"] <= 100 and 0 <= summary["real_vs_real_percent"] <= 100
     assert len(summary["feature_percent"]) == 22 and (tmp_path/"eval"/"target.json").exists()
     assert json.loads((tmp_path/"eval"/"summary.json").read_text()) == summary
+    np.testing.assert_array_equal(np.load(tmp_path/"eval"/"generated.npy"), windows)
+    assert np.load(tmp_path/"eval"/"generated.npy").dtype == np.float32
 
 
 def test_puregan_and_gan_kernels_train_then_evaluate(tmp_path):
     common = ["--owner", "charlesday2612", "--source-owner", "halovie2412", "--shards", "1", "2", "--solos", "0",
               "--datasets", "ppg-physigpt-shard0-data-v1"]
-    st.main([str(tmp_path/"p"), "puregan", *common, "--tag", "psf-gan", "--gan-extra=--hr-cond"])
+    st.main([str(tmp_path/"p"), "puregan", *common, "--tag", "psf-gan", "--gan-extra=--hr-cond --fp32",
+             '--from-slug', 'ppg-physigpt-psf-gan-v1'])
     meta = json.loads((tmp_path/"p"/"kernel-metadata.json").read_text())
     run = (tmp_path/"p"/"run.py").read_text()
     assert meta["id"] == "charlesday2612/ppg-physigpt-psf-gan-v1" and meta["enable_gpu"]
-    assert all(s.startswith("halovie2412/") for s in meta["kernel_sources"])
+    assert all(s.startswith("halovie2412/") for s in meta["kernel_sources"][:-1])
+    assert meta['kernel_sources'][-1] == 'charlesday2612/ppg-physigpt-psf-gan-v1'
     assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
     assert "'--hr-cond'" in run and "generate_release(release" in run and "evaluate(generated_sets(sample)" in run
+    assert "init = ['--init', str(found[0])]" in run and 'fp32=True' in run
+    compile(run, '<staged>', 'exec')
     st.main([str(tmp_path/"g"), "gan", *common, "--config", "large", "--from-slug", "ppg-physigpt-decay0-large-v1",
              "--tag", "apft-gan-v3", "--strict-seeds"])
     run = (tmp_path/"g"/"run.py").read_text()

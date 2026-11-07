@@ -60,6 +60,6 @@ def evaluate(windows, data, output, device="cpu", strict_seeds=(), threads=4, si
         judge = json.loads((output/"generated_judge.json").read_text())
     summary = summarise(target, judge)
     (output/"summary.json").write_text(json.dumps(summary, indent=1))
-    np.save(path, np.asarray(windows, np.float16))   # halves the kernel output; the scores are already written
+    # Keep the exact float32 waves the judges saw; fp16 export prevented faithful post-run benchmarking.
     print("EVALUATION", json.dumps(summary), flush=True)
     return summary

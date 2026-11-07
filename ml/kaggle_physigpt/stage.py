@@ -171,14 +171,20 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                              strict_seeds))
     if kind == "puregan":
         slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
+        initial = "init = []\n"
+        if from_slug:
+            initial = (f"found = sorted(pathlib.Path(mounted({from_slug!r})).rglob('gan_release.pt'))\n"
+                       "if len(found) != 1:\n    raise FileNotFoundError(f'expected one gan_release.pt, found {found}')\n"
+                       "init = ['--init', str(found[0])]\n")
         return ("import time\nfrom ml.kaggle_physigpt.pure_gan import main as puregan, smoke, generate_release\n"
                 "begin = time.time()\n"
                 + mount_lookup(owner)
                 + f"data = [mounted(slug) for slug in {slugs!r}]\n"
-                "print('smoke', json.dumps(smoke('/tmp/puregan_smoke')), flush=True)\n"
+                + initial
+                + f"print('smoke', json.dumps(smoke('/tmp/puregan_smoke', fp32={'--fp32' in extra})), flush=True)\n"
                 f"left = {kernel_hours} - (time.time()-begin)/3600 - {EVAL_HOURS['puregan']}\n"
                 f"puregan(['--data', *data, '--output', '/kaggle/working/gan', '--config', 'base', "
-                f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
+                f"*init, *{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
                 + evaluation("release = '/kaggle/working/gan/gan_release.pt'\n"
                              "sample = lambda n, seed: generate_release(release, n, seed, 'cuda')\n", strict_seeds))
     if kind == "sample":
@@ -340,7 +346,8 @@ def stage(output, kind, owner=OWNER, source_owner=None, **kw):
         name = f"ppg-physigpt-{kw.get('tag') or 'psf-gan'}-v1"
         meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4",
                     kernel_sources=[f"{source_owner}/{shard_slug(s)}" for s in kw.get("shards", (0,))]
-                    + [f"{source_owner}/{solo_slug(s)}" for s in kw.get("solos", ())])
+                    + [f"{source_owner}/{solo_slug(s)}" for s in kw.get("solos", ())]
+                    + ([f"{owner}/{kw['from_slug']}"] if kw.get("from_slug") else []))
     elif kind == "sample":
         name = f"ppg-physigpt-{kw['tag']}-sample-v1"
         meta = dict(id=f"{owner}/{name}", title=name, enable_gpu=True, machine_shape="NvidiaTeslaT4", kernel_sources=[])
@@ -427,7 +434,8 @@ def main(argv=None):
     parser.add_argument("--gen-steps", type=int, default=32, help="judge: Heun steps per patch of the generator")
     parser.add_argument("--no-clamp", action="store_true", help="judge: sample patches without clipping to [0, 1]")
     parser.add_argument("--skip-controls", action="store_true", help="judge: do not rerun the model-independent controls")
-    parser.add_argument("--from-slug", default=None, help="judge: kernel whose release.pt is judged (default: the stage)")
+    parser.add_argument("--from-slug", default=None,
+                        help="judge/gan: release source; puregan: same-owner kernel whose gan_release.pt initializes G")
     parser.add_argument("--generated-slug", default=None,
                         help="judge: dataset (same owner) of generated*.npy to score on the feature tier, no checkpoint")
     parser.add_argument("--cpu", action="store_true", help="judge: run on CPU, spending no GPU quota (needs --generated-slug)")

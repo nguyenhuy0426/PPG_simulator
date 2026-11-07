@@ -255,7 +255,10 @@ class SpectralD(nn.Module):
 
     def forward(self, x, hr):
         spec = torch.stft(x.float()-.5, 128, 8, window=self.window, return_complex=True).abs()
-        h, feats = torch.log(spec+1e-4)[:, None].to(x.dtype), []
+        # The fixed 1e-4 magnitude floor amplified stop-band gradients; use the existing CriticSpectral floor.
+        power = spec.square()
+        floor = (1e-3*power.mean((1, 2), keepdim=True)).clamp_min(1e-8)
+        h, feats = (.5*torch.log(power+floor))[:, None].to(x.dtype), []
         for conv in self.convs:
             h = F.leaky_relu(conv(h), .1)
             feats.append(h)
@@ -347,6 +350,22 @@ def snapshot(**modules):
     return {k: to_cpu(m.state_dict()) for k, m in modules.items()}
 
 
+def backward_step(loss, params, optimizer, scaler, world, clip):
+    """Skip invalid updates before they can poison Adam state, including on CPU / fp32."""
+    optimizer.zero_grad(set_to_none=True)
+    scaler.scale(loss).backward()
+    average(params, world)
+    scaler.unscale_(optimizer)
+    norm = torch.nn.utils.clip_grad_norm_(params, clip)
+    valid = torch.isfinite(loss.detach()) & torch.isfinite(norm)
+    if world > 1:
+        dist.all_reduce(valid, op=dist.ReduceOp.MIN)
+    if valid.item():
+        scaler.step(optimizer)
+    scaler.update()
+    return norm
+
+
 def worker(rank, world, args):
     cuda = torch.cuda.is_available() and not args.cpu
     if world > 1:
@@ -362,13 +381,22 @@ def worker(rank, world, args):
     cfg = CONFIGS[args.config]
     torch.manual_seed(args.seed)   # identical initial weights on every rank
     G = SourceFilterGenerator(hr_cond=args.hr_cond, **cfg).to(device)
+    if args.init:
+        state = torch.load(args.init, map_location=device, weights_only=False)
+        if (state.get("kind"), state.get("config"), state.get("hr_cond")) != ("pure_gan", args.config, args.hr_cond):
+            raise ValueError("--init must be a PSF release with the same config and HR conditioning")
+        if not all(torch.isfinite(value).all() for value in state["generator"].values()):
+            raise ValueError("--init generator contains non-finite weights")
+        G.load_state_dict(state["generator"])
+        del state
     D = Discriminators(hr_cond=args.hr_cond, **cfg).to(device)
     ema = SourceFilterGenerator(hr_cond=args.hr_cond, **cfg).to(device).eval().requires_grad_(False)
     ema.load_state_dict(G.state_dict())
     fused = dict(fused=True) if cuda else {}
     g_opt = torch.optim.AdamW(G.parameters(), lr=args.lr, betas=(.8, .99), weight_decay=0., **fused)
     d_opt = torch.optim.AdamW(D.parameters(), lr=args.d_lr, betas=(.8, .99), weight_decay=0., **fused)
-    g_scaler, d_scaler = torch.amp.GradScaler("cuda", enabled=cuda), torch.amp.GradScaler("cuda", enabled=cuda)
+    amp = cuda and not args.fp32
+    g_scaler, d_scaler = torch.amp.GradScaler("cuda", enabled=amp), torch.amp.GradScaler("cuda", enabled=amp)
     data = Windows(args.data)
     selection = np.sort(np.random.default_rng(20261105).choice(data.train, min(SELECT_REAL, len(data.train)),
                                                                 replace=False))
@@ -448,37 +476,28 @@ def worker(rank, world, args):
 
         # critics
         D.requires_grad_(True)
-        with torch.autocast("cuda", torch.float16, enabled=cuda):
+        with torch.autocast("cuda", torch.float16, enabled=amp):
             fake = G.windows(z, hr_fake, gen)
             d_real_out, d_fake_out = D(real, hr_real), D(fake.detach(), hr_fake)
             loss_d = d_loss(d_real_out, d_fake_out)
         d_max = torch.maximum(logit_max(d_real_out), logit_max(d_fake_out))
         del d_real_out, d_fake_out
-        d_opt.zero_grad(set_to_none=True)
-        d_scaler.scale(loss_d).backward()
-        average(d_params, world)
-        d_scaler.unscale_(d_opt)
-        d_grad = torch.nn.utils.clip_grad_norm_(d_params, args.clip)
-        d_scaler.step(d_opt)
-        d_scaler.update()
+        d_grad = backward_step(loss_d, d_params, d_opt, d_scaler, world, args.clip)
 
         # generator
         D.requires_grad_(False)
-        with torch.autocast("cuda", torch.float16, enabled=cuda):
+        with torch.autocast("cuda", torch.float16, enabled=amp):
             with torch.no_grad():
                 real_out = D(real, hr_real)
             adv, fm = g_terms(real_out, D(fake, hr_fake))
         feat = feature_distance(fake.float(), real) if args.feature_weight else adv.new_zeros(())
         loss_g = adv+args.fm_weight*fm+args.feature_weight*feat
-        g_opt.zero_grad(set_to_none=True)
-        g_scaler.scale(loss_g).backward()
-        average(g_params, world)
-        g_scaler.unscale_(g_opt)
-        g_grad = torch.nn.utils.clip_grad_norm_(g_params, args.clip)
-        g_scaler.step(g_opt)
-        g_scaler.update()
+        g_grad = backward_step(loss_g, g_params, g_opt, g_scaler, world, args.clip)
         # a loss or an (unscaled) gradient norm that is not finite; one now and then is the scaler finding its level
         bad = (~torch.isfinite(loss_d.detach()+loss_g.detach()+d_grad+g_grad)).float()
+        # The v2 run saved scale 1e-17 and zero G gradients as a "good" snapshot, then rolled back into it.
+        if amp and (min(g_scaler.get_scale(), d_scaler.get_scale()) < 1e-4 or g_grad == 0):
+            bad.fill_(1)
         if world > 1:
             dist.all_reduce(bad, op=dist.ReduceOp.MAX)
         if bad.item():
@@ -503,8 +522,9 @@ def worker(rank, world, args):
             continue
         with torch.no_grad():
             decay = min(args.ema, (1+step)/(10+step))
-            for e, p in zip(ema.parameters(), G.parameters()):
-                e.lerp_(p, 1-decay)
+            if not bad.item():
+                for e, p in zip(ema.parameters(), G.parameters()):
+                    e.lerp_(p, 1-decay)
         step += 1
         if step == 20:
             if cuda:
@@ -522,7 +542,8 @@ def worker(rank, world, args):
             record = dict(step=step, loss_d=float(loss_d.detach()), adv=float(adv.detach()), fm=float(fm.detach()),
                           feat=float(feat.detach()), d_grad=float(d_grad), g_grad=float(g_grad), lr=lr_g, g_scale=float(g_scaler.get_scale()),
                           d_scale=float(d_scaler.get_scale()), d_logit_max=float(d_max), bad_steps=bad_total,
-                          rollbacks=rollbacks, lr_factor=lr_factor, hours=round((time.time()-begin)/3600, 4),
+                          rollbacks=rollbacks, lr_factor=lr_factor, precision="fp16" if amp else "fp32",
+                          hours=round((time.time()-begin)/3600, 4),
                           step_seconds=step_seconds, windows_per_second=None if not step_seconds else
                           round(args.batch*world/step_seconds),
                           max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30 if cuda else None)
@@ -577,14 +598,20 @@ def generate_release(path, n, seed, device):
     return model.generate(n, seed=seed, device=device, hr=hr).cpu().numpy()
 
 
-def smoke(root, steps=6):
+def smoke(root, steps=6, fp32=False):
     """A few steps of the tiny config on synthetic windows through the device path before the kernel spends hours."""
     root = Path(root)
     if not (root/"shard"/"manifest.json").exists():
         synthetic_shard(root/"shard")
     main(["--data", str(root/"shard"), "--output", str(root/"run"), "--config", "tiny", "--steps", str(steps),
-          "--batch", "8", "--eval-every", "3", "--log-every", "1", "--port", "29525", "--hr-cond"])
-    return json.loads((root/"run"/"gan_summary.json").read_text())
+          "--batch", "8", "--eval-every", "3", "--log-every", "1", "--port", "29525", "--hr-cond",
+          *(["--fp32"] if fp32 else [])])
+    summary = json.loads((root/"run"/"gan_summary.json").read_text())
+    metrics = [json.loads(line) for line in (root/"run"/"metrics.jsonl").read_text().splitlines()]
+    if summary["stop_reason"] == "nonfinite" or not any(
+            r.get("g_grad", 0) > 0 and math.isfinite(r.get("g_grad", math.nan)) for r in metrics):
+        raise RuntimeError("PSF smoke failed: no finite nonzero generator gradient; training was not started")
+    return summary
 
 
 def main(argv=None):
@@ -592,7 +619,9 @@ def main(argv=None):
     parser.add_argument("--data", nargs="+", required=True, help="roots holding the shards (manifest.json)")
     parser.add_argument("--output", required=True)
     parser.add_argument("--config", default="base", choices=sorted(CONFIGS))
-    parser.add_argument("--resume", default=None, help="last.pt of this run after a stop")
+    start = parser.add_mutually_exclusive_group()
+    start.add_argument("--resume", default=None, help="last.pt of this run after a stop")
+    start.add_argument("--init", default=None, help="PSF gan_release.pt: warm-start G/EMA with fresh critics and optimizers")
     parser.add_argument("--hr-cond", action="store_true", help="condition generator and critics on the heart rate")
     parser.add_argument("--steps", type=int, default=200_000, help="planned steps (the lr decay is placed on these)")
     parser.add_argument("--batch", type=int, default=128, help="windows per device per step")
@@ -618,6 +647,7 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--port", type=int, default=29531)
     parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--fp32", action="store_true", help="disable fp16 autocast/scaling for numerical diagnosis")
     parser.add_argument("--cpu-world", type=int, default=1)
     args = parser.parse_args(argv)
     world = args.cpu_world if args.cpu or not torch.cuda.is_available() else torch.cuda.device_count()
