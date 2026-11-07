@@ -1,70 +1,72 @@
-# Gá màn hình PETG và liên kết buồng đen — 2026-11-05
+# Gá màn hình và hộp Pi bắt trực tiếp buồng tối — 2026-11-05
+
+Phương án hiện tại: buồng tối đặt trên hộp Pi, bắt trực tiếp bằng bốn vít M3.
+Không dùng khung U rời. Mốc trước khi thêm tai: commit `0dead178`.
 
 ## File để in
 
-- `ga_do_man_hinh.stl`: gá đã sửa, 168 × 126 × 74 mm, in 1 chiếc.
-- `khung_ghep_buong_den_pi4.stl`: khung U, 120 × 103 × 4 mm, in 1 chiếc, mặt rộng nằm trên bàn.
-- `than_hop_pi4.stl` và `01_than_hop_toi.stl`: giữ nguyên từng byte.
-- In đúng tỉ lệ 100%; hai chi tiết mới đều nằm trong khổ 180 mm, nhưng phải đặt thành hai bàn in riêng.
+- `than_hop_pi4.stl`: hộp Pi mới, đã có hai tai trước liền thân và hai tai sau có sẵn.
+- `ga_do_man_hinh.stl`: gá đã gia cường chân, giữ nguyên từ commit trên.
+- `01_than_hop_toi.stl`: buồng tối, không thay đổi.
+- `khung_ghep_buong_den_pi4.stl`: phương án khung U cũ; **không in/không lắp cho phương án này**.
 
-## Kết cấu và giới hạn chịu tải
+In đúng tỉ lệ 100%, đặt các chi tiết trên những bàn in riêng. Hộp Pi mới có kích
+thước bao 123 × 104,293 × 70 mm; gá 168 × 126 × 74 mm, đều nằm trong khổ 180 mm.
+Bề ngang thân Pi vẫn 120 mm, thân buồng tối vẫn 150 mm; không cần nới cả hộp.
 
-Gá gốc vốn là một khối kín, không phải nhiều mảnh STL rời. Tuy nhiên chân thanh xiên
-có bậc thụt, phần gân ngắn nhô ra và đáy gân cách mặt bàn 0,8 mm. Hai vai ngoài
-của thanh không liên tục từ chân lên trên. Hình học này gây thay đổi tiết diện đột ngột;
-đó là vị trí cần cải thiện khi màn hình nặng 800 g–1 kg.
+## Hai tai mới
 
-Bản sửa thay hai cụm chân ngắn bằng biên dạng liền, rộng 19 mm, có chuyển tiếp lõm
-R4 tại chân; tiếp đất ở Z=0 và nối liên tục lên phần gân trên. Không đổ đặc toàn bộ
-khoảng trống giữa hai thanh. Các cữ giữ màn hình được giữ nguyên. Thể tích gá tăng
-từ 41,93 lên 47,25 cm³, khoảng 12,7%; khung U riêng dùng thêm 12,79 cm³. Đây là
-thể tích hình học đặc, không phải lượng nhựa slicer tính sau infill/support.
+Mỗi tai 12 × 14 × 4 mm, mặt trên cùng cao độ Z=70 mm với miệng hộp. Mỗi tai có
+hai gân tam giác dày 2 mm hai bên; khoảng trống giữa gân 8 mm để đặt ê-cu/long đen.
+Hai lỗ trước Ø3,7 mm có tâm (6,85) và (114,85). Hai lỗ sau có sẵn giữ nguyên
+ở (6,−6) và (114,−6), đường kính khoảng 4,2 mm. Bước tâm bốn lỗ là 108 × 91 mm,
+khớp bốn lỗ Ø3,5 mm của buồng tối. Phần thêm khoảng 1,50 cm³ vật liệu hình học
+đặc; ít hơn phương án khung U riêng khoảng 11,29 cm³, chưa tính infill/support.
 
-Hình học mới cải thiện đường truyền lực ở chân. Chưa có FEA, dữ liệu cơ tính của
-cuộn PETG cụ thể, vị trí trọng tâm màn hình hay thử tải bản in, nên **chưa xác nhận
-được tải làm việc an toàn 1 kg**. Hai tay nối ngang phía trên và tai hộp Pi vẫn là
-các vị trí cần theo dõi; gia cường chân không chứng minh toàn bộ hệ thống không gãy.
-Khối lượng buồng đen cũng chưa được cung cấp. Kiểm tra này không xác nhận độ bền
-lâu dài, va đập, lực nhấn màn hình hay chống lật của toàn bộ thiết bị.
+Các cửa cổng, khoang trong, rãnh đáy và phần gá phía sau không bị cắt sửa. Hai tai
+mới chỉ thêm ở hai góc trên phía trước, có gân nối xuống thành hộp.
 
-## Lắp buồng đen trên hộp Pi
+## Lắp ráp
 
-Khung U tựa trên miệng hộp Pi, hai thanh dọc nằm trên thành hai bên. Khung nâng buồng
-đen thêm 4 mm. Bốn tâm lỗ là (6, −6), (114, −6), (6, 85), (114, 85) mm trong hệ
-tọa độ hộp Pi; bước lỗ 108 × 91 mm khớp trực tiếp bốn tai buồng đen.
+- Đặt buồng tối trực tiếp trên miệng Pi. Mô hình lắp giữ Pi/gá tại tọa độ gốc,
+  buồng tối dịch (−33,−12,70) mm từ STL in riêng. Thấp hơn phương án khung U 4 mm.
+- Hai vít sau đi qua tai buồng tối → tai Pi → mặt tựa phẳng trên gá màn hình.
+- Hai vít trước đi qua tai buồng tối → tai Pi mới. Đặt ê-cu dưới tai, giữa hai gân.
+- Dùng vít xuyên M3, long đen đường kính ngoài tối đa 7 mm và ê-cu,
+  không siết tạo ren trực tiếp vào nhựa.
+  Chiều dày kẹp sau khoảng 14 mm, trước 8 mm. Có thể bắt đầu kiểm tra với M3×20
+  phía sau và M3×16 phía trước; chọn lại theo chiều dày đầu vít, long đen và ê-cu
+  thực tế. Luồn thử cả bốn vít bằng tay trước khi siết, tránh ép cong tai nhựa.
 
-- Hai vít sau đi chung qua tai buồng đen → khung U → tai hộp Pi → gá màn hình.
-- Hai vít trước đi qua tai buồng đen → đầu thanh khung U, giữ bằng ê-cu phía dưới.
-- Gá có thêm hai mặt đệm tích hợp cao tối đa 1 mm theo đúng mặt dưới tai Pi,
-  lấp khoảng hở cũ để tránh kéo cong tai khi siết hai vít sau. Không cần spacer rời.
-- Dùng vít xuyên M3, long đen và ê-cu; không dùng vít M4 dù lỗ tai Pi rộng hơn.
-  Lỗ khung U Ø3,7, lỗ gá Ø3,7, lỗ Pi khoảng Ø4,2, lỗ buồng đen Ø3,5 mm.
-- Tổng chiều dày kẹp danh nghĩa: sau khoảng 18 mm, trước 8 mm. Chọn vít có thêm
-  chiều dài cho long đen và ê-cu thực tế; luồn thử bằng tay và siết vừa đủ tựa mặt.
+## Kiểm tra
 
-Để xem mô hình ghép: `../stand_review/assembly.glb`. Hộp Pi và gá giữ tọa độ gốc;
-khung U dịch Z=70; buồng đen dịch (−33, −12, 74) từ STL in riêng của nó.
-Bốn rãnh dưới đáy hộp Pi có bước 92 × 34 mm không dùng cho liên kết này.
+Nguồn tái tạo: `../../add_pi_mounting_tabs.py`. Bản Pi trước khi sửa được lưu ở
+`../../assets/than_hop_pi4_before_front_tabs_20261105.stl` và trong commit `0dead178`.
+Script `repair_display_stand.py` và thư mục `../stand_review/` mô tả phương án
+khung U trước đó, không phải hướng dẫn lắp trực tiếp hiện tại.
 
-## Kiểm tra đã thực hiện
+Kết quả mới: `../direct_mount_review/geometry_checks.json`, hình xem
+`../direct_mount_review/preview.png`, mô hình ghép `../direct_mount_review/assembly.glb`.
 
-- Đọc lại hai STL mới sau xuất: mỗi file có đúng một khối kín, winding hợp lệ.
-- Kiểm tra tiết diện gốc chân trước/sau; các cữ và hình học lắp phía trên cũ không bị mất.
-- Kiểm tra cả 6 cặp trong cụm gá–Pi–khung–buồng: thể tích chồng lấn dưới 0,001 mm³,
-  chỉ có sai số số học tại mặt gá/Pi tiếp xúc.
-- Kiểm tra đường luồn thân vít M3 Ø3 xuyên bốn vị trí trong mô hình ghép.
-- So SHA-256 xác nhận không sửa hộp Pi và buồng đen.
-- Báo cáo số: `../stand_review/geometry_checks.json`; nguồn tái tạo:
-  `../../repair_display_stand.py`; STL gá gốc nằm trong `../../assets/`.
+Đã kiểm tra STL mới là một khối kín, không mất thể tích hộp cũ, không thêm vật
+liệu vào khoang trong hoặc vùng cửa cổng phía trước; hai lỗ mới là lỗ kín xuyên tai.
+Cả ba cặp gá–Pi–buồng không có chồng lấn đáng kể (ngưỡng 0,001 mm³). Thân vít M3
+thông qua bốn vị trí. Vùng bao Ø7,4 × 4 mm trên đầu vít và dưới vị trí ê-cu không
+vướng chi tiết; đây không phải mô hình một bộ vít hoặc dụng cụ cụ thể.
+Diện tích tựa Pi–buồng khoảng 1.565 mm²; mỗi tai có khoảng 99–102 mm² mặt tựa
+quanh lỗ, nên mô hình không chỉ trùng tâm vít mà còn có mặt tiếp xúc để kẹp.
 
-Chưa chạy slicer, in thử hay đo dung sai lắp vật lý. Gá vẫn cần support dưới các
-tay ngang phía trên khi in theo Z hiện tại; xem preview từng lớp để không có phần
-bắt đầu giữa không trung. Điểm xuất phát đề xuất với nozzle 0,4 mm: PETG, lớp
-0,2 mm, 5 vòng thành, 20–25% infill, brim nếu cần. Đây là đề xuất chưa được thử in
-cho mẫu này. Ưu tiên đủ thành thay vì tăng infill toàn bộ; xem
-[hướng dẫn về thành của Prusa](https://help.prusa3d.com/article/layers-and-perimeters_1748).
+Chưa chạy slicer, in thử, xác nhận dung sai lắp thực tế hoặc thử tải PETG. Tai có
+nhịp cầu giữa hai gân 8 mm; cần xem preview support/bridge trong slicer, cùng các
+vùng overhang vốn có ở gá và hộp Pi. Chưa xác nhận tải làm việc an toàn 1 kg hoặc
+khối lượng buồng tối cho phép. Thử tải giả có dây giữ trước khi lắp màn hình thật.
 
-Trước khi đặt màn hình thật, dùng tải giả có dây giữ, tăng dần đến 1 kg rồi giữ
-24 giờ và quan sát chân, tay ngang, tai vít. Dừng nếu có nứt, trượt, võng tăng dần
-hoặc biến dạng còn lại sau tháo tải. Thử này chỉ là sàng lọc bản in, không phải
-chứng nhận tuổi thọ.
+## Cập nhật khớp sau
+
+Đã bỏ khớp ôm hai bên trên gá và gân xiên ngoài dưới tai sau hộp Pi.
+Mặt trên tai gá phẳng ở Z=66, dày 6 mm, tựa mặt dưới tai Pi tại Z=66.
+Giữ nguyên tâm vít, hai tai trước và gân của hai tai trước.
+Tái tạo: chạy `flatten_rear_joint.py` rồi `add_pi_mounting_tabs.py`.
+Hình `flat_joint.png` và `assembly.glb` trong `../direct_mount_review/` là bản cập nhật.
+Hình `preview.png` cũ minh họa bản trước khi làm phẳng khớp.
+Bỏ gân sau làm giảm tăng cứng tại tai; chưa thử lực siết hay tải PETG thực tế.

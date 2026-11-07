@@ -1,0 +1,141 @@
+[
+  {
+    "file": "BAN_01.stl",
+    "parts": [
+      "01_shell_left_front",
+      "01_shell_left_rear",
+      "trim_bottom_left"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        171.75,
+        174.0,
+        121.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_02.stl",
+    "parts": [
+      "02_shell_right_front",
+      "02_shell_right_rear",
+      "trim_top_left"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        171.75,
+        174.0,
+        109.75
+      ]
+    ]
+  },
+  {
+    "file": "BAN_03.stl",
+    "parts": [
+      "optical_body",
+      "03_bezel_left",
+      "04_bezel_right",
+      "09_yoke_lower_left",
+      "trim_bottom_right",
+      "trim_side_left",
+      "trim_side_right",
+      "clip_1_0"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        174.0,
+        167.0,
+        170.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_04.stl",
+    "parts": [
+      "pi_housing",
+      "gear_left",
+      "gear_right",
+      "10_yoke_lower_right",
+      "11_yoke_upper_left",
+      "12_yoke_upper_right",
+      "05_door_left",
+      "optical_lid",
+      "knob_left",
+      "hood_1_ir",
+      "clip_1_1",
+      "clip_0_0",
+      "clip_0_1"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        175.0,
+        174.5,
+        170.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_05.stl",
+    "parts": [
+      "07_tray_left",
+      "06_door_right",
+      "trim_top_right",
+      "knob_right",
+      "spacer_left",
+      "spacer_right",
+      "hood_1_red",
+      "hood_-1_red",
+      "hood_-1_ir"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        174.9964141845703,
+        167.1999969482422,
+        106.3499984741211
+      ]
+    ]
+  },
+  {
+    "file": "BAN_06.stl",
+    "parts": [
+      "08_tray_right"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        88.75,
+        113.0,
+        10.0
+      ]
+    ]
+  }
+]

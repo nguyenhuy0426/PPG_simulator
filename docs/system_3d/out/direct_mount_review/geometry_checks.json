@@ -1,0 +1,66 @@
+{
+  "units": "mm",
+  "pi_size_mm": [
+    123.0,
+    104.29293632507324,
+    70.0
+  ],
+  "added_volume_mm3": 1501.4730542406808,
+  "front_ear_size_mm": [
+    12,
+    14,
+    4
+  ],
+  "gusset_thickness_mm": 2,
+  "nut_corridor_width_mm": 8,
+  "front_hole_diameter_mm": 3.7,
+  "hole_pitch_mm": [
+    108,
+    91
+  ],
+  "hole_centers_xy": [
+    [
+      6,
+      -6
+    ],
+    [
+      114,
+      -6
+    ],
+    [
+      6,
+      85
+    ],
+    [
+      114,
+      85
+    ]
+  ],
+  "chamber_translation_mm": [
+    -33,
+    -12,
+    70
+  ],
+  "frame_required": false,
+  "input_sha256": {
+    "than_hop_pi4_before_front_tabs_20261105.stl": "9d7a99906661a2da0926f786909ca36f582d0d98c129d9d69740c68700c8cbe8",
+    "ga_do_man_hinh.stl": "7557f08bb7dd20061304a95ecb7efda4b36106b9c1731bc1ece17c9f7460a9a0",
+    "01_than_hop_toi.stl": "683a8cd8b9ab744efda8cc3441d997e49a06ac9064d544cff627ace64dbb205d"
+  },
+  "pi_output_sha256": "4de498467385239e3e09e0c5d7fc20264279923da775fe51dc365723125f3917",
+  "pair_intersection_mm3": {
+    "pi-stand": 0.0,
+    "pi-chamber": 0.0,
+    "stand-chamber": 0.0
+  },
+  "m3_shaft_max_intersection_mm3": 0.0,
+  "hardware_envelope_max_intersection_mm3": 0.0,
+  "pi_chamber_bearing_area_mm2": 1565.0382179588378,
+  "ear_bearing_area_mm2": {
+    "6,-6": 98.69375088995164,
+    "6,85": 101.785138123886,
+    "114,-6": 98.69375815733302,
+    "114,85": 101.78514492241601
+  },
+  "validation": "STL geometry only; no slicer, physical fit, torque or load validation."
+}
