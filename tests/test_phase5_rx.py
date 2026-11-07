@@ -1,7 +1,7 @@
 """
 Phase 5 tests — dual-channel OPT101 RX acquisition via Grove Base Hat ADC.
 
-Covers: fixed channel mapping (A0=IR, A2=Red, A1 rejected), read order,
+Covers: fixed channel mapping (A0=IR, A4=Red, A1 rejected), read order,
 timestamp monotonicity, bounded per-channel buffers, invalid ADC code
 rejection, saturation flagging, I2C error / disconnect handling (including
 grove.adc's sys.exit(2)-on-IOError behavior surfacing as SystemExit),
@@ -98,14 +98,14 @@ def raise_systemexit(channel):
 
 class TestChannelMapping(unittest.TestCase):
     def test_config_constants_match_verified_hardware(self):
-        # [VERIFIED-USER 2026-07-12]: IR on A0, Red on A2, A1 unused.
+        # [VERIFIED-USER 2026-07-12]: IR on A0, Red on A4, A1 unused.
         self.assertEqual(config.ADC_CHANNEL_IR, 0)
-        self.assertEqual(config.ADC_CHANNEL_RED, 2)
+        self.assertEqual(config.ADC_CHANNEL_RED, 4)
         # [VERIFIED-USER]: Grove Base HAT MCU is MM32 → ADC I2C address 0x08
         # (the STM32 revision of the same HAT answers at 0x04).
         self.assertEqual(config.GROVE_ADC_ADDR, 0x08)
 
-    def test_acquisition_reads_a0_then_a2_only(self):
+    def test_acquisition_reads_a0_then_a4_only(self):
         rx, adc = make_receiver()
         for _ in range(3):
             rx._acquire_once()

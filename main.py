@@ -47,19 +47,23 @@ from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
 
 
-def start_ble(engine):
-    """Start the BLE GATT server; returns the BleServer or None on failure."""
+def start_ble(engine, enabled=True):
+    """Create the BLE GATT server and start it if enabled.
+
+    Returns None only when the code cannot be loaded. A failed start keeps the
+    server object: Settings shows the error and can retry it.
+    """
     try:
         from comm.ble_server import BleServer
     except ImportError as exc:
         log.error(f"BLE unavailable ({exc}) — install with: pip install -r requirements/ble.txt")
         return None
     ble = BleServer(engine)
-    try:
-        ble.start()
-    except RuntimeError as exc:
-        log.error(f"BLE unavailable: {exc}")
-        return None
+    if enabled:
+        try:
+            ble.start()
+        except RuntimeError as exc:
+            log.error(f"BLE unavailable: {exc}")
     return ble
 
 
@@ -78,7 +82,9 @@ def save_current_config(engine, language="en", theme="light"):
         cfg["condition"] = p.condition
         # Keep the mode chosen in Settings (written there immediately), not
         # engine.rx_mode: that may be a one-run --rx-mode / PPG_RX_MODE override.
-        cfg["rx_mode"] = load_config().get("rx_mode", "dual")
+        saved = load_config()
+        cfg["rx_mode"] = saved.get("rx_mode", "dual")
+        cfg["ble_enabled"] = saved.get("ble_enabled", True)
         from ui.i18n import normalise_language
         cfg["language"] = normalise_language(language)
         cfg["theme"] = theme if theme in ("light", "dark") else "light"
@@ -104,7 +110,7 @@ def main():
     engine = SignalEngine.get_instance()
     engine.begin()
 
-    # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, IR=A0 / Red=A2).
+    # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, IR=A0 / Red=A4).
     # RX failure must not block TX/UI — the app degrades to TX-only; in TDM
     # the LEDs are still multiplexed, the receiver simply returns no samples.
     rx = OPT101Receiver.get_instance()
@@ -122,11 +128,11 @@ def main():
     # harmless compatibility flag for existing launchers.
     ble_server = None
     if not args.no_ble or args.ble_only:
-        ble_server = start_ble(engine)
+        ble_server = start_ble(engine, args.ble_only or config.get("ble_enabled", True))
 
     # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
     if args.ble_only:
-        if ble_server is None:
+        if ble_server is None or ble_server.last_error:
             rx.shutdown()
             engine.shutdown()
             sys.exit(1)
@@ -150,7 +156,8 @@ def main():
     # Simulation will be started manually via the GUI
 
     # Initialize UI
-    app = CTkApp(language=config.get("language", "en"), theme=config.get("theme", "light"))
+    app = CTkApp(language=config.get("language", "en"), theme=config.get("theme", "light"),
+                 ble_server=ble_server)
     app._show_frame(args.page)
 
     # Do not let SIGINT/SIGTERM raise KeyboardInterrupt in the middle of a Tk

@@ -43,6 +43,8 @@ class DACManager:
         self._write_lock = threading.Lock()
         self._error_count_ir = 0
         self._error_count_red = 0
+        self._last_write_ok_ir = True
+        self._last_write_ok_red = True
 
     def begin(self) -> bool:
         """Initialize both MCP4725 DACs on the I2C bus (IR 0x60 first, then Red 0x61)."""
@@ -51,6 +53,7 @@ class DACManager:
             self._ready = True
             return True
 
+        i2c = None
         try:
             import board
             import busio
@@ -68,6 +71,8 @@ class DACManager:
         except Exception as e:
             log.error(f"[DACManager] Failed to initialize DACs: {e}")
             self._ready = False
+            if i2c is not None:
+                i2c.deinit()  # begin() is retried on each start; do not leak the bus handle
             return False
 
     def set_values(self, value_ir: int, value_red: int, red_first: bool = False):
@@ -101,7 +106,9 @@ class DACManager:
     def _write_ir(self, value: int):
         try:
             self._dac_ir.raw_value = value
+            self._last_write_ok_ir = True
         except Exception as e:
+            self._last_write_ok_ir = False
             self._error_count_ir += 1
             if self._error_count_ir % ERROR_LOG_INTERVAL == 1:
                 log.error(f"[DACManager] IR DAC (0x{DAC_ADDR_IR:02X}) write error #{self._error_count_ir}: {e}")
@@ -109,7 +116,9 @@ class DACManager:
     def _write_red(self, value: int):
         try:
             self._dac_red.raw_value = value
+            self._last_write_ok_red = True
         except Exception as e:
+            self._last_write_ok_red = False
             self._error_count_red += 1
             if self._error_count_red % ERROR_LOG_INTERVAL == 1:
                 log.error(f"[DACManager] Red DAC (0x{DAC_ADDR_RED:02X}) write error #{self._error_count_red}: {e}")
@@ -124,6 +133,11 @@ class DACManager:
     @property
     def is_ready(self) -> bool:
         return self._ready
+
+    @property
+    def output_ok(self) -> bool:
+        """Initialized, and the latest write to each DAC was acknowledged."""
+        return self._ready and self._last_write_ok_ir and self._last_write_ok_red
 
     @property
     def last_ir(self) -> int:

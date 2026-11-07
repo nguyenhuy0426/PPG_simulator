@@ -17,6 +17,7 @@ import pathlib
 import sys
 import types
 import unittest
+import unittest.mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -384,3 +385,38 @@ class TestEngineSafeState(_DryRunPatch):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDACOutputHealth(unittest.TestCase):
+    """A DAC that stops acknowledging must not keep reporting a healthy output."""
+
+    def setUp(self):
+        patcher = unittest.mock.patch.object(dac_module, "DRY_RUN", False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_output_ok_follows_the_latest_write_on_each_channel(self):
+        class FlakyDac:
+            fail = False
+
+            @property
+            def raw_value(self):
+                return 0
+
+            @raw_value.setter
+            def raw_value(self, _value):
+                if self.fail:
+                    raise OSError(5, "Input/output error")
+
+        mgr = DACManager()
+        self.assertFalse(mgr.output_ok)
+        mgr._dac_ir, mgr._dac_red, mgr._ready = FlakyDac(), FlakyDac(), True
+        mgr.set_values(100, 100)
+        self.assertTrue(mgr.output_ok)
+        mgr._dac_red.fail = True
+        mgr.set_values(100, 100)
+        self.assertTrue(mgr.is_ready)
+        self.assertFalse(mgr.output_ok)
+        mgr._dac_red.fail = False
+        mgr.set_values(100, 100)
+        self.assertTrue(mgr.output_ok)

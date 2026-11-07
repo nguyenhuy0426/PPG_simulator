@@ -74,7 +74,7 @@ def rx_row(channel="ir", sequence_id=0, t_ns=0, voltage=1.0, success=True,
            valid=True, stale=False, saturated=False, clipped=False,
            error_type="", dropped=0):
     """A valid RX CSV row.  voltage=None models a failed read (no data)."""
-    grove = "A0" if channel == "ir" else "A2"
+    grove = "A0" if channel == "ir" else "A4"
     if voltage is None:
         code = None
         volts = None

@@ -369,3 +369,13 @@ class TestSettingsRxModeSwitch(unittest.TestCase):
             self.engine.stop_simulation()
         self.app.update_gui()
         self.assertEqual(self.switch_states(), {"normal"})
+
+
+def test_starting_output_retries_dacs_that_were_absent():
+    engine = SignalEngine()
+    engine.dac_manager = Mock(is_ready=False)
+    engine.start_simulation()
+    try:
+        engine.dac_manager.begin.assert_called_once()
+    finally:
+        engine.stop_simulation()

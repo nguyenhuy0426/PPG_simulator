@@ -70,7 +70,7 @@ def make_tx(channel="ir", sequence_id=0, dac_code=100, success=True, **over):
 
 def make_rx(channel="ir", sequence_id=0, success=True, **over):
     """A valid RxRecord; a failed one carries no code and no voltage."""
-    grove = "A0" if channel == "ir" else "A2"
+    grove = "A0" if channel == "ir" else "A4"
     fields = dict(
         session_id="S1",
         sequence_id=sequence_id,
@@ -133,7 +133,7 @@ class TestTxRecordValidation(unittest.TestCase):
 class TestRxRecordValidation(unittest.TestCase):
     def test_valid_ir_and_red_records_construct(self):
         self.assertEqual(make_rx("ir").grove_channel, "A0")
-        self.assertEqual(make_rx("red").grove_channel, "A2")
+        self.assertEqual(make_rx("red").grove_channel, "A4")
 
     def test_a1_is_never_valid(self):
         with self.assertRaises(ValueError):
@@ -422,7 +422,7 @@ class TestCsvContent(LoggerTestBase):
         logger.log_rx(make_rx("red"))
         logger.close()
         row = self.read_rows("S1", "rx_red.csv")[0]
-        self.assertEqual(row["grove_channel"], "A2")
+        self.assertEqual(row["grove_channel"], "A4")
         self.assertEqual(row["adc_address"], "0x08")
         self.assertEqual(row["raw_code"], "2048")
         self.assertEqual(row["stale"], "0")

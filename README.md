@@ -26,7 +26,7 @@ optical accuracy or compatibility with a particular pulse oximeter.
 **Touch and sequence update (30 September 2026):** Numeric controls use sliders;
 Settings and calibration include −/+ fine steps. **04 PPG morphology** offers
 fitted Gaussian and an exploratory **LSM-GAN 30-second sequence**, a real training
-reference, and a live **OPT101 RX** card (A0/A2). **A2 is disabled until its sensor is installed.**
+reference, and a live **OPT101 RX** card (A0/A4).
 Play/Stop uses the shared MCP4725 writer; clips stop at 30 seconds or when leaving
 the page. Opening the page does not emit output. Classic Gaussian is preserved.
 
@@ -39,7 +39,7 @@ The [earlier morphology comparison](docs/ppg_morphology_selection_2026-09-28.md)
 remains a historical exploratory result; test has already been viewed.
 
 **RX beside TX & Bench Diagnostics (October 2026):**
-- **Live A0/A2 RX card on every page:** Classic, Calibration, Recordings and PPG morphology each show a read-only RX card next to the TX plot (the earlier bottom dock, and the RX strip inside the Signal setup window, are removed). It displays the rolling 8-second window of raw ADC mV at up to 10 Hz refresh, with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
+- **Live A0/A4 RX card on every page:** Classic, Calibration, Recordings and PPG morphology each show a read-only RX card next to the TX plot (the earlier bottom dock, and the RX strip inside the Signal setup window, are removed). It displays the rolling 8-second window of raw ADC mV at up to 10 Hz refresh, with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
 - **Physical Sensor Diagnostic Protocol:** A bench test and signal conditioning plan is established for OPT101 / CJMCU-101 modules, covering internal 1 MΩ feedback verification, 3.3 V Grove Hat input limits, dark readings, stepped sine wave tests (1–10 Hz), and RC low-pass filtering at $f_c \approx 33.9\text{ Hz}$ ([docs/opt101-a0-diagnostic-2026-10-01.md](docs/opt101-a0-diagnostic-2026-10-01.md)).
 
 | Live monitor | Waveform setup | 30-second sequence |
@@ -57,7 +57,7 @@ remains a historical exploratory result; test has already been viewed.
 - Timestamped 100 Hz model-command CSV recording continues across pages; playback follows the recorded timestamps.
 - Explicit Start/Stop for calibration; only the engine's DAC thread produces its sine output.
 - Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
-- English/Vietnamese UI; touch-sized controls; TX on the left and live OPT101 A0/A2 RX on the right of every page. A2 acquisition awaits an installed sensor.
+- English/Vietnamese UI; touch-sized controls; TX on the left and live OPT101 A0/A4 RX on the right of every page.
 - Collapsible left navigation rail (icons collapsed, labels overlay when expanded), light/dark theme saved in `config.json`, and a Classic page with TX and RX side by side. The status line reports *no MCP4725 at 0x60/0x61* instead of claiming LED output when the DACs do not answer.
 - `scripts/deploy_and_run.sh` (run on the laptop): SSH check, `i2cdetect -y 1` report for 0x08/0x60/0x61, rsync to the Pi, restart the app on the Pi display, and a dry-run copy on the laptop. When the Ethernet link reports `NO-CARRIER`, use the Wi‑Fi address: `PI_HOST=user@<pi-wifi-ip> scripts/deploy_and_run.sh`, and stop any other running instance first so two apps do not share I2C/BLE.
 
@@ -128,7 +128,7 @@ and [current sequence and hardware validation](docs/ppg_touch_sequence_output_20
 | DAC Rate               | Pi: 500 Hz target; configurable; Linux/I²C timing requires measurement |
 | Data Recording         | 100 Hz model commands, timestamped CSV in `dataset/` |
 | DAC Voltage Range      | Configured 0–3.28 V (0 → 0, 3.28 V → 4095) |
-| Live RX ADC Channels   | A0 (IR) & A2 (Red) on Grove Base Hat (I2C 0x08) |
+| Live RX ADC Channels   | A0 (IR) & A4 (Red) on Grove Base Hat (I2C 0x08) |
 
 ---
 
@@ -230,7 +230,7 @@ PPG_simulator_raspi/
 │   ├── rate_scheduler.py        # Drift-free fixed-rate execution ticker
 │   └── state_machine.py         # System operational state machine
 ├── hw/
-│   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A2 channels)
+│   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A4 channels)
 │   ├── dac_manager.py           # Dual MCP4725 I2C DAC controllers
 │   ├── adc_reader.py            # Low-level ADC reading interface
 │   └── button_handler.py        # Physical push-button interrupt handler
@@ -243,7 +243,7 @@ PPG_simulator_raspi/
 ├── led_driver/                  # Op-amp + BJT current-sink calculations & error budget
 ├── ui/
 │   ├── ctk_app.py               # Main CustomTkinter UI shell & window manager
-│   ├── rx_monitor.py            # Read-only A0/A2 RX lanes shown beside TX on every page
+│   ├── rx_monitor.py            # Read-only A0/A4 RX lanes shown beside TX on every page
 │   ├── trace_view.py            # High-performance trace plot widget
 │   ├── touch_slider.py          # Touch-optimized slider with +/- step buttons
 │   ├── advanced_controls.py     # Parameter validation & event dispatcher
@@ -358,7 +358,7 @@ page stops an active calibration. Sine calibration drives both MCP4725 DAC chann
 
 **Live RX card:** every page shows an RX card to the right of its TX plot
 (the Signal setup window has none). The receiver samples the Grove Base Hat ADC at 100 Hz and refreshes the UI at up to 10 Hz,
-plotting an 8-second rolling window for A0 (IR) and A2 (Red). Sensor readings display raw
+plotting an 8-second rolling window for A0 (IR) and A4 (Red). Sensor readings display raw
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 
@@ -372,14 +372,14 @@ saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
 The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
 IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
 first, so the two LEDs are never commanded on together. A0 is read once per slot,
-`PPG_TDM_READ_DELAY_MS` after the switch (default 6 ms of a 10 ms
-`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 33.3 Hz per channel, or 50 Hz with `PPG_TDM_DARK=0`.
+`PPG_TDM_READ_DELAY_MS` after the switch (default 12 ms of a 15 ms
+`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 22.2 Hz per channel, or 33.3 Hz with `PPG_TDM_DARK=0`.
 The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
 next to them. Nothing is subtracted. TDM reads the sensor only while output
 runs, and the LEDs pulse instead of glowing steadily.
 The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
 (τ = 1 ms) needs about 6–7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
-slow for 10 ms slots. Measure it with the app stopped:
+slow for 15 ms slots. Measure it with the app stopped:
 
 ```bash
 .venv/bin/python scripts/measure_tdm_settling.py --output docs/hardware-validation/tdm-settling
@@ -395,7 +395,7 @@ between the standard three-Gaussian pulse synthesis and an experimental 30-secon
 continuous pulse sequence. Clips automatically stop at 30 seconds or upon navigating away.
 Opening the screen does not activate DAC output without an explicit Play action.
 The TX card stacks the generated lane over the real reference lane; the RX card
-on the right shows A0/A2 from the receiver.
+on the right shows A0/A4 from the receiver.
 
 **Recordings:** review saved TX command CSVs without driving hardware. The session
 list is a drawer that folds to one icon and closes after a recording is picked.

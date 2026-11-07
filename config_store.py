@@ -32,6 +32,7 @@ _DEFAULTS = {
     "language": "en",  # UI-only setting; not copied into PPGParameters.
     "theme": "light",  # UI-only setting: "light" or "dark".
     "rx_mode": "dual",  # "dual" (one OPT101 per LED) or "tdm" (one shared OPT101).
+    "ble_enabled": True,  # Phone control switch in Settings; --no-ble still wins.
     "condition": 0,
     "heart_rate": 75.0,
     "perfusion_index": 3.0,

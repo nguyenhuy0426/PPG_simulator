@@ -433,7 +433,7 @@ def check_configured_addresses() -> None:
 
     for name, expected in (("DAC_FULLSCALE_V", 3.28), ("ADC_VOLTAGE_REF", 3.28),
                            ("ADC_MAX_VALUE", 4095), ("ADC_CHANNEL_IR", 0),
-                           ("ADC_CHANNEL_RED", 2)):
+                           ("ADC_CHANNEL_RED", 4)):
         value = getattr(config, name, None)
         if value == expected:
             record("PASS", f"config.{name} = {value}")

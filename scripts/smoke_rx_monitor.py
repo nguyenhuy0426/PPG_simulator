@@ -57,7 +57,7 @@ def main():
 
         # Deterministic channel fixtures test mapping, independent timestamps,
         # stale status and missing-data gaps without ADC/DAC access.
-        rx = OPT101Receiver(dry_run=False, enabled_channels=(0, 2))
+        rx = OPT101Receiver(dry_run=False, enabled_channels=(0, 4))
         now = time.monotonic()
         for channel, raw in ((0, 100), (2, 2000)):
             state = rx._channels[channel]

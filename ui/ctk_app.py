@@ -2,6 +2,7 @@ import gc
 import time
 import tkinter as tk
 import customtkinter as ctk
+from comm.ble_server import ADVERTISED_NAME, BLE_ADVERTISING, BLE_CONNECTED, BLE_ERROR, BLE_OFF, BLE_STARTING, BLE_STOPPING
 from comm.logger import log
 from config import DRY_RUN, FIRMWARE_VERSION, FS_TIMER_HZ, MODEL_SAMPLE_RATE_PPG
 from core.signal_engine import SignalEngine
@@ -18,7 +19,8 @@ from ui.nav_rail import NavRail
 
 
 class CTkApp(ctk.CTk):
-    def __init__(self, language="en", theme=T.LIGHT):
+    def __init__(self, language="en", theme=T.LIGHT, ble_server=None):
+        self.ble_server = ble_server
         self.theme = T.normalise_theme(theme)
         T.install(self.theme)
         # Match packaging/linux/ppg-simulator.desktop.in so GNOME associates
@@ -199,7 +201,7 @@ class CTkApp(ctk.CTk):
         window.minsize(min(620, width), min(380, height))
         window.configure(fg_color=T.BG)
         window.grid_columnconfigure(0, weight=1)
-        window.grid_rowconfigure(2, weight=1)
+        window.grid_rowconfigure(3, weight=1)
         window.transient(self)
         window.protocol("WM_DELETE_WINDOW", self.close_signal_setup)
         window.bind("<Escape>", lambda _event: self.close_signal_setup())
@@ -226,6 +228,19 @@ class CTkApp(ctk.CTk):
         self.rx_mode_hint.grid(row=0, column=2, sticky="ew", padx=(0, 12), pady=8)
         self._rx_mode_message = None
         self._paint_rx_mode()
+        ble_bar = ctk.CTkFrame(window, fg_color=T.PANEL)
+        ble_bar.grid(row=2, column=0, sticky="ew", padx=self.layout.outer_pad, pady=(6, 0))
+        ble_bar.grid_columnconfigure(2, weight=1)
+        self.ble_label = T.label(ble_bar, text(self.language, "ble"), 12, True)
+        self.ble_label.grid(row=0, column=0, padx=(12, 8), pady=8)
+        self.ble_state_label = T.label(ble_bar, "", 12, True)
+        self.ble_state_label.grid(row=0, column=1, padx=(0, 10), pady=8)
+        self.ble_hint = T.label(ble_bar, "", 10, text_color=T.MUTED, anchor="w", justify="left")
+        self.ble_hint.grid(row=0, column=2, sticky="ew", padx=(0, 10), pady=8)
+        self.ble_button = ctk.CTkButton(ble_bar, text="", width=90, command=self._toggle_ble)
+        self.ble_button.grid(row=0, column=3, padx=(0, 12), pady=8)
+        self._ble_shown = None
+        self._paint_ble()
         self.signal_setup_window = window
         panel = self._build_signal_setup_panel()
         self.signal_setup_visible = True
@@ -235,7 +250,7 @@ class CTkApp(ctk.CTk):
 
     def _build_signal_setup_panel(self):
         panel = AdvancedFrame(self.signal_setup_window, language=self.language, fg_color="transparent")
-        panel.grid(row=2, column=0, sticky="nsew",
+        panel.grid(row=3, column=0, sticky="nsew",
                    padx=self.layout.outer_pad, pady=self.layout.outer_pady)
         self.signal_setup_panel = panel
         return panel
@@ -271,6 +286,44 @@ class CTkApp(ctk.CTk):
         self.rx_mode_hint.configure(text=text(self.language, key), text_color=color)
         self._rx_mode_shown = (mode, running, self.language, self._rx_mode_message)
 
+    # ─── Phone control (BLE): the Pi advertises, the phone connects ───
+    def _toggle_ble(self):
+        ble = self.ble_server
+        if ble is None:
+            return
+        enable = ble.connection_state() not in (BLE_ADVERTISING, BLE_CONNECTED)
+        if ble.set_enabled(enable):
+            self._save_ui_setting("ble_enabled", enable)
+        self._paint_ble()
+
+    def _paint_ble(self):
+        ble = self.ble_server
+        state = ble.connection_state() if ble is not None else None
+        error = ble.last_error if ble is not None else ""
+        shown = (state, error, self.language)
+        if shown == self._ble_shown:
+            return
+        self._ble_shown = shown
+        lang = self.language
+        if state is None:
+            label, hint, color = "ble_disabled", text(lang, "ble_hint_disabled"), T.MUTED
+        elif state == BLE_CONNECTED:
+            label, hint, color = "ble_connected", text(lang, "ble_hint_connected"), T.OK
+        elif state == BLE_ADVERTISING:
+            label, hint, color = "ble_advertising", text(lang, "ble_hint_advertising").format(name=ADVERTISED_NAME), T.ACCENT
+        elif state == BLE_ERROR:
+            label, hint, color = "ble_error", text(lang, "ble_hint_error").format(error=error), T.ERROR
+        elif state == BLE_OFF:
+            label, hint, color = "ble_off", text(lang, "ble_hint_off"), T.MUTED
+        else:
+            label, hint, color = ("ble_starting" if state == BLE_STARTING else "ble_stopping"), "", T.MUTED
+        self.ble_state_label.configure(text=text(lang, label), text_color=color)
+        self.ble_hint.configure(text=hint)
+        button = "ble_turn_off" if state in (BLE_ADVERTISING, BLE_CONNECTED) else (
+            "ble_retry" if state == BLE_ERROR else "ble_turn_on")
+        self.ble_button.configure(text=text(lang, button),
+                                  state="disabled" if state in (None, BLE_STARTING, BLE_STOPPING) else "normal")
+
     def _set_language_from_label(self, label):
         code = next((key for key, value in LANGUAGES.items() if value == label), "en")
         self.set_language(code)
@@ -302,6 +355,8 @@ class CTkApp(ctk.CTk):
             self.language_hint.configure(text=text(language, "language_hint"))
             self.rx_mode_label.configure(text=text(language, "rx_mode"))
             self._paint_rx_mode()
+            self.ble_label.configure(text=text(language, "ble"))
+            self._paint_ble()
             # Tab names and every form label are built in the panel's language: rebuild it (unapplied edits on
             # the form are dropped; Apply is still required for values).
             self.signal_setup_panel.destroy()
@@ -391,6 +446,7 @@ class CTkApp(ctk.CTk):
             if self._rx_mode_shown[:2] != (self.engine.rx_mode, self.engine.is_running):
                 self._rx_mode_message = None
                 self._paint_rx_mode()
+            self._paint_ble()
         stats = self.engine.get_stats()
         self._paint_mode()
         values = (("buffer", stats["buffer_fill"]), ("lost", stats["dropped_samples"]),
@@ -408,7 +464,7 @@ class CTkApp(ctk.CTk):
         """Footer chip: what the TX side is physically connected to."""
         if DRY_RUN:
             mode = ("mode_dry_run", T.WARN_INK, T.WARN_BG)
-        elif self.engine.dac_manager.is_ready:
+        elif self.engine.dac_manager.output_ok:
             mode = ("mode_hardware", T.OK, T.OK_BG)
         else:
             mode = ("mode_no_dac", T.ERROR, T.ERROR_BG)

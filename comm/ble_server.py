@@ -78,6 +78,23 @@ EXTERNAL_ADVERTISING = os.environ.get("PPG_BLE_EXTERNAL_ADV", "").strip().lower(
     "1", "true", "yes", "on",
 )
 
+# Server state shown in Settings (BleServer.connection_state). The Pi is the
+# peripheral: it can only wait to be found, so "connect" always starts on the
+# phone. "connected" means a client subscribed to a characteristic, which is
+# what bless can report; a client that never subscribes reads as "advertising".
+BLE_OFF = "off"
+BLE_STARTING = "starting"
+BLE_STOPPING = "stopping"
+BLE_ADVERTISING = "advertising"
+BLE_CONNECTED = "connected"
+BLE_ERROR = "error"
+
+# bluetoothd owns the advertisement and the GATT application. When it restarts
+# both vanish without any notification to bless, so the owner of org.bluez is
+# watched and the server re-registers against the new daemon.
+BLUEZ_WATCH_INTERVAL_S = 2.0
+BLUEZ_RESTART_DELAY_S = 3.0
+
 
 def _to_float(value, default):
     try:
@@ -428,6 +445,11 @@ class BleServer:
         self._android_echo_snapshot = None
         self._last_snapshot = None
         self._status_payload = b"{}"
+        self._stop_requested = threading.Event()
+        self._bluez_lost = False
+        self._recovering = False
+        self._transition = None
+        self._switch_lock = threading.Lock()
 
     # ─── Lifecycle (Tk thread) ───────────────────────────────────────────────
 
@@ -448,6 +470,7 @@ class BleServer:
             return True
         self._startup_evt.clear()
         self._startup_error = None
+        self._stop_requested.clear()
         self._thread = threading.Thread(target=self._thread_main, daemon=True, name="ble-server")
         self._thread.start()
         if not self._startup_evt.wait(timeout):
@@ -457,24 +480,81 @@ class BleServer:
         return True
 
     def stop(self):
+        self._stop_requested.set()
         loop, evt, thread = self._loop, self._shutdown_evt, self._thread
         if loop is not None and evt is not None:
-            loop.call_soon_threadsafe(evt.set)
+            try:
+                loop.call_soon_threadsafe(evt.set)
+            except RuntimeError:
+                pass  # the loop already ended (between recovery attempts)
         if thread is not None and thread.is_alive():
             thread.join(timeout=10)
         self._thread = None
         self._loop = None
         self._shutdown_evt = None
         self._server = None
+        self._startup_error = None
+
+    def connection_state(self):
+        """Current BLE_* state; safe to call from the Tk thread."""
+        if self._transition is not None:
+            return self._transition
+        if self._recovering:
+            return BLE_ERROR if self._startup_error is not None else BLE_STARTING
+        server = self._server
+        if server is not None:
+            app = getattr(server, "app", None)
+            return BLE_CONNECTED if getattr(app, "subscribed_characteristics", None) else BLE_ADVERTISING
+        return BLE_ERROR if self._startup_error is not None else BLE_OFF
+
+    @property
+    def last_error(self):
+        return str(self._startup_error) if self._startup_error is not None else ""
+
+    def set_enabled(self, enabled):
+        """Start or stop without blocking Tk (start waits up to 10 s for BlueZ).
+
+        Returns False while a previous switch is still in progress.
+        """
+        if not self._switch_lock.acquire(blocking=False):
+            return False
+        self._transition = BLE_STARTING if enabled else BLE_STOPPING
+
+        def work():
+            try:
+                self.stop()
+                if enabled:
+                    self.start()
+            except RuntimeError as exc:
+                log.error(f"[BLE] Could not start: {exc}")
+                if self._startup_error is None:
+                    self._startup_error = exc
+            finally:
+                self._transition = None
+                self._switch_lock.release()
+
+        threading.Thread(target=work, daemon=True, name="ble-switch").start()
+        return True
 
     def _thread_main(self):
-        try:
-            asyncio.run(self._run())
-        except Exception as exc:
-            self._startup_error = exc
-            log.error(f"[BLE] Server thread died: {exc}")
-        finally:
-            self._startup_evt.set()
+        self._recovering = False
+        while True:
+            self._bluez_lost = False
+            try:
+                asyncio.run(self._run())
+            except Exception as exc:
+                self._startup_error = exc
+                if not self._recovering:
+                    log.error(f"[BLE] Server thread died: {exc}")
+            finally:
+                self._server = None
+                self._startup_evt.set()
+            if self._stop_requested.is_set() or not (self._bluez_lost or self._recovering):
+                break
+            self._recovering = True
+            if self._stop_requested.wait(BLUEZ_RESTART_DELAY_S):
+                break
+        self._recovering = False
 
     # ─── asyncio side ─────────────────────────────────────────────────────────
 
@@ -528,6 +608,8 @@ class BleServer:
             if not started:
                 raise RuntimeError("bless server.start() returned False — advertising failed")
         self._server = server
+        self._startup_error = None
+        self._recovering = False
         self._startup_evt.set()
         if using_external_advertising:
             log.info(
@@ -544,6 +626,7 @@ class BleServer:
 
         wave_task = asyncio.create_task(self._waveform_loop())
         status_task = asyncio.create_task(self._status_loop())
+        watch_task = asyncio.create_task(self._bluez_watch_loop(self._bluez_owner))
         cmd_file_task = None
         if CMD_FILE_PATH:
             cmd_file_task = asyncio.create_task(self._cmd_file_loop())
@@ -553,10 +636,11 @@ class BleServer:
         finally:
             wave_task.cancel()
             status_task.cancel()
+            watch_task.cancel()
             if cmd_file_task is not None:
                 cmd_file_task.cancel()
             try:
-                await asyncio.gather(wave_task, status_task, return_exceptions=True)
+                await asyncio.gather(wave_task, status_task, watch_task, return_exceptions=True)
             except Exception:
                 pass
             try:
@@ -564,6 +648,40 @@ class BleServer:
                 log.info("[BLE] Server stopped, advertising released")
             except Exception as exc:
                 log.warning(f"[BLE] server.stop() error: {exc}")
+            # Each start builds a new bless server with its own bus connection.
+            server.bus.disconnect()
+
+    async def _bluez_owner(self):
+        """Unique D-Bus name of the running bluetoothd, None if there is none."""
+        from dbus_next import Message, MessageType
+
+        reply = await self._server.bus.call(Message(
+            destination="org.freedesktop.DBus",
+            path="/org/freedesktop/DBus",
+            interface="org.freedesktop.DBus",
+            member="GetNameOwner",
+            signature="s",
+            body=["org.bluez"],
+        ))
+        return reply.body[0] if reply.message_type == MessageType.METHOD_RETURN else None
+
+    async def _bluez_watch_loop(self, get_owner, interval=BLUEZ_WATCH_INTERVAL_S):
+        """End this server run when bluetoothd is replaced (see _thread_main)."""
+        owner = await get_owner()
+        while not self._shutdown_evt.is_set():
+            await asyncio.sleep(interval)
+            try:
+                current = await get_owner()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning(f"[BLE] Could not check bluetoothd: {exc}")
+                current = None
+            if current != owner:
+                log.warning("[BLE] bluetoothd restarted or stopped — registering the server again")
+                self._bluez_lost = True
+                self._shutdown_evt.set()
+                return
 
     async def _push(self, char_uuid, payload):
         """Set characteristic value and notify subscribers (callers handle errors)."""

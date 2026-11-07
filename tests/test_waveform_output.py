@@ -75,7 +75,7 @@ def test_invalid_clip_does_not_interrupt_active_output():
     finally: engine.stop_simulation()
 
 
-def test_a0_only_never_reads_floating_a2_or_fabricates_red():
+def test_a0_only_never_reads_floating_a4_or_fabricates_red():
     adc=Mock()
     adc.read_raw.return_value=1234
     rx=OPT101Receiver(adc=adc,dry_run=False,enabled_channels=(0,))
@@ -83,17 +83,17 @@ def test_a0_only_never_reads_floating_a2_or_fabricates_red():
     for _ in range(3): rx._acquire_once()
     assert [c.args for c in adc.read_raw.call_args_list]==[(0,)]*4
     assert rx.sample_count(0)==3
-    assert rx.sample_count(2)==0
-    assert rx.get_latest(2) is None
-    assert rx.channel_status(2)=='disabled'
-    assert rx.is_stale(2)
+    assert rx.sample_count(4)==0
+    assert rx.get_latest(4) is None
+    assert rx.channel_status(4)=='disabled'
+    assert rx.is_stale(4)
 
 
-def test_a0_dry_run_keeps_a2_disabled():
+def test_a0_dry_run_keeps_a4_disabled():
     rx=OPT101Receiver(dry_run=True,enabled_channels=(0,))
     rx.begin()
     assert rx.channel_status(0)=='dry-run'
-    assert rx.channel_status(2)=='disabled'
+    assert rx.channel_status(4)=='disabled'
 
 
 def test_real_sequence_retains_native_timing_and_train_provenance():

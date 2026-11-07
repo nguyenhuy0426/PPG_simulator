@@ -54,15 +54,15 @@ DAC_ADDR_RED = 0x61     # MCP4725 address for Red channel
 # address of MM32 is 0x08, while the STM32 is 0x04"]. It shares /dev/i2c-1 with
 # both MCP4725 DACs at 0x60/0x61. Do NOT revert to 0x04 — that is the STM32
 # revision of the same HAT, which is not the board installed here.
-# Verified RX mapping [VERIFIED-USER 2026-07-12, fixed — never swap]:
+# Verified RX mapping [VERIFIED-USER, moved from A2 to A4 on 2026-11-03]:
 #     OPT101 (IR)  -> A0  (Grove ADC channel 0)
-#     OPT101 (Red) -> A2  (Grove ADC channel 2)
+#     OPT101 (Red) -> A4  (Grove ADC channel 4)
 #     A1 is NOT used for OPT101.
 # (Earlier phase docs stated A1 = Red; that mapping is stale and superseded.)
 # OPT101 acquisition is implemented in Phase 5 (hw/opt101_rx.py).
 GROVE_ADC_ADDR = 0x08   # Grove Base Hat MM32 ADC I2C address [VERIFIED-USER]
 ADC_CHANNEL_IR = 0      # A0 — OPT101 IR photodiode channel
-ADC_CHANNEL_RED = 2     # A2 — OPT101 Red photodiode channel
+ADC_CHANNEL_RED = 4     # A4 — OPT101 Red photodiode channel
 # GROVE_ADC_CHANNEL below is only referenced by the deprecated
 # hw/adc_reader.py (legacy potentiometer input); do not use for OPT101 RX.
 GROVE_ADC_CHANNEL = 0   # A0 port on Grove Base Hat (legacy adc_reader only)
@@ -174,19 +174,9 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 # so per-tick RX at 1 kHz does not fit; PPG bandwidth is 0.5–10 Hz, so 100 Hz
 # per channel gives 10x Nyquist margin while adding only ~2 ADC transactions
 # per 10 ms to the shared bus.
-RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR,)  # Only OPT101 on A0 is installed; A2 disabled.
+RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR, ADC_CHANNEL_RED)
 # (In PPG_RX_MODE=tdm both logical IR and RED lanes are fed from that one A0 sensor.)
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
-# Grove Base Hat reads over the Pi 4 I2C master slip one bit (bcm2835 clock
-# stretching): most frames arrive as [lo, hi >> 1, 0xFF], which loses bit 8 and
-# halves the upper bits; only ~15 % arrive intact, recognisable because the third
-# byte is then not 0xFF [VERIFIED on this Pi 4 and 0x08 Hat, 2026-11-02; intact
-# frames form a smooth step, slipped ones a sawtooth at 256-count boundaries].
-# hw/grove_adc.py decodes both. A sample is taken after at most
-# RX_ADC_MAX_ATTEMPTS frames (~0.7 ms each); a first read with no earlier value
-# to compare with may take up to RX_ADC_SYNC_ATTEMPTS.
-RX_ADC_MAX_ATTEMPTS = 3
-RX_ADC_SYNC_ATTEMPTS = 64
 RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
 RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disconnected
@@ -200,25 +190,27 @@ RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disco
 # path to settle, reads the shared OPT101 on RX_TDM_ADC_CHANNEL, then moves to
 # the next slot. Slot order: RED, IR and, when enabled, DARK (both LEDs off,
 # measures OPT101 offset + leaked ambient light). Per-channel rate is
-# 1 / (slot × number of slots): 33.3 Hz with the 10 ms / 3-slot default.
+# 1 / (slot × number of slots): 22.2 Hz with the 15 ms / 3-slot default.
 #
 # READ DELAY [INFERENCE — must be measured]: the receiver PCB v1.5 output RC
-# (1 kΩ × 1 µF, τ = 1 ms) needs ~7τ to settle to 12-bit LSB scale, so the
-# default reads 8 ms into a 10 ms slot. The MM32 Grove ADC conversion cadence
-# is not documented; scripts/measure_tdm_settling.py measures the real
-# DAC → LED → OPT101 → ADC step response on the assembled hardware.
+# Measured on the Pi 4 with R = 1 kΩ, C = 100 nF [VERIFIED 2026-11-03]: the OPT101
+# falls more slowly than the RC alone explains. After IR switches off, the part of
+# its level still present is ~25 % at 6 ms, ~5 % at 12 ms and ~0 at 15 ms, and this
+# lands in the dark lane. PPG_TDM_READ_DELAY_MS=15 with PPG_TDM_SLOT_MS=18 removes
+# it at 18.5 Hz per channel; the 12/15 default keeps 22.2 Hz.
+# scripts/measure_tdm_settling.py measures this step response on the assembly.
 RX_MODE = os.environ.get("PPG_RX_MODE", "dual")
 if RX_MODE not in ("dual", "tdm"):
     raise ValueError("PPG_RX_MODE must be 'dual' or 'tdm'")
 RX_TDM_ADC_CHANNEL = ADC_CHANNEL_IR   # the single shared OPT101 sits on A0
-RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "10")) / 1000.0
-RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "6")) / 1000.0
+RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "15")) / 1000.0
+RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "12")) / 1000.0
 RX_TDM_DARK_SLOT = os.environ.get("PPG_TDM_DARK", "1") == "1"
 # The read delay counts from the END of the LED-switching DAC writes, so it is
 # the real settling time. Two DAC writes (~0.3 ms each) and one Grove read
 # (~0.45 ms) at 100 kHz I2C [INFERENCE, Phase 4 budget] must also fit in the
-# slot. Measured on the Pi 4 [VERIFIED 2026-11-02]: a Grove frame takes ~0.7 ms
-# and a sample up to three frames, so the two DAC writes plus the read need ~2.7 ms; a slot that overruns is counted (tdm_late_slots) and re-based.
+# slot. One Grove read measured ~0.7 ms on the Pi 4 [VERIFIED 2026-11-03]; a slot
+# that overruns is counted (tdm_late_slots) and re-based.
 RX_TDM_MIN_READ_DELAY_S = 0.001
 RX_TDM_IO_BUDGET_S = 0.003
 if not RX_TDM_MIN_READ_DELAY_S <= RX_TDM_READ_DELAY_S <= RX_TDM_SLOT_S - RX_TDM_IO_BUDGET_S:

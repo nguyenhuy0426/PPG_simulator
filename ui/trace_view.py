@@ -18,11 +18,13 @@ RENDER_BACKOFF = 2.0
 
 class Lane:
     """One horizontal strip of a LaneView: its own samples, scale and status."""
-    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s", "badge")
+    __slots__ = ("title", "color", "detail", "points", "message", "submessage", "max_gap_s", "badge", "badge2")
 
-    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None, badge=""):
+    def __init__(self, title, color, detail="", points=(), message="", submessage="", max_gap_s=None, badge="",
+                 badge2=""):
         self.title, self.color, self.detail = title, color, detail
         self.badge = badge            # right-aligned header reading, e.g. the received pulse rate
+        self.badge2 = badge2          # second reading under it, e.g. the received SpO2
         self.points = points          # [(time_s, value_mV), ...] in time order
         self.message, self.submessage = message, submessage
         self.max_gap_s = max_gap_s    # break the line across gaps longer than this
@@ -31,7 +33,7 @@ class Lane:
 class LaneView(tk.Canvas):
     """Stacked, independently auto-scaled lanes sharing one time axis.
 
-    Lanes never borrow samples from each other, so A0 and A2 keep their own
+    Lanes never borrow samples from each other, so A0 and A4 keep their own
     timestamps and a lane without data shows its status text instead of a
     flat line. Values are drawn as received: no smoothing or gap filling.
     """
@@ -56,7 +58,7 @@ class LaneView(tk.Canvas):
         self.lanes, self.end_s = list(lanes), end_s
         # Stopped output, an idle receiver or a dry-run status repeat the same picture every tick;
         # redrawing it costs a full canvas rebuild. Size and theme changes call render() directly.
-        content = (end_s, self.placeholder, [(lane.title, lane.color, lane.detail, lane.badge, lane.message,
+        content = (end_s, self.placeholder, [(lane.title, lane.color, lane.detail, lane.badge, lane.badge2, lane.message,
                                               lane.submessage, lane.max_gap_s, list(lane.points))
                                              for lane in self.lanes])
         if content == self._drawn:
@@ -121,6 +123,12 @@ class LaneView(tk.Canvas):
             if lane.badge:
                 self.create_text(right - 4, header_y, text=lane.badge, fill=lane.color, font=bold, anchor="e")
             plot_top, plot_bottom = y0 + round(26 * scale), y0 + lane_h - round(8 * scale)
+            if lane.badge2:
+                self.create_text(right - 4, header_y + round(14 * scale), text=lane.badge2, fill=lane.color,
+                                 font=bold, anchor="e")
+                # The trace starts below the second header row while it keeps a usable height.
+                if plot_bottom - plot_top > round(40 * scale):
+                    plot_top += round(12 * scale)
             points = [p for p in lane.points if start <= p[0] <= end]
             if not points:
                 if index:

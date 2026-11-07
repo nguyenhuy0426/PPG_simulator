@@ -1,9 +1,9 @@
 """
 opt101_rx.py — Dual-channel OPT101 acquisition via Grove Base Hat ADC (Phase 5).
 
-Channel mapping [VERIFIED-USER 2026-07-12, fixed — never swap]:
+Channel mapping [VERIFIED-USER, Red moved from A2 to A4 on 2026-11-03]:
     A0 (Grove ADC channel 0) = OPT101 IR  photodiode
-    A2 (Grove ADC channel 2) = OPT101 Red photodiode
+    A4 (Grove ADC channel 4) = OPT101 Red photodiode
     A1 is NOT used for OPT101.
 
 Verified grove.adc API (grove.py 0.6 source audit — see Phase 5 report):
@@ -19,8 +19,8 @@ of the Grove ADC. It runs at RX_SAMPLE_RATE_HZ (decoupled from the 1 kHz TX
 tick — Phase 4 timing budget shows per-tick RX does not fit at 100 kHz I2C).
 The grove.adc smbus2 file descriptor is separate from the Blinka busio fd
 used by DACManager; the kernel serializes individual I2C transactions per
-adapter, and read_word_data re-addresses the register itself, so interleaved
-DAC writes cannot corrupt an ADC read.
+adapter, and a DAC write to another address does not move the Hat's register
+pointer, so interleaved DAC writes cannot corrupt an ADC read.
 
 RX NEVER writes to the DACs and never imports the DAC/Blinka stack.
 
@@ -64,7 +64,7 @@ from config import (
     DRY_RUN,
 )
 from comm.logger import log
-from hw.grove_adc import FramedGroveADC
+from hw.grove_adc import GroveVoltageADC
 
 # Per-channel status values (strings so logs/UI can show them directly).
 RX_STATUS_INIT = "init"                  # begin() not called / no read attempted yet
@@ -132,7 +132,7 @@ class _ChannelState:
 
 
 class OPT101Receiver:
-    """Owner of the OPT101/Grove-ADC RX path (IR on A0, Red on A2).
+    """Owner of the OPT101/Grove-ADC RX path (IR on A0, Red on A4).
 
     Read-only I2C client of the Grove ADC at config.GROVE_ADC_ADDR (0x08 on
     this MM32 Base HAT) — contains no DAC writes.
@@ -162,7 +162,7 @@ class OPT101Receiver:
         valid = (ADC_CHANNEL_IR, ADC_CHANNEL_RED)
         if not self._dual_channels or len(set(self._dual_channels)) != len(self._dual_channels) or any(
                 ch not in valid for ch in self._dual_channels):
-            raise ValueError("Enabled RX channels must be A0 and/or A2")
+            raise ValueError("Enabled RX channels must be A0 and/or A4")
         self._lock = threading.Lock()
         self._ready = False
         self._running = False
@@ -229,7 +229,7 @@ class OPT101Receiver:
 
         if self._adc is None:
             try:
-                self._adc = FramedGroveADC(address=GROVE_ADC_ADDR)
+                self._adc = GroveVoltageADC(address=GROVE_ADC_ADDR)
             except Exception as e:
                 log.error(f"[OPT101Rx] Failed to init the Grove ADC (0x{GROVE_ADC_ADDR:02X}): {e}")
                 return False
@@ -340,18 +340,9 @@ class OPT101Receiver:
             return None
         return self._read_channel(state)
 
-    def _read_adc(self, state: _ChannelState):
-        """Raw code; the bit-slip decoder may use this lane's fresh last sample."""
-        if not isinstance(self._adc, FramedGroveADC):
-            return self._adc.read_raw(state.physical)
-        with self._lock:
-            last = state.buffer[-1] if state.buffer else None
-        fresh = last is not None and time.monotonic() - last.timestamp <= RX_STALE_THRESHOLD_S
-        return self._adc.read_near(state.physical, last.raw if fresh else None)
-
     def _read_channel(self, state: _ChannelState) -> Optional[RXSample]:
         try:
-            raw = self._read_adc(state)
+            raw = self._adc.read_raw(state.physical)
         except SystemExit as e:
             # grove.adc read_register() calls sys.exit(2) on IOError; convert
             # to a channel error so a bus fault never terminates the thread.

@@ -3,12 +3,18 @@
 Run: PPG_DRY_RUN=1 python3 -m pytest tests/test_ble_server.py -q
 """
 
+import asyncio
 import json
 import time
 
 import pytest
 
 from comm.ble_server import (
+    BLE_ADVERTISING,
+    BLE_CONNECTED,
+    BLE_ERROR,
+    BLE_OFF,
+    NOTIFY_UUID,
     ANDROID_GRACE_S,
     PB_FILE_MAX_CHARS,
     BLECommandHandler,
@@ -404,3 +410,109 @@ def test_ble_server_start_reports_false_backend_result(real_engine, monkeypatch)
 
     with pytest.raises(RuntimeError, match="advertising failed"):
         server.start(timeout=1.0)
+
+
+def wait_for(predicate, timeout=2.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return predicate()
+
+
+class FakeBlessServer:
+    def __init__(self):
+        self.app = type("App", (), {"subscribed_characteristics": []})()
+
+
+def test_connection_state_follows_the_server_lifecycle(real_engine, monkeypatch):
+    async def fail_start(self):
+        raise RuntimeError("no adapter")
+
+    server = BleServer(real_engine)
+    assert server.connection_state() == BLE_OFF
+
+    monkeypatch.setattr(BleServer, "_run", fail_start)
+    with pytest.raises(RuntimeError):
+        server.start(timeout=1.0)
+    assert server.connection_state() == BLE_ERROR
+    assert server.last_error == "no adapter"
+
+    server._server = fake = FakeBlessServer()
+    assert server.connection_state() == BLE_ADVERTISING
+    fake.app.subscribed_characteristics.append(NOTIFY_UUID)
+    assert server.connection_state() == BLE_CONNECTED
+
+    server.stop()
+    assert server.connection_state() == BLE_OFF
+    assert server.last_error == ""
+
+
+def test_set_enabled_retries_and_stops_without_blocking(real_engine, monkeypatch):
+    attempts = []
+
+    async def run(self):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise RuntimeError("bluetoothd is down")
+        self._loop = asyncio.get_running_loop()
+        self._shutdown_evt = asyncio.Event()
+        self._server = FakeBlessServer()
+        self._startup_error = None
+        self._startup_evt.set()
+        await self._shutdown_evt.wait()
+
+    monkeypatch.setattr(BleServer, "_run", run)
+    server = BleServer(real_engine)
+    assert server.set_enabled(True)
+    assert wait_for(lambda: server.connection_state() == BLE_ERROR)
+    assert server.set_enabled(True)  # Settings "Retry"
+    assert wait_for(lambda: server.connection_state() == BLE_ADVERTISING)
+    assert server.set_enabled(False)
+    assert wait_for(lambda: server.connection_state() == BLE_OFF)
+    assert len(attempts) == 2
+
+
+def test_server_registers_again_after_bluetoothd_restart(real_engine, monkeypatch):
+    runs = []
+
+    async def run(self):
+        runs.append(1)
+        self._loop = asyncio.get_running_loop()
+        self._shutdown_evt = asyncio.Event()
+        if len(runs) == 2:
+            raise RuntimeError("bluetoothd is not back yet")
+        self._server = FakeBlessServer()
+        self._startup_error = None
+        self._recovering = False
+        self._startup_evt.set()
+        if len(runs) == 1:
+            self._bluez_lost = True
+            return
+        await self._shutdown_evt.wait()
+
+    monkeypatch.setattr("comm.ble_server.BLUEZ_RESTART_DELAY_S", 0.01)
+    monkeypatch.setattr(BleServer, "_run", run)
+    server = BleServer(real_engine)
+    server.start(timeout=1.0)
+    assert wait_for(lambda: len(runs) == 3 and server.connection_state() == BLE_ADVERTISING)
+    server.stop()
+    assert server.connection_state() == BLE_OFF
+    assert len(runs) == 3
+
+
+def test_bluez_watch_flags_a_replaced_daemon(real_engine):
+    owners = iter([":1.10", ":1.10", ":1.99"])
+
+    async def get_owner():
+        return next(owners)
+
+    async def scenario():
+        server = BleServer(real_engine)
+        server._shutdown_evt = asyncio.Event()
+        await asyncio.wait_for(server._bluez_watch_loop(get_owner, interval=0), 1.0)
+        return server
+
+    server = asyncio.run(scenario())
+    assert server._bluez_lost and server._shutdown_evt.is_set()

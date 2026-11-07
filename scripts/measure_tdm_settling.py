@@ -30,6 +30,8 @@ from hw.dac_manager import DACManager  # noqa: E402
 
 # Final level = median of the last part of each window.
 PLATEAU_FRACTION = 0.25
+# Below this on/off swing there is no signal to time, only noise.
+MIN_SIGNAL_SWING_COUNTS = 50
 
 
 def read_window(adc, seconds, switched_at):
@@ -38,7 +40,7 @@ def read_window(adc, seconds, switched_at):
     end = switched_at + seconds
     while time.perf_counter() < end:
         try:
-            raw = adc.read_near(RX_TDM_ADC_CHANNEL, rows[-1][1] if rows else None)
+            raw = adc.read_raw(RX_TDM_ADC_CHANNEL)
         except OSError:
             continue
         rows.append((time.perf_counter() - switched_at, raw))
@@ -108,8 +110,8 @@ def main():
         raise SystemExit(f"--level-mv must be within (0, {DAC_FULLSCALE_MV:g}]")
     args.output.mkdir(parents=True, exist_ok=False)
 
-    from hw.grove_adc import FramedGroveADC
-    adc = FramedGroveADC(address=GROVE_ADC_ADDR)
+    from hw.grove_adc import GroveVoltageADC
+    adc = GroveVoltageADC(address=GROVE_ADC_ADDR)
     dac = DACManager()
     if not dac.begin():
         raise SystemExit("MCP4725 DACs unavailable")
@@ -152,7 +154,15 @@ def main():
         worst = [summary[led][edge]["settle_ms_max"] for led in ("red", "ir")
                  for edge in ("rise", "fall") if summary[led][edge]["settle_ms_max"] is not None]
         summary["worst_settle_ms"] = max(worst) if worst else None
-        if worst:
+        swings = {led: abs((summary[led]["rise"]["plateau_raw_median"] or 0)
+                           - (summary[led]["fall"]["plateau_raw_median"] or 0))
+                  for led in ("red", "ir")}
+        summary["swing_counts"] = swings
+        if min(swings.values()) < MIN_SIGNAL_SWING_COUNTS:
+            summary["worst_settle_ms"] = None
+            summary["error"] = (f"On/off swing below {MIN_SIGNAL_SWING_COUNTS} counts: no usable "
+                                "signal on this channel, so no settling time can be stated")
+        elif worst:
             # 25 % margin over the slowest observed edge.
             summary["suggested_read_delay_ms"] = round(max(worst) * 1.25, 1)
     finally:

@@ -161,6 +161,8 @@ class SignalEngine:
             if calibration is not None:
                 raise ValueError("Only one output source can run")
         log.info(f"[SignalEngine] Starting PPG simulation, condition={condition}")
+        if not self.dac_manager.is_ready:
+            self.dac_manager.begin()  # the DACs may have returned since the last attempt
 
         with self._lock:
             if self._running or any(t and t.is_alive() for t in (self._thread, self._dac_thread)):

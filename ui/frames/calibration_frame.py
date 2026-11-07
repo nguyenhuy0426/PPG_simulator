@@ -14,12 +14,14 @@ COPY = {
                sine="Sine thử", frequency="Tần số / Hz", amplitude="0 tới đỉnh / mV",
                start="Bắt đầu", stop="Dừng sine", tx="Tín hiệu phát TX", rx="Tín hiệu thu RX",
                idle="Chưa phát sine", running="Đang phát sine trên cả hai kênh DAC · đơn vị mV",
+               no_output="Sine chưa ra LED: DAC không phản hồi trên I2C",
                note="Số đọc ADC thô. SpO₂ đo được cần một hiệu chuẩn quang học đã kiểm chứng."),
     "en": dict(title="Calibration & acquisition",
                subtitle="Test sine on both DACs. Opening this page does not change the output; leaving stops it.",
                sine="Test sine", frequency="Frequency / Hz", amplitude="0 to peak / mV",
                start="Start", stop="Stop sine", tx="TX output signal", rx="RX received signal",
                idle="Calibration standby", running="Sine running on both DAC channels · units mV",
+               no_output="Sine is not reaching the LEDs: the DACs do not answer on I2C",
                note="Raw ADC readings. Measured SpO₂ requires a validated optical calibration."),
 }
 
@@ -31,6 +33,7 @@ class CalibrationFrame(ctk.CTkFrame):
         self.language = getattr(master, "language", "en")
         u = T.ui
         self._running_shown = None
+        self._output_ok_shown = None
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self.title_label, self.subtitle, actions = K.page_header(self)
@@ -111,5 +114,11 @@ class CalibrationFrame(ctk.CTkFrame):
             self._running_shown = running
             t = COPY[self.language]
             K.set_running(self.run_btn, running, t["start"], t["stop"])
+        output_ok = self.engine.dac_manager.output_ok
+        if running and output_ok != self._output_ok_shown:
+            t = COPY[self.language]
+            self.status.configure(text=t["running"] if output_ok else t["no_output"],
+                                  text_color=T.ACCENT if output_ok else T.ERROR)
+        self._output_ok_shown = output_ok if running else None
         self.trace.update_samples(self.engine.get_display_history() if running else [])
         self.rx_panel.periodic_update()
