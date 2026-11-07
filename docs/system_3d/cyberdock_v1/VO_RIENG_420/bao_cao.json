@@ -1,0 +1,71 @@
+{
+  "variant": "cyberdock_v1",
+  "dropped": [
+    "hood_-1_ir",
+    "hood_-1_red",
+    "hood_1_ir",
+    "hood_1_red",
+    "optical_body",
+    "optical_lid",
+    "pi_housing"
+  ],
+  "files": {
+    "VO_LIEN_KHOI.stl": {
+      "extents_mm": [
+        154.3,
+        170.0,
+        219.74
+      ],
+      "volume_cm3": 540.2
+    },
+    "CUA_SAU.stl": {
+      "extents_mm": [
+        212.94,
+        163.2,
+        9.5
+      ],
+      "volume_cm3": 139.8
+    },
+    "KHAY_RUT.stl": {
+      "extents_mm": [
+        169.74,
+        109.0,
+        10.0
+      ],
+      "volume_cm3": 65.4
+    },
+    "PHU_KIEN_1.stl": {
+      "parts": [
+        "09_yoke_lower_left",
+        "10_yoke_lower_right",
+        "11_yoke_upper_left",
+        "12_yoke_upper_right",
+        "knob_left",
+        "knob_right",
+        "spacer_left",
+        "spacer_right",
+        "clip_0_0",
+        "clip_0_1",
+        "clip_1_0",
+        "clip_1_1"
+      ],
+      "extents_mm": [
+        398.0,
+        209.9,
+        134.0
+      ]
+    }
+  },
+  "roof_floor_holes_plugged": 2,
+  "usb_c_slit": {
+    "x_mm": [
+      56,
+      78
+    ],
+    "z_mm": [
+      20,
+      29
+    ],
+    "removed_mm3": 891
+  }
+}

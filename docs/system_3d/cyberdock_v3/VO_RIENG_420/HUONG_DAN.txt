@@ -1,0 +1,14 @@
+cyberdock_v3: BO VO RIENG (khong co buong toi, khong co hop Pi) cho may in 420 x 420 x 500 mm
+
+File gui in (STL, don vi mm, scale 100%, da xoay san theo huong in):
+  VO_LIEN_KHOI.stl: [154.17, 170.0, 219.74] mm (546.0 cm3 khoi dac)
+  CUA_SAU.stl: [212.94, 163.2, 9.5] mm (140.0 cm3 khoi dac)
+  KHAY_RUT.stl: [169.74, 109.0, 10.0] mm (65.5 cm3 khoi dac)
+  PHU_KIEN_1.stl: [410.0, 241.0, 134.0] mm
+
+- VO_LIEN_KHOI.stl: than vo + mat truoc (bezel/nap truoc) dung thanh MOT khoi, nam nghieng tren thanh ben (mat ben x_min xuong ban). Man hinh va kep nhom lap tu phia sau.
+- CUA_SAU.stl, KHAY_RUT.stl: hai nua cua/khay da gop thanh 1 chi tiet. PHU_KIEN_*.stl: kep man hinh va cac chi tiet nho/chan de (neu co), xep san tren ban 420 x 420.
+- Khe cap nguon USB-C o mat truoc: rong 22 mm (X 56..78), cao 9.0 mm (Z 20..29), xuyen qua thanh truoc. Can phich/dau USB-C co dau boc khong qua 22 x 8 mm; cong USB-C cua Pi nam o X~66 mm (huong ve phia truoc), noi day ben trong sau khi mo cua sau.
+- Da bo: buong toi (than, nap, 4 chup day) va hop Pi 4. Khay rut, cua sau van giu de bat hop Pi/buong toi da in cua ban.
+- Hai nua trai/phai va truoc/sau duoc dich moi nua 0.13 mm vao nhau de han thanh khoi: kich thuoc ngoai nho hon 0.26 mm theo X (va Y cua than). Cac lo vit noi nua vo tren mai/day (va cua/khay/mat truoc neu co) da bit.
+- CHUA slice, CHUA in thu, CHUA kiem tra khe cap voi day that. Can kiem tra support (cac tai, ledge, mai ho phia truoc de Mac V2) trong slicer.

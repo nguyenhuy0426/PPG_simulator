@@ -1,0 +1,63 @@
+{
+  "variant": "mac_desktop_v2",
+  "dropped": [
+    "hood_-1_ir",
+    "hood_-1_red",
+    "hood_1_ir",
+    "hood_1_red",
+    "optical_body",
+    "optical_lid",
+    "pi_housing"
+  ],
+  "files": {
+    "VO_LIEN_KHOI.stl": {
+      "extents_mm": [
+        199.67,
+        170.0,
+        219.74
+      ],
+      "volume_cm3": 634.3
+    },
+    "CUA_SAU.stl": {
+      "extents_mm": [
+        212.94,
+        163.2,
+        9.5
+      ],
+      "volume_cm3": 140.0
+    },
+    "KHAY_RUT.stl": {
+      "extents_mm": [
+        169.74,
+        117.0,
+        10.0
+      ],
+      "volume_cm3": 65.5
+    },
+    "PHU_KIEN_1.stl": {
+      "parts": [
+        "clip_0_1",
+        "clip_1_1",
+        "clip_0_0",
+        "clip_1_0"
+      ],
+      "extents_mm": [
+        112.0,
+        14.0,
+        4.0
+      ]
+    }
+  },
+  "roof_floor_holes_plugged": 10,
+  "usb_c_slit": {
+    "x_mm": [
+      56,
+      78
+    ],
+    "z_mm": [
+      14,
+      22
+    ],
+    "removed_mm3": 528
+  }
+}

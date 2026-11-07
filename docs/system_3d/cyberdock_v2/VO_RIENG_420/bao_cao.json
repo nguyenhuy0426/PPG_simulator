@@ -1,0 +1,83 @@
+{
+  "variant": "cyberdock_v2",
+  "dropped": [
+    "hood_-1_ir",
+    "hood_-1_red",
+    "hood_1_ir",
+    "hood_1_red",
+    "optical_body",
+    "optical_lid",
+    "pi_housing"
+  ],
+  "files": {
+    "VO_LIEN_KHOI.stl": {
+      "extents_mm": [
+        249.17,
+        130.0,
+        229.74
+      ],
+      "volume_cm3": 704.3
+    },
+    "CUA_SAU.stl": {
+      "extents_mm": [
+        212.94,
+        105.2,
+        6.0
+      ],
+      "volume_cm3": 86.9
+    },
+    "KHAY_RUT.stl": {
+      "extents_mm": [
+        170.0,
+        209.74,
+        8.5
+      ],
+      "volume_cm3": 94.2
+    },
+    "PHU_KIEN_1.stl": {
+      "parts": [
+        "09_yoke_left",
+        "09_yoke_right",
+        "gear_left",
+        "gear_right",
+        "knob_left",
+        "knob_right",
+        "spacer_left",
+        "spacer_right",
+        "clip_0_0",
+        "clip_0_1",
+        "clip_1_0",
+        "clip_1_1",
+        "trim_bottom_left",
+        "trim_bottom_right",
+        "trim_top_left",
+        "trim_top_right",
+        "10_yoke_rear_foot_left",
+        "10_yoke_rear_foot_right",
+        "trim_side_left",
+        "trim_side_right"
+      ],
+      "extents_mm": [
+        403.5,
+        249.2,
+        141.0
+      ]
+    }
+  },
+  "roof_floor_holes_plugged": 5,
+  "usb_c_slit": {
+    "x_mm": [
+      60,
+      82
+    ],
+    "z_mm": [
+      5.5,
+      13.5
+    ],
+    "removed_mm3": 2563
+  },
+  "slit_also_cut": [
+    "09_yoke_left",
+    "trim_bottom_left"
+  ]
+}
