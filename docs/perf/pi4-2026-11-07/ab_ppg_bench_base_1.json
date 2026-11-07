@@ -1,0 +1,38 @@
+{
+ "host": "aarch64",
+ "geometry": "1024x600+0+0",
+ "seconds": 8.0,
+ "pages": {
+  "Pathology": {
+   "process_cpu_pct_of_one_core": 49.4,
+   "ui_thread_cpu_pct": 29.9,
+   "renders_per_s": 18.2,
+   "render_ms_mean": 8.28,
+   "render_ms_p95": 11.71,
+   "canvas_items_per_render": 38,
+   "update_gui_ms_mean": 14.05,
+   "update_gui_ms_p95": 26.41,
+   "update_gui_ms_p99": 57.24,
+   "update_gui_ms_max": 68.25,
+   "update_gui_per_s": 18.2,
+   "engine": {
+    "underruns": 6,
+    "overruns": 0,
+    "dropped_samples": 0
+   }
+  },
+  "Playback": {
+   "process_cpu_pct_of_one_core": 18.9,
+   "ui_thread_cpu_pct": 16.5,
+   "renders_per_s": 7.4,
+   "render_ms_mean": 6.95,
+   "render_ms_p95": 8.89,
+   "canvas_items_per_render": 41,
+   "update_gui_ms_mean": 6.54,
+   "update_gui_ms_p95": 16.44,
+   "update_gui_ms_p99": 52.53,
+   "update_gui_ms_max": 53.79,
+   "update_gui_per_s": 21.4
+  }
+ }
+}

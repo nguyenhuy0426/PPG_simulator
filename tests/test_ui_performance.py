@@ -136,3 +136,100 @@ class TestResponsiveUI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_DISPLAY, "needs a display server to create a Tk window")
+class IncrementalRenderTest(unittest.TestCase):
+    """A live frame patched in place must leave the same canvas items as a fresh full draw."""
+
+    def setUp(self):
+        import tkinter as tk
+        self.root = tk.Tk()
+
+    def tearDown(self):
+        self.root.destroy()
+
+    def view(self):
+        from ui.trace_view import LaneView
+        view = LaneView(self.root, width=600, height=300)
+        view.pack(fill="both", expand=True)
+        self.root.update()
+        return view
+
+    @staticmethod
+    def lanes(shift, badge2="", gap=None, scale=1.0):
+        import math
+        from ui.trace_view import Lane
+        pts = [(i * 0.01 - 8 + shift, 900 + scale * 60 * math.sin(2 * math.pi * 1.25 * (i * 0.01 + shift)))
+               for i in range(800)]
+        if gap is not None:
+            pts = [p for p in pts if not (gap[0] <= p[0] <= gap[1])]
+        # the reading in the header changes on every frame, as a live mV value does
+        return [Lane("IR", "#7FD8BE", f"Live   {pts[-1][1]:.0f} mV", pts, badge=f"RX rate {70 + int(shift) % 9} bpm",
+                     max_gap_s=.05, badge2=badge2),
+                Lane("RED", "#F4958C", f"Live   {pts[-1][1] * .8:.0f} mV", [(t, v * 0.8) for t, v in pts],
+                     max_gap_s=.05)]
+
+    @staticmethod
+    def snapshot(view):
+        out = []
+        for item in view.find_all():
+            kind = view.type(item)
+            row = [kind, tuple(round(c, 3) for c in view.coords(item)), view.itemcget(item, "fill")]
+            if kind == "text":
+                row.append(view.itemcget(item, "text"))
+            out.append(tuple(row))
+        return out
+
+    def assert_same_as_fresh(self, view, lanes):
+        fresh = self.view()
+        try:
+            fresh.update_lanes(lanes, end_s=0.0)
+            # same items; only their stacking order may differ when a gap added or removed a line piece
+            self.assertEqual(sorted(self.snapshot(view)), sorted(self.snapshot(fresh)))
+        finally:
+            fresh.destroy()
+
+    def test_scrolling_samples_match_a_full_draw_and_keep_the_items(self):
+        view = self.view()
+        view.update_lanes(self.lanes(0.0), end_s=0.0)
+        ids = set(view.find_all())
+        for step in range(1, 40):
+            shift = step * 0.1                        # crosses several whole-second boundaries
+            lanes = self.lanes(shift, scale=1.0 + step * 0.01)
+            view.update_lanes(lanes, end_s=0.0)
+            self.assert_same_as_fresh(view, lanes)
+        # polylines and y labels survive between whole-second changes; only the grid is re-created
+        self.assertTrue(len(ids & set(view.find_all())) > 10)
+
+    def test_a_layout_change_rebuilds(self):
+        view = self.view()
+        view.update_lanes(self.lanes(0.0), end_s=0.0)
+        for lanes in (self.lanes(0.1, badge2="SpO2 est. 97.5 %"), self.lanes(0.2),
+                      self.lanes(0.3, gap=(-5.0, -4.0))):    # a hole splits the line, so the item count changes
+            view.update_lanes(lanes, end_s=0.0)
+            self.assert_same_as_fresh(view, lanes)
+
+    def test_an_incremental_frame_makes_far_fewer_tk_calls(self):
+        view = self.view()
+        view.update_lanes(self.lanes(0.0), end_s=0.0)
+        calls = []
+        real_create = view.create_text
+        view.create_text = lambda *a, **k: (calls.append(1), real_create(*a, **k))[1]
+        view.update_lanes(self.lanes(0.1), end_s=0.0)
+        self.assertEqual(len(calls), 0)
+
+
+class EstimateBudgetTest(unittest.TestCase):
+    """Due rate/SpO2 refreshes are spread over ticks instead of stalling one tick with all of them."""
+
+    def test_one_refresh_per_tick_and_first_estimates_are_never_deferred(self):
+        from ui.rx_monitor import RXPanel
+        panel = RXPanel.__new__(RXPanel)
+        panel._heavy = 1
+        self.assertTrue(panel._may_estimate(None))        # first value: always computed
+        self.assertTrue(panel._may_estimate(None))
+        self.assertTrue(panel._may_estimate((0.0, "old")))  # one due refresh uses the budget
+        self.assertFalse(panel._may_estimate((0.0, "old")))  # the next waits for the following tick
+        panel._heavy = 1
+        self.assertTrue(panel._may_estimate((0.0, "old")))

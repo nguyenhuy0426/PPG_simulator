@@ -9,8 +9,9 @@ from ui.trace_view import Lane, LaneView
 
 RX_CHANNELS = ((0, "IR", T.IR), (4, "RED", T.RED))
 REFRESH_S = 0.1
+MV_PER_CODE = raw_to_millivolts(1)   # the conversion is linear: one multiply per sample instead of a call
 DEFAULT_MAX_GAP_S = 0.05
-RATE_REFRESH_S = 1.0   # rate recomputed at most once a second per channel (~3 ms each on the x86 laptop; Pi unmeasured)
+RATE_REFRESH_S = 2.0   # rate and SpO2 recomputed at most every 2 s: ~3 ms per channel on the laptop, far more on the Pi, and the value moves slowly
 
 # Received pulse rate shown in each live lane header: (label, reasons there is none).
 _RATE = {
@@ -63,11 +64,12 @@ def channel_view(receiver, channel, now, window_s):
     Disabled channels and dry-run never return samples: nothing is fabricated.
     """
     status = receiver.channel_status(channel)
-    samples = receiver.get_samples(channel)
     if status == "disabled" or receiver.is_simulated:
         return ("disabled" if status == "disabled" else "dry-run"), ()
     if status in ("ok", "saturated") and receiver.is_stale(channel, now=now):
         status = "stale"
+    since = getattr(receiver, "get_samples_since", None)
+    samples = since(channel, now - window_s) if since else receiver.get_samples(channel)
     return status, [s for s in samples if now - window_s <= s.timestamp <= now]
 
 
@@ -100,6 +102,7 @@ class RXPanel(LaneView):
         if not self.winfo_ismapped() or now - self._last_update < REFRESH_S:
             return
         self._last_update = now
+        self._heavy = 1        # at most one refresh of the rate/SpO2 estimates per tick (see _may_estimate)
         copy = _PANEL["vi" if self.language == "vi" else "en"]
         # TDM: both lanes come from one sensor, one sample per slot frame.
         tdm = getattr(self.receiver, "mode", "dual") == "tdm"
@@ -122,7 +125,7 @@ class RXPanel(LaneView):
             title = (f"A{self.receiver.physical_channel(channel)} TDM  {name}" if tdm
                      else f"A{channel}  {name}")
             lanes.append(Lane(title, color, detail,
-                              [(s.timestamp - now, raw_to_millivolts(s.raw)) for s in samples],
+                              [(s.timestamp - now, s.raw * MV_PER_CODE) for s in samples],
                               message if not samples else "", sub.format(name=name) if not samples else "",
                               max_gap_s=max_gap, badge=self.rate_badge(channel, status, samples, now)))
         spo2 = self.spo2_badge(live, tdm, now)
@@ -131,13 +134,24 @@ class RXPanel(LaneView):
                 lane.badge2 = spo2
         self.update_lanes(lanes, end_s=0.0)
 
+    def _may_estimate(self, previous):
+        """A due rate/SpO2 estimate costs ~14 ms on the Pi 4 (pure Python). Refreshing the three of them in one
+        tick is a 40 ms stall of the Tk thread; this lets one run per tick and the others follow on the next
+        ticks, which also keeps them apart afterwards. The first estimate of a value is never deferred."""
+        if previous is None:
+            return True
+        if getattr(self, "_heavy", 1) > 0:
+            self._heavy = getattr(self, "_heavy", 1) - 1
+            return True
+        return False
+
     def spo2_badge(self, live, tdm, now):
         """Estimated SpO2 from both received channels; empty unless both are being read."""
         if "IR" not in live or "RED" not in live:
             self._spo2 = None
             return ""
         computed_at, result = self._spo2 or (None, None)
-        if computed_at is None or now - computed_at >= RATE_REFRESH_S:
+        if (computed_at is None or now - computed_at >= RATE_REFRESH_S) and self._may_estimate(computed_at):
             dark = [s.raw for s in self.receiver.get_dark_samples() if now - self.window_s <= s.timestamp] if tdm else []
             level = sum(dark) / len(dark) if dark else 0.0
             result = estimate_rx_spo2(live["IR"], live["RED"], *calibration_coefficients(),
@@ -155,7 +169,7 @@ class RXPanel(LaneView):
             self._rates.pop(channel, None)
             return ""
         computed_at, rate = self._rates.get(channel, (None, None))
-        if computed_at is None or now - computed_at >= RATE_REFRESH_S:
+        if (computed_at is None or now - computed_at >= RATE_REFRESH_S) and self._may_estimate(computed_at):
             rate = estimate_rx_rate(samples)
             self._rates[channel] = (now, rate)
         label, reasons = _RATE["vi" if self.language == "vi" else "en"]

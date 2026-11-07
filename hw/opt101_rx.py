@@ -42,6 +42,7 @@ import sys
 import os
 import time
 import threading
+from bisect import bisect_left
 from collections import deque
 from typing import NamedTuple, Optional, Tuple
 
@@ -97,6 +98,10 @@ class RXSample(NamedTuple):
     timestamp: float
     raw: int
     saturated: bool
+
+
+def _timestamp(sample):
+    return sample.timestamp
 
 
 def raw_to_millivolts(raw: int) -> float:
@@ -423,6 +428,14 @@ class OPT101Receiver:
         if n is not None and n < len(samples):
             samples = samples[len(samples) - n:]
         return samples
+
+    def get_samples_since(self, channel: int, since: float) -> Tuple[RXSample, ...]:
+        """Samples with timestamp >= `since`, oldest first: one C-speed snapshot copy under the lock, then a
+        binary search on the (monotonic, in-order) timestamps, instead of filtering every sample in Python."""
+        state = self._state(channel)
+        with self._lock:
+            samples = tuple(state.buffer)
+        return samples[bisect_left(samples, since, key=_timestamp):]
 
     def sample_count(self, channel: int) -> int:
         state = self._state(channel)

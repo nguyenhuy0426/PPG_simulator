@@ -177,6 +177,17 @@ class TestSamplesAndBuffers(unittest.TestCase):
         raws = [s.raw for s in rx.get_samples(RED, n=3)]
         self.assertEqual(raws, [7, 8, 9])
 
+    def test_get_samples_since_matches_filtering_the_full_snapshot(self):
+        rx, _ = make_receiver()
+        for _ in range(10):
+            rx._acquire_once()
+        full = rx.get_samples(IR)
+        for index in (0, 3, 9):
+            since = full[index].timestamp
+            self.assertEqual(rx.get_samples_since(IR, since), tuple(x for x in full if x.timestamp >= since))
+        self.assertEqual(rx.get_samples_since(IR, full[-1].timestamp + 1.0), ())
+        self.assertEqual(rx.get_samples_since(IR, -1.0), full)
+
 
 # ─────────────────────────── Validation & saturation ───────────────────────────
 
