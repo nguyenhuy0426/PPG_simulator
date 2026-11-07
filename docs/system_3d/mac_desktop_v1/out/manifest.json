@@ -1,0 +1,619 @@
+{
+  "units": "mm",
+  "screen_frame_confirmed_mm": [
+    178,
+    105
+  ],
+  "screen_window_provisional_mm": [
+    170,
+    97
+  ],
+  "body_sleeve_mm": [
+    220.0,
+    170.0,
+    150.0
+  ],
+  "body_with_front_rear_mm": [
+    220,
+    170,
+    160.5
+  ],
+  "fixed_optical_distances_mm": {
+    "red": 25,
+    "ir": 85
+  },
+  "parts": [
+    {
+      "name": "01_shell_left_front",
+      "print_file": "01_shell_left_front.stl",
+      "size_mm": [
+        115.0,
+        170.0,
+        121.0
+      ],
+      "volume_mm3": 136751.19879066994,
+      "assembly_to_print": [
+        [
+          0.0,
+          1.0,
+          0.0,
+          -0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          4.440892098500626e-16
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "9e4fd8c339f606b4902a87a299c02a796301b6515b843320ba659c2c976fe189"
+    },
+    {
+      "name": "02_shell_left_rear",
+      "print_file": "02_shell_left_rear.stl",
+      "size_mm": [
+        49.75,
+        170.0,
+        121.0
+      ],
+      "volume_mm3": 67758.49975338014,
+      "assembly_to_print": [
+        [
+          0.0,
+          1.0,
+          0.0,
+          -100.25
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          4.440892098500626e-16
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "2e8adfb4893415b10d6612297acd2417722e5bfbb251f3f92cb2006c80153218"
+    },
+    {
+      "name": "01_shell_right_front",
+      "print_file": "01_shell_right_front.stl",
+      "size_mm": [
+        115.0,
+        170.0,
+        109.75
+      ],
+      "volume_mm3": 133883.71498029234,
+      "assembly_to_print": [
+        [
+          -0.0,
+          -1.0,
+          -0.0,
+          115.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          220.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "022504b80cea230fc20e63bf40d9981ffde390bcbe8e2da2a4057593d03d26ee"
+    },
+    {
+      "name": "02_shell_right_rear",
+      "print_file": "02_shell_right_rear.stl",
+      "size_mm": [
+        49.75,
+        170.0,
+        109.75
+      ],
+      "volume_mm3": 66326.43076393886,
+      "assembly_to_print": [
+        [
+          -0.0,
+          -1.0,
+          -0.0,
+          150.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          220.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "16dbb27ec7905b85e8791845edd455e4004aa2016e5b1c449375082f30d4a363"
+    },
+    {
+      "name": "03_bezel_left",
+      "print_file": "03_bezel_left.stl",
+      "size_mm": [
+        121.0,
+        170.0,
+        33.0
+      ],
+      "volume_mm3": 111452.10574329105,
+      "assembly_to_print": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          121.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          -0.0,
+          1.0,
+          -0.0,
+          10.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "3253a2936c478dbc53ad07c870262e8c21502a0e26fa708e4022be37b38adb1c"
+    },
+    {
+      "name": "04_bezel_right",
+      "print_file": "04_bezel_right.stl",
+      "size_mm": [
+        109.75,
+        170.0,
+        33.0
+      ],
+      "volume_mm3": 108277.37580994303,
+      "assembly_to_print": [
+        [
+          -1.0,
+          -0.0,
+          -0.0,
+          220.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          4.440892098500626e-16
+        ],
+        [
+          -0.0,
+          1.0,
+          -0.0,
+          10.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "04fdb5e375d15f48b8fa6ecf61f181dbd77f05f2449c8353e68d3f05f16852f0"
+    },
+    {
+      "name": "clip_0_0",
+      "print_file": "clip_0_0.stl",
+      "size_mm": [
+        23.5,
+        14.0,
+        4.0
+      ],
+      "volume_mm3": 995.3155316278891,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -6.5
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -55.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          14.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "a8d04256a71a03a2fdf68e81fb89496b32224e9f4d3824a75403da9deeb80510"
+    },
+    {
+      "name": "clip_0_1",
+      "print_file": "clip_0_1.stl",
+      "size_mm": [
+        23.5,
+        14.0,
+        4.0
+      ],
+      "volume_mm3": 995.3155316278891,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -6.5
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -130.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          14.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "a8d04256a71a03a2fdf68e81fb89496b32224e9f4d3824a75403da9deeb80510"
+    },
+    {
+      "name": "clip_1_0",
+      "print_file": "clip_1_0.stl",
+      "size_mm": [
+        23.5,
+        14.0,
+        4.0
+      ],
+      "volume_mm3": 995.3155316278862,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -190.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -55.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          14.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "f19da39fc5e96860943f3211b1bfbd13b6899c2a0f1ded073b263ae649b650c9"
+    },
+    {
+      "name": "clip_1_1",
+      "print_file": "clip_1_1.stl",
+      "size_mm": [
+        23.5,
+        14.0,
+        4.0
+      ],
+      "volume_mm3": 995.3155316278886,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -190.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -130.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          14.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "f19da39fc5e96860943f3211b1bfbd13b6899c2a0f1ded073b263ae649b650c9"
+    },
+    {
+      "name": "05_door_left",
+      "print_file": "05_door_left.stl",
+      "size_mm": [
+        117.6,
+        163.2,
+        9.5
+      ],
+      "volume_mm3": 72188.70931659322,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -3.3999999999999986
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -3.3999999999999986
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          150.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "37272a510c13e6d7e7c385d967d1e9726442d4784570cf690a5e037b2e97cdd7"
+    },
+    {
+      "name": "06_door_right",
+      "print_file": "06_door_right.stl",
+      "size_mm": [
+        106.35,
+        163.2,
+        6.0
+      ],
+      "volume_mm3": 67655.54628501314,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -110.25
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -3.3999999999999986
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          150.5
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "0b0e9a430c2f6bd12170b1a65301edc90e1e0554de93087e1a6d44f9a176b4a2"
+    },
+    {
+      "name": "07_tray_left",
+      "print_file": "07_tray_left.stl",
+      "size_mm": [
+        96.0,
+        117.0,
+        10.0
+      ],
+      "volume_mm3": 34255.624064246855,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -25.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -27.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -9.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "692b52516a8a1ab9a35ee4a83c396f4b31ce964c6cf08ba6d051d0261acc76d8"
+    },
+    {
+      "name": "08_tray_right",
+      "print_file": "08_tray_right.stl",
+      "size_mm": [
+        84.75,
+        109.0,
+        10.0
+      ],
+      "volume_mm3": 31129.3550221082,
+      "assembly_to_print": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -110.25
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -30.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          -9.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sha256": "c7a0570e971c03668ab7a214e7fbec1bad66a34d973acc5aa4677c02c1921738"
+    }
+  ],
+  "fasteners": "M4 only, structural joints",
+  "single_assembly_file": "PPG_MacDesktop_M4.3mf",
+  "assembly_3mf_translation_mm": [
+    0,
+    10,
+    0
+  ],
+  "module_translations_mm": {
+    "pi_housing": [
+      50,
+      46,
+      19.0
+    ],
+    "optical_body": [
+      17,
+      34,
+      89.0
+    ]
+  },
+  "fixed_optical_body": {
+    "print_file": "17_optical_body_fixed_LED.stl",
+    "size_mm": [
+      154.0,
+      103.0,
+      64.0
+    ],
+    "print_to_assembly_translation_mm": [
+      17,
+      34,
+      89.0
+    ],
+    "native_step": false,
+    "sha256": "da2091950d5ff57845c5ebae9195fa5823593d54f704b636e9da656ec9fcc4f5"
+  },
+  "pi_housing_m4": {
+    "print_file": "18_pi_housing_m4.stl",
+    "size_mm": [
+      124.0,
+      104.29293632507324,
+      70.0
+    ],
+    "print_to_assembly_translation_mm": [
+      50,
+      46,
+      19.0
+    ],
+    "sha256": "ef7c35d037fb3e3877770da761cee94eec191b2d9881a30824d47d4a22e776b0"
+  },
+  "source_sha256": {
+    "01_than_hop_toi.stl": "683a8cd8b9ab744efda8cc3441d997e49a06ac9064d544cff627ace64dbb205d",
+    "than_hop_pi4.stl": "4de498467385239e3e09e0c5d7fc20264279923da775fe51dc365723125f3917",
+    "build_system.py": "46b15b48e7ae684a5380d8f9df9e8a015a525e827436d7c657d10cb9231ae76a"
+  },
+  "status": "Engineering prototype; physical screen/cables/loads not validated.",
+  "version": "Mac Desktop V1",
+  "screen_thickness_confirmed_mm": 10,
+  "colors": {
+    "01_shell_left_front": "#d9cbb0",
+    "02_shell_left_rear": "#d9cbb0",
+    "01_shell_right_front": "#d9cbb0",
+    "02_shell_right_rear": "#d9cbb0",
+    "03_bezel_left": "#d9cbb0",
+    "04_bezel_right": "#d9cbb0",
+    "clip_0_0": "#c6b99f",
+    "clip_0_1": "#c6b99f",
+    "clip_1_0": "#c6b99f",
+    "clip_1_1": "#c6b99f",
+    "05_door_left": "#d9cbb0",
+    "06_door_right": "#d9cbb0",
+    "07_tray_left": "#72958a",
+    "08_tray_right": "#72958a"
+  },
+  "base_removed": true,
+  "layout": "Existing Pi housing below optical chamber; rear removable tray"
+}

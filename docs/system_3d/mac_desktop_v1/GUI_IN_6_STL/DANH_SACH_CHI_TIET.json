@@ -1,0 +1,125 @@
+[
+  {
+    "file": "BAN_01.stl",
+    "parts": [
+      "01_shell_left_front",
+      "02_shell_left_rear",
+      "optical_lid"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        171.75,
+        174.0,
+        157.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_02.stl",
+    "parts": [
+      "01_shell_right_front",
+      "02_shell_right_rear"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        171.75,
+        174.0,
+        109.75
+      ]
+    ]
+  },
+  {
+    "file": "BAN_03.stl",
+    "parts": [
+      "optical_body",
+      "03_bezel_left",
+      "04_bezel_right",
+      "hood_1_ir",
+      "clip_1_0",
+      "clip_1_1",
+      "clip_0_0",
+      "clip_0_1"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        174.0,
+        173.0,
+        121.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_04.stl",
+    "parts": [
+      "pi_housing",
+      "05_door_left",
+      "06_door_right",
+      "hood_1_red",
+      "hood_-1_red",
+      "hood_-1_ir"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        173.5,
+        167.1999969482422,
+        117.5999984741211
+      ]
+    ]
+  },
+  {
+    "file": "BAN_05.stl",
+    "parts": [
+      "07_tray_left"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        100.0,
+        121.0,
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "BAN_06.stl",
+    "parts": [
+      "08_tray_right"
+    ],
+    "bounds_mm": [
+      [
+        4.0,
+        4.0,
+        0.0
+      ],
+      [
+        88.75,
+        113.0,
+        10.0
+      ]
+    ]
+  }
+]

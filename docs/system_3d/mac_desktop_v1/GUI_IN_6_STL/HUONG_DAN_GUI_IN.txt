@@ -1,0 +1,31 @@
+PPG MAC DESKTOP V1 - BO GUI IN 6 STL (khong co de)
+
+Chi gui 6 file BAN_01.stl den BAN_06.stl. Don vi mm, scale 100%.
+Tong 21 chi tiet roi, chia 6 nhom trong kho 180 x 180 x 180 mm.
+BAN_01.stl: 3 chi tiet
+BAN_02.stl: 2 chi tiet
+BAN_03.stl: 8 chi tiet
+BAN_04.stl: 6 chi tiet
+BAN_05.stl: 1 chi tiet
+BAN_06.stl: 1 chi tiet
+
+Man hinh khung nhom 178 x 105 x 10 mm. Buong toi chong truc tiep
+tren hop Pi, ca cum bat tren khay rut ra sau. Cua sau thao bang M4.
+Vo rong 220, cao 170, sau 160.5 mm (chua tinh dau oc/dem chan).
+Da bo de day 14 mm; dan 4 dem chan cao su day it nhat 5 mm duoi day.
+Vat lieu PETG. Lo M4 thong 4.5 mm; hoc dai oc AF7.4 mm.
+Khong in man hinh, PCB, day va linh kien dien tu.
+
+CAN SLICE VA KIEM TRA SUPPORT/BRIM truoc khi in. Mot so chi tiet
+(vien man hinh, cua, nap) dat dung de chia 6 ban. Khoang chua mep
+mo hinh danh dinh 4 mm, can kiem tra support/brim khong vuot 180 mm.
+Khong coi STL la G-code da san sang chay.
+
+Kep man hinh chi ti vao khung nhom, khong siet ep mat kinh.
+Huong dan lap va bang 36 oc M4 nam trong HUONG_DAN_LAP.md.
+Hai oc noi khay o Y=35/136, khong dung khay Cyberdock V3 thay the.
+
+Da kiem tra (verify.py): STEP, khoi kin STL, truc M4, giao thoa lap rap,
+thu rut khay va 21 chi tiet trong 6 STL.
+Chua slice/in thu, thu tai, do creep PETG/nhiet, kiem tra du PCB/cong/day
+that va do kin sang/hieu chuan quang.
