@@ -11,21 +11,67 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from config import DAC_ADDR_IR, DAC_ADDR_RED, DAC_IDLE_VALUE  # noqa: E402
 UNIT_TEMPLATE = ROOT / "packaging" / "linux" / "ppg-simulator.service.in"
 INSTALLER = ROOT / "scripts" / "install_user_service.sh"
 LAUNCHER = ROOT / "scripts" / "launch_ppg_simulator.sh"
 DEPLOY = ROOT / "scripts" / "deploy_and_run.sh"
+PARK = ROOT / "scripts" / "park_dacs.py"
 UNIT = "ppg-simulator.service"
 # Longest SIGTERM shutdown of main.py, from the timeouts on its path: two output
 # threads x 2 s (core/signal_engine.py), the Neural worker 2 s
 # (ui/frames/neural_frame.py), the BLE thread 10 s (comm/ble_server.py) and the
 # RX thread 2 s (hw/opt101_rx.py).
 SHUTDOWN_WORST_CASE_S = 2 * 2 + 2 + 10 + 2
+
+# Ubuntu's user@.service.d/timeout.conf: the whole user manager gets 5 s at reboot.
+USER_MANAGER_STOP_CAP_S = 5
+
+# Stand-ins for the Blinka and MCP4725 modules that hw/dac_manager.py imports.
+# Each probe and write is appended to FAKE_DAC_LOG; FAKE_DAC_ABSENT lists the
+# addresses that do not answer, FAKE_DAC_WRITE fails or hangs every write.
+FAKE_DAC_MODULES = {
+    "board.py": "SCL = 3\nSDA = 2\n",
+    "busio.py": "class I2C:\n    def __init__(self, scl, sda):\n        pass\n",
+    "adafruit_mcp4725.py": r"""
+import os
+import time
+
+
+def _record(line):
+    with open(os.environ["FAKE_DAC_LOG"], "a", encoding="utf-8") as log:
+        log.write(line + "\n")
+
+
+class MCP4725:
+    def __init__(self, i2c, address=0x62):
+        self._address = address
+        if f"0x{address:02x}" in os.environ.get("FAKE_DAC_ABSENT", "").split():
+            raise ValueError(f"No I2C device at address: 0x{address:x}")
+        _record(f"probe 0x{address:02x}")
+
+    @property
+    def raw_value(self):
+        return 0
+
+    @raw_value.setter
+    def raw_value(self, value):
+        mode = os.environ.get("FAKE_DAC_WRITE", "ok")
+        if mode == "hang":
+            time.sleep(30)
+        if mode == "fail":
+            raise OSError(121, "Remote I/O error")
+        _record(f"write 0x{self._address:02x} {value}")
+""",
+}
 
 # Records every call. UnitFileState and ActiveState live in files so a stop or a
 # start changes what the next query returns, as with the real user manager.
@@ -146,6 +192,14 @@ class TestUnitTemplate(unittest.TestCase):
         main = (ROOT / "main.py").read_text(encoding="utf-8")
         self.assertIn("signal.signal(signal.SIGTERM, request_gui_shutdown)", main)
 
+    def test_parks_the_dacs_after_every_exit_without_failing_the_unit(self):
+        # '-': a failed park must not mark the unit failed or stop a crash restart.
+        self.assertEqual(self.value("Service", "ExecStopPost"),
+                         "-@PROJECT_ROOT@/.venv/bin/python @PROJECT_ROOT@/scripts/park_dacs.py")
+        self.assertTrue(PARK.is_file())
+        # Stop actions other than this one would run with the app still on the bus.
+        self.assertNotIn("ExecStop", self.unit["Service"])
+
     @unittest.skipUnless(shutil.which("systemd-analyze"), "systemd-analyze not installed")
     @unittest.skipUnless(os.access(ROOT / ".venv" / "bin" / "python", os.X_OK), "no .venv in this checkout")
     def test_rendered_unit_passes_systemd_analyze_verify(self):
@@ -220,6 +274,7 @@ class TestInstaller(FakeHost):
         text = self.unit_path.read_text(encoding="utf-8")
         self.assertNotIn("@PROJECT_ROOT@", text)
         self.assertIn(f"\nExecStart={ROOT}/.venv/bin/python {ROOT}/main.py\n", text)
+        self.assertIn(f"\nExecStopPost=-{ROOT}/.venv/bin/python {ROOT}/scripts/park_dacs.py\n", text)
         self.assertEqual(stat.S_IMODE(self.unit_path.stat().st_mode), 0o644)
         calls = self.calls()
         self.assertTrue(any(call.startswith("systemd-analyze --user verify ") for call in calls))
@@ -384,6 +439,76 @@ class TestDeployRestart(FakeHost):
         self.assertNotIn(f"systemctl --user stop {UNIT}", calls)
         self.assertNotIn(f"systemctl --user start {UNIT}", calls)
         self.assertFalse(any(call.startswith("systemd-run ") for call in calls))
+
+
+class TestParkDacs(unittest.TestCase):
+    """scripts/park_dacs.py against stand-in DAC modules; never the real I2C bus."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="ppg-park-dacs-test-")
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        modules = self.directory / "modules"
+        modules.mkdir()
+        for name, body in FAKE_DAC_MODULES.items():
+            (modules / name).write_text(body, encoding="utf-8")
+        self.dac_log = self.directory / "dac.log"
+        self.env = os.environ.copy()
+        for name in ("SERVICE_RESULT", "EXIT_CODE", "EXIT_STATUS", "FAKE_DAC_ABSENT", "FAKE_DAC_WRITE"):
+            self.env.pop(name, None)
+        self.env.update({
+            "PYTHONPATH": str(modules),
+            "PYTHONNOUSERSITE": "1",
+            "PPG_LOG_ENABLED": "0",
+            "FAKE_DAC_LOG": str(self.dac_log),
+        })
+
+    def park(self, *arguments, **environment):
+        started = time.monotonic()
+        result = subprocess.run((sys.executable, str(PARK), *arguments), cwd=self.directory,
+                                env={**self.env, **environment}, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, timeout=60)
+        return result, time.monotonic() - started
+
+    def dac_calls(self):
+        return self.dac_log.read_text(encoding="utf-8").splitlines() if self.dac_log.exists() else []
+
+    def test_writes_the_idle_code_to_both_dacs(self):
+        result, _ = self.park(PPG_DRY_RUN="0", SERVICE_RESULT="signal", EXIT_CODE="killed",
+                              EXIT_STATUS="KILL")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.dac_calls(), [f"probe 0x{DAC_ADDR_IR:02x}", f"probe 0x{DAC_ADDR_RED:02x}",
+                                            f"write 0x{DAC_ADDR_IR:02x} {DAC_IDLE_VALUE}",
+                                            f"write 0x{DAC_ADDR_RED:02x} {DAC_IDLE_VALUE}"])
+        self.assertIn("Both DACs parked", result.stdout)
+        # How the app ended reaches the journal next to the park.
+        self.assertIn("SERVICE_RESULT=signal EXIT_CODE=killed EXIT_STATUS=KILL", result.stdout)
+
+    def test_dry_run_never_touches_the_dacs(self):
+        for arguments, environment in (((), {"PPG_DRY_RUN": "1"}), (("--dry-run",), {"PPG_DRY_RUN": "0"})):
+            with self.subTest(arguments=arguments):
+                result, _ = self.park(*arguments, **environment)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("DRY-RUN", result.stdout)
+                self.assertEqual(self.dac_calls(), [])
+
+    def test_missing_dacs_are_not_an_error(self):
+        # A laptop, or a bench with the DAC board unplugged.
+        result, _ = self.park(PPG_DRY_RUN="0", FAKE_DAC_ABSENT=f"0x{DAC_ADDR_IR:02x} 0x{DAC_ADDR_RED:02x}")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("DACs did not answer", result.stdout)
+        self.assertEqual(self.dac_calls(), [])
+
+    def test_failed_write_is_reported(self):
+        result, _ = self.park(PPG_DRY_RUN="0", FAKE_DAC_WRITE="fail")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("DAC park write failed", result.stdout)
+
+    def test_a_hung_bus_gives_up_inside_the_user_manager_stop_cap(self):
+        result, elapsed = self.park(PPG_DRY_RUN="0", FAKE_DAC_WRITE="hang")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("timed out", result.stderr)
+        self.assertLess(elapsed, USER_MANAGER_STOP_CAP_S)
 
 
 class TestScriptSyntax(unittest.TestCase):
