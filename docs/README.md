@@ -21,7 +21,7 @@ time; the newest result in each group is listed first.
 | [architecture/](architecture/) | Phase 1 reference audit and master design; Phase 4 dual-DAC TX and LED driver |
 | [system_3d/](system_3d/README.md) | Printable optical enclosure: generator scripts, STL files, viewer |
 | [opt101-a0-diagnostic-2026-10-01.md](opt101-a0-diagnostic-2026-10-01.md) | OPT101/A0 bench diagnostic protocol |
-| [hardware-validation/2026-09-30/](hardware-validation/2026-09-30/) | Raspberry Pi timing, ARM inference and TX/RX capture evidence |
+| [hardware-validation/](hardware-validation/README.md) | Raspberry Pi timing, ARM inference and TX/RX capture evidence; how to check the generators on the Pi |
 | [ds_linhkien/](ds_linhkien/), [whale_device/](whale_device/) | Component datasheets and the WhaleTeq AECG100 reference manual (see [REFERENCES.md](REFERENCES.md)) |
 
 ## Waveform models

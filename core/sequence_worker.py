@@ -3,6 +3,10 @@ import argparse
 from dataclasses import asdict
 import json
 
+# The Neural page kills a worker that has not answered after this many seconds
+# (ui/frames/neural_frame.py); scripts/verify_generators_on_pi.py times the worker against it.
+WORKER_TIMEOUT_S = 120
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)

@@ -1,0 +1,645 @@
+{
+ "method": "Repeats ml/kaggle_multidomain/realism.realism() with the same seeds, folds and probe, using the deployed TorchScript generators, and keeps every out-of-fold probe score. The point estimates must reproduce docs/paper/evidence/realism-v1/realism_round10.json; the script stops if they do not.",
+ "bootstrap": 2000,
+ "datasets": {
+  "gxu_finger": {
+   "people": 44,
+   "windows": 256,
+   "real_other_people": {
+    "precision": 98.046875,
+    "recall": 99.21875,
+    "indistinguishable": 94.15508755329246,
+    "published_indistinguishable": 94.15508755329246,
+    "ci95": {
+     "precision": [
+      96.26857930265683,
+      99.6124031007752
+     ],
+     "recall": [
+      97.95081967213115,
+      100.0
+     ],
+     "indistinguishable": [
+      80.75901313295492,
+      98.17380786215753
+     ]
+    }
+   },
+   "round9": {
+    "precision": 95.3125,
+    "recall": 76.171875,
+    "indistinguishable": 8.588313883507205,
+    "published_indistinguishable": 8.588313883507205,
+    "ci95": {
+     "precision": [
+      92.578125,
+      97.65625
+     ],
+     "recall": [
+      68.7726533457249,
+      83.4041209342792
+     ],
+     "indistinguishable": [
+      4.565921678314048,
+      13.878441405483692
+     ]
+    }
+   },
+   "physioflow": {
+    "precision": 96.09375,
+    "recall": 92.1875,
+    "indistinguishable": 49.770002847610264,
+    "published_indistinguishable": 49.770002847610264,
+    "ci95": {
+     "precision": [
+      93.75,
+      98.046875
+     ],
+     "recall": [
+      86.98597333753214,
+      96.42896825396825
+     ],
+     "indistinguishable": [
+      37.9913597399885,
+      62.784036955069496
+     ]
+    }
+   },
+   "lsm_gan": {
+    "precision": 11.71875,
+    "recall": 0.0,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      7.8125,
+      15.625
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "gaussian_shaper": {
+    "precision": 0.78125,
+    "recall": 0.78125,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      0.0,
+      1.953125
+     ],
+     "recall": [
+      0.0,
+      2.101061943764847
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    }
+   }
+  },
+  "perform_large": {
+   "people": 191,
+   "windows": 256,
+   "real_other_people": {
+    "precision": 97.65625,
+    "recall": 95.3125,
+    "indistinguishable": 96.63684148074601,
+    "published_indistinguishable": 96.63684148074601,
+    "ci95": {
+     "precision": [
+      95.84866352201259,
+      99.23076923076923
+     ],
+     "recall": [
+      92.74139475960943,
+      97.70136878125822
+     ],
+     "indistinguishable": [
+      86.96929759837762,
+      98.53252126938267
+     ]
+    }
+   },
+   "round9": {
+    "precision": 97.65625,
+    "recall": 62.890625,
+    "indistinguishable": 36.47552305957608,
+    "published_indistinguishable": 36.47552305957608,
+    "ci95": {
+     "precision": [
+      95.703125,
+      99.21875
+     ],
+     "recall": [
+      56.3212734184089,
+      69.47791164658635
+     ],
+     "indistinguishable": [
+      29.399983976761305,
+      43.34914690082256
+     ]
+    }
+   },
+   "physioflow": {
+    "precision": 97.265625,
+    "recall": 88.28125,
+    "indistinguishable": 91.04916472260423,
+    "published_indistinguishable": 91.04916472260423,
+    "ci95": {
+     "precision": [
+      95.3125,
+      98.83789062499994
+     ],
+     "recall": [
+      83.39465408805032,
+      92.5925925925926
+     ],
+     "indistinguishable": [
+      81.57587514855518,
+      97.74187001735018
+     ]
+    }
+   },
+   "lsm_gan": {
+    "precision": 97.265625,
+    "recall": 0.78125,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      94.921875,
+      99.21875
+     ],
+     "recall": [
+      0.0,
+      1.9920318725099602
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "gaussian_shaper": {
+    "precision": 69.921875,
+    "recall": 0.0,
+    "indistinguishable": 0.02881487897813025,
+    "published_indistinguishable": 0.02881487897813025,
+    "ci95": {
+     "precision": [
+      64.453125,
+      75.0
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.09618193148802001
+     ]
+    }
+   }
+  },
+  "bidmc": {
+   "people": 14,
+   "windows": 222,
+   "real_other_people": {
+    "precision": 51.171875,
+    "recall": 87.83783783783784,
+    "indistinguishable": 95.61422838583077,
+    "published_indistinguishable": 95.61422838583077,
+    "ci95": {
+     "precision": [
+      39.21401752190238,
+      63.4997936746544
+     ],
+     "recall": [
+      79.27927927927928,
+      95.4954954954955
+     ],
+     "indistinguishable": [
+      63.738173392022794,
+      96.35869677138561
+     ]
+    }
+   },
+   "round9": {
+    "precision": 48.828125,
+    "recall": 66.66666666666666,
+    "indistinguishable": 45.3974984806829,
+    "published_indistinguishable": 45.3974984806829,
+    "ci95": {
+     "precision": [
+      42.958984375,
+      54.6875
+     ],
+     "recall": [
+      50.0,
+      81.61434977578476
+     ],
+     "indistinguishable": [
+      18.86636425220558,
+      73.5296950717487
+     ]
+    }
+   },
+   "physioflow": {
+    "precision": 56.640625,
+    "recall": 83.78378378378379,
+    "indistinguishable": 67.21012347804445,
+    "published_indistinguishable": 67.21012347804445,
+    "ci95": {
+     "precision": [
+      50.78125,
+      62.5
+     ],
+     "recall": [
+      70.4035874439462,
+      94.59520058174766
+     ],
+     "indistinguishable": [
+      40.516407751685996,
+      91.11218377495943
+     ]
+    }
+   },
+   "lsm_gan": {
+    "precision": 78.90625,
+    "recall": 2.2522522522522523,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      74.208984375,
+      83.984375
+     ],
+     "recall": [
+      0.0,
+      5.91761363636359
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "gaussian_shaper": {
+    "precision": 0.0,
+    "recall": 59.909909909909906,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      0.0,
+      0.0
+     ],
+     "recall": [
+      39.63963963963964,
+      79.72972972972973
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    }
+   }
+  },
+  "perform_af": {
+   "people": 4,
+   "windows": 158,
+   "real_other_people": {
+    "precision": 54.6875,
+    "recall": 82.91139240506328,
+    "indistinguishable": 55.744089860981894,
+    "published_indistinguishable": 55.57871834450886,
+    "ci95": {
+     "precision": [
+      37.81818181818182,
+      71.20571428571425
+     ],
+     "recall": [
+      63.74999999999999,
+      99.375
+     ],
+     "indistinguishable": [
+      29.018016805438492,
+      82.42803107936965
+     ]
+    },
+    "invalid_draws": 5
+   },
+   "round9": {
+    "precision": 51.171875,
+    "recall": 45.56962025316456,
+    "indistinguishable": 6.870888157894724,
+    "published_indistinguishable": 6.870888157894724,
+    "ci95": {
+     "precision": [
+      44.53125,
+      57.421875
+     ],
+     "recall": [
+      34.61538461538461,
+      60.12658227848101
+     ],
+     "indistinguishable": [
+      2.5530832004644894,
+      12.12324056438026
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "physioflow": {
+    "precision": 57.03125,
+    "recall": 94.9367088607595,
+    "indistinguishable": 81.72457510964911,
+    "published_indistinguishable": 81.66529605263158,
+    "ci95": {
+     "precision": [
+      50.78125,
+      62.890625
+     ],
+     "recall": [
+      86.36363636363636,
+      100.0
+     ],
+     "indistinguishable": [
+      38.95716469822007,
+      95.21731074239057
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "lsm_gan": {
+    "precision": 26.5625,
+    "recall": 1.2658227848101267,
+    "indistinguishable": 0.11650219298245575,
+    "published_indistinguishable": 0.11650219298245575,
+    "ci95": {
+     "precision": [
+      21.474609375,
+      31.640625
+     ],
+     "recall": [
+      0.0,
+      3.75
+     ],
+     "indistinguishable": [
+      0.0,
+      0.4117847986139416
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "gaussian_shaper": {
+    "precision": 1.171875,
+    "recall": 0.0,
+    "indistinguishable": 0.020559210526312675,
+    "published_indistinguishable": 0.020559210526312675,
+    "ci95": {
+     "precision": [
+      0.0,
+      2.734375
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.08529483430799449
+     ]
+    },
+    "invalid_draws": 0
+   }
+  },
+  "perform_non_af": {
+   "people": 2,
+   "windows": 80,
+   "real_other_people": {
+    "precision": 11.328125,
+    "recall": 17.5,
+    "indistinguishable": 59.38282363307905,
+    "published_indistinguishable": 59.38869217767999,
+    "ci95": {
+     "precision": [
+      3.919683257918552,
+      20.52263634299983
+     ],
+     "recall": [
+      7.5,
+      27.500000000000004
+     ],
+     "indistinguishable": [
+      23.859487042036946,
+      84.54709809178574
+     ]
+    },
+    "invalid_draws": 3
+   },
+   "round9": {
+    "precision": 10.15625,
+    "recall": 93.75,
+    "indistinguishable": 80.20182291666667,
+    "published_indistinguishable": 80.20833333333334,
+    "ci95": {
+     "precision": [
+      6.640625,
+      13.671875
+     ],
+     "recall": [
+      90.0,
+      97.5
+     ],
+     "indistinguishable": [
+      61.389152678921164,
+      85.95394543519855
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "physioflow": {
+    "precision": 10.9375,
+    "recall": 41.25,
+    "indistinguishable": 38.678385416666664,
+    "published_indistinguishable": 38.750000000000014,
+    "ci95": {
+     "precision": [
+      7.421875,
+      14.453125
+     ],
+     "recall": [
+      35.0,
+      47.5
+     ],
+     "indistinguishable": [
+      22.178339148046863,
+      56.506719947988366
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "lsm_gan": {
+    "precision": 5.46875,
+    "recall": 0.0,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      2.734375,
+      8.59375
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "gaussian_shaper": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "indistinguishable": 0.07161458333333481,
+    "published_indistinguishable": 0.07161458333333481,
+    "ci95": {
+     "precision": [
+      0.0,
+      0.0
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.24977460257926995
+     ]
+    },
+    "invalid_draws": 0
+   }
+  },
+  "wrist": {
+   "people": 4,
+   "windows": 119,
+   "real_other_people": {
+    "precision": 77.10843373493977,
+    "recall": 53.78151260504202,
+    "indistinguishable": 91.67279411764704,
+    "published_indistinguishable": 91.66197160682455,
+    "ci95": {
+     "precision": [
+      60.50420168067227,
+      94.11764705882352
+     ],
+     "recall": [
+      30.0,
+      65.07936507936508
+     ],
+     "indistinguishable": [
+      18.067226890756295,
+      94.49134199134198
+     ]
+    },
+    "invalid_draws": 126
+   },
+   "round9": {
+    "precision": 91.56626506024097,
+    "recall": 56.30252100840336,
+    "indistinguishable": 52.66922905525847,
+    "published_indistinguishable": 52.482556659027246,
+    "ci95": {
+     "precision": [
+      85.54216867469879,
+      97.59036144578313
+     ],
+     "recall": [
+      37.9746835443038,
+      68.18181818181817
+     ],
+     "indistinguishable": [
+      15.452505614950574,
+      84.94650008860533
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "physioflow": {
+    "precision": 65.06024096385542,
+    "recall": 60.50420168067227,
+    "indistinguishable": 52.31982641541465,
+    "published_indistinguishable": 52.30709404974111,
+    "ci95": {
+     "precision": [
+      55.42168674698795,
+      74.69879518072288
+     ],
+     "recall": [
+      36.666666666666664,
+      69.0909090909091
+     ],
+     "indistinguishable": [
+      17.88763333616275,
+      84.90897295600854
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "lsm_gan": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      0.0,
+      0.0
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    },
+    "invalid_draws": 0
+   },
+   "gaussian_shaper": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "indistinguishable": 0.0,
+    "published_indistinguishable": 0.0,
+    "ci95": {
+     "precision": [
+      0.0,
+      0.0
+     ],
+     "recall": [
+      0.0,
+      0.0
+     ],
+     "indistinguishable": [
+      0.0,
+      0.0
+     ]
+    },
+    "invalid_draws": 0
+   }
+  }
+ }
+}
