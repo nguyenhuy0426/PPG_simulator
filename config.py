@@ -2,7 +2,7 @@
 config.py — Global system configuration for PPG Signal Simulator (Raspberry Pi 4)
 
 Hardware: Raspberry Pi 4 + Grove Base Hat (ADC) + Dual MCP4725 DAC (I2C)
-         + HDMI display (auto-detect resolution) + 1 push button + 1 potentiometer (5 kΩ)
+         + HDMI display (auto-detect resolution)
 
 Port of the ESP32-S3 config.h to Python.
 """
@@ -63,15 +63,6 @@ DAC_ADDR_RED = 0x61     # MCP4725 address for Red channel
 GROVE_ADC_ADDR = 0x08   # Grove Base Hat MM32 ADC I2C address [VERIFIED-USER]
 ADC_CHANNEL_IR = 0      # A0 — OPT101 IR photodiode channel
 ADC_CHANNEL_RED = 4     # A4 — OPT101 Red photodiode channel
-# GROVE_ADC_CHANNEL below is only referenced by the deprecated
-# hw/adc_reader.py (legacy potentiometer input); do not use for OPT101 RX.
-GROVE_ADC_CHANNEL = 0   # A0 port on Grove Base Hat (legacy adc_reader only)
-
-# ============================================================================
-# PIN CONFIGURATION — PUSH BUTTON (BCM numbering, active LOW, internal pull-up)
-# ============================================================================
-BTN_MODE_PIN = 17       # GPIO17 (BCM) — Mode button
-BTN_DEBOUNCE_MS = 200   # Debounce interval in ms
 
 # ============================================================================
 # SIGNAL SAMPLING CONFIGURATION

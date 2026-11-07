@@ -29,15 +29,20 @@ smbus2>=0.6.1,<1
 adafruit-blinka>=9.2.0,<10
 adafruit-circuitpython-mcp4725>=1.4.21,<2
 
-# --- GPIO (hw/button_handler.py) -------------------------------------------
-# button_handler.begin() tries `import RPi.GPIO as GPIO` first and falls back to
-# `import lgpio`. On Ubuntu 24.04/26.04 the correct way to satisfy the first import is
-# the rpi-lgpio SHIM, which presents the RPi.GPIO API on top of the lgpio
-# character-device backend. It works with the /dev/gpiochip* interface that this
-# kernel actually exposes.
+# --- GPIO (RPi.GPIO for Adafruit Blinka) -----------------------------------
+# The application imports neither RPi.GPIO nor lgpio itself, but Blinka needs
+# RPi.GPIO on the Pi 4: in adafruit-blinka 9.2.0 the `import board` in
+# hw/dac_manager.py reaches `from RPi import GPIO` in
+# adafruit_blinka/microcontroller/generic_linux/rpi_gpio_pin.py. Without a
+# provider that import fails and DACManager.begin() returns False. On Ubuntu
+# 24.04/26.04 the correct provider is the rpi-lgpio SHIM, which presents the
+# RPi.GPIO API on top of the lgpio character-device backend. It works with the
+# /dev/gpiochip* interface that this kernel actually exposes.
 #
-# rpi-lgpio depends on lgpio, so lgpio arrives with it and the fallback path
-# works too.
+# Re-check this on a Blinka upgrade: Blinka's main branch (unreleased on
+# 2026-10-18) moves the Pi 4 pins to gpiod.
+#
+# rpi-lgpio depends on lgpio, so lgpio arrives with it.
 #
 # HARD CONSTRAINT: rpi-lgpio and the classic RPi.GPIO both provide the module
 # name `RPi.GPIO`. Installing BOTH corrupts the environment. This file installs
@@ -60,13 +65,13 @@ rpi-lgpio>=0.6,<1
 # project's code path actually needs is smbus2, pinned above.
 #
 # What this project uses from grove.py: `from grove.adc import ADC`, in
-# hw/opt101_rx.py:160 and hw/adc_reader.py:44.
+# hw/opt101_rx.py:171.
 #
 # MM32 ADDRESS 0x08 — no adaptation is required. The official grove/adc.py
 # declares `def __init__(self, address = 0x04)`, i.e. the address is a
-# constructor keyword with 0x04 merely as its default. hw/opt101_rx.py:161
+# constructor keyword with 0x04 merely as its default. hw/opt101_rx.py:172
 # already passes `ADC(address=GROVE_ADC_ADDR)` with GROVE_ADC_ADDR = 0x08
-# (config.py:60), and grove/i2c.py's `Bus(bus=1)` already defaults to
+# (config.py:63), and grove/i2c.py's `Bus(bus=1)` already defaults to
 # /dev/i2c-1. Nothing in the installed package is patched, and nothing needs to
 # be. scripts/verify_rpi_env.py re-checks this by introspecting the ACTUALLY
 # INSTALLED grove.adc.ADC signature rather than trusting this comment.
@@ -79,10 +84,10 @@ rpi-lgpio>=0.6,<1
 #
 # gpiozero      Not imported anywhere in this project. `grep -rn "gpiozero"`
 #               over comm/ core/ hw/ models/ ui/ led_driver/ tests/ scripts/ and
-#               the top-level .py files returns nothing. hw/button_handler.py
-#               talks to RPi.GPIO / lgpio directly. Installing gpiozero would
-#               add an unused abstraction layer and a second backend-selection
-#               mechanism to keep consistent with button_handler's own.
+#               the top-level .py files finds only the forbidden-import lists in
+#               tests/test_led_driver_dac.py, scripts/verify_laptop_env.py and
+#               scripts/setup_laptop_venv.sh. Installing gpiozero would add an
+#               unused abstraction layer.
 #
 # lgpio         Not listed explicitly because rpi-lgpio already requires it.
 #               Listing it twice risks a version disagreement between the two.

@@ -50,7 +50,7 @@ The instruction that produced this document read, in full:
 
 The detailed specification of "Prompt 03" was lost when the originating message
 was truncated mid-code-block by a `SessionStart` hook injection, and no copy of
-it exists anywhere in the repository (searched: `docs/superpowers/ppg_design_audit/`
+it exists anywhere in the repository (searched: `docs/hardware/design-audit/`
 contains only `00_`, `01_`, `02_`; no file matching `*prompt*` or `*03*` holds
 it). **This document was therefore written from that one-line description plus
 the authoritative hardware facts in `00_BASE_CONTEXT.md` §3.** If the original

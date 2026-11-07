@@ -217,11 +217,13 @@ already pinned in [requirements/rpi.txt](../../requirements/rpi.txt).
 
 ### GPIO backend: `rpi-lgpio`, not `RPi.GPIO`
 
-[hw/button_handler.py](../../hw/button_handler.py) tries `import RPi.GPIO` first
-and falls back to `import lgpio`. On Ubuntu 24.04 the right way to satisfy the
-first import is the **`rpi-lgpio` shim**, which presents the `RPi.GPIO` API on top
-of the `lgpio` character-device backend that this kernel actually exposes. It
-pulls `lgpio` as a dependency, so the fallback path works too.
+The application imports neither `RPi.GPIO` nor `lgpio` itself, but Adafruit
+Blinka needs `RPi.GPIO` on the Pi 4: in adafruit-blinka 9.2.0, the `import board` in
+[hw/dac_manager.py](../../hw/dac_manager.py) reaches `from RPi import GPIO`, and
+without a provider `DACManager.begin()` returns `False`. On Ubuntu 24.04 the
+right way to satisfy that import is the **`rpi-lgpio` shim**, which presents the
+`RPi.GPIO` API on top of the `lgpio` character-device backend that this kernel
+actually exposes. It pulls `lgpio` as a dependency.
 
 **Never install both `RPi.GPIO` and `rpi-lgpio` in the same environment.**
 `requirements/rpi.txt` installs only `rpi-lgpio`, and both
@@ -232,9 +234,9 @@ they ever find the pair.
 
 The official `grove/adc.py` declares `def __init__(self, address = 0x04)` — the
 address is a **constructor keyword**, and `0x04` is only its default.
-[hw/opt101_rx.py:161](../../hw/opt101_rx.py#L161) already passes
+[hw/opt101_rx.py:172](../../hw/opt101_rx.py#L172) already passes
 `ADC(address=GROVE_ADC_ADDR)` with `GROVE_ADC_ADDR = 0x08`
-([config.py:60](../../config.py#L60)), and `grove.i2c.Bus(bus=1)` already defaults
+([config.py:63](../../config.py#L63)), and `grove.i2c.Bus(bus=1)` already defaults
 to `/dev/i2c-1`. **No installed file is patched, and none needs to be.** Step 6
 re-checks this by introspecting the actually-installed class rather than trusting
 this paragraph.
@@ -347,7 +349,7 @@ Every one of those requires **physical measurement** — a multimeter for DC
 operating points, an oscilloscope for waveform, timing and loop stability. Until
 those measurements exist, the 5 V driver design in
 [led_driver/](../../led_driver/) and
-[docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md](../superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md)
+[docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md](../hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md)
 is a **calculated hypothesis**, and the 261 passing tests are evidence about
 *arithmetic*, not about *hardware*.
 
@@ -385,6 +387,187 @@ Pi. The following remain open and must be measured on the bench:
 
 ---
 
+## 11. Start automatically with the desktop session
+
+For a standalone bench, install the **systemd user service** `ppg-simulator.service`.
+It starts the simulator when your desktop session starts and restarts it after a
+crash. It runs `.venv/bin/python main.py` as your normal user under
+`systemctl --user`, so it gets your `i2c` group and your display. It never runs
+as root.
+
+```bash
+cd ~/final_project/PPG_simulator_raspi
+./scripts/install_user_service.sh --now
+```
+
+[scripts/install_user_service.sh](../../scripts/install_user_service.sh) fills
+this checkout's path into
+[packaging/linux/ppg-simulator.service.in](../../packaging/linux/ppg-simulator.service.in),
+checks it with `systemd-analyze --user verify`, installs it as
+`~/.config/systemd/user/ppg-simulator.service` and enables it. Run it as your
+user, without `sudo`. Without `--now`, the service first starts at your next
+login. `--now` starts it in the running session, after stopping any copy started
+from the desktop icon with `SIGTERM`, which parks the DACs. Two copies would
+fight over I2C and BLE. If `scripts/deploy_and_run.sh` started the app under its
+transient unit, the installer always stops that copy and starts the installed
+unit in its place, because systemd cannot enable a unit name while a transient
+unit holds it.
+
+### Why a user service
+
+- In the Ubuntu 24.04 GNOME session (Wayland or Xorg), the session exports
+  `DISPLAY`, `WAYLAND_DISPLAY` and `XAUTHORITY` into the systemd user manager.
+  Every user service inherits them (`systemctl --user show-environment`).
+- `graphical-session.target` is reached only after GNOME Shell has started:
+  `gnome-session.target` is ordered after the Shell, before
+  `graphical-session.target`, and binds it. The unit is `WantedBy=`, `After=`
+  and `PartOf=graphical-session.target`, the pattern Ubuntu's own
+  `xdg-desktop-portal-gnome.service` uses. It therefore starts once the display
+  exists. At logout GNOME starts `gnome-session-shutdown.target`, which
+  conflicts with `graphical-session.target`. That stop reaches the service
+  through `PartOf=`, ordered before GNOME Shell stops.
+- `scripts/deploy_and_run.sh` has already run the app on this Pi as a
+  (transient) user unit, with the display and the Grove ADC working
+  ([docs/rx-monitor-2026-10-01.md](../rx-monitor-2026-10-01.md)).
+- An XDG autostart entry (`~/.config/autostart/`) would also start the app, but
+  nothing would restart it after a crash.
+
+The ordering, the inherited display, the restart and the start limit below were
+checked on an Ubuntu 24.04.5 GNOME 46 (Wayland) laptop with systemd 255, using
+`main.py --dry-run --no-ble`. They have **not yet been checked on the Pi**.
+
+### What the unit does
+
+| Situation | Behaviour |
+|---|---|
+| Desktop session starts | Started. The unit refuses to start outside a desktop session (`Requisite=graphical-session.target`) |
+| Crash: non-zero exit, or killed by a signal | Restarted after 5 s (`Restart=on-failure`, `RestartSec=5`) |
+| Crash loop | At most 5 starts in 5 minutes. After that the unit stays `failed` until `systemctl --user reset-failed ppg-simulator`, or until someone taps the desktop icon |
+| Window closed, or `SIGTERM`/`SIGINT` sent to the app | Clean exit with status 0: not restarted |
+| Another copy already runs (desktop icon, or started by hand) | main.py exits with status 75 and names that copy's PID. Not restarted (`RestartPreventExitStatus=75`): the unit stays `failed` |
+| `systemctl --user stop`, logout | `SIGTERM` runs main.py's window-close path. It stops the output and parks both DACs at 0 V first, then stops the Neural worker, BLE and RX and saves the config. Its own timeouts add up to 18 s; `SIGKILL` comes only after 30 s (`TimeoutStopSec=30`) |
+| Reboot, power-off | Ubuntu caps this at 5 s; see the end of this section |
+
+The app's console output goes to the user journal
+(`journalctl --user -u ppg-simulator -f`). The DEBUG log stays in
+`/tmp/ppg_simulator.log`.
+
+### Starting after a reboot needs automatic login
+
+A user service runs only inside your session. After a reboot it therefore starts
+only when someone logs in on the Pi screen. For a standalone bench, enable GDM
+automatic login for this user: **Settings → System → Users → Unlock → Automatic
+Login**, or set these lines in the `[daemon]` section of `/etc/gdm3/custom.conf`:
+
+```ini
+[daemon]
+AutomaticLoginEnable=true
+AutomaticLogin=<your user name>
+```
+
+The installer only reads this file, and prints a note when automatic login is
+off. It never edits the file.
+
+Automatic login gives anyone at the touch panel your desktop session, including
+your files and SSH keys. Use it only on a bench you control. It also leaves the
+login keyring locked, so store Wi‑Fi passwords for all users; otherwise GNOME
+asks for the keyring password on the panel.
+
+Optional, to keep the panel readable:
+
+```bash
+gsettings set org.gnome.desktop.session idle-delay 0               # never blank the screen
+gsettings set org.gnome.desktop.screensaver lock-enabled false     # no lock screen asking for your password
+```
+
+### One instance per user
+
+Two copies would fight over the MCP4725 DACs on I2C and over the BLE GATT
+server. main.py therefore takes an exclusive `flock` on
+`~/.local/state/ppg-simulator/app.lock` (`$XDG_STATE_HOME` if set) before it
+loads any hardware, BLE or config module. This holds in every mode, including
+`--dry-run` and `--ble-only`, and whichever way the copy was started: the
+service, the desktop icon, `scripts/deploy_and_run.sh`, or
+`.venv/bin/python main.py` typed in a terminal. A second copy prints
+
+```text
+ERROR: Another PPG simulator instance is already running (process 1234 holds /home/<user>/.local/state/ppg-simulator/app.lock). ...
+```
+
+and exits with status 75. The kernel drops the lock when the holder exits,
+crashes or is killed, so there is no stale lock to delete. The PID in the file
+is only a hint for that message.
+
+- The desktop launcher locks the same file first and hands its locked
+  descriptor to Python (`PPG_APP_LOCK_FD=9`). A `flock` belongs to an open
+  file description, so Python must lock that descriptor rather than open the
+  file again; a second `open()` would conflict with the launcher's own lock.
+  Before the launcher starts the installed service it closes the descriptor,
+  so the service can take the lock.
+- `scripts/deploy_and_run.sh` sends `SIGTERM` to copies whose command line is
+  a python executable followed by the Pi checkout's absolute `main.py` path,
+  the pattern `install_user_service.sh --now` uses, and waits up to 30 s for
+  them to exit. An editor or `tail -f` on `main.py` is left alone. A copy
+  started with a relative path (`cd ...; .venv/bin/python main.py`) does not
+  match: the deploy then reports the new instance's status 75 with that
+  copy's PID in the journal. Close it and deploy again.
+
+### Everyday commands
+
+```bash
+systemctl --user status ppg-simulator           # running? how many restarts?
+journalctl --user -u ppg-simulator -f           # live log
+systemctl --user restart ppg-simulator          # apply new code copied by hand
+systemctl --user stop ppg-simulator             # stop until the next login (DACs parked)
+systemctl --user disable --now ppg-simulator    # stop, and do not start at login
+./scripts/install_user_service.sh --uninstall   # stop, disable and remove the unit
+```
+
+- **Desktop icon:** with the service installed, the icon starts the service
+  instead of a second copy, after clearing a `failed` state. While the service
+  runs, the icon only reports "already running". The launcher with arguments
+  (`scripts/launch_ppg_simulator.sh --no-ble`) still runs a diagnostic copy
+  directly, but not while the service runs.
+- **`scripts/deploy_and_run.sh`:** restarts the installed unit, which has the
+  same name, instead of starting its transient one.
+- **After moving the checkout, or after changing the unit template,** run the
+  installer again (with `--now` to apply it at once). The unit stores the
+  checkout's absolute path, and a deploy does not refresh it.
+
+### Reboot and power-off: Ubuntu's 5 s cap
+
+Ubuntu's `systemd` package ships
+`/usr/lib/systemd/system/user@.service.d/timeout.conf` with `TimeoutStopSec=5`.
+During a shutdown or reboot, all of your user services together get 5 s before
+`SIGKILL`, whatever the unit's own 30 s says. main.py parks the DACs at the start
+of its shutdown, so the outputs should reach 0 V within that time. BLE and RX
+teardown may be cut short, though. For the full shutdown, stop the app first:
+
+```bash
+systemctl --user stop ppg-simulator && sudo reboot
+```
+
+The file was found on the Ubuntu 24.04 laptop this was written on. Check the Pi
+with `systemctl cat user@$(id -u).service`.
+
+### Still to check on the Pi
+
+- The service starts at login, and with automatic login after a reboot, in the
+  Pi's own GNOME session (Wayland or Xorg)
+- The DACs, the Grove ADC and BLE work from the service
+  (`journalctl --user -u ppg-simulator`)
+- Both DAC outputs measure 0 V after `systemctl --user stop`, logout, reboot and
+  power-off (multimeter on the MCP4725 outputs)
+- How long the `SIGTERM` shutdown takes with BLE running. The laptop dry run
+  without BLE took 0.12 s
+- A crash on the Pi is restarted, and the start limit stops a crash loop
+- With the service running, a copy started by hand and a tap on the desktop
+  icon are both refused, and a copy started by hand before login leaves the
+  service `failed` with status 75 and no restart. These were checked only on the
+  laptop, with `--dry-run`
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -397,6 +580,11 @@ Pi. The following remain open and must be measured on the bench:
 | `RPi.GPIO` behaving oddly | both `RPi.GPIO` and `rpi-lgpio` are installed. `pip uninstall RPi.GPIO` |
 | Venv interpreter will not start | the `.venv` was copied from the x86_64 laptop. Delete it and re-run `./scripts/setup_rpi_ubuntu24.sh --recreate` |
 | `i2cdetect` shows nothing | power and ground before software. Check the HAT seating and the 3.28 V rail |
+| `ppg-simulator.service` is `failed` with "Start request repeated too quickly" | five crashes in five minutes. Read `journalctl --user -u ppg-simulator -b`, fix the cause, then run `systemctl --user reset-failed ppg-simulator` and start it, or tap the desktop icon (§11) |
+| The service log shows `Permission denied` on `/dev/i2c-1`, but a terminal does not | the systemd user manager started before you joined `i2c`; it survives a logout while an SSH session stays open. `systemd-run --user --wait --pipe id -nG` shows the groups a service gets. Reboot to fix it |
+| `ppg-simulator.service` is `failed` with `status=75`, or a terminal run prints "already running" | another copy holds the single-instance lock (§11). The message names its PID: `ps -fp <pid>`. Close it, then `systemctl --user restart ppg-simulator` |
+| "A dependency job for ppg-simulator.service failed" | no desktop session is running for this user. The service runs only inside one: log in on the Pi screen, or enable automatic login (§11) |
+| The app does not come back after a reboot | automatic login is off (§11), or the unit is not enabled: `systemctl --user is-enabled ppg-simulator` |
 
 ---
 
@@ -406,12 +594,14 @@ Pi. The following remain open and must be measured on the bench:
 |---|---|
 | [scripts/setup_rpi_ubuntu24.sh](../../scripts/setup_rpi_ubuntu24.sh) | this guide, automated |
 | [scripts/verify_rpi_env.py](../../scripts/verify_rpi_env.py) | read-only Pi environment check |
+| [scripts/install_user_service.sh](../../scripts/install_user_service.sh) | installs, starts or removes the autostart user service (§11) |
+| [packaging/linux/ppg-simulator.service.in](../../packaging/linux/ppg-simulator.service.in) | the systemd user unit it installs |
 | [scripts/setup_laptop_venv.sh](../../scripts/setup_laptop_venv.sh) | laptop environment (no hardware) |
 | [scripts/verify_laptop_env.py](../../scripts/verify_laptop_env.py) | read-only laptop check |
 | [requirements/base.txt](../../requirements/base.txt) | host-portable runtime deps |
 | [requirements/rpi.txt](../../requirements/rpi.txt) | Pi-only hardware deps, with reasons |
 | [config.py](../../config.py) | addresses, channels, references, `DRY_RUN` |
-| [docs/superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md](../superpowers/ppg_design_audit/03_LED_DRIVER_ARCHITECTURE.md) | the 5 V driver design hypothesis |
+| [docs/hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md](../hardware/design-audit/03_LED_DRIVER_ARCHITECTURE.md) | the 5 V driver design hypothesis |
 
 **Never copy `.venv` between the laptop and the Pi.** The wheels are
 architecture-specific and the `bin/` shebangs hardcode absolute paths. Each

@@ -59,7 +59,7 @@ remains a historical exploratory result; test has already been viewed.
 - Configuration round-trip, validation and atomic JSON save. Opening a page does not change signal parameters.
 - English/Vietnamese UI; touch-sized controls; TX on the left and live OPT101 A0/A4 RX on the right of every page.
 - Collapsible left navigation rail (icons collapsed, labels overlay when expanded), light/dark theme saved in `config.json`, and a Classic page with TX and RX side by side. The status line reports *no MCP4725 at 0x60/0x61* instead of claiming LED output when the DACs do not answer.
-- `scripts/deploy_and_run.sh` (run on the laptop): SSH check, `i2cdetect -y 1` report for 0x08/0x60/0x61, rsync to the Pi, restart the app on the Pi display, and a dry-run copy on the laptop. When the Ethernet link reports `NO-CARRIER`, use the Wi‑Fi address: `PI_HOST=user@<pi-wifi-ip> scripts/deploy_and_run.sh`, and stop any other running instance first so two apps do not share I2C/BLE.
+- `scripts/deploy_and_run.sh` (run on the laptop): SSH check, `i2cdetect -y 1` report for 0x08/0x60/0x61, rsync to the Pi, restart the app on the Pi display (the autostart user service when it is installed), and a dry-run copy on the laptop. When the Ethernet link reports `NO-CARRIER`, use the Wi‑Fi address: `PI_HOST=user@<pi-wifi-ip> scripts/deploy_and_run.sh`, and stop any other running instance first so two apps do not share I2C/BLE.
 
 See [the continuation and validation report](docs/phase_reports/V5_CONTINUATION_REPORT.md)
 for scope, evidence, commercial-reference comparison and physical validation still needed.
@@ -244,13 +244,10 @@ PPG_simulator_raspi/
 │   ├── signal_engine.py         # Signal generation thread & DAC output
 │   ├── csv_logger.py            # Dataset recording logic
 │   ├── tx_rx_logger.py          # Paired TX command & RX acquisition logger
-│   ├── rate_scheduler.py        # Drift-free fixed-rate execution ticker
-│   └── state_machine.py         # System operational state machine
+│   └── rate_scheduler.py        # Drift-free fixed-rate execution ticker
 ├── hw/
 │   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A4 channels)
-│   ├── dac_manager.py           # Dual MCP4725 I2C DAC controllers
-│   ├── adc_reader.py            # Low-level ADC reading interface
-│   └── button_handler.py        # Physical push-button interrupt handler
+│   └── dac_manager.py           # Dual MCP4725 I2C DAC controllers
 ├── models/
 │   ├── ppg_model.py             # PPG physiological synthesis model
 │   ├── noise.py                 # Artefact generators (absolute-mV, band-limited)
@@ -328,9 +325,21 @@ place a trusted shortcut on the desktop:
 ./scripts/install_desktop_launcher.sh
 ```
 
-The launcher uses this checkout's `.venv`, starts the normal GUI with BLE,
-prevents duplicate instances and writes startup logs to
-`~/.local/state/ppg-simulator/launcher.log`.
+The launcher uses this checkout's `.venv`, starts the normal GUI with BLE
+and writes startup logs to `~/.local/state/ppg-simulator/launcher.log`.
+`main.py` itself allows one instance per user, however it was started: a
+second copy, including `--dry-run` and `--ble-only`, exits with status 75 and
+names the process that holds `~/.local/state/ppg-simulator/app.lock`.
+
+For a standalone bench, install the systemd user service. It starts the
+simulator with the Pi's desktop session and restarts it after a crash; once it
+is installed, the icon starts that service. Automatic login, the restart limits
+and the commands are in
+[setup guide §11](docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md#11-start-automatically-with-the-desktop-session):
+
+```bash
+./scripts/install_user_service.sh --now
+```
 
 The laptop environment verifier also audits Git hygiene and rejects committed
 virtual environments, bytecode and generated package caches.

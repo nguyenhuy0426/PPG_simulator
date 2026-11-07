@@ -1,0 +1,39 @@
+# systemd USER unit for the PPG simulator on the Raspberry Pi (Ubuntu 24.04 desktop).
+# scripts/install_user_service.sh fills in @PROJECT_ROOT@ and installs it as
+# ~/.config/systemd/user/ppg-simulator.service for the desktop user, who must be
+# in the 'i2c' group. Never install it as a system unit or run it as root.
+
+[Unit]
+Description=PPG Simulator (touch UI, MCP4725 DACs, BLE GATT server)
+Documentation=file://@PROJECT_ROOT@/docs/setup/RASPBERRY_PI_4_UBUNTU_24_04.md
+# Tk needs the desktop session's display. GNOME reaches graphical-session.target
+# after GNOME Shell has exported DISPLAY to the user manager, so start after it,
+# refuse to start without it, and stop before the session takes the display away.
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+# Crash restarts are rate limited: at most 5 starts in 5 minutes, then the unit
+# stays failed until 'systemctl --user reset-failed' or the desktop icon.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+WorkingDirectory=@PROJECT_ROOT@
+Environment=PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1
+ExecStart=@PROJECT_ROOT@/.venv/bin/python @PROJECT_ROOT@/main.py
+SyslogIdentifier=ppg-simulator
+# A clean exit (window closed, SIGTERM, SIGINT) is not restarted.
+Restart=on-failure
+RestartSec=5
+# Status 75: another copy (desktop icon, or started by hand) holds main.py's
+# single-instance lock. Retrying cannot help, so the unit stays failed at once.
+RestartPreventExitStatus=75
+# main.py turns SIGTERM into the window-close path: stop the output and park both
+# DACs at 0 V first, then stop the Neural worker, BLE and RX and save the config.
+# Its thread-join timeouts add up to 18 s; SIGKILL follows only after 30 s.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=graphical-session.target

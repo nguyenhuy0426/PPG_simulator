@@ -336,7 +336,8 @@ def check_grove_adc() -> None:
 def check_gpio_backend() -> None:
     section("GPIO backend (import only — no line is claimed or toggled)")
 
-    # hw/button_handler.py:begin() tries RPi.GPIO first, then lgpio.
+    # The application imports neither RPi.GPIO nor lgpio; Adafruit Blinka's Pi 4
+    # pins import RPi.GPIO (see requirements/rpi.txt), which rpi-lgpio provides.
     rpi_gpio, rpi_exc = _try_import("RPi.GPIO")
     lgpio_mod, lgpio_exc = _try_import("lgpio")
 
@@ -363,21 +364,22 @@ def check_gpio_backend() -> None:
             detail += "\nThis appears to be the CLASSIC RPi.GPIO, which drives\n" \
                       "/dev/gpiomem directly. On Ubuntu 24.04/26.04 prefer rpi-lgpio.\n" \
                       "Never install both: they claim the same module name."
-        record("PASS", "import RPi.GPIO (hw/button_handler.py's first choice)", detail)
+        record("PASS", "import RPi.GPIO", detail)
     else:
         record("SKIP", "import RPi.GPIO unavailable", f"{rpi_exc!r}\n"
-               "hw/button_handler.py falls back to lgpio, checked next.")
+               "requirements/rpi.txt provides it through rpi-lgpio.\n"
+               "lgpio is checked next.")
 
     if lgpio_mod is not None:
-        record("PASS", "import lgpio (hw/button_handler.py's fallback)")
+        record("PASS", "import lgpio (the backend under rpi-lgpio)")
     else:
         record("SKIP", "import lgpio unavailable", repr(lgpio_exc))
 
     if rpi_gpio is None and lgpio_mod is None:
         record("FAIL", "no GPIO backend is importable",
-               "hw/button_handler.py:begin() would find neither backend and the\n"
-               "physical button would be dead. Install requirements/rpi.txt,\n"
-               "which pulls rpi-lgpio (and lgpio with it).")
+               "Install requirements/rpi.txt, which pulls rpi-lgpio (and lgpio\n"
+               "with it). Its GPIO section explains why Adafruit Blinka needs\n"
+               "RPi.GPIO.")
 
     # Detecting the forbidden double-install: two distributions both owning RPi.
     try:

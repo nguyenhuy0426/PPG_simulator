@@ -2,9 +2,12 @@
 # Run on the LAPTOP from this repository. One command that:
 #   1. checks the Pi answers over SSH (default alias: ppg-rpi4-ethernet, 10.42.0.2),
 #   2. scans I2C bus 1 on the Pi and reports 0x08 / 0x60 / 0x61,
-#   3. copies this checkout to the Pi (no --delete, no venvs, no .git),
+#   3. copies this checkout to the Pi (no --delete, no venvs, no .git, no local
+#      tool state such as .claude/, whose worktrees exceed 800 MB in the main checkout),
 #   4. makes sure Pillow (button icons) is in the Pi venv,
-#   5. restarts the app on the Pi's own display as a transient user service,
+#   5. restarts the app on the Pi's own display: the installed ppg-simulator user
+#      service when scripts/install_user_service.sh was run on the Pi, otherwise
+#      a transient user service of the same name,
 #   6. starts the same UI on the laptop in --dry-run (no I2C there).
 #
 # Usage:  scripts/deploy_and_run.sh            # Pi + laptop
@@ -54,6 +57,7 @@ rsync -a --info=stats1 \
     --exclude='.git/' --exclude='.venv/' --exclude='venv/' --exclude='.venv-ml/' \
     --exclude='.cad_venv/' --exclude='.pio/' --exclude='.pytest_cache/' \
     --exclude='.codegraph/' --exclude='.codebase-memory/' --exclude='__pycache__/' \
+    --exclude='.claude/' --exclude='.kilo/' --exclude='.ruff_cache/' --exclude='.history/' \
     --exclude='*.pyc' --exclude='dataset/' --exclude='ml/runs/' \
     "${ROOT}/" "${PI_HOST}:${PI_DIR}/"
 
@@ -73,16 +77,36 @@ if ! systemctl --user show-environment | grep -qE '^(DISPLAY|WAYLAND_DISPLAY)=';
     echo "  No graphical session for this user on the Pi. Log in on the Pi screen first."
     exit 3
 fi
+# "transient" or empty: no unit file, so nothing from install_user_service.sh.
+unit_state=\$(systemctl --user show --property=UnitFileState --value ${UNIT}.service 2>/dev/null || true)
 systemctl --user stop ${UNIT}.service 2>/dev/null || true
 systemctl --user reset-failed ${UNIT}.service 2>/dev/null || true
-# An instance started from the desktop icon would fight over I2C and BLE.
+# An instance started from the desktop icon or by hand would fight over I2C and
+# BLE, and holds the lock that makes the new instance exit with status 75.
 # SIGTERM takes the app's own shutdown path, which parks both DACs at 0 V.
-if pkill -TERM -f "\$PWD/.venv/bin/python.* main.py|\$PWD/main.py" 2>/dev/null; then
-    echo "  stopped a running instance"; sleep 3
+# Anchored on a python executable, so an editor open on main.py is left alone.
+pattern="^[^ ]*python[0-9.]* \$PWD/main\\.py( |\$)"
+if pkill -TERM -u "\$(id -u)" -f "\$pattern" 2>/dev/null; then
+    echo "  stopping a running instance"
+    for _ in \$(seq 30); do
+        pgrep -u "\$(id -u)" -f "\$pattern" >/dev/null || break
+        sleep 1
+    done
+    if pgrep -u "\$(id -u)" -f "\$pattern" >/dev/null; then
+        echo "  an instance outside systemd did not exit within 30 s; close it on the Pi and re-run"
+        exit 4
+    fi
 fi
-systemd-run --user --unit=${UNIT} --collect --same-dir \
-    -E PYTHONNOUSERSITE=1 -E PYTHONUNBUFFERED=1 \
-    "\$PWD/.venv/bin/python" "\$PWD/main.py" >/dev/null
+case "\${unit_state}" in
+    ""|transient)
+        systemd-run --user --unit=${UNIT} --collect --same-dir \
+            -E PYTHONNOUSERSITE=1 -E PYTHONUNBUFFERED=1 \
+            "\$PWD/.venv/bin/python" "\$PWD/main.py" >/dev/null ;;
+    *)
+        # The installed unit has the same name; a transient start would fail.
+        echo "  starting the installed ${UNIT}.service (\${unit_state})"
+        systemctl --user start ${UNIT}.service ;;
+esac
 sleep 8
 state=\$(systemctl --user is-active ${UNIT}.service || true)
 echo "  service: \${state}"

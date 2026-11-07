@@ -11,47 +11,50 @@ của chính hộp này: [README_TDM.md](README_TDM.md).
 
 ## File dùng để in
 
-**Dùng bộ v4 trong [out/print_bambu/](out/print_bambu/), đơn vị mm, tỷ lệ 100%.**
-Tải trọn bộ: [print_bambu_v4.zip](out/print_bambu_v4.zip).
+**Dùng bộ `mechanical-v4-180` trong [out/print_bambu_180/](out/print_bambu_180/), cho bàn in
+180 × 180 mm, đơn vị mm, tỷ lệ 100%.** Tải trọn bộ: [print_bambu_180.zip](out/print_bambu_180.zip).
 In mỗi bàn dưới đây **một lần**; số lượng hai làn đã được xếp đủ:
 
 | Bàn | Nội dung | Kích thước bao STL, X × Y × Z (mm) |
 |---|---|---|
-| [00_ban_1_co_khi.stl](out/print_bambu/00_ban_1_co_khi.stl) | 14 chi tiết cơ khí: thân, nắp, 2 ray D, 2 carrier, 2 núm, 2 trục tròn, 4 chụp | 213.5 × 239 × 64 |
-| [00_ban_2_khau_do_khung.stl](out/print_bambu/00_ban_2_khau_do_khung.stl) | 8 khẩu độ + 1 khung board | 235.5 × 211.2 × 4 |
+| [00_ban_1_180mm.stl](out/print_bambu_180/00_ban_1_180mm.stl) | 8 chi tiết: thân, 2 ray D, 1 carrier, 2 chụp trái, 2 trục tròn | 170 × 168.5 × 64 |
+| [00_ban_2_180mm.stl](out/print_bambu_180/00_ban_2_180mm.stl) | 5 chi tiết: nắp, 2 khẩu độ Ø2, 1 khẩu độ Ø5, khung board | 166.6 × 168.8 × 10.5 |
+| [00_ban_3_180mm.stl](out/print_bambu_180/00_ban_3_180mm.stl) | 9 chi tiết: 1 carrier, 2 núm, 2 chụp phải, 2 khẩu độ Ø5, 2 khẩu độ Ø16 | 160.3 × 168.7 × 35 |
 
-Tổng **23 chi tiết**. Khi lắp chỉ dùng **một khẩu độ mỗi làn**, sáu tấm còn lại
-là phương án thay thế. Bản cũ `00_ppg_hop_toi_A1_all_in_one.stl` chỉ có một bản
-của mỗi chi tiết, thiếu trục đẩy và khung board; đã được thay bằng hai bàn trên.
-File ZIP cũ đã tải trước v4 cần được thay bằng bộ mới.
+Tổng **22 chi tiết**, cùng 2 vít M3×8 (carrier) và 2 vít M3×6 (núm). Khi lắp chỉ
+dùng **một khẩu độ mỗi làn**, các tấm còn lại là phương án thay thế. Bộ cũ
+`print_bambu/` và `print_bambu_v4.zip` (bàn in lớn hơn 180 mm) đã được thay bằng
+ba bàn trên; file ZIP cũ đã tải về cần được thay bằng bộ mới.
 
-Nếu in từng STL riêng, dùng số lượng sau (không in thêm hai bàn gộp):
+Nếu in từng STL riêng, dùng số lượng sau (không in thêm các bàn gộp):
 
-| File trong `out/print_bambu/` | Số lượng | Kích thước in X × Y × Z (mm) |
+| File trong `out/print_bambu_180/` | Số lượng | Kích thước in X × Y × Z (mm) |
 |---|---:|---|
 | `01_than_hop_toi.stl` | 1 | 170 × 103 × 64 |
-| `02_nap_labyrinth.stl` | 1 | 150 × 80 × 6.8 |
-| `03_truc_truot_D.stl` | 2 | 110 × 8 × 6.5 |
+| `02_nap_labyrinth.stl` | 1 | 157 × 87 × 10.5 |
+| `03_truc_truot_D.stl` | 2 | 110.2 × 8 × 6.5 |
 | `04_carrier_led.stl` | 2 | 25 × 18 × 35 |
 | `05_num_thanh_truot.stl` | 2 | 16 × 15.52 × 8 |
 | `06_chup_luon_day_trai.stl` | 2 | 22.5 × 35.5 × 16.5 |
 | `07_chup_luon_day_phai.stl` | 2 | 22.5 × 35.5 × 16.5 |
-| `08_khau_do_biet.stl` | 2 | 62.9 × 34.9 × 1.6 |
+| `08_khau_do_biet.stl` | 0 (tùy chọn) | 62.9 × 34.9 × 1.6 |
 | `09_khau_do_lo2mm.stl` | 2 | 62.9 × 34.9 × 1.6 |
-| `10_khau_do_lo5mm.stl` | 2 | 62.9 × 34.9 × 1.6 |
+| `10_khau_do_lo5mm.stl` | 3 | 62.9 × 34.9 × 1.6 |
 | `11_khau_do_lo16mm.stl` | 2 | 62.9 × 34.9 × 1.6 |
-| [12_truc_day_tron_D5x130.stl](out/print_bambu/12_truc_day_tron_D5x130.stl) | 2 | 130 × 5 × 5 |
+| [12_truc_day_tron_D5x130.stl](out/print_bambu_180/12_truc_day_tron_D5x130.stl) | 2 | 130 × 5 × 5 |
 | `13_khung_board_5x7.stl` | 1 | 56.8 × 73.4 × 4 |
 
-[manifest.json](out/print_bambu/manifest.json) ghi kích thước, số lượng,
-vị trí trên bàn và SHA-256 của từng STL. Hai bàn chừa tối thiểu 8 mm mép bàn,
+[manifest.json](out/print_bambu_180/manifest.json) ghi kích thước, số lượng,
+vị trí trên bàn và SHA-256 của từng STL. Các bàn chừa tối thiểu 5 mm mép bàn,
 khe giữa các footprint tối thiểu 6 mm; chưa bao gồm brim/support do slicer sinh.
+Gá PCB cho board mới (`14_`–`16_*.stl`) không nằm trong ba bàn trên; xem
+[README_PCB_MOUNTS.md](out/print_bambu_180/README_PCB_MOUNTS.md).
 
 `out/stl/` chứa **16 mẫu STL theo hệ lắp ráp Y hướng lên**. Chúng dùng cho
 kiểm tra hình học, cần chọn lại tư thế nếu mở trực tiếp trong slicer. Các mẫu
 `*_red` dùng chung cho Đỏ và IR, in hai bản. Ngoài bộ hộp tối, thư mục này có
 `base_neg.stl` ×1, `base_pos.stl` ×1, `screen_foot_1.stl` ×2 để in đế hệ thống.
-Hai bàn Bambu ở trên không chứa đế và chân màn hình.
+Ba bàn in ở trên không chứa đế và chân màn hình.
 
 ## Các khớp lắp đã sửa
 
@@ -147,7 +150,7 @@ python3 -m venv .cad_venv
 ```
 
 `build_system.py` sinh STL hệ lắp ráp, `out/model.json` và [viewer.html](viewer.html).
-`--bambu` sinh bản simple và hai bàn in, giữ nguyên viewer đầy đủ. Các phép xoay
+`--bambu` sinh bản simple và gói in cho bàn 180 mm (ba bàn, `out/print_bambu_180/`), giữ nguyên viewer đầy đủ. Các phép xoay
 STL không cắt sửa hình học. `--detail simple --stl-only --only carrier` dùng
 để dựng riêng chi tiết khi chỉnh. Bộ lắp linh kiện thật dùng scale=1.0; thay đổi
 scale cũng làm đổi đường kính trục/lỗ/vít nên phải kiểm tra lại toàn bộ kích thước.

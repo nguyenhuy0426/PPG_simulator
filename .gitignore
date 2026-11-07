@@ -1,5 +1,5 @@
+# Recordings written by the app (dataset/data_N.csv) and downloaded datasets.
 dataset/
-BioSignalSimulatorPro-main/
 
 # Virtual environments.
 # A venv must never be committed: its wheels are architecture-specific (the
@@ -8,12 +8,16 @@ BioSignalSimulatorPro-main/
 # scripts/setup_laptop_venv.sh or scripts/setup_rpi_ubuntu.sh.
 .venv/
 .venv-ml/
+venv/
+env/
+
+# Research outputs. Kaggle runs stay local; only the generators the app loads
+# are committed.
 ml/runs/
 assets/neural/*.ts
 !assets/neural/lsm_generator.ts
 !assets/neural/physiomix_generator.ts
-venv/
-env/
+!assets/neural/physioflow_generator.ts
 
 # Python bytecode / build artefacts
 docs/paper/*.log
@@ -29,6 +33,9 @@ dist/
 .pio/
 .codegraph/
 .codebase-memory/
+.pytest_cache/
+.ruff_cache/
+.kilo/
 
 # CAD virtual environment (trimesh/manifold3d — 190 MB, tạo lại bằng pip)
 .cad_venv/
@@ -49,6 +56,7 @@ dist/
 *.pfx
 credentials.json
 secrets.json
+kaggle.json
 .claude/
 
 # Local model weights above the 100 MB GitHub limit and bulky run outputs; keep on disk, never commit.

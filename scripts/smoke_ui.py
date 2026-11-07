@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the actual Tk app on DISPLAY; capture only this app's rectangle.
-Run: DISPLAY=:97 venv/bin/python scripts/smoke_ui.py --output docs/ui
+Run: DISPLAY=:97 .venv/bin/python scripts/smoke_ui.py --output docs/ui
 Requires a display (e.g. Xvfb), Pillow and requirements/test.txt.
 """
 import argparse

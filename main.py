@@ -33,6 +33,16 @@ parser.add_argument("--rx-mode", choices=("dual", "tdm"),
                          "and the mode saved from Settings)")
 args = parser.parse_args()
 
+# One instance per user, in every mode: a dry run still starts the BLE server
+# and saves config.json.  Taken before the hardware, BLE and config modules load.
+import instance_lock
+try:
+    instance_lock.acquire()
+except instance_lock.AlreadyRunning as exc:
+    print(f"ERROR: {exc}. Close it first, or stop it with: "
+          "systemctl --user stop ppg-simulator", file=sys.stderr)
+    sys.exit(instance_lock.EXIT_ALREADY_RUNNING)
+
 if args.dry_run:
     os.environ["PPG_DRY_RUN"] = "1"
 if args.rx_mode:
