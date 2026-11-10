@@ -1,0 +1,299 @@
+{
+ "passed": true,
+ "rows": [
+  {
+   "group": "chi tiet",
+   "item": "clip_1_1",
+   "ok": true,
+   "detail": "[14.0, 7.2, 23.7] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "clip_1_0",
+   "ok": true,
+   "detail": "[14.0, 7.0, 23.7] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "08_rear_low",
+   "ok": true,
+   "detail": "[275.2, 2.0, 85.2] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "clip_0_0",
+   "ok": true,
+   "detail": "[14.0, 7.0, 23.7] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "clip_0_1",
+   "ok": true,
+   "detail": "[14.0, 7.2, 23.7] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "01_body",
+   "ok": true,
+   "detail": "[280.0, 255.0, 168.0] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "11_roof",
+   "ok": true,
+   "detail": "[280.0, 161.6, 9.0] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "09_side_panel",
+   "ok": true,
+   "detail": "[16.0, 184.2, 85.2] mm"
+  },
+  {
+   "group": "chi tiet",
+   "item": "10_rear_top",
+   "ok": true,
+   "detail": "[279.7, 56.4, 79.6] mm"
+  },
+  {
+   "group": "giao thoa",
+   "item": "17 khoi, tung cap",
+   "ok": true,
+   "detail": "khong cap nao de nhau"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "09_side_panel",
+   "ok": true,
+   "detail": "khe >= 0.3 quanh mep: True; ep vao 4 tru: True"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "08_rear_low",
+   "ok": true,
+   "detail": "khe >= 0.3 quanh mep: True; ep vao thanh ngang/tru: True"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "10_rear_top",
+   "ok": true,
+   "detail": "khe >= 0.3 quanh mep: True; ep vao 4 tru: True"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "11_roof",
+   "ok": true,
+   "detail": "khe >= 0.3 quanh mep: True; nam tren vach + khoi goc: True"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "08_rear_low duoi nap ngang",
+   "ok": true,
+   "detail": "khe 0.4 duoi nap"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "09_side_panel duoi nap ngang",
+   "ok": true,
+   "detail": "khe 0.4 duoi nap"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "10_rear_top tren nap ngang",
+   "ok": true,
+   "detail": "khe 0.4 tren nap"
+  },
+  {
+   "group": "khe lap cua",
+   "item": "10_rear_top mai ngoi tren vach",
+   "ok": true,
+   "detail": "mai nap chu L tua len dinh vach + tam man (z 168)"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua hong (np.int64(0), np.int64(10), np.int64(12))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua hong (np.int64(0), np.int64(10), np.int64(70))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua hong (np.int64(0), np.int64(183), np.int64(12))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua hong (np.int64(0), np.int64(183), np.int64(70))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau duoi (np.int64(20), np.int64(205), np.int64(82))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau duoi (np.int64(272), np.int64(205), np.int64(82))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau duoi (np.int64(22), np.int64(205), np.int64(15))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "nap ngang (np.int64(8), np.int64(49), np.int64(90))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "nap ngang (np.int64(272), np.int64(49), np.int64(90))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "nap ngang (np.int64(8), np.int64(197), np.int64(90))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "nap ngang (np.int64(272), np.int64(176), np.int64(90))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau tren (np.int64(15), np.int64(47), np.int64(100))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau tren (np.int64(15), np.int64(47), np.int64(158))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau tren (np.int64(265), np.int64(47), np.int64(100))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "bulong M4",
+   "item": "cua sau tren (np.int64(265), np.int64(47), np.int64(158))",
+   "ok": true,
+   "detail": "truc thong=True, dai oc vua tui=True, vit qua dai oc 2.4 mm, dua dai oc vao=True, nhua quanh lo 100%"
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 00 bulong M4x16",
+   "ok": true,
+   "detail": "truc thong: True "
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 00 ep man",
+   "ok": true,
+   "detail": "mieng kep cham mep sau man hinh"
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 01 bulong M4x16",
+   "ok": true,
+   "detail": "truc thong: True "
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 01 ep man",
+   "ok": true,
+   "detail": "mieng kep cham mep sau man hinh"
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 10 bulong M4x16",
+   "ok": true,
+   "detail": "truc thong: True "
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 10 ep man",
+   "ok": true,
+   "detail": "mieng kep cham mep sau man hinh"
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 11 bulong M4x16",
+   "ok": true,
+   "detail": "truc thong: True "
+  },
+  {
+   "group": "kep man hinh",
+   "item": "kep 11 ep man",
+   "ok": true,
+   "detail": "mieng kep cham mep sau man hinh"
+  },
+  {
+   "group": "man hinh",
+   "item": "khung 178x105 che mep cua so 170x97",
+   "ok": true,
+   "detail": "mep chong [4, 4, 4.0, 4.0] mm"
+  },
+  {
+   "group": "khe module",
+   "item": "hop Pi",
+   "ok": true,
+   "detail": "con >= 1 mm moi phia: {'-x': True, '+x': True, '-y': True, '+y': True, '+z': True}"
+  },
+  {
+   "group": "khe module",
+   "item": "buong toi",
+   "ok": true,
+   "detail": "con >= 1 mm moi phia: {'-x': True, '+x': True, '-y': True, '+y': True, '+z': True}"
+  },
+  {
+   "group": "duong lap",
+   "item": "Pi: thao NAP_NGANG, ha xuong roi day toi 20",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "group": "duong lap",
+   "item": "Buong toi: thao CUA_SAU_DUOI, truot vao tu sau",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "group": "duong lap",
+   "item": "Pi: thao CUA_HONG, rut ngang ra ben phai",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "group": "duong lap",
+   "item": "Nap chu L (CUA_SAU_TREN + mai): ha thang tu tren xuong",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "group": "duong day",
+   "item": "khe nguon cua hong thong ra ngoai",
+   "ok": true,
+   "detail": "khoi 50x15 xuyen khe khong cham"
+  }
+ ]
+}

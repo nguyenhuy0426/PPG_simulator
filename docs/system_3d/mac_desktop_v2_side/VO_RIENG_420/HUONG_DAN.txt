@@ -1,0 +1,22 @@
+mac_desktop_v2_side: VO NGUYEN KHOI (khong co buong toi, khong co hop Pi) cho may in 420 x 420 x 500 mm
+
+File gui in (STL, mm, scale 100%, da xoay san theo huong in):
+  VO_LIEN_KHOI.stl: [280.0, 255.0, 168.0] mm
+  CUA_SAU_DUOI.stl: [275.2, 85.2, 2.0] mm
+  CUA_SAU_TREN.stl: [279.66, 79.6, 56.35] mm
+  NAP_NGANG.stl: [280.0, 161.6, 9.0] mm
+  CUA_HONG.stl: [184.2, 85.2, 16.0] mm
+  PHU_KIEN_1.stl: [74.0, 23.5, 4.0] mm
+
+- Hinh dang kieu Mac co dien: phan man hinh cao 170 o phia truoc (sau 47 tinh tu mat phang Y=0), than thap phia sau cao 90. Vach/san/mai day 2 mm, tam man hinh day 4 mm. San va day de truoc khoet thanh cac dai rong <= 20 mm (gan 4 mm, in nam nghieng khong can support cho lo), con gio 10 mm quanh day hop Pi va buong toi. Cac tam cua (CUA_HONG, CUA_SAU_TREN, NAP_NGANG, CUA_SAU_DUOI) KIN mat ngoai: da nhua 0.6 mm (3 lop, in up xuong ban nen mat ngoai phang min), phia trong khoet tui o luoi ~22 mm, gan 2 mm, sau 1.4 mm de bot nhua; tong day van 2 mm nen lap khong doi. Chi con ho: lo bulong, khe nguon va 4 khe day rut tren CUA_HONG, va 10 khe thoat nhiet 4 x 80 tren NAP_NGANG ngay tren hop Pi. Thong gio con lai: vach trai (8 khe la sach 105 x 3), khe de truoc va cac lo san duoi module - CHUA do nhiet do Pi khi dong kin.
+- VO_LIEN_KHOI.stl: san + vach trai + phan man hinh (tam man nghieng 10 do, hai vach ben, KHONG co mai) + de truoc + 4 khoi goc bat bulong. MOT khoi, cao 168. In DUNG (day up xuong ban). Thiet ke de in dung gan nhu khong can support: moi khoi/tru treo tren vach co gan cheo 45 do, tran de truoc la mai 2 doc 45 do, khe thong gio la sach nghieng 45 do. Bambu Studio (H2S, 0.20mm Standard, PETG, bat support tree(auto)): 315.5 g (support ~30 g), ~10.4 h.
+- San khoet lo, KHONG co tru chan de; hop Pi va buong toi tua len gio san 10 mm. Thu tu lap: thao NAP_NGANG, ha hop Pi xuong roi day ve phia truoc 20 mm - HOAC thao CUA_HONG va rut/day hop Pi ngang qua cua hong; thao CUA_SAU_DUOI, truot buong toi vao tu phia sau.
+- PHU_KIEN_1.stl: 4 kep giu man hinh (2 tren, 2 duoi), moi kep 1 bulong M4x16 vao tru tren tam man (dai oc M4 truot tu ben vao khe cua tru; dau vit vao lo mu sau 3 mm tren tam man).
+- CUA_HONG.stl: cua ben phai, 184.2 x 85.2 x 2 mm (phu het hong than thap va phan duoi cua phan man hinh), khe 0.4 mm quanh mep. Mat trong co 1 khoi 14 x 11.4 x 11.6 de bulong goc truoc-phai cua NAP_NGANG bat vao (dai oc dua tu duoi len) - thao CUA_HONG thi thao bulong nay truoc. In nam, mat ngoai up xuong ban. 4 bulong M4x16 vao 4 tru (dai oc trong tui luc giac AF 7.4 sau 3.7 o dau trong tru). Khe nguon 60 x 25 (y 72.5-132.5, z 20-45), 4 khe day rut (deu de ho). Mat ngoai kin, tui khoet o mat trong.
+- CUA SAU tach 3 tam (4 + 4 + 3 bulong M4x16), dai oc nam trong tui luc giac o dau trong cua tru/thanh ngang:
+    CUA_SAU_TREN.stl: nap chu L = mat sau + mai cua phan man hinh, 280 x 56 x 80. Ha thang tu tren xuong, mai ngoi len dinh vach (z 168). In mat sau up xuong ban, khong can support.
+    NAP_NGANG.stl: mai cua than thap (nam ngang), 280 x 161.6 x 2 + 2 gan cung 2.4 x 7 o mat duoi; 4 bulong xuong 3 khoi goc + 1 khoi tren CUA_HONG (dai oc dua vao tu duoi qua ranh luc giac trong gan cheo). In up mat tren xuong ban.
+    CUA_SAU_DUOI.stl: mat sau cua than thap (dung), 275.2 x 85.2 x 2; 3 bulong: 2 tren vao 2 khoi goc sau, 1 duoi-phai vao tru tren san (goc duoi-trai bo tru de buong toi truot vao).
+- Kiem tra CAD (kiem_tra_lap.py): 49/49 muc dat - khong chi tiet nao de nhau, khe 0.4 quanh moi cua, 19 truc bulong M4x16 thong va vit qua dai oc 2.4 mm, dai oc lot vao tui, Pi va buong toi con >= 1 mm moi phia, duong lap Pi (tu tren va ngang qua cua hong)/buong toi/nap chu L khong vuong.
+- Lo bulong M4 dai 4.5 mm, tui dai oc AF 7.4: CHUA in thu. In cac mau thu khop truoc (de_xuat_kich_thuoc/mau_thu_khop: lo vit/dai oc, ranh truot, chot LEGO) roi moi gui in vo.
+- Da slice bang Bambu Studio 2.9.1 (may H2S, cau hinh mac dinh + bat support): tong ~502 g PETG, ~16.3 h. CHUA in thu, CHUA kiem tra khe cap voi day that.
