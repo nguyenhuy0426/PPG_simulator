@@ -12,7 +12,7 @@ or, when that loss has risen above its best (overfitting, which a decay only dee
 best.pt is the state with the lowest held-out flow loss so far.
 Validation is the held-out records of every mounted shard (fixed subset, fixed noise). Next-patch NLL and flow loss
 measure fit only; best.pt and --plateau choose states on those records, so they are not a test set. Whether
-samples are realistic is the strict judge's job in a later round, on people kept out of training and selection.
+samples match the reference features is evaluated separately; shape metrics do not establish clinical realism.
 """
 import argparse
 import contextlib
@@ -32,7 +32,7 @@ import torch.distributed as dist
 
 from ml.kaggle_lsm.train_lsm import FS, LENGTH, save_json
 from ml.kaggle_physigpt.mimic_wdb import PROTOCOL, ShardWriter, rate_features
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe
+from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, describe, window_rate
 
 VALID_WINDOWS = 8192
 SAMPLE_WINDOWS = 1024
@@ -46,8 +46,11 @@ class Windows:
     """Memory-mapped windows of every shard found under the given roots, split by the shard's validation flag."""
 
     def __init__(self, roots):
+        # By record range, not by path: Kaggle may mount the same inputs under other paths, and row numbers (so every
+        # seeded draw of rows) follow this order.
         manifests = sorted({p for root in roots for p in Path(root).rglob("manifest.json")
-                            if json.loads(p.read_text()).get("protocol") == PROTOCOL})
+                            if json.loads(p.read_text()).get("protocol") == PROTOCOL},
+                           key=lambda p: (json.loads(p.read_text())["record_range"], str(p)))
         if not manifests:
             raise FileNotFoundError(f"No {PROTOCOL} shard under {roots}")
         self.signal, self.shards, metas = [], [], []
@@ -146,7 +149,9 @@ def evaluate(model, data, device, amp):
         for part in np.array_split(index, max(1, len(index)//512)):
             x = torch.from_numpy(data.rows(part).astype(np.float32)/65535).to(device)
             with torch.autocast("cuda", torch.float16, enabled=amp):
-                _, parts = model(x, torch.zeros(len(x), dtype=torch.long, device=device), generator=generator)
+                # a heart-rate conditioned model (APFT-GAN --hr-cond) is scored given each window's own rate
+                hr = window_rate(x) if model.cfg.hr_cond else None
+                _, parts = model(x, torch.zeros(len(x), dtype=torch.long, device=device), generator=generator, hr=hr)
             for k in totals:
                 totals[k] += float(parts[k])*len(x)
             count += len(x)
@@ -396,7 +401,7 @@ def worker(rank, world, args):
                        final=evaluate(model, data, device, cuda),
                        samples=release_samples(model, data, output, device, args.sample_steps),
                        note="fit and sanity statistics only, on held-out records that also chose best.pt and the "
-                            "plateau; realism is judged by the strict judge on separate people in a later round")
+                            "plateau; feature fidelity is evaluated separately against held-out people")
         save_json(output/"stage_summary.json", summary)
         log.close()
     if world > 1:

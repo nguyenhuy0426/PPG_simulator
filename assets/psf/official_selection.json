@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-12",
+  "selected": "PSF J3",
+  "release_role": "official_project_baseline",
+  "generator_sha256": "cc550e4a0e4279ab0b93aa19b920d488e9fa0402c148764691e38aa7f28941b4",
+  "checkpoint_step": 5500,
+  "status": "experimental_simulation",
+  "accepted_global_target": false,
+  "clinical_validation": false,
+  "decision": "Project default under the frozen no-mean-regression replacement rule; not a universal winner or scientific release-gate pass.",
+  "comparison": {
+    "J3": {
+      "mean_similarity_percent": 94.94,
+      "tree_accuracy": 0.66625,
+      "logreg_accuracy": 0.538,
+      "logreg_auc": 0.5562395,
+      "tree_auc": 0.73839225,
+      "evaluation_policy": "Feature classifiers only; raw waveform strict judge disabled for future evaluations.",
+      "classifier_metrics_source": "Historical report values from runs/pi-models-20261111/psf-j3-candidate/target.json; legacy rank_auc evaluator, tie handling differs from current sklearn evaluator."
+    },
+    "J4": {
+      "mean_similarity_percent": 94.91,
+      "tree_accuracy": 0.63125
+    },
+    "J5": {
+      "mean_similarity_percent": 94.91,
+      "tree_accuracy": 0.63125
+    },
+    "J6_mmap": {
+      "mean_similarity_percent": 95.44,
+      "tree_accuracy": 0.6405,
+      "comparable": false,
+      "note": "84 generator tensors equal J4/J5; different HR bank confounds evaluation. Best step 0."
+    }
+  },
+  "source": "runs/pi-models-20261111/RELEASE_AUDIT.md",
+  "host_backup": "runs/official-j3-registration-20261112T032247Z",
+  "evaluation_policy": "Feature classifiers only; raw waveform strict judge disabled for future evaluations."
+}

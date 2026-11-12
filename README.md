@@ -481,3 +481,7 @@ neural-model work are collected in [docs/REFERENCES.md](docs/REFERENCES.md).
 **VyPT** — Software design, UI/UX
 
 **Institution:** Industrial University of Ho Chi Minh City (IUH)
+
+## Official PSF model (2026-11-12)
+
+PSF J3 EMA step 5500 is the official project baseline. The CPU TorchScript bundle, checksum, runtime contract and comparison with J4/J5/J6 are documented in [assets/psf/README.md](assets/psf/README.md). This remains an experimental simulator: held-out similarity 94.94%, tree accuracy 66.625%; the global realism gate has not passed and clinical validation is absent. Future automatic evaluations report feature-classifier accuracy/AUC; historical results are preserved.

@@ -15,10 +15,15 @@ Changed, and why:
   jointly: a residual MLP with adaptive layer norm on the token's hidden state and the flow time predicts the
   velocity of a straight path from Gaussian noise to the patch. Sampling is autoregressive over the 30 patches with
   a Heun ODE per patch. The logit-Laplace head stays as an auxiliary loss and gives GPT-PPG's likelihood.
+- optional heart-rate condition (Config.hr_cond, off in every released checkpoint): a Fourier embedding of the
+  window's rate in bpm, through a zero-initialised MLP, added to every input token, so a model built with it starts
+  exactly as the checkpoint it is loaded from (load_init) and learns the condition at fine-tuning. The rate label of a
+  real window is heart_rate: the first autocorrelation peak in 30-200 bpm, not window_rate (the feature tier's
+  rate_bpm), whose global maximum lands on the two-beat lag of about a quarter of MIMIC windows.
 Sizes are chosen for two T4s (fp16): "base" 30.7 M parameters (backbone 25.3 M), "large" 99.9 M (backbone 85.0 M,
 GPT-PPG's 85 M class).
 """
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import math
 
 import torch
@@ -27,6 +32,56 @@ import torch.nn.functional as F
 
 DOMAINS = ("mimic3_icu",)  # index = domain id; later domains are appended, never reordered
 LAPLACE_LO, LAPLACE_SPAN = .1, .8
+HR_FEATURES = 32                       # Fourier pairs of the rate embedding
+RATE_LAGS = (12, 80)                   # 40 Hz lags 0.3-2.0 s, as mimic_wdb.RATE_LAGS (30-200 bpm)
+
+
+def window_rate(x, fs=40):
+    """Autocorrelation rate (bpm) of windows x [n, L], as mimic_wdb.rate_features (the feature tier's rate_bpm)."""
+    x = x.float()
+    centered = x-x.mean(1, keepdim=True)
+    spectrum = torch.fft.rfft(centered, 2*x.shape[1], dim=1)
+    acf = torch.fft.irfft(spectrum.abs().square(), dim=1)[:, :x.shape[1]]
+    lo, hi = RATE_LAGS
+    lag = lo+acf[:, lo:hi].argmax(1)
+    return 60.*fs/lag.float()
+
+
+HR_PEAK_SHARE = .5   # a lag is a beat when its autocorrelation is a local maximum of at least this share of the top
+
+
+def heart_rate(x, fs=40):
+    """Heart rate (bpm) of windows x [n, L]: the shortest lag in RATE_LAGS whose autocorrelation is a local maximum of
+    at least HR_PEAK_SHARE of the range's maximum and is that high again near twice the lag (the range's maximum if
+    no lag is).
+
+    window_rate takes the global maximum, which on a pulse train with beat-to-beat amplitude or shape differences is
+    often the two-beat lag: against the median peak interval it reads half the rate on 23 % of MIMIC PERFORM windows
+    (MAE 15.0 bpm; this rule 3.8), and against ECG it reads CapnoBase at MAE 4.5 bpm (this rule 0.8). It is the
+    condition label, the rate bank and hr_mae; window_rate stays the feature tier's rate_bpm, which only has to be
+    the same statistic on real and generated windows."""
+    x = x.float()
+    centered = x-x.mean(1, keepdim=True)
+    spectrum = torch.fft.rfft(centered, 2*x.shape[1], dim=1)
+    acf = torch.fft.irfft(spectrum.abs().square(), dim=1)[:, :x.shape[1]]
+    lo, hi = RATE_LAGS
+    seg = acf[:, lo-1:hi+1]                  # one lag on each side for the local-maximum test
+    inner = seg[:, 1:-1]
+    level = HR_PEAK_SHARE*inner.amax(1, keepdim=True)
+    # a beat repeats: the autocorrelation near twice the lag is high too, which a lag inside one beat (between the
+    # systolic and the dicrotic wave) does not have
+    lags = torch.arange(lo, hi, device=x.device)
+    twice = torch.stack([acf[:, 2*lags+d] for d in range(-2, 3)]).amax(0)
+    peak = (inner >= seg[:, :-2]) & (inner > seg[:, 2:]) & (inner >= level) & (twice >= level)
+    first = torch.where(peak.any(1), peak.float().argmax(1), inner.argmax(1))
+    return 60.*fs/(lo+first).float()
+
+
+def hr_embedding(bpm):
+    """[n] bpm -> [n, 2*HR_FEATURES] Fourier features of log(bpm/30), which spans 0..~2 over 30-200 bpm."""
+    u = torch.log(bpm.float().clamp(20., 250.)/30.)
+    freq = torch.exp(torch.linspace(0., math.log(64.), HR_FEATURES, device=bpm.device))
+    return torch.cat(((u[:, None]*freq).sin(), (u[:, None]*freq).cos()), -1)
 
 
 @dataclass(frozen=True)
@@ -41,6 +96,7 @@ class Config:
     head_width: int = 512
     head_blocks: int = 3
     rope_base: float = 10000.
+    hr_cond: bool = False
 
 
 CONFIGS = {"tiny": Config(dim=64, layers=2, heads=4, ffn=176, head_width=64, head_blocks=1),
@@ -84,6 +140,20 @@ class Block(nn.Module):
         q, k, v = self.qkv(self.norm1(x)).view(b, t, 3, self.heads, d//self.heads).permute(2, 0, 3, 1, 4)
         q, k = rotate(q, cos[:t], sin[:t]).type_as(v), rotate(k, cos[:t], sin[:t]).type_as(v)
         x = x+self.out(F.scaled_dot_product_attention(q, k, v, is_causal=True).transpose(1, 2).reshape(b, t, d))
+        gate, up = self.gate_up(self.norm2(x)).chunk(2, -1)
+        return x+self.down(F.silu(gate)*up)
+
+    def step(self, x, pos, cache, cos, sin):
+        """One new token x [B, 1, d] at position pos with the keys and values of positions < pos in cache (k, v:
+        [B, heads, patches, head_dim], filled here at pos). Same result as forward over the whole prefix."""
+        b, _, d = x.shape
+        q, k, v = self.qkv(self.norm1(x)).view(b, 1, 3, self.heads, d//self.heads).permute(2, 0, 3, 1, 4)
+        c, s = cos[pos:pos+1], sin[pos:pos+1]
+        q, k = rotate(q, c, s).type_as(v), rotate(k, c, s).type_as(v)
+        keys, values = cache
+        keys[:, :, pos:pos+1], values[:, :, pos:pos+1] = k, v
+        att = F.scaled_dot_product_attention(q, keys[:, :, :pos+1], values[:, :, :pos+1])
+        x = x+self.out(att.transpose(1, 2).reshape(b, 1, d))
         gate, up = self.gate_up(self.norm2(x)).chunk(2, -1)
         return x+self.down(F.silu(gate)*up)
 
@@ -137,6 +207,8 @@ class PhysiGPT(nn.Module):
         self.norm = RMSNorm(cfg.dim)
         self.laplace = nn.Linear(cfg.dim, 2*cfg.patch)
         self.flow = FlowHead(cfg)
+        if cfg.hr_cond:
+            self.hr = nn.Sequential(nn.Linear(2*HR_FEATURES, cfg.dim), nn.SiLU(), nn.Linear(cfg.dim, cfg.dim))
         cos, sin = rope_tables(cfg.patches, cfg.dim//cfg.heads, cfg.rope_base)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
@@ -144,14 +216,55 @@ class PhysiGPT(nn.Module):
             if p.dim() == 2 and not name.startswith("flow."):
                 nn.init.normal_(p, std=.02/math.sqrt(2*cfg.layers) if name.endswith(("out.weight", "down.weight"))
                                 else .02)
+        if cfg.hr_cond:   # zero output: a loaded unconditional model is unchanged until fine-tuning moves it
+            nn.init.zeros_(self.hr[2].weight), nn.init.zeros_(self.hr[2].bias)
 
-    def hidden(self, patches, domain):
-        """patches [B, n<=30, 40] of x in [0, 1] -> h [B, n, dim]; h_i depends on the domain and patches < i only."""
+    def hidden(self, patches, domain, hr=None):
+        """patches [B, n<=30, 40] of x in [0, 1] -> h [B, n, dim]; h_i depends on the domain, the rate hr [B] (bpm,
+        hr_cond models only) and patches < i only."""
         x = self.embed(2*patches[:, :-1]-1)
         x = torch.cat((self.start(domain)[:, None], x), 1)
+        if self.cfg.hr_cond:
+            if hr is None:
+                raise ValueError("this model is heart-rate conditioned: pass hr (bpm)")
+            x = x+self.hr(hr_embedding(hr).to(x.dtype))[:, None]
         for block in self.blocks:
             x = block(x, self.cos, self.sin)
         return self.norm(x)
+
+    def new_cache(self, n, device, dtype):
+        """Empty key/value cache for n windows (one pair per layer)."""
+        cfg = self.cfg
+        shape = (n, cfg.heads, cfg.patches, cfg.dim//cfg.heads)
+        return [(torch.empty(shape, device=device, dtype=dtype), torch.empty(shape, device=device, dtype=dtype))
+                for _ in self.blocks]
+
+    def hidden_step(self, prev, pos, domain, cache, hr=None):
+        """h of position pos [B, dim] from the patch at pos-1 (prev [B, 40] in [0, 1]; ignored at pos 0) and the
+        cache of positions < pos: the incremental form of hidden (one token per call instead of the whole prefix)."""
+        x = self.start(domain) if pos == 0 else self.embed(2*prev-1)
+        if self.cfg.hr_cond:
+            if hr is None:
+                raise ValueError("this model is heart-rate conditioned: pass hr (bpm)")
+            x = x+self.hr(hr_embedding(hr).to(x.dtype))
+        x = x[:, None]
+        for block, layer_cache in zip(self.blocks, cache):
+            x = block.step(x, pos, layer_cache, self.cos, self.sin)
+        return self.norm(x)[:, 0]
+
+    def sample_patches(self, noise, steps, domain, hr=None, clamp=True):
+        """Autoregressive sampling with the key/value cache: noise [n, 30, 40] (the start noise of every patch) ->
+        patches [n, 30, 40] in [0, 1] (unclipped if not clamp)."""
+        n = len(noise)
+        patches = torch.zeros_like(noise)
+        # fp16 under CUDA autocast (the dtype the attention projections then produce), else the weights' dtype
+        dtype = torch.float16 if noise.is_cuda and torch.is_autocast_enabled() else self.embed.weight.dtype
+        cache = self.new_cache(n, noise.device, dtype)
+        for i in range(self.cfg.patches):
+            h = self.hidden_step(patches[:, i-1] if i else None, i, domain, cache, hr)
+            x = (self.integrate(noise[:, i], h, steps)+1)/2
+            patches[:, i] = x.clamp(0, 1) if clamp else x
+        return patches
 
     def laplace_nll(self, h, patches):
         """Per-sample logit-Laplace negative log density of x (in nats, including the 0.1 + 0.8 x Jacobian)."""
@@ -180,9 +293,9 @@ class PhysiGPT(nn.Module):
         err = (1-t[:, None])*error
         return flow, (torch.diff(err, 1, -1).square().mean()+torch.diff(err, 2, -1).square().mean())
 
-    def forward(self, signal, domain, aux=.1, repeats=4, generator=None, diff=0.):
+    def forward(self, signal, domain, aux=.1, repeats=4, generator=None, diff=0., hr=None):
         patches = signal.view(len(signal), self.cfg.patches, self.cfg.patch)
-        h = self.hidden(patches, domain)
+        h = self.hidden(patches, domain, hr)
         nll = self.laplace_nll(h, patches).mean()
         flow, sharp = self.flow_loss(h, patches, repeats, generator, diff)
         parts = dict(flow=flow.detach(), laplace_nll=nll.detach())
@@ -190,35 +303,56 @@ class PhysiGPT(nn.Module):
             parts["sharp"] = sharp.detach()
         return flow+aux*nll+diff*sharp, parts
 
-    @torch.no_grad()
-    def sample_patch(self, h, steps, generator=None, clamp=True):
-        x = torch.randn(len(h), self.cfg.patch, device=h.device, generator=generator)
+    def integrate(self, x, h, steps, flow=None):
+        """Heun ODE of the flow head from the start noise x [n, 40] to a patch in [-1, 1] (unclipped). flow replaces
+        self.flow (a gradient-checkpointed call in adversarial fine-tuning); without no_grad, it is differentiable."""
+        flow = flow or self.flow
         dt = 1/steps
         for i in range(steps):
             t = torch.full((len(h),), i*dt, device=h.device)
-            v = self.flow(x.to(h.dtype), t, h).float()
+            v = flow(x.to(h.dtype), t, h).float()
             if i < steps-1:
-                v2 = self.flow((x+dt*v).to(h.dtype), t+dt, h).float()
+                v2 = flow((x+dt*v).to(h.dtype), t+dt, h).float()
                 v = (v+v2)/2
             x = x+dt*v
-        x = (x+1)/2
+        return x
+
+    @torch.no_grad()
+    def sample_patch(self, h, steps, generator=None, clamp=True):
+        x = (self.integrate(torch.randn(len(h), self.cfg.patch, device=h.device, generator=generator), h, steps)+1)/2
         return x.clamp(0, 1) if clamp else x
 
     @torch.no_grad()
-    def generate(self, n, domain=0, steps=32, seed=0, device="cpu", clamp=True):
+    def generate(self, n, domain=0, steps=32, seed=0, device="cpu", clamp=True, hr=None):
         """n windows [n, 1200], each min-max normalised like the training windows. clamp=False leaves the sampled
-        patches (also the context fed back) unclipped to [0, 1]; the window min-max then sets the range."""
+        patches (also the context fed back) unclipped to [0, 1]; the window min-max then sets the range. hr: the
+        rate (bpm) per window, [n] or a number, for hr_cond models."""
         generator = torch.Generator(device).manual_seed(seed)
         domain = torch.full((n,), domain, dtype=torch.long, device=device)
-        patches = torch.zeros(n, 1, self.cfg.patch, device=device)
-        for i in range(self.cfg.patches):
-            h = self.hidden(patches, domain)[:, i]
-            patches[:, i] = self.sample_patch(h, steps, generator, clamp)
-            if i < self.cfg.patches-1:
-                patches = torch.cat((patches, torch.zeros_like(patches[:, :1])), 1)
-        x = patches.reshape(n, -1)
+        if hr is not None:
+            hr = torch.as_tensor(hr, dtype=torch.float32, device=device).expand(n).contiguous()
+        # the start noise in the order the uncached sampler drew it (one [n, 40] draw per patch), so a seed gives the
+        # same windows as before the cache
+        noise = torch.stack([torch.randn(n, self.cfg.patch, device=device, generator=generator)
+                             for _ in range(self.cfg.patches)], 1)
+        x = self.sample_patches(noise, steps, domain, hr, clamp).reshape(n, -1)
         lo, hi = x.min(1, keepdim=True).values, x.max(1, keepdim=True).values
         return (x-lo)/(hi-lo).clamp_min(1e-6)
+
+
+def build(state):
+    """The model of a saved state dict (config name, hr_cond flag) with its weights."""
+    model = PhysiGPT(replace(CONFIGS[state["config"]], hr_cond=bool(state.get("hr_cond", False))))
+    model.load_state_dict(state["model"])
+    return model
+
+
+def load_init(model, state):
+    """Weights of state into model; only an added rate embedding (hr.*) may be missing, nothing may be unexpected."""
+    missing, unexpected = model.load_state_dict(state["model"], strict=False)
+    if unexpected or any(not k.startswith("hr.") for k in missing):
+        raise ValueError(f"--init does not fit this model: missing {missing}, unexpected {unexpected}")
+    return [k for k in missing]
 
 
 def describe(model):

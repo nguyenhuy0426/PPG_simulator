@@ -289,6 +289,21 @@ class StrictCritic(nn.Module):
         return torch.stack(values, 1)
 
 
+class JudgeCritic(nn.Module):
+    """The strict judge's own network (StrictJudge: GroupNorm, absolute log-STFT floor, no spectral norm) as a GAN
+    critic: higher = real (the judge's logit is positive for generated), random 25.6 s crops in training mode. It takes
+    no condition. Use it without R1/R2: on the app's RSR-Flow windows (CPU probe, 300 steps, 128 held-out windows) it
+    reached a held-out AUC of 0.98 with no penalty, 0.59 with gamma 0.01, against 0.58 for StrictCritic (gamma 0.05)."""
+    def __init__(self):
+        super().__init__()
+        self.judge = StrictJudge()
+
+    def forward(self, x, condition=None):
+        if self.training:
+            x = random_crop(x)
+        return -self.judge(x)[:, None]
+
+
 def make_judge(kind):
     if kind == "probe":
         return control.Probe(True, 16)
