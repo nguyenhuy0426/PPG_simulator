@@ -9,3 +9,7 @@ Held-out feature mean1−KS95.28%, tree real/fake accuracy61.275%, strict judge 
 Pi4 ARM64,4GB, PyTorch2.5.1: real UI subprocess test generated1,200 samples in about91s including loading in the staged test. Precompute before playback. `OPENBLAS_NUM_THREADS=1` and `OMP_NUM_THREADS=1` bound worker threads; torch uses one intra-op thread. Pi UI permits up to300s for APFT. Installed measurements and backup paths are recorded separately in `pi-deployment.json` / the deployment report.
 
 IR/RED derive from the same normalized waveform and nominal AC/DC. No calibrated optical or SpO₂ model. Real reference is an unpaired MIMIC-III TRAIN segment for visual comparison only. No LED/DAC test has been performed with this bundle.
+
+## Downloading the weights
+
+`generator.pt` is versioned with Git LFS. Install Git LFS, then run `git lfs install` and `git lfs pull --include="assets/apft/generator.pt"` after cloning. The application verifies the SHA256 in `manifest.json` before loading the checkpoint with `weights_only=True`.
