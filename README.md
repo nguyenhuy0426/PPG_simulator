@@ -146,58 +146,30 @@ Display:
   HDMI → Any screen (auto-detect resolution)
 ```
 
-### Three KiCad 10 boards
+### Official KiCad PCB design
 
-The current CAD release has two alternative receiver boards and one LED
-driver. Assemble **either** receiver for the optical channel pair; the V-cut
-panel contains all three designs for fabrication, then separates into three
-electrically independent boards.
+The official panel contains **two electrically independent boards**: the
+70 × 20 mm OPT101 receiver and the 70 × 40 mm LED/IR driver. The 70 × 60 mm
+panel has one V-score at 20 mm from the top. BPW34 remains available as a
+separate historical alternative and is not part of this panel.
 
-| Board | Size | Main parts | Project |
-|---|---:|---|---|
-| OPT101 receiver | 70 × 20 mm | Two OPT101P in DIP-8 sockets; 2 mm Grove A2/RED and A0/IR headers; ADS1115 signal header; supply bypass and output RC | [Schematic, PCB and assembly notes](hardware/opt101_receiver_kicad/opt101_receiver/README.md) |
-| BPW34 receiver | 70 × 20 mm | Two BPW34, two OPA333 TIAs, 1 MΩ/22 pF feedback, 2 mm Grove headers, ADS1115 signal/GND header | [Schematic, PCB and assembly notes](hardware/bpw34_receiver/README.md) |
-| LED/IR driver | 70 × 40 mm | Two plug-in MCP4725 modules, socketed LM358, two 2N4401 current sinks, LED and 5 V headers. v2.0 adds a separate I²C header per module (J8 IR, J9 RED) with a 100 Ω / bypass solder jumper, open by default | [Schematic, PCB and assembly notes](hardware/led_ir_driver/README.md) |
+- [Two-board panel and build instructions](hardware/ppg_panel/README.md)
+- [LED/IR driver schematic, PCB and wiring](hardware/led_ir_driver/README.md)
+- [OPT101 receiver](hardware/opt101_receiver_kicad/opt101_receiver/README.md)
+- [BPW34 receiver (alternative)](hardware/bpw34_receiver/README.md)
 
-| OPT101 receiver | BPW34 receiver | LED/IR driver |
-|---|---|---|
-| ![OPT101 receiver PCB](hardware/opt101_receiver_kicad/opt101_receiver/reports/pcb_top.png) | ![BPW34 receiver PCB](hardware/bpw34_receiver/reports/pcb_top.png) | ![LED and IR driver PCB](hardware/led_ir_driver/reports/pcb_top.png) |
+The driver uses a single shared I²C connection: J2 pins 3–6 are SCL, SDA,
+3.3 V and GND. Both MCP4725 modules share that bus; configure different
+addresses (IR 0x60 and RED 0x61). J2 pins 1–2 are the IR DAC output and GND,
+not part of the four-wire I²C cable. J2 uses a 2.54 mm 1×2 header and a
+separate 2.00 mm 1×4 header. There are no J8/J9 I²C headers or R11–R14 /
+JP1–JP4 I²C options on this design. See the driver README before wiring.
 
-The [70 × 80 mm V-cut panel](hardware/ppg_panel/README.md) marks two score lines
-at 20 and 40 mm. Copper stays at least 1.5 mm from each line. Send the
-[panel fabrication ZIP](hardware/PPG_3boards_VCUT_panel.zip) to a board house
-that accepts three designs on one panel. Standalone packages are available for
-[OPT101](hardware/PPG_OPT101_receiver.zip), [BPW34](hardware/PPG_BPW34_receiver.zip)
-and the [driver](hardware/PPG_LED_IR_driver.zip). Confirm V-score capability and pricing with the board house;
-separate the bare boards before soldering.
-
-**Driver-only order and assembly.** The driver can be ordered on its own from the
-[driver ZIP](hardware/PPG_LED_IR_driver.zip) (Gerber in `hardware/led_ir_driver/fabrication/`).
-Its SMT files (BOM with 14 placements, CPL, DNP list) are in
-[`hardware/led_ir_driver/assembly/`](hardware/led_ir_driver/assembly/README.md).
-After the board house's review the driver uses a 0.5 mm GND-pour clearance and
-1.5 mm pads for the 0.8 mm-drill 2.00 mm headers (J8/J9). **The three-board panel
-and its ZIP were not rebuilt with these rules**, so they still carry the earlier
-driver copy (0.3 mm pour clearance, 1.35 mm J8/J9 pads). Rebuild the panel
-before ordering it. These are CAD checks (ERC, DRC, connectivity), not
-measurements on assembled boards.
-
-**Assembled 3D views.** [`hardware/renders_original/`](hardware/renders_original/README.md)
-shows the original driver (before v2.0, no jumpers, shared I²C header) and the
-OPT101 receiver with the chips and MCP4725 modules fitted, both sides;
-[`hardware/renders_v2.1/`](hardware/renders_v2.1/README.md) shows the v2.x driver.
-The module and OPT101P bodies are approximate stand-in models.
-
-![Three-board V-cut fabrication panel](hardware/ppg_panel/reports/pcb_top.png)
-![V-cut positions and dimensions](hardware/ppg_panel/reports/vcut_drawing.png)
-
-#### PCB Routing Quality & Chamfering
-
-All three PCB layouts and the fabrication panel have undergone automated geometric auditing and cleanup:
-- **100% 45° Chamfered Corners:** Automated chamfering (`hardware/routing_45.py`) converts all right-angle bends into smooth $1.2\text{ mm}$ 45° diagonal transitions, preventing acid traps and impedance discontinuities while preserving clearance.
-- **Copper Segment Cleanup:** `clean_segments()` resolves multi-node track junctions, deduplicates coincident traces, merges collinear segments, and eliminates non-functional copper stubs.
-- **Detailed Wiring Guides:** Enhanced wiring guides ([BPW34 guide](hardware/bpw34_receiver/reports/wiring_guide.png), [Driver guide](hardware/led_ir_driver/reports/wiring_guide.png)) render net-colored tracks and explicitly mark interlayer vias with white circular glyphs to assist manual assembly, testing, and probe placement.
-- **DRC Verification:** KiCad design rule checks confirm 0 DRC violations, 0 unrouted nets, and full compliance with 2-layer FR-4 $1.6\text{ mm}$ manufacturing constraints.
+This restores the earlier shared-bus driver; later v2.0 manufacturing-rule
+changes are not incorporated. Existing three-board panel and v2.0 driver
+fabrication files are obsolete and have been removed. Recheck board-house
+requirements and regenerate Gerber/drill files before ordering. CAD checks do
+not establish physical operation.
 
 ### Printable optical enclosure
 

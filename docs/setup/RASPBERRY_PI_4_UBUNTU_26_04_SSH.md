@@ -288,6 +288,13 @@ ssh <PI_USER>@10.42.0.2 \
   'cd ~/final_project/PPG_simulator_raspi && PYTHONNOUSERSITE=1 .venv/bin/python scripts/verify_rpi_env.py'
 ```
 
+The official LED driver uses one shared I²C header: connect J2 pins 3–6 to
+SCL, SDA, 3.3 V and GND respectively. Pins 1–2 are IR DAC output and GND;
+J2 has separate 2.54 mm (pins 1–2) and 2.00 mm (pins 3–6) headers. Configure
+the two MCP4725 modules at distinct addresses, IR 0x60 and RED 0x61. Verify
+module ADDR links, cable pin order, 3.3 V supply and shared ground before
+powering. See the [driver wiring guide](../../hardware/led_ir_driver/README.md).
+
 Then explicitly scan the I2C bus:
 
 ```bash

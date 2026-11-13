@@ -1,7 +1,0 @@
-﻿STT,Giá trị,Mô tả / thông số,Kiểu chân (package),SL / 1 board,Mặt TOP,Mặt BOTTOM,Vị trí (Designator),Mã gợi ý (hoặc tương đương cùng thông số),Ghi chú
-1,100nF,"Tụ gốm MLCC X7R, 50V, ±10%",0805 (2012 metric),1,1,0,C5,Samsung CL21B104KBCNNNC,Bypass nguồn LM358 (C5). X7R ≥25V đều dùng được.
-2,10uF,"Tụ hóa nhôm dán (SMD), 16V trở lên, CÓ PHÂN CỰC",SMD Ø5 x 5.4 mm (case C),1,0,1,C7,"Tương đương bất kỳ: 10uF ≥16V, Ø5x5.4 mm","PHÂN CỰC: cực + vào pad có dấu ""+"" (net 5V), vạch âm trên thân tụ về phía GND. Mặt dưới board driver."
-3,10k,"Điện trở dán 1%, 1/8W",0805 (2012 metric),4,4,0,"R1, R2, R6, R7",Yageo RC0805FR-0710KL,Cầu chia: phải là loại 1%.
-4,1k,"Điện trở dán 1%, 1/8W",0805 (2012 metric),2,2,0,"R3, R8",Yageo RC0805FR-071KL,"R3/R8 thiết kế ghi ""1k"" (không yêu cầu 1%); gộp chung 1% để bớt 1 mã."
-5,100Ω,"Điện trở dán 1%, 0.25W (1/4W)",1206 (3216 metric),2,2,0,"R4, R9",Yageo RC1206FR-07100RL,"Điện trở sense dòng LED — đúng cỡ 1206, ≥0.25W, 1%."
-6,100Ω,"Điện trở dán 1%, 1/8W",0805 (2012 metric),4,4,0,"R11, R12, R13, R14",Yageo RC0805FR-07100RL,Nối tiếp SCL/SDA từng module MCP4725 (driver v2.0). Cỡ 0805 — khác R4/R9 cỡ 1206.
