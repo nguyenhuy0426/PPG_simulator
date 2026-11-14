@@ -383,53 +383,24 @@ then Start calibration. Opening the page alone does not start output. Leaving th
 page stops an active calibration. Sine calibration drives both MCP4725 DAC channels simultaneously.
 
 **Optical operating levels (after moving an LED carrier or the receiver):** each
-LED→OPT101 path has its own linear window. On 2026-11-14 the IR path reached its
-~2.0 V ceiling at only ~550 mV DAC, and any drive past that knee made the IR
-reading fall ~45 % within 20 s and stay low for seconds afterwards. That, not the
-ADC or the UI, clipped the Calib sine and made Classic IR drift and shrink.
-Re-measure and store per-channel DC/AC with the app stopped:
+LED→OPT101 path has its own gain, turn-on and ceiling. On 2026-11-14 the IR
+driver stopped adding current above ~0.6–0.75 V DAC (~3 mA) and the OPT101
+outputs topped out at ~2.5 V (datasheet minimum at 3.3 V: 2.0 V). Drive past
+the IR knee made the IR reading fall for seconds; that, not the ADC or the UI,
+clipped the old Calib sine. See docs/hardware-validation/2026-11-14-ir-overload.
 
-```bash
-.venv/bin/python scripts/calibrate_optical.py --apply
-```
-
-It pulses each LED alone, finds dark level, turn-on, ceiling and knee, checks a
-20 s hold for drift, then writes `dc_*_mv`/`ac_*_mv` (old config kept as
-`config.json.bak-*`). Keep Calib sine peaks under the reported IR knee.
+**Calibration pass dots.** Set IR/RED levels (DAC mV), an optional ± sine and a
+± tolerance, then Start. The dot beside each RX lane blinks green while the
+OPT101 lane reads the sent level (or the sine peak/trough) within the
+tolerance; the text shows the received value and Δ = received − sent. There is
+no automatic optical compensation: a dot that stays red means that path's
+optical gain or range differs, to be fixed in the optics or the levels.
 
 **Live RX card:** every page shows an RX card to the right of its TX plot
 (the Signal setup window has none). The receiver samples the Grove Base Hat ADC at 100 Hz and refreshes the UI at up to 10 Hz,
 plotting an 8-second rolling window for A4 (IR) and A0 (Red). Sensor readings display raw
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
-
-**Single-sensor TDM mode (Setup → RX sensor → 1 × OPT101, or `--rx-mode tdm`):**
-when only one OPT101 is available, put both LEDs in one chamber in front of the A0
-sensor. [docs/system_3d/README_TDM.md](docs/system_3d/README_TDM.md) adds a
-dual-LED carrier (RED + IR, toed in to meet at the sensor, with swappable IR
-masks) for the IR lane of the existing rectangular v4 box; the 70 × 20 mm
-receiver PCB is used with only socket U2 (A0) populated. The Setup switch is locked while output runs, is
-saved in `config.json`, and is overridden by `--rx-mode` or `PPG_RX_MODE`.
-The TX thread then time-multiplexes the LEDs like a MAX30102: RED slot (IR at 0),
-IR slot (RED at 0), DARK slot (both 0). The LED being switched off is written
-first, so the two LEDs are never commanded on together. A0 is read once per slot,
-`PPG_TDM_READ_DELAY_MS` after the switch (default 12 ms of a 15 ms
-`PPG_TDM_SLOT_MS`; the Grove read follows, see `hw/grove_adc.py`), giving 22.2 Hz per channel, or 33.3 Hz with `PPG_TDM_DARK=0`.
-The RX card labels both lanes `A0 TDM`, plots raw codes and shows the dark level
-next to them. Nothing is subtracted. TDM reads the sensor only while output
-runs, and the LEDs pulse instead of glowing steadily.
-The read delay must exceed the real settling time. A 1 kΩ/1 µF output RC
-(τ = 1 ms) needs about 6–7 ms; the 4.7 kΩ/1 µF bench filter (τ = 4.7 ms) is too
-slow for 15 ms slots. Measure it with the app stopped:
-
-```bash
-.venv/bin/python scripts/measure_tdm_settling.py --output docs/hardware-validation/tdm-settling
-```
-
-`suggested_read_delay_ms` in its summary is the slowest observed edge plus 25 %.
-If it does not fit, lengthen `PPG_TDM_SLOT_MS` (lower per-channel rate) or reduce
-the RC. These checks establish timing only, not SpO₂ calibration: both channels
-now share one photodiode's responsivity, so the R ratio differs from dual mode.
 
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
 between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN

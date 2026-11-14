@@ -12,7 +12,7 @@ from ui.theme import AXIS, DARK, GRID, IR, PLOT_TEXT, RED  # noqa: F401  (re-exp
 MAX_VERTICES_PER_PIXEL = 1.0
 # A render slower than this marks a slow host: the next one then waits twice
 # as long as the last took, so the Tk thread (which also owns the GIL the
-# TDM slot master needs) never spends its whole time redrawing.
+# DAC and RX threads need) never spends its whole time redrawing.
 SLOW_RENDER_S = 0.015
 RENDER_BACKOFF = 2.0
 

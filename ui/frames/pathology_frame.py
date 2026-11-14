@@ -101,17 +101,16 @@ class PathologyFrame(ctk.CTkFrame):
             "hr": ("heart_rate", limits.HEART_RATE, "bpm", 1, 0),
             "spo2": ("spo2", limits.SPO2, "%", 1, 0),
             "rr": ("resp_rate", limits.RESP_RATE, "brpm", 1, 0),
-            "pi": ("perfusion_index", limits.PERFUSION_INDEX, "%", 0.01, 2),
         }
         setpoints = ctk.CTkFrame(self, fg_color="transparent")
         setpoints.grid(row=2, column=0, sticky="ew", pady=(u(gap), 0))
-        setpoints.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="setpoints")
+        setpoints.grid_columnconfigure(tuple(range(len(self.fields))), weight=1, uniform="setpoints")
         self.cards, self.vital_labels, self.sliders = {}, {}, {}
         for column, (key, (attr, span, unit, step, decimals)) in enumerate(self.fields.items()):
             card = SetpointCard(setpoints, text(self.language, key), span, unit, step, decimals,
                                 command=lambda value, k=key: self.update_param(k, value), ui=u)
             card.grid(row=0, column=column, sticky="nsew",
-                      padx=(0 if column == 0 else u(gap) // 2, 0 if column == 3 else u(gap) // 2))
+                      padx=(0 if column == 0 else u(gap) // 2, 0 if column == len(self.fields) - 1 else u(gap) // 2))
             self.cards[key] = card
             self.vital_labels[key] = card.value_label
             self.sliders[key] = card.slider
@@ -155,8 +154,10 @@ class PathologyFrame(ctk.CTkFrame):
     def update_param(self, key, value):
         attr, span = self.fields[key][:2]
         value = span.quantise(value)
-        callbacks = {"hr": self.engine.update_heart_rate, "spo2": self.engine.update_spo2,
-                     "rr": self.engine.update_resp_rate, "pi": self.engine.update_perfusion_index}
+        # SpO2 here sets the target the RED AC is derived from; a manual RED AC from Settings would keep R
+        # (and so the received SpO2) fixed, so this page hands RED AC back to the SpO2 derivation.
+        callbacks = {"hr": self.engine.update_heart_rate, "spo2": self.engine.update_spo2_target,
+                     "rr": self.engine.update_resp_rate}
         try:
             callbacks[key](value)
             self.cards[key].set(getattr(self.engine.ppg_params, attr))
@@ -297,9 +298,6 @@ class PathologyFrame(ctk.CTkFrame):
         for key, (attr, *_rest) in self.fields.items():
             self.cards[key].set(getattr(p, attr))
         self.cards["spo2"].set_badge(text(self.language, "badge_red_manual") if p.ac_red_mv is not None else None)
-        locked = bool(self.engine.ac_dc_locked)
-        self.cards["pi"].set_enabled(not locked)
-        self.cards["pi"].set_badge(text(self.language, "badge_locked") if locked else None)
         condition = condition_labels(self.language)[p.condition]
         if self.condition_menu.get() != condition:
             self.condition_menu.set(condition)

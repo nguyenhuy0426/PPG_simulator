@@ -114,3 +114,41 @@ class PanelTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SaturationLabelTest(unittest.TestCase):
+    """The OPT101 tops out at ~2.5 V, below ADC full scale: the lane must say so."""
+
+    def lanes_for(self, mv):
+        import time
+        from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED
+        from ui.rx_monitor import RXPanel
+        now = time.monotonic()
+        code = round(mv / 3280 * 4095)
+        samples = [RXSample(now - 1 + i / 100, code, False) for i in range(100)]
+
+        class Receiver:
+            is_simulated, sample_period_s = False, 0.01
+            def channel_status(self, channel): return "ok"
+            def is_stale(self, channel, now=None): return False
+            def get_samples_since(self, channel, since): return tuple(samples)
+
+        panel = RXPanel.__new__(RXPanel)   # lane logic only, no Tk window
+        panel.receiver, panel.language, panel.vitals = Receiver(), "en", False
+        panel.channels = ((ADC_CHANNEL_IR, "IR", "#0f0"), (ADC_CHANNEL_RED, "RED", "#f00"))
+        panel._last_update, panel.window_s = 0.0, 8.0
+        from core.rx_filter import StreamFilter
+        panel._filters = {ch: StreamFilter() for ch, _n, _c in panel.channels}
+        panel.winfo_ismapped = lambda: True
+        shown = []
+        panel.update_lanes = lambda lanes, end_s=None: shown.extend(lanes)
+        panel.periodic_update()
+        return shown
+
+    def test_saturated_opt101_is_labelled_with_its_real_voltage(self):
+        lane = self.lanes_for(2510)[0]
+        self.assertIn("2510 mV", lane.detail)
+        self.assertIn("OPT101 saturated", lane.detail)
+
+    def test_normal_level_has_no_saturation_label(self):
+        self.assertNotIn("saturated", self.lanes_for(800)[0].detail)

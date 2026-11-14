@@ -101,8 +101,8 @@ def _acf_rate(x, hz):
     return 60*hz/(lag+shift), b
 
 
-def _pulse_count_rate(x, hz, swing):
-    """Mean rate over prominent maxima at least one 220-bpm period apart; None below 3 pulses."""
+def pulse_peaks(x, hz, swing):
+    """Indices of prominent maxima at least one 220-bpm period apart."""
     gap, base = max(1, round(hz*60/BPM_RANGE[1])), max(1, round(.6*hz))
     peaks = []
     for i in range(1, len(x)-1):
@@ -110,6 +110,12 @@ def _pulse_count_rate(x, hz, swing):
             floor = max(min(x[max(0, i-base):i]), min(x[i+1:i+base+1]))
             if x[i]-floor >= .3*swing:
                 peaks.append(i)
+    return peaks
+
+
+def _pulse_count_rate(x, hz, swing):
+    """Mean rate over prominent maxima at least one 220-bpm period apart; None below 3 pulses."""
+    peaks = pulse_peaks(x, hz, swing)
     if len(peaks) < 3:
         return None
     return 60*(len(peaks)-1)/((peaks[-1]-peaks[0])/hz)

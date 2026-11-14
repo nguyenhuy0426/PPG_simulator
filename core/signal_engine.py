@@ -3,7 +3,7 @@ signal_engine.py — PPG signal generation engine with real-time DAC output.
 
 Port of signal_engine.cpp. Replaces FreeRTOS task with Python threading.
 Pipeline: PPGModel (100 Hz) → Linear interpolation → Ring buffer → MCP4725 DACs
-DAC rate: FS_TIMER_HZ (500 Hz by default on Pi, configurable).
+DAC rate: FS_TIMER_HZ (200 Hz by default on Pi, configurable).
 """
 
 import copy
@@ -18,7 +18,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
     SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ,
-    RX_MODE, RX_TDM_SLOTS, RX_TDM_SLOT_S, RX_TDM_READ_DELAY_S,
 )
 from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES
 from hw.dac_manager import DACManager
@@ -31,9 +30,6 @@ from comm.logger import log
 # two loops do not spin the CPU.
 LOOP_YIELD_S = 0.0005
 GENERATION_MAX_WAIT_S = 0.005
-
-# TDM pacing sleep cap: stop() latency stays a few ms inside a 10 ms slot.
-TDM_SLEEP_QUANTUM_S = 0.002
 
 # Signal states
 SIG_STOPPED = 0
@@ -133,12 +129,6 @@ class SignalEngine:
         self._underrun_count = 0
         self._dropped_samples = 0
 
-        # TDM (config.RX_MODE == "tdm"): the output thread multiplexes RED/IR
-        # onto one OPT101 and drives the receiver's reads (set_tdm_receiver).
-        self.rx_mode = RX_MODE
-        self._tdm_receiver = None
-        self._tdm_slot_count = 0
-        self._tdm_late_slots = 0
 
     def begin(self) -> bool:
         """Initialize the signal engine and DAC hardware."""
@@ -195,8 +185,8 @@ class SignalEngine:
 
             if waveform_clip is not None:
                 ir, red = waveform_clip.at(0)
-                self._prev_ir = self._curr_ir = self._v_to_dac(ir)
-                self._prev_red = self._curr_red = self._v_to_dac(red)
+                self._prev_ir = self._curr_ir = dac_voltage_to_code(ir)
+                self._prev_red = self._curr_red = dac_voltage_to_code(red)
 
             # Do not pre-fill buffer with DC baseline; start generating immediately
             self._write_idx = 0
@@ -208,8 +198,7 @@ class SignalEngine:
         self._running = True
         self._thread = threading.Thread(target=self._generation_loop, daemon=True, name="SignalGen")
         self._thread.start()
-        output_loop = self._tdm_loop if self.rx_mode == "tdm" else self._dac_loop
-        self._dac_thread = threading.Thread(target=output_loop, daemon=True, name="SignalDAC")
+        self._dac_thread = threading.Thread(target=self._dac_loop, daemon=True, name="SignalDAC")
         self._dac_thread.start()
         log.info(f"[SignalEngine] PPG running: {self.ppg_model.get_condition_name()}")
         return True
@@ -249,21 +238,6 @@ class SignalEngine:
                 if thread.is_alive():
                     raise RuntimeError("Output worker did not stop; refusing a second writer")
 
-    # ─── DAC Conversion (Volts → 12-bit) ───
-    @staticmethod
-    def _v_to_dac(signal_v: float) -> int:
-        """Convert signal in Volts to 12-bit DAC value.
-
-        Delegates to calibration.dac_voltage_to_code, the single source of truth
-        for DAC scaling. Linear mapping: 0 V → 0, DAC_FULLSCALE_V (3.28 V) → 4095.
-        PPG signals (strict clinical PI = AC/DC × 100%), at 3.28 V full-scale:
-            DC baseline = 1.5 V → DAC = 1872
-            PI=3%:  AC=45mV  → signal 1.5±0.045 V → DAC 1816–1928
-            PI=10%: AC=150mV → signal 1.5±0.15 V  → DAC 1685–2059
-            PI=20%: AC=300mV → signal 1.5±0.30 V  → DAC 1498–2247
-        """
-        return dac_voltage_to_code(signal_v)
-
     # ─── Ring buffer accounting ───
     def _reserve_write_space(self, n: int) -> None:
         """Make room for `n` samples, dropping the oldest if the ring is full.
@@ -302,16 +276,12 @@ class SignalEngine:
             "dropped_samples": self._dropped_samples,
             "samples_generated": self._sample_count,
             "buffer_fill": (self._write_idx - self._read_idx) % SIGNAL_BUFFER_SIZE,
-            "tdm_slots": self._tdm_slot_count,
-            "tdm_late_slots": self._tdm_late_slots,
         }
 
     def reset_stats(self) -> None:
         self._overrun_count = 0
         self._underrun_count = 0
         self._dropped_samples = 0
-        self._tdm_slot_count = 0
-        self._tdm_late_slots = 0
 
     # ─── Generation Loop (background thread) ───
     def _generate_one_tick(self) -> None:
@@ -335,23 +305,23 @@ class SignalEngine:
                 ir_v, red_v, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
                 stamp = self.ppg_model.simulated_time_s
             else:
-                frequency, ir_peak_mv, red_peak_mv = self._calibration
+                frequency, ir_level_mv, red_level_mv, swing_mv = self._calibration
                 self._cal_time += MODEL_DT_PPG
-                phase = 1 + math.sin(2 * math.pi * frequency * self._cal_time)
-                ir_v, red_v = ir_peak_mv / 2000 * phase, red_peak_mv / 2000 * phase
+                wave = swing_mv * math.sin(2 * math.pi * frequency * self._cal_time)
+                ir_v, red_v = (ir_level_mv + wave) / 1000, (red_level_mv + wave) / 1000
                 disp_ir, disp_red, stamp = ir_v, red_v, self._cal_time
+            ir_code, red_code = dac_voltage_to_code(ir_v), dac_voltage_to_code(red_v)
             self._display_history.append((stamp, disp_ir, disp_red))
             if self._recording:
                 p = self.ppg_params
                 if len(self._record_samples) == self._record_samples.maxlen:
                     self._record_dropped += 1
-                self._record_samples.append((self._v_to_dac(ir_v), self._v_to_dac(red_v),
+                self._record_samples.append((ir_code, red_code,
                     p.heart_rate, p.spo2, p.resp_rate, p.perfusion_index,
                     self._waveform_clip.name if self._waveform_clip is not None else CONDITION_NAMES[p.condition], stamp))
 
         # DAC voltage mapping: 0 V → 0, 3.28 V → 4095 (12-bit)
-        self._curr_ir = self._v_to_dac(ir_v)
-        self._curr_red = self._v_to_dac(red_v)
+        self._curr_ir, self._curr_red = ir_code, red_code
         if self._prev_ir is None:
             self._prev_ir, self._prev_red = self._curr_ir, self._curr_red
             self._prev_disp_ir, self._prev_disp_red = disp_ir, disp_red
@@ -417,89 +387,6 @@ class SignalEngine:
             # Two I2C writes already consume much of a 1 ms tick on Pi 4.
             # A fixed extra 0.5 ms sleep here caused sustained buffer growth.
             time.sleep(ticker.wait_seconds(time.perf_counter(), LOOP_YIELD_S))
-
-        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
-
-    # ─── TDM output (RED/IR share one chamber and one OPT101) ───
-    def set_rx_mode(self, mode, receiver=None) -> None:
-        """Switch dual/TDM while output is stopped. Holding the start lock
-        makes the check and the switch atomic against a GUI or BLE start, so
-        a running writer can never change pattern mid-stream."""
-        if mode not in ("dual", "tdm"):
-            raise ValueError(f"RX mode must be 'dual' or 'tdm', got {mode!r}")
-        with self._lock:
-            if self._running or self.state != SIG_STOPPED:
-                raise RuntimeError("Stop output before changing the RX mode")
-            if receiver is not None:
-                receiver.set_mode(mode)
-            self.rx_mode = mode
-            self._tdm_receiver = receiver if mode == "tdm" else None
-        log.info(f"[SignalEngine] RX mode → {mode}")
-
-    def set_tdm_receiver(self, receiver) -> None:
-        """Receiver whose acquire_tdm_slot() is called after each settled
-        slot. None keeps the LED multiplexing but takes no readings."""
-        self._tdm_receiver = receiver
-
-    def _take_latest_dac_sample(self):
-        """Newest (ir, red) pair, consuming everything older, or None if no
-        new sample arrived. A TDM slot holds one level for its whole length,
-        so the interpolated in-between samples are never written."""
-        with self._buf_lock:
-            if self._read_idx == self._write_idx:
-                return None
-            last = (self._write_idx - 1) % SIGNAL_BUFFER_SIZE
-            self._read_idx = self._write_idx
-            return self._buf_ir[last], self._buf_red[last]
-
-    @staticmethod
-    def _tdm_slot_codes(slot, ir, red):
-        """(ir_code, red_code, red_first) for one slot. The LED leaving its
-        slot is written first so the two LEDs are never on together."""
-        if slot == "red":
-            return DAC_IDLE_VALUE, red, False
-        if slot == "ir":
-            return ir, DAC_IDLE_VALUE, True
-        return DAC_IDLE_VALUE, DAC_IDLE_VALUE, False
-
-    def _tdm_sleep_until(self, deadline):
-        while self._running:
-            remaining = deadline - time.perf_counter()
-            if remaining <= 0:
-                return
-            time.sleep(min(remaining, TDM_SLEEP_QUANTUM_S))
-
-    def _tdm_loop(self):
-        """Slot master: per slot, switch the LEDs, wait RX_TDM_READ_DELAY_S
-        from the end of the writes, read the shared sensor, then wait for the
-        slot boundary. While paused the last levels keep being multiplexed,
-        the TDM equivalent of the continuous writer holding its output."""
-        receiver = self._tdm_receiver
-        latest = (DAC_IDLE_VALUE, DAC_IDLE_VALUE)
-        slot_index = 0
-        slot_start = time.perf_counter()
-        while self._running:
-            slot = RX_TDM_SLOTS[slot_index]
-            sample = self._take_latest_dac_sample()
-            if sample is not None:
-                latest = sample
-            ir, red, red_first = self._tdm_slot_codes(slot, *latest)
-            self.dac_manager.set_values(ir, red, red_first=red_first)
-            self._tdm_sleep_until(time.perf_counter() + RX_TDM_READ_DELAY_S)
-            if not self._running:
-                break
-            if receiver is not None:
-                receiver.acquire_tdm_slot(slot)
-            self._tdm_slot_count += 1
-            slot_index = (slot_index + 1) % len(RX_TDM_SLOTS)
-            slot_start += RX_TDM_SLOT_S
-            now = time.perf_counter()
-            if now > slot_start:
-                # I/O or scheduling overran the slot: re-base instead of
-                # bursting, and make the shortfall visible.
-                self._tdm_late_slots += 1
-                slot_start = now
-            self._tdm_sleep_until(slot_start)
 
         self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
 
@@ -569,6 +456,9 @@ class SignalEngine:
     def update_spo2(self, spo2):
         self._update_model("set_spo2", spo2)
 
+    def update_spo2_target(self, spo2):
+        self._update_model("set_spo2_target", spo2)
+
     def update_resp_rate(self, rr):
         self._update_model("set_resp_rate", rr)
 
@@ -599,19 +489,24 @@ class SignalEngine:
         with self._model_lock:
             return list(self._display_history)
 
-    def start_calibration(self, frequency_hz, amplitude_mv, red_amplitude_mv=None):
-        """0-to-peak sine on both DACs. IR and RED take separate peaks because
-        each LED->OPT101 path has its own linear window (scripts/calibrate_optical.py)."""
+    def start_calibration(self, frequency_hz, ir_level_mv, red_level_mv=None, swing_mv=0.0):
+        """Calibration output: level + swing * sin(2*pi*f*t) per channel, in mV.
+
+        Levels are DAC output millivolts. IR and RED take separate levels
+        because each LED -> OPT101 path has its own gain and range; swing 0
+        holds a steady level."""
         from config import DAC_FULLSCALE_MV
-        if red_amplitude_mv is None:
-            red_amplitude_mv = amplitude_mv
+        if red_level_mv is None:
+            red_level_mv = ir_level_mv
         if not math.isfinite(frequency_hz) or not 1 <= frequency_hz <= 10:
             raise ValueError("Calibration frequency must be 1–10 Hz")
-        for peak in (amplitude_mv, red_amplitude_mv):
-            if not math.isfinite(peak) or not 100 <= peak <= DAC_FULLSCALE_MV:
-                raise ValueError(f"Calibration amplitude must be 100–{DAC_FULLSCALE_MV:g} mV")
+        if not math.isfinite(swing_mv) or swing_mv < 0:
+            raise ValueError("Calibration swing must be ≥ 0 mV")
+        for level in (ir_level_mv, red_level_mv):
+            if not math.isfinite(level) or level - swing_mv < 0 or level + swing_mv > DAC_FULLSCALE_MV:
+                raise ValueError(f"Calibration level ± swing must stay within 0–{DAC_FULLSCALE_MV:g} mV")
         self.start_simulation(self.ppg_params.condition,
-                              calibration=(frequency_hz, amplitude_mv, red_amplitude_mv))
+                              calibration=(frequency_hz, ir_level_mv, red_level_mv, swing_mv))
 
     @property
     def is_calibrating(self):

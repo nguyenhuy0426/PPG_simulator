@@ -11,6 +11,42 @@ from ui.i18n import normalise_language, text
 from ui.touch_slider import TouchSlider
 from models import limits
 
+TOAST_MS = 3000
+DRAG_START_PX = 8
+NO_DRAG = (ctk.CTkButton, ctk.CTkSlider, ctk.CTkEntry, ctk.CTkOptionMenu, ctk.CTkCheckBox, ctk.CTkScrollbar)
+
+
+def enable_drag_scroll(body):
+    """Swipe to scroll a CTkScrollableFrame on a touch panel (no wheel there).
+
+    Bound on the form's labels and frames only: a drag that starts on a button, slider,
+    entry, menu or checkbox stays that widget's own gesture."""
+    canvas = body._parent_canvas
+    state = {}
+
+    def press(event):
+        state.update(y=event.y_root, top=canvas.yview()[0], dragging=False)
+
+    def motion(event):
+        if "y" not in state:
+            return
+        dy = event.y_root - state["y"]
+        if not state["dragging"] and abs(dy) < DRAG_START_PX:
+            return
+        state["dragging"] = True
+        content = max(1, body.winfo_height())
+        canvas.yview_moveto(max(0.0, state["top"] - dy / content))
+
+    def bind(widget):
+        if isinstance(widget, NO_DRAG):
+            return
+        widget.bind("<ButtonPress-1>", press, add="+")
+        widget.bind("<B1-Motion>", motion, add="+")
+        for child in widget.winfo_children():
+            bind(child)
+
+    bind(body)
+
 # Amplitude entries the phone can change live (BLE delta merge); a checkbox
 # the user has just clicked gets this hold-off before the engine truth wins.
 LIVE_ENTRY_KEYS = ("ac_ir_mv", "ac_red_mv", "dc_ir_mv", "dc_red_mv", "spo2")
@@ -22,6 +58,7 @@ COPY = {
     "en": dict(
         tab_amplitude="Amplitude & shape", tab_respiration="Respiration", tab_noise="Noise & calibration",
         idle="Changes apply only when you press Apply.", applied="Applied. Settings will be saved on exit.",
+        toast="✓ Parameters set: {what}",
         auto="Auto", ac_red_hint="Auto = derive from SpO₂", offset="Output DC offset",
         offset_hint="0–2000 mV; DC + offset ≤ 3000", gain="AC gain", gain_hint="0.1–5.0 ×",
         notch="Local notch attenuation", notch_hint="0–1; 0.25 = 25% local reduction", spo2="SpO₂ target",
@@ -57,6 +94,7 @@ COPY = {
     "vi": dict(
         tab_amplitude="Biên độ & hình dạng", tab_respiration="Hô hấp", tab_noise="Nhiễu & hiệu chuẩn",
         idle="Thay đổi chỉ có hiệu lực khi bấm Áp dụng.", applied="Đã áp dụng. Thiết lập sẽ được lưu khi thoát.",
+        toast="✓ Đã thiết lập thông số: {what}",
         auto="Tự động", ac_red_hint="Tự động = suy ra từ SpO₂", offset="Độ lệch DC đầu ra",
         offset_hint="0–2000 mV; DC + độ lệch ≤ 3000", gain="Hệ số khuếch đại AC", gain_hint="0,1–5,0 ×",
         notch="Độ suy giảm notch cục bộ", notch_hint="0–1; 0,25 = giảm cục bộ 25%", spo2="SpO₂ mục tiêu",
@@ -122,6 +160,10 @@ class AdvancedFrame(ctk.CTkFrame):
         self.idle_status = self.t["idle"]
         self.status = T.label(self, self.idle_status, 12, text_color=T.MUTED, anchor="w")
         self.status.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        self.toast = ctk.CTkLabel(self, text="", fg_color=T.OK_BG, text_color=T.OK, corner_radius=8,
+                                  font=T.font(13, True), height=30, padx=14)
+        self._toast_job = None
+        self._applying = ""
 
     def _entry(self, body, row, column, key, title, hint=""):
         box = ctk.CTkFrame(body, fg_color="transparent")
@@ -155,8 +197,8 @@ class AdvancedFrame(ctk.CTkFrame):
         if span:
             return span.minimum, span.maximum, span.step
         return {"resp_ie_ratio": (1,5,1), "noise_freq_hz": (0,49.99,0.01),
-                "noise_seed": (0,4294967295,1), "spo2_coeff_a": (0,200,0.1),
-                "spo2_coeff_b": (0.1,200,0.1)}[key]
+                "noise_seed": (0,9999,1), "spo2_coeff_a": (90,130,0.1),
+                "spo2_coeff_b": (5,50,0.1)}[key]
 
     def _check(self, body, row, column, key, title, command=None):
         var = ctk.BooleanVar(value=False)
@@ -193,8 +235,7 @@ class AdvancedFrame(ctk.CTkFrame):
         for row, kind in ((7, "sp"), (8, "dn"), (9, "dp")):
             for col, ch in enumerate(("ir", "red")):
                 self._entry(b, row, col, kind + "_ms_" + ch, t[kind] + " · " + ch.upper(), t["time_hint"])
-        ctk.CTkButton(b, text=t["apply_signal"], height=38, command=self.on_apply_signal).grid(
-            row=10, column=0, columnspan=2, sticky="ew", padx=12, pady=12)
+        self._apply_button("apply_signal", self.on_apply_signal)
 
     def _respiration(self, b):
         t = self.t
@@ -211,15 +252,12 @@ class AdvancedFrame(ctk.CTkFrame):
         self._check(b, 4, 0, "resp_mod_frequency", t["frequency_mod"])
         self._check(b, 4, 1, "apnea_enabled", t["apnea"])
         self._note(b, 5, t["resp_note"])
-        ctk.CTkButton(b, text=t["apply_respiration"], height=38, command=self.on_apply_respiration).grid(
-            row=6, column=0, columnspan=2, sticky="ew", padx=12, pady=12)
-
+        self._apply_button("apply_respiration", self.on_apply_respiration)
         self._note(b, 7, t["dynamics_note"])
         self._check(b, 8, 0, "hr_amplitude_enabled", t["hr_amplitude"])
         self._check(b, 8, 1, "spo2_coupling_enabled", t["spo2_coupling"])
         self._check(b, 9, 0, "variability_enabled", t["variability"])
-        ctk.CTkButton(b, text=t["apply_dynamics"], height=36, command=self.on_apply_dynamics).grid(
-            row=9, column=1, sticky="ew", padx=12, pady=12)
+        self._apply_button("apply_dynamics", self.on_apply_dynamics)
 
     def on_apply_dynamics(self):
         self._apply(lambda: self.engine.update_modelling_options(
@@ -235,14 +273,12 @@ class AdvancedFrame(ctk.CTkFrame):
         self._entry(b, 2, 0, "noise_freq_hz", t["noise_freq"], t["noise_freq_hint"])
         self._entry(b, 2, 1, "noise_seed", t["seed"], t["seed_hint"])
         self._entry(b, 3, 0, "noise_level", t["noise_level"], t["noise_level_hint"])
-        ctk.CTkButton(b, text=t["apply_noise"], height=36, command=self.on_apply_noise).grid(
-            row=3, column=1, sticky="ew", padx=12, pady=8)
+        self._apply_button("apply_noise", self.on_apply_noise)
         self._note(b, 4, t["mains_note"])
         self._note(b, 5, t["calibration_note"])
         self._entry(b, 6, 0, "spo2_coeff_a", t["coeff_a"])
         self._entry(b, 6, 1, "spo2_coeff_b", t["coeff_b"], t["coeff_b_hint"])
-        ctk.CTkButton(b, text=t["apply_coefficients"], height=36, command=self.on_apply_coefficients).grid(
-            row=7, column=0, columnspan=2, sticky="ew", padx=12, pady=12)
+        self._apply_button("apply_coefficients", self.on_apply_coefficients)
 
     def _number(self, key, optional=False):
         text = self.entries[key].get().strip()
@@ -250,13 +286,40 @@ class AdvancedFrame(ctk.CTkFrame):
         try: return float(text)
         except ValueError: raise ValueError(self.t["not_number"].format(key=key))
 
+    def _apply_button(self, key, command):
+        """Apply buttons sit in the tab's fixed footer, outside the scrolled form: on the
+        1024x600 panel the form is 2-4x taller than its visible area."""
+        what = self.t[key].removeprefix("Áp dụng ").removeprefix("Apply ")
+        def press():
+            self._applying = what   # the on_apply_* handler runs its own _apply()
+            try:
+                command()
+            finally:
+                self._applying = ""
+        button = ctk.CTkButton(self._footer, text=self.t[key], height=38, command=press)
+        button.pack(side="left", fill="x", expand=True, padx=12, pady=8)
+
     def _apply(self, callback):
+        """Run an Apply; on success show the 'applied' status and a short toast over the form."""
         try:
             callback()
             self._user_hold.clear()
             self.status.configure(text=self.t["applied"], text_color=T.ACCENT)
+            self._show_toast(self.t["toast"].format(what=self._applying).rstrip(": "))
         except (ValueError, TypeError) as exc:
             self.status.configure(text=str(exc), text_color=T.ERROR)
+
+    def _show_toast(self, message):
+        if self._toast_job is not None:
+            self.after_cancel(self._toast_job)
+        self.toast.configure(text=message)
+        self.toast.place(relx=0.5, y=6, anchor="n")
+        self.toast.lift()
+        self._toast_job = self.after(TOAST_MS, self._hide_toast)
+
+    def _hide_toast(self):
+        self._toast_job = None
+        self.toast.place_forget()
 
     def on_apply_signal(self):
         def apply():
@@ -351,7 +414,10 @@ class AdvancedFrame(ctk.CTkFrame):
         body = ctk.CTkScrollableFrame(tab, fg_color=T.PANEL)
         body.grid(row=0, column=0, sticky="nsew")
         body.grid_columnconfigure((0, 1), weight=1, uniform="forms")
+        self._footer = ctk.CTkFrame(tab, fg_color=T.PANEL)
+        self._footer.grid(row=1, column=0, sticky="ew", pady=(6, 0))
         build(body)
+        enable_drag_scroll(body)
         # Only the new widgets: unapplied edits on tabs already built stay as they are.
         self._load(set(self.entries)-entries, set(self.vars)-variables, set(self._menus())-menus)
 

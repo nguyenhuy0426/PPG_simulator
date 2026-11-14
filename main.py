@@ -7,7 +7,6 @@ Usage:
     python3 main.py --dry-run              # Dry-run + BLE (no hardware, simulated I/O)
     python3 main.py --no-ble               # Diagnostic GUI mode without BLE
     python3 main.py --dry-run --ble-only   # Headless: engine + BLE, no GUI (testing/CI)
-    python3 main.py --rx-mode tdm          # RED+IR in one chamber, one OPT101 (A0)
     python3 main.py --ble-secure           # BLE commands only from a paired phone
 """
 
@@ -33,10 +32,6 @@ parser.add_argument("--ble-secure", action=argparse.BooleanOptionalAction, defau
                          "--no-ble-secure accepts them from any central (current default)")
 parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
                     default="Pathology", help="Initial GUI page; output stays off")
-parser.add_argument("--rx-mode", choices=("dual", "tdm"),
-                    help="dual: one OPT101 per LED; tdm: RED and IR share one chamber "
-                         "and one OPT101 on A0, time-multiplexed (overrides PPG_RX_MODE "
-                         "and the mode saved from Settings)")
 args = parser.parse_args()
 
 # One instance per user, in every mode: a dry run still starts the BLE server
@@ -51,13 +46,11 @@ except instance_lock.AlreadyRunning as exc:
 
 if args.dry_run:
     os.environ["PPG_DRY_RUN"] = "1"
-if args.rx_mode:
-    os.environ["PPG_RX_MODE"] = args.rx_mode
 
-from config import (DEVICE_NAME, FIRMWARE_VERSION, FIRMWARE_DATE, DRY_RUN,
-                    RX_TDM_SLOTS, RX_TDM_SLOT_S, RX_TDM_READ_DELAY_S)
+from config import DEVICE_NAME, FIRMWARE_VERSION, FIRMWARE_DATE, DRY_RUN
 from comm.logger import log
-from config_store import load_config, save_config, config_from_ppg_params, apply_config_to_params
+from config_store import (load_config, save_config, config_from_ppg_params, apply_config_to_params,
+                          PRESERVED_KEYS)
 from core.signal_engine import SignalEngine
 from hw.opt101_rx import OPT101Receiver
 from ui.ctk_app import CTkApp
@@ -84,24 +77,17 @@ def start_ble(engine, enabled=True, secure_writes=None):
     return ble
 
 
-def resolve_rx_mode(saved_config):
-    """--rx-mode or PPG_RX_MODE win; otherwise the mode chosen in Settings."""
-    explicit = os.environ.get("PPG_RX_MODE")
-    if explicit:
-        return explicit
-    return saved_config.get("rx_mode", "dual")
-
-
 def save_current_config(engine, language="en", theme="light"):
     try:
         p = engine.get_ppg_params()
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
-        # Keep the mode chosen in Settings (written there immediately), not
-        # engine.rx_mode: that may be a one-run --rx-mode / PPG_RX_MODE override.
+        # Settings written directly by the pages (BLE switch, Calibration tolerance).
         saved = load_config()
-        cfg["rx_mode"] = saved.get("rx_mode", "dual")
         cfg["ble_enabled"] = saved.get("ble_enabled", True)
+        for key in PRESERVED_KEYS:
+            if key in saved:
+                cfg[key] = saved[key]
         from ui.i18n import normalise_language
         cfg["language"] = normalise_language(language)
         cfg["theme"] = theme if theme in ("light", "dark") else "light"
@@ -116,22 +102,15 @@ def main():
     log.info(f"  {FIRMWARE_DATE}")
     log.info(f"  Mode: {'DRY-RUN' if DRY_RUN else 'HARDWARE'}")
     config = load_config()
-    rx_mode = resolve_rx_mode(config)
-    if rx_mode == "tdm":
-        log.info(f"  RX: TDM on one OPT101 — slots {'/'.join(RX_TDM_SLOTS)}, "
-                 f"{RX_TDM_SLOT_S * 1000:g} ms each, read {RX_TDM_READ_DELAY_S * 1000:g} ms after switching")
-    else:
-        log.info("  RX: dual (one OPT101 per LED)")
+    log.info("  RX: one OPT101 per LED (IR and RED lanes)")
     log.info("=" * 50)
 
     engine = SignalEngine.get_instance()
     engine.begin()
 
     # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, pins from config.py).
-    # RX failure must not block TX/UI — the app degrades to TX-only; in TDM
-    # the LEDs are still multiplexed, the receiver simply returns no samples.
+    # RX failure must not block TX/UI — the app degrades to TX-only.
     rx = OPT101Receiver.get_instance()
-    engine.set_rx_mode(rx_mode, rx)
     if rx.begin():
         rx.start()
     else:

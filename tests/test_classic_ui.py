@@ -100,19 +100,33 @@ class TestClassicPage(unittest.TestCase):
             engine._running, pathology_frame.DRY_RUN = saved
 
     def test_setpoint_buttons_snap_to_the_step_grid(self):
-        card = self.page.cards["pi"]
+        card = self.page.cards["spo2"]
         sent = []
         command, card.command = card.command, sent.append
         try:
-            card.set(3.04)
+            card.set(95.0)
             card._nudge(1)
             card._nudge(-1)
-            card.set(3.045)
+            card.set(95.4)
             card._nudge(1)
             card._nudge(-1)
         finally:
             card.command = command
-        self.assertEqual(sent, [3.05, 3.03, 3.05, 3.04])
+        self.assertEqual(sent, [96.0, 94.0, 96.0, 95.0])
+
+    def test_pi_slider_is_removed(self):
+        self.assertEqual(list(self.page.cards), ["hr", "spo2", "rr"])
+
+    def test_spo2_setpoint_hands_red_ac_back_to_the_spo2_derivation(self):
+        engine = self.page.engine
+        saved = engine.get_ppg_params()
+        try:
+            engine.update_ac_levels(40.0, 70.0)           # manual RED AC from Settings
+            self.page.update_param("spo2", 90)
+            self.assertEqual(engine.ppg_params.spo2, 90.0)
+            self.assertIsNone(engine.ppg_params.ac_red_mv)
+        finally:
+            engine.load_parameters(saved)
 
     def test_condition_selector_drives_the_model_preset(self):
         engine = self.page.engine

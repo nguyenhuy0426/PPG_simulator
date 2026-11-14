@@ -32,6 +32,23 @@ def pair(ratio, ac_ir=60.0, dc_ir=1500.0, dc_red=1200.0, **kwargs):
 
 
 class EstimatorTest(unittest.TestCase):
+    def test_generator_waveforms_read_back_the_commanded_spo2(self):
+        # IR and RED pulses from the real model differ in shape; an RMS-based AC read R 0.22 for 0.44.
+        from models.ppg_model import PPGModel, PPGParameters
+        for target in (99.0, 90.0):
+            with self.subTest(spo2=target):
+                params = PPGParameters()
+                params.dc_ir_mv, params.ac_ir_mv, params.dc_red_mv, params.spo2 = 600.0, 30.0, 1000.0, target
+                model = PPGModel()
+                model.set_parameters(params)
+                model.reset()
+                rows = [model.generate_both_samples(0.01) for _ in range(1500)][500:]
+                ir = [RXSample(i/100, round(r[0]*1000/3280*4095), False) for i, r in enumerate(rows)]
+                red = [RXSample(i/100, round(r[1]*1000/3280*4095), False) for i, r in enumerate(rows)]
+                result = estimate_rx_spo2(ir, red, A, B)
+                self.assertEqual(result.reason, "ok")
+                self.assertAlmostEqual(result.spo2, target, delta=2.0)
+
     def test_ratio_and_spo2_are_recovered_with_different_dc_levels(self):
         for ratio in (.5, .6, .8, 1.0, 1.4):
             with self.subTest(ratio=ratio):
@@ -39,13 +56,6 @@ class EstimatorTest(unittest.TestCase):
                 self.assertEqual(result.reason, "ok")
                 self.assertAlmostEqual(result.ratio, ratio, delta=.03)
                 self.assertAlmostEqual(result.spo2, A-B*ratio, delta=1.0)
-
-    def test_tdm_rate_with_channels_read_at_different_times(self):
-        ir = channel(60, 1500, hz=22.2, offset=0.0, seed=1)
-        red = channel(48, 1200, hz=22.2, offset=0.015, seed=2)
-        result = estimate_rx_spo2(ir, red, A, B)
-        self.assertEqual(result.reason, "ok")
-        self.assertAlmostEqual(result.ratio, 1.0, delta=.05)
 
     def test_dark_level_is_taken_out_of_dc(self):
         ir, red = channel(60, 1500, seed=1), channel(60, 300, seed=2)
@@ -105,13 +115,16 @@ class PanelTest(unittest.TestCase):
         return panel
 
     def test_red_lane_shows_rate_and_spo2_estimate_together(self):
+        from unittest import mock
+        from core import rx_spo2_cal
         ir, red = pair(.6)
         panel = self.make_panel(FakeReceiver({ADC_CHANNEL_IR: live(ir), ADC_CHANNEL_RED: live(red)}))
-        panel.periodic_update()
+        with mock.patch.dict(rx_spo2_cal._cache, {"loaded": True, "value": None}):   # no saved receive fit
+            panel.periodic_update()
         self.assertRegex(panel.lanes[0].badge, r"^Nhịp RX  7[4-6] bpm$")
         self.assertRegex(panel.lanes[1].badge, r"^Nhịp RX  7[4-6] bpm$")
-        self.assertEqual(panel.lanes[0].badge2, "")
-        self.assertRegex(panel.lanes[1].badge2, r"^SpO₂ RX ước tính  \d+ %  R 0\.[56]\d$")
+        self.assertTrue(panel.lanes[0].badge2.startswith("Nhịp thở RX"))   # IR lane carries the RR estimate
+        self.assertRegex(panel.lanes[1].badge2, r"^SpO₂ RX ước tính \(chưa hiệu chuẩn\)  \d+ %  R 0\.[56]\d$")
         texts = [panel.itemcget(i, "text") for i in panel.find_all() if panel.type(i) == "text"]
         self.assertTrue(any(t.startswith("SpO₂ RX ước tính") for t in texts))
 

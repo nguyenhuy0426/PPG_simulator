@@ -67,9 +67,11 @@ ADC_CHANNEL_RED = 0     # A0 — OPT101 Red photodiode channel
 
 # Timer master frequency (internal buffer rate)
 # MCP4725 I2C can sustain ~1 kHz writes in fast mode
-# Pi desktop + shared I2C may not sustain 1 kHz. Keep a validated integer
-# multiple of the 100 Hz model rate; deployment can select 500 Hz explicitly.
-FS_TIMER_HZ = int(os.environ.get("PPG_DAC_RATE_HZ", "500" if platform.machine() == "aarch64" else "1000"))
+# Integer multiple of the 100 Hz model rate. On the Pi 4 with the GUI and the
+# 100 Hz/ch RX sharing I2C at 100 kHz, 500 Hz could not be sustained (measured
+# 2026-11-14: ring full at 1019/1024, ~44 samples/s dropped, ~2 s output lag), so
+# the Pi default is 200 Hz; PPG content is < 10 Hz and the model runs at 100 Hz.
+FS_TIMER_HZ = int(os.environ.get("PPG_DAC_RATE_HZ", "200" if platform.machine() == "aarch64" else "1000"))
 if FS_TIMER_HZ not in (100, 200, 500, 1000):
     raise ValueError("PPG_DAC_RATE_HZ must be 100, 200, 500 or 1000")
 
@@ -85,7 +87,7 @@ MODEL_DT_PPG = 1.0 / MODEL_SAMPLE_RATE_PPG  # 10 ms
 MODEL_TICK_US_PPG = 1_000_000 // MODEL_SAMPLE_RATE_PPG  # 10000 us
 
 # Upsample ratio: interpolation from model rate to timer rate
-UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 5 on Pi; 10 at 1 kHz
+UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 2 on Pi; 10 at 1 kHz
 
 # ============================================================================
 # MCP4725 DAC CONFIGURATION (12-bit)
@@ -136,44 +138,10 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 # per 10 ms to the shared bus.
 RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR, ADC_CHANNEL_RED)
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
-RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
+RX_BUFFER_SIZE = 6400           # Bounded per-channel buffer: 64 s @ 100 Hz, enough for the 60 s RR window
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
 RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disconnected
-
-# ============================================================================
-# RX MODE — "dual" (one OPT101 per LED, separate lanes) or "tdm" (RED and IR
-# share ONE chamber and ONE OPT101, time-multiplexed like the MAX30102)
-# ============================================================================
-# In "tdm" the SignalEngine output thread is the single slot master: it turns
-# one LED on (the other off), waits RX_TDM_READ_DELAY_S for the optical/analog
-# path to settle, reads the shared OPT101 on RX_TDM_ADC_CHANNEL, then moves to
-# the next slot. Slot order: RED, IR and, when enabled, DARK (both LEDs off,
-# measures OPT101 offset + leaked ambient light). Per-channel rate is
-# 1 / (slot × number of slots): 22.2 Hz with the 15 ms / 3-slot default.
-#
-# READ DELAY [INFERENCE — must be measured]: the receiver PCB v1.5 output RC
-# Measured on the Pi 4 with R = 1 kΩ, C = 100 nF [VERIFIED 2026-11-03]: the OPT101
-# falls more slowly than the RC alone explains. After IR switches off, the part of
-# its level still present is ~25 % at 6 ms, ~5 % at 12 ms and ~0 at 15 ms, and this
-# lands in the dark lane. PPG_TDM_READ_DELAY_MS=15 with PPG_TDM_SLOT_MS=18 removes
-# it at 18.5 Hz per channel; the 12/15 default keeps 22.2 Hz.
-# scripts/measure_tdm_settling.py measures this step response on the assembly.
-RX_MODE = os.environ.get("PPG_RX_MODE", "dual")
-if RX_MODE not in ("dual", "tdm"):
-    raise ValueError("PPG_RX_MODE must be 'dual' or 'tdm'")
-RX_TDM_ADC_CHANNEL = 0   # the single shared TDM OPT101 sits on physical A0
-RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "15")) / 1000.0
-RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "12")) / 1000.0
-RX_TDM_DARK_SLOT = os.environ.get("PPG_TDM_DARK", "1") == "1"
-# The read delay counts from the END of the LED-switching DAC writes, so it is
-# the real settling time. Two DAC writes (~0.3 ms each) and one Grove read
-# (~0.45 ms) at 100 kHz I2C [INFERENCE, Phase 4 budget] must also fit in the
-# slot. One Grove read measured ~0.7 ms on the Pi 4 [VERIFIED 2026-11-03]; a slot
-# that overruns is counted (tdm_late_slots) and re-based.
-RX_TDM_MIN_READ_DELAY_S = 0.001
-RX_TDM_IO_BUDGET_S = 0.003
-if not RX_TDM_MIN_READ_DELAY_S <= RX_TDM_READ_DELAY_S <= RX_TDM_SLOT_S - RX_TDM_IO_BUDGET_S:
-    raise ValueError("PPG_TDM_READ_DELAY_MS must be ≥ 1 ms and leave ≥ 3 ms of the "
-                     "slot for the DAC writes and the ADC read")
-RX_TDM_SLOTS = ("red", "ir", "dark") if RX_TDM_DARK_SLOT else ("red", "ir")
-RX_TDM_FRAME_S = RX_TDM_SLOT_S * len(RX_TDM_SLOTS)   # one sample per channel per frame
+# OPT101 output ceiling on its 3.3 V Grove supply: datasheet (TI OPT101 §6.5) V_out high = V_S − 1.3 V min /
+# V_S − 1.15 V typ ≈ 2.0–2.15 V; measured 2.51–2.54 V on both lanes (2026-11-14). It is below the ADC full
+# scale (3.3 V), so a saturated OPT101 never reads 4095: the RX lane flags readings at or above this level.
+OPT101_SATURATION_MV = 2400

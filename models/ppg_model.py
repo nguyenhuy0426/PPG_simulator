@@ -573,6 +573,12 @@ class PPGModel:
     def set_spo2(self, value):
         self.params.spo2 = limits.SPO2.validate(value)
 
+    def set_spo2_target(self, value):
+        """SpO2 chosen as the target: RED AC follows it again. A manual RED AC (Settings) fixes
+        AC_red, so R and the SpO2 read back from the waveforms would not move with this value."""
+        self.set_spo2(value)
+        self.params.ac_red_mv = None
+
     def set_resp_rate(self, value):
         self.set_respiration(self.respiration.config.replace(rate_brpm=value))
 

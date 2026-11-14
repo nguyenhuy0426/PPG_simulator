@@ -36,15 +36,15 @@ class EngineStartupTest(unittest.TestCase):
         self.assertLess(max(ir), 500)               # 300 mV + AC is ~375-425 codes, mid-scale is 2048
         self.assertEqual(len(set(red)), 1, red)
 
-    def test_calibration_sine_has_separate_ir_and_red_peaks(self):
+    def test_calibration_has_separate_ir_and_red_levels(self):
         with mock.patch("core.signal_engine.threading.Thread.start"):
-            self.engine.start_calibration(1.0, 400.0, 1600.0)
-        self.assertEqual(self.engine._calibration, (1.0, 400.0, 1600.0))
-        ir, red = first_tick(self.engine, calibration=(1.0, 400.0, 1600.0))
-        self.assertLess(max(ir), 520)              # <= 400 mV peak
-        self.assertGreater(min(red), 600)          # RED rides its own, larger sine
+            self.engine.start_calibration(1.0, 300.0, 1500.0, 100.0)
+        self.assertEqual(self.engine._calibration, (1.0, 300.0, 1500.0, 100.0))
+        ir, red = first_tick(self.engine, calibration=(1.0, 300.0, 1500.0, 100.0))
+        self.assertLess(max(ir), 520)              # 300 ± 100 mV
+        self.assertGreater(min(red), 1600)         # 1500 ± 100 mV on its own level
         with self.assertRaises(ValueError):
-            self.engine.start_calibration(1.0, 400.0, 50.0)
+            self.engine.start_calibration(1.0, 50.0, 1000.0, 100.0)   # level - swing below 0
 
 
 if __name__ == "__main__":

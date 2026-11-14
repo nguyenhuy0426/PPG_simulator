@@ -68,7 +68,7 @@ def test_legacy_coupling_setters_update_persisted_parameters():
 
 
 def test_calibration_ticks_are_independent_of_gui_and_stop_parks_outputs(engine):
-    engine._calibration = (10., 1000., 1000.)
+    engine._calibration = (10., 500., 500., 500.)
     for _ in range(100): engine._generate_one_tick()
     data = engine.get_display_history()
     assert data[-1][0] == pytest.approx(1.)

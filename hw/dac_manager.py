@@ -72,13 +72,11 @@ class DACManager:
                 i2c.deinit()  # begin() is retried on each start; do not leak the bus handle
             return False
 
-    def set_values(self, value_ir: int, value_red: int, red_first: bool = False):
+    def set_values(self, value_ir: int, value_red: int):
         """Write 12-bit values to both DACs — IR first, then Red.
 
         Each write is one 2-byte fast-mode I2C transaction, so Red always
         updates one transaction time after IR within the same 1 kHz tick.
-        `red_first` reverses that order; TDM uses it to switch the outgoing
-        LED off before the incoming one turns on (break-before-make).
         A write failure on one channel must not block the other channel.
         """
         value_ir = max(0, min(DAC_MAX_VALUE, int(value_ir)))
@@ -93,12 +91,8 @@ class DACManager:
             return
 
         with self._write_lock:
-            if red_first:
-                self._write_red(value_red)
-                self._write_ir(value_ir)
-            else:
-                self._write_ir(value_ir)
-                self._write_red(value_red)
+            self._write_ir(value_ir)
+            self._write_red(value_red)
 
     def _write_ir(self, value: int):
         try:

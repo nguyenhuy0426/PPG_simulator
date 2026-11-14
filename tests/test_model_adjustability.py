@@ -184,6 +184,16 @@ class TestAcDcMastering(unittest.TestCase):
         # R = (110-80)/25 = 1.2 at equal DC -> AC_red = 1.2 * AC_ir
         self.assertAlmostEqual(red_swing, 24.0, delta=0.6)
 
+    def test_spo2_target_releases_a_pinned_red_ac(self):
+        """Pi bug 14/11: a manual RED AC from Settings (70 mV) kept R, and so the received SpO2, fixed while the
+        Classic SpO2 slider moved. The Classic setpoint hands RED AC back to the SpO2 derivation."""
+        model = _quiet_model()
+        model.set_ac_levels(20.0, 10.0)
+        model.set_spo2_target(80.0)
+        self.assertIsNone(model.params.ac_red_mv)
+        disp_red = [s[3] for s in _run(model, 4.0)]
+        self.assertAlmostEqual((max(disp_red) - min(disp_red)) * 1000.0, 24.0, delta=0.6)
+
     def test_setting_pi_updates_the_ac_master(self):
         model = _quiet_model()
         model.set_perfusion_index(2.0)
