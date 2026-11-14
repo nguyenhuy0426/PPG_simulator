@@ -11,14 +11,16 @@ from ui.trace_view import TraceView
 COPY = {
     "vi": dict(title="Hiệu chuẩn & thu tín hiệu",
                subtitle="Sine thử trên cả hai DAC. Mở trang không đổi đầu ra; rời trang sẽ dừng sine.",
-               sine="Sine thử", frequency="Tần số / Hz", amplitude="0 tới đỉnh / mV",
+               sine="Sine thử", frequency="Tần số / Hz", amplitude="IR 0 tới đỉnh / mV",
+               red_amplitude="RED 0 tới đỉnh / mV",
                start="Bắt đầu", stop="Dừng sine", tx="Tín hiệu phát TX", rx="Tín hiệu thu RX",
                idle="Chưa phát sine", running="Đang phát sine trên cả hai kênh DAC · đơn vị mV",
                no_output="Sine chưa ra LED: DAC không phản hồi trên I2C",
                note="Số đọc ADC thô. SpO₂ đo được cần một hiệu chuẩn quang học đã kiểm chứng."),
     "en": dict(title="Calibration & acquisition",
                subtitle="Test sine on both DACs. Opening this page does not change the output; leaving stops it.",
-               sine="Test sine", frequency="Frequency / Hz", amplitude="0 to peak / mV",
+               sine="Test sine", frequency="Frequency / Hz", amplitude="IR 0 to peak / mV",
+               red_amplitude="RED 0 to peak / mV",
                start="Start", stop="Stop sine", tx="TX output signal", rx="RX received signal",
                idle="Calibration standby", running="Sine running on both DAC channels · units mV",
                no_output="Sine is not reaching the LEDs: the DACs do not answer on I2C",
@@ -42,11 +44,14 @@ class CalibrationFrame(ctk.CTkFrame):
 
         sine, self.sine_title, _tools = K.section(self, span=2)
         sine.grid(row=1, column=0, sticky="ew", pady=(0, u(8)))
-        sine.grid_columnconfigure((0, 1), weight=1, uniform="sine")
+        sine.grid_columnconfigure((0, 1, 2), weight=1, uniform="sine")
         self.slider_labels = {}
         for column, (key, control) in enumerate((
                 ("frequency", TouchSlider(sine, 1, 10, 0.1, value=1)),
-                ("amplitude", TouchSlider(sine, 100, DAC_FULLSCALE_MV, 10, value=1000)))):
+                # IR saturates far earlier than RED on this optical assembly (IR knee
+                # ~550 mV DAC on 2026-11-14), so the two peaks are set separately.
+                ("amplitude", TouchSlider(sine, 100, DAC_FULLSCALE_MV, 10, value=400)),
+                ("red_amplitude", TouchSlider(sine, 100, DAC_FULLSCALE_MV, 10, value=1500)))):
             label = T.label(sine, "", u(12), text_color=T.MUTED, anchor="w")
             label.grid(row=1, column=column, sticky="ew", padx=u(12))
             control.grid(row=2, column=column, sticky="ew", padx=u(12), pady=(0, u(10)))
@@ -93,7 +98,8 @@ class CalibrationFrame(ctk.CTkFrame):
             try:
                 if self.master.frames["Pathology"].is_recording:
                     self.master.frames["Pathology"].toggle_recording()
-                self.engine.start_calibration(float(self.frequency.get()), float(self.amplitude.get()))
+                self.engine.start_calibration(float(self.frequency.get()), float(self.amplitude.get()),
+                                              float(self.red_amplitude.get()))
                 self.status.configure(text=COPY[self.language]["running"], text_color=T.ACCENT)
             except ValueError as exc:
                 self.status.configure(text=str(exc), text_color=T.ERROR)

@@ -98,9 +98,9 @@ def raise_systemexit(channel):
 
 class TestChannelMapping(unittest.TestCase):
     def test_config_constants_match_verified_hardware(self):
-        # [VERIFIED-USER 2026-07-12]: IR on A0, Red on A4, A1 unused.
-        self.assertEqual(config.ADC_CHANNEL_IR, 0)
-        self.assertEqual(config.ADC_CHANNEL_RED, 4)
+        # [VERIFIED-USER 2026-11-11]: IR on A4, Red on A0, A1 unused.
+        self.assertEqual(config.ADC_CHANNEL_IR, 4)
+        self.assertEqual(config.ADC_CHANNEL_RED, 0)
         # [VERIFIED-USER]: Grove Base HAT MCU is MM32 → ADC I2C address 0x08
         # (the STM32 revision of the same HAT answers at 0x04).
         self.assertEqual(config.GROVE_ADC_ADDR, 0x08)

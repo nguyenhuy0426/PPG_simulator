@@ -12,7 +12,7 @@ Design constraints (task-mandated):
     blocking the timing loop.
   * Monotonic timestamps (time.monotonic_ns() domain) in every record; the
     wall clock appears only once, as session metadata (created_utc).
-  * A1 is never a valid Grove channel.  IR is A0, Red is A4 [VERIFIED-USER].
+  * A1 is never a valid Grove channel.  IR/Red pins come from config.py.
   * Missing RX data stays missing: a failed read must carry raw_code=None and
     converted_voltage_v=None (empty CSV cells), never zeros or TX-derived
     values.  Record validation enforces this at construction time.
@@ -55,7 +55,7 @@ VALID_CHANNELS = ("ir", "red")
 
 # Fixed, task-mandated mappings.  A1 does not appear anywhere.
 _CHANNEL_TO_DAC_ADDR = {"ir": config.DAC_ADDR_IR, "red": config.DAC_ADDR_RED}
-_CHANNEL_TO_GROVE = {"ir": "A0", "red": "A4"}
+_CHANNEL_TO_GROVE = {"ir": f"A{config.ADC_CHANNEL_IR}", "red": f"A{config.ADC_CHANNEL_RED}"}
 
 TX_FIELDS = (
     "session_id", "sequence_id", "t_mono_ns", "channel", "dac_address",

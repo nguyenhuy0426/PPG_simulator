@@ -70,7 +70,7 @@ def make_tx(channel="ir", sequence_id=0, dac_code=100, success=True, **over):
 
 def make_rx(channel="ir", sequence_id=0, success=True, **over):
     """A valid RxRecord; a failed one carries no code and no voltage."""
-    grove = "A0" if channel == "ir" else "A4"
+    grove = f"A{config.ADC_CHANNEL_IR}" if channel == "ir" else f"A{config.ADC_CHANNEL_RED}"
     fields = dict(
         session_id="S1",
         sequence_id=sequence_id,
@@ -98,7 +98,7 @@ class TestTxRecordValidation(unittest.TestCase):
     def test_valid_record_constructs(self):
         rec = make_tx()
         self.assertEqual(rec.channel, "ir")
-        self.assertEqual(rec.dac_address, 0x60)
+        self.assertEqual(rec.dac_address, config.DAC_ADDR_IR)
 
     def test_records_are_immutable(self):
         rec = make_tx()
@@ -132,8 +132,8 @@ class TestTxRecordValidation(unittest.TestCase):
 
 class TestRxRecordValidation(unittest.TestCase):
     def test_valid_ir_and_red_records_construct(self):
-        self.assertEqual(make_rx("ir").grove_channel, "A0")
-        self.assertEqual(make_rx("red").grove_channel, "A4")
+        self.assertEqual(make_rx("ir").grove_channel, f"A{config.ADC_CHANNEL_IR}")
+        self.assertEqual(make_rx("red").grove_channel, f"A{config.ADC_CHANNEL_RED}")
 
     def test_a1_is_never_valid(self):
         with self.assertRaises(ValueError):
@@ -145,7 +145,7 @@ class TestRxRecordValidation(unittest.TestCase):
         with self.assertRaises(ValueError):
             make_rx("ir", grove_channel="A2")
         with self.assertRaises(ValueError):
-            make_rx("red", grove_channel="A0")
+            make_rx("red", grove_channel=f"A{config.ADC_CHANNEL_IR}")
 
     def test_wrong_adc_address_rejected(self):
         with self.assertRaises(ValueError):
@@ -409,7 +409,7 @@ class TestCsvContent(LoggerTestBase):
         row = self.read_rows("S1", "tx_red.csv")[0]
         self.assertEqual(row["session_id"], "S1")
         self.assertEqual(row["channel"], "red")
-        self.assertEqual(row["dac_address"], "0x61")
+        self.assertEqual(row["dac_address"], f"0x{config.DAC_ADDR_RED:02x}")
         self.assertEqual(row["dac_code"], "1023")
         self.assertEqual(row["target_hr_bpm"], "75.0")
         self.assertEqual(row["write_duration_ns"], "400000")
@@ -422,7 +422,7 @@ class TestCsvContent(LoggerTestBase):
         logger.log_rx(make_rx("red"))
         logger.close()
         row = self.read_rows("S1", "rx_red.csv")[0]
-        self.assertEqual(row["grove_channel"], "A4")
+        self.assertEqual(row["grove_channel"], f"A{config.ADC_CHANNEL_RED}")
         self.assertEqual(row["adc_address"], "0x08")
         self.assertEqual(row["raw_code"], "2048")
         self.assertEqual(row["stale"], "0")

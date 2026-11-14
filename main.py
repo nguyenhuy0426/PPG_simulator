@@ -127,7 +127,7 @@ def main():
     engine = SignalEngine.get_instance()
     engine.begin()
 
-    # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, IR=A0 / Red=A4).
+    # Phase 5: OPT101 RX acquisition (Grove ADC 0x08, pins from config.py).
     # RX failure must not block TX/UI — the app degrades to TX-only; in TDM
     # the LEDs are still multiplexed, the receiver simply returns no samples.
     rx = OPT101Receiver.get_instance()

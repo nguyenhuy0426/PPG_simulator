@@ -2,9 +2,6 @@
 config.py — Global system configuration for PPG Signal Simulator (Raspberry Pi 4)
 
 Hardware: Raspberry Pi 4 + Grove Base Hat (ADC) + Dual MCP4725 DAC (I2C)
-         + HDMI display (auto-detect resolution)
-
-Port of the ESP32-S3 config.h to Python.
 """
 
 import os
@@ -43,8 +40,10 @@ CONFIG_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "con
 # PIN CONFIGURATION — MCP4725 DACs (I2C Bus 1)
 # ============================================================================
 I2C_BUS = 1             # /dev/i2c-1
-DAC_ADDR_IR  = 0x60     # MCP4725 address for IR channel
-DAC_ADDR_RED = 0x61     # MCP4725 address for Red channel
+# Measured 2026-11-14: DAC 0x60 lights the LED seen on A0 and 0x61 the LED seen
+# on A4 (no crosstalk). The user identified the A4 lane as IR on 2026-11-11/12.
+DAC_ADDR_IR  = 0x61     # MCP4725 address for IR channel
+DAC_ADDR_RED = 0x60     # MCP4725 address for Red channel
 
 # ============================================================================
 # PIN CONFIGURATION — GROVE BASE HAT ADC (I2C)
@@ -54,15 +53,13 @@ DAC_ADDR_RED = 0x61     # MCP4725 address for Red channel
 # address of MM32 is 0x08, while the STM32 is 0x04"]. It shares /dev/i2c-1 with
 # both MCP4725 DACs at 0x60/0x61. Do NOT revert to 0x04 — that is the STM32
 # revision of the same HAT, which is not the board installed here.
-# Verified RX mapping [VERIFIED-USER, moved from A2 to A4 on 2026-11-03]:
-#     OPT101 (IR)  -> A0  (Grove ADC channel 0)
-#     OPT101 (Red) -> A4  (Grove ADC channel 4)
+# RX mapping [VERIFIED-USER 2026-11-11, pairing measured 2026-11-14]:
+#     OPT101 (IR)  -> A4  (Grove ADC channel 4), lit by DAC 0x61
+#     OPT101 (Red) -> A0  (Grove ADC channel 0), lit by DAC 0x60
 #     A1 is NOT used for OPT101.
-# (Earlier phase docs stated A1 = Red; that mapping is stale and superseded.)
-# OPT101 acquisition is implemented in Phase 5 (hw/opt101_rx.py).
 GROVE_ADC_ADDR = 0x08   # Grove Base Hat MM32 ADC I2C address [VERIFIED-USER]
-ADC_CHANNEL_IR = 0      # A0 — OPT101 IR photodiode channel
-ADC_CHANNEL_RED = 4     # A4 — OPT101 Red photodiode channel
+ADC_CHANNEL_IR = 4      # A4 — OPT101 IR photodiode channel
+ADC_CHANNEL_RED = 0     # A0 — OPT101 Red photodiode channel
 
 # ============================================================================
 # SIGNAL SAMPLING CONFIGURATION
@@ -75,7 +72,6 @@ ADC_CHANNEL_RED = 4     # A4 — OPT101 Red photodiode channel
 FS_TIMER_HZ = int(os.environ.get("PPG_DAC_RATE_HZ", "500" if platform.machine() == "aarch64" else "1000"))
 if FS_TIMER_HZ not in (100, 200, 500, 1000):
     raise ValueError("PPG_DAC_RATE_HZ must be 100, 200, 500 or 1000")
-SAMPLE_RATE_HZ = FS_TIMER_HZ   # Alias
 
 # PPG model generation rate
 # PPG bandwidth: 0.5–10 Hz → Nyquist = 20 Hz
@@ -94,9 +90,7 @@ UPSAMPLE_RATIO_PPG = FS_TIMER_HZ // MODEL_SAMPLE_RATE_PPG  # 5 on Pi; 10 at 1 kH
 # ============================================================================
 # MCP4725 DAC CONFIGURATION (12-bit)
 # ============================================================================
-DAC_RESOLUTION_BITS = 12
 DAC_MAX_VALUE = 4095
-DAC_CENTER_VALUE = 2048
 
 # Safe idle/shutdown code — 0 → 0 V at the DAC output.
 # In the LED-driver concept (I_LED proportional to V_DAC across the sense
@@ -116,36 +110,11 @@ DAC_IDLE_VALUE = 0
 # independent; never define one in terms of the other.
 DAC_FULLSCALE_V = 3.28                         # Volts (MCP4725 full-scale = VDD)
 DAC_FULLSCALE_MV = DAC_FULLSCALE_V * 1000.0    # 3280.0 mV (user-facing convenience)
-DAC_VOLTAGE_MAX = DAC_FULLSCALE_V              # Backward-compatible alias (deprecated name)
-DAC_V_PER_STEP = DAC_FULLSCALE_V / (DAC_MAX_VALUE + 1)  # ~0.000781 V per step
-
-# ============================================================================
-# DISPLAY CONFIGURATION — Auto-detect resolution
-# ============================================================================
-# Set to 0 for auto-detection at runtime via pygame.display.Info()
-# Override with fixed values for specific screens (e.g., headless testing)
-DISPLAY_WIDTH = 0               # 0 = auto-detect
-DISPLAY_HEIGHT = 0              # 0 = auto-detect
-DISPLAY_FULLSCREEN = True
-DISPLAY_FPS = 60                # Target frame rate
-
-# ============================================================================
-# WAVEFORM DISPLAY CONFIGURATION
-# ============================================================================
-# Duration of waveform visible on screen (seconds)
-# At 50 Hz GUI update rate, 5s = 250 points across the screen width
-WAVEFORM_DISPLAY_DURATION = 15.0    # seconds — extended for better observation
 
 # ============================================================================
 # BUFFER CONFIGURATION
 # ============================================================================
-SIGNAL_BUFFER_SIZE = 1024       # Samples (~1 second at 1 kHz)
-
-# ============================================================================
-# UI TIMING
-# ============================================================================
-METRICS_UPDATE_MS = 250         # 4 Hz text metrics update
-WAVEFORM_UPDATE_MS = 20         # 50 Hz waveform drawing
+SIGNAL_BUFFER_SIZE = 1024       # TX ring samples (~2 s at the 500 Hz Pi DAC rate)
 
 # ============================================================================
 # ADC CONFIGURATION (Grove Base Hat — 12-bit MM32 ADC)
@@ -166,7 +135,6 @@ ADC_VOLTAGE_REF = 3.28          # Volts — Grove ADC reference (RX path)
 # per channel gives 10x Nyquist margin while adding only ~2 ADC transactions
 # per 10 ms to the shared bus.
 RX_ENABLED_CHANNELS = (ADC_CHANNEL_IR, ADC_CHANNEL_RED)
-# (In PPG_RX_MODE=tdm both logical IR and RED lanes are fed from that one A0 sensor.)
 RX_SAMPLE_RATE_HZ = 100         # Hz per channel (both channels read each tick)
 RX_BUFFER_SIZE = 1024           # Bounded per-channel sample buffer (~10 s @ 100 Hz)
 RX_STALE_THRESHOLD_S = 0.5      # Newest sample older than this ⇒ channel stale
@@ -193,7 +161,7 @@ RX_DISCONNECT_ERROR_THRESHOLD = 10   # Consecutive read errors ⇒ channel disco
 RX_MODE = os.environ.get("PPG_RX_MODE", "dual")
 if RX_MODE not in ("dual", "tdm"):
     raise ValueError("PPG_RX_MODE must be 'dual' or 'tdm'")
-RX_TDM_ADC_CHANNEL = ADC_CHANNEL_IR   # the single shared OPT101 sits on A0
+RX_TDM_ADC_CHANNEL = 0   # the single shared TDM OPT101 sits on physical A0
 RX_TDM_SLOT_S = float(os.environ.get("PPG_TDM_SLOT_MS", "15")) / 1000.0
 RX_TDM_READ_DELAY_S = float(os.environ.get("PPG_TDM_READ_DELAY_MS", "12")) / 1000.0
 RX_TDM_DARK_SLOT = os.environ.get("PPG_TDM_DARK", "1") == "1"
@@ -209,80 +177,3 @@ if not RX_TDM_MIN_READ_DELAY_S <= RX_TDM_READ_DELAY_S <= RX_TDM_SLOT_S - RX_TDM_
                      "slot for the DAC writes and the ADC read")
 RX_TDM_SLOTS = ("red", "ir", "dark") if RX_TDM_DARK_SLOT else ("red", "ir")
 RX_TDM_FRAME_S = RX_TDM_SLOT_S * len(RX_TDM_SLOTS)   # one sample per channel per frame
-
-# ============================================================================
-# COLOR PALETTE (RGB tuples for Pygame) matching Android UI
-# ============================================================================
-COLOR_BG            = (0, 0, 0)             # Pure black background
-COLOR_WAVEFORM_IR   = (0, 255, 128)         # Neon green
-COLOR_WAVEFORM_RED  = (0, 255, 128)         # Make red channel same as IR to match "PPG" trace
-COLOR_WAVEFORM_DIM  = (0, 80, 40)           # Dim green
-COLOR_GRID          = (0, 40, 20)           # Dark green grid lines
-COLOR_HEADER_BG     = (0, 0, 0)             # Black header
-COLOR_FOOTER_BG     = (0, 0, 0)             # Black footer
-COLOR_TEXT          = (0, 255, 128)         # Neon green text
-COLOR_TEXT_VALUE    = (0, 255, 128)         # Neon green for values
-COLOR_TEXT_LABEL    = (0, 150, 75)          # Darker green for labels
-COLOR_HIGHLIGHT     = (0, 255, 128)         # Neon green highlight
-COLOR_ACCENT        = (0, 255, 128)         # Neon green accent
-COLOR_SEPARATOR     = (0, 60, 30)           # Dark green separators
-COLOR_BUTTON_BG     = (0, 40, 20)           # Inactive button dark green
-COLOR_BUTTON_HOVER  = (0, 120, 60)          # Button hover
-COLOR_BUTTON_ACTIVE = (0, 255, 128)         # Active button neon green
-COLOR_TIME_AXIS     = (0, 100, 50)          # Time axis text/ticks
-
-# ============================================================================
-# FONT CONFIGURATION (base sizes — will be scaled proportionally at runtime)
-# ============================================================================
-FONT_FAMILY = None  # Will use pygame default; set to a .ttf path for custom
-
-# Base sizes at 600px screen height (scale proportionally)
-FONT_SIZE_BASE_HEIGHT = 600     # Reference height for font sizes
-FONT_SIZE_HEADER = 22
-FONT_SIZE_VALUE = 28
-FONT_SIZE_FOOTER = 18
-FONT_SIZE_LABEL = 16
-FONT_SIZE_SMALL = 14
-
-# Maximum font scale factor (cap for very large screens)
-FONT_SCALE_MAX = 2.5
-
-
-# ============================================================================
-# LAYOUT PROPORTIONS (percentage of screen dimensions)
-# ============================================================================
-LAYOUT_HEADER_RATIO = 0.10       # 10% for header
-LAYOUT_LEFT_MENU_RATIO = 0.0     # 0% for left menu (disabled to center UI)
-LAYOUT_WAVEFORM_H_RATIO = 0.45   # 45% for waveform (below header)
-LAYOUT_CONTROLS_H_RATIO = 0.45   # 45% for bottom controls
-
-def compute_layout(screen_w: int, screen_h: int) -> dict:
-    """Compute all layout dimensions from actual screen size."""
-    header_h = int(screen_h * LAYOUT_HEADER_RATIO)
-    left_menu_w = int(screen_w * LAYOUT_LEFT_MENU_RATIO)
-    waveform_h = int(screen_h * LAYOUT_WAVEFORM_H_RATIO)
-    controls_h = screen_h - header_h - waveform_h
-    
-    waveform_w = screen_w - left_menu_w
-
-    # Font scaling: proportional to screen height
-    font_scale = min(screen_h / FONT_SIZE_BASE_HEIGHT, FONT_SCALE_MAX)
-
-    return {
-        "screen_w": screen_w,
-        "screen_h": screen_h,
-        "header_h": header_h,
-        "left_menu_w": left_menu_w,
-        "controls_h": controls_h,
-        "waveform_x": left_menu_w,
-        "waveform_y": header_h,
-        "waveform_w": waveform_w,
-        "waveform_h": waveform_h,
-        "controls_y": header_h + waveform_h,
-        "font_scale": font_scale,
-        "font_header": max(14, int(FONT_SIZE_HEADER * font_scale)),
-        "font_value": max(16, int(FONT_SIZE_VALUE * font_scale)),
-        "font_footer": max(12, int(FONT_SIZE_FOOTER * font_scale)),
-        "font_label": max(10, int(FONT_SIZE_LABEL * font_scale)),
-        "font_small": max(10, int(FONT_SIZE_SMALL * font_scale)),
-    }

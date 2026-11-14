@@ -4,6 +4,7 @@ import os
 import random
 import unittest
 
+from config import ADC_CHANNEL_IR
 from core.rx_heart_rate import MIN_SECONDS, estimate_rx_rate, latest_stretch
 from hw.opt101_rx import RXSample
 
@@ -74,10 +75,10 @@ class FakeReceiver:
         self.samples, self.is_simulated = samples, simulated
 
     def channel_status(self, channel):
-        return "ok" if channel == 0 else "disabled"
+        return "ok" if channel == ADC_CHANNEL_IR else "disabled"
 
     def get_samples(self, channel):
-        return tuple(self.samples) if channel == 0 else ()
+        return tuple(self.samples) if channel == ADC_CHANNEL_IR else ()
 
     def is_stale(self, channel, now=None):
         return False

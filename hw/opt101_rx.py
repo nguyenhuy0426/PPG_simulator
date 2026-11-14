@@ -1,18 +1,12 @@
 """
 opt101_rx.py — Dual-channel OPT101 acquisition via Grove Base Hat ADC (Phase 5).
 
-Channel mapping [VERIFIED-USER, Red moved from A2 to A4 on 2026-11-03]:
-    A0 (Grove ADC channel 0) = OPT101 IR  photodiode
-    A4 (Grove ADC channel 4) = OPT101 Red photodiode
-    A1 is NOT used for OPT101.
+Channel mapping: config.ADC_CHANNEL_IR / ADC_CHANNEL_RED (IR A4, Red A0).
 
-Verified grove.adc API (grove.py 0.6 source audit — see Phase 5 report):
-    class ADC(address=...); read_raw(channel) reads register 0x10+channel
-    (write_byte + read_word_data via a singleton smbus2 bus) and returns the
-    raw 12-bit conversion as int. CRITICAL: on IOError the library prints a
-    message and calls sys.exit(2) — every read below therefore catches
-    SystemExit as well as Exception so a bus error can never kill this
-    process or thread.
+ADC access goes through hw/grove_adc.GroveVoltageADC (HAT voltage register
+0x20+ch; the raw register 0x10+ch bit-slips on this Pi 4 and is not used).
+Reads still catch SystemExit as well as Exception so an injected grove.adc
+client (which calls sys.exit on IOError) can never kill this thread.
 
 Thread ownership: one dedicated daemon thread ("OPT101Rx") is the sole reader
 of the Grove ADC. It runs at RX_SAMPLE_RATE_HZ (decoupled from the 1 kHz TX
@@ -29,7 +23,7 @@ OPT101 on RX_TDM_ADC_CHANNEL (A0). The free-running thread is NOT started:
 the SignalEngine output thread owns the slot clock, switches the LEDs and
 then calls acquire_tdm_slot(slot), which reads the shared sensor and files
 the sample under the logical IR or Red channel (or the separate DARK buffer).
-Channel ids 0/2 then name logical lanes, not ADC pins. Raw codes are stored
+Channel ids then name logical lanes, not ADC pins. Raw codes are stored
 as read; dark subtraction is left to the consumer so nothing is altered.
 
 Failure semantics: a failed, invalid, or unavailable read appends NOTHING to
@@ -137,7 +131,7 @@ class _ChannelState:
 
 
 class OPT101Receiver:
-    """Owner of the OPT101/Grove-ADC RX path (IR on A0, Red on A4).
+    """Owner of the OPT101/Grove-ADC RX path (pins from config.py).
 
     Read-only I2C client of the Grove ADC at config.GROVE_ADC_ADDR (0x08 on
     this MM32 Base HAT) — contains no DAC writes.
@@ -167,7 +161,7 @@ class OPT101Receiver:
         valid = (ADC_CHANNEL_IR, ADC_CHANNEL_RED)
         if not self._dual_channels or len(set(self._dual_channels)) != len(self._dual_channels) or any(
                 ch not in valid for ch in self._dual_channels):
-            raise ValueError("Enabled RX channels must be A0 and/or A4")
+            raise ValueError(f"Enabled RX channels must be A{ADC_CHANNEL_IR} and/or A{ADC_CHANNEL_RED}")
         self._lock = threading.Lock()
         self._ready = False
         self._running = False
@@ -240,7 +234,6 @@ class OPT101Receiver:
                 return False
 
         # Probe: one real read on the IR channel proves the hat is reachable.
-        # grove.adc calls sys.exit(2) on IOError, hence SystemExit here.
         probe_channel = self._channels[self.enabled_channels[0]].physical
         try:
             probe = self._adc.read_raw(probe_channel)

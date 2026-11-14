@@ -89,13 +89,13 @@ class _DryRunPatch(unittest.TestCase):
 # ─────────────────────── Channel mapping (fixed, verified) ───────────────────────
 
 class TestChannelMapping(unittest.TestCase):
-    """0x60 = IR TX, 0x61 = Red TX [VERIFIED-USER]. Never silently swap."""
+    """0x61 = IR TX, 0x60 = Red TX [VERIFIED-USER 2026-11-12, measured 2026-11-14]."""
 
-    def test_ir_address_is_0x60(self):
-        self.assertEqual(config.DAC_ADDR_IR, 0x60)
+    def test_ir_address_is_0x61(self):
+        self.assertEqual(config.DAC_ADDR_IR, 0x61)
 
-    def test_red_address_is_0x61(self):
-        self.assertEqual(config.DAC_ADDR_RED, 0x61)
+    def test_red_address_is_0x60(self):
+        self.assertEqual(config.DAC_ADDR_RED, 0x60)
 
     def test_addresses_are_distinct(self):
         self.assertNotEqual(config.DAC_ADDR_IR, config.DAC_ADDR_RED)
@@ -285,12 +285,12 @@ class TestBeginAddressWiring(_DryRunPatch):
         sys.modules["busio"] = fake_busio
         sys.modules["adafruit_mcp4725"] = fake_adafruit
 
-    def test_begin_constructs_ir_0x60_then_red_0x61(self):
+    def test_begin_constructs_ir_0x61_then_red_0x60(self):
         created = []
         self._install_fake_i2c_stack(created)
         mgr = DACManager()
         self.assertTrue(mgr.begin())
-        self.assertEqual(created, [0x60, 0x61])
+        self.assertEqual(created, [0x61, 0x60])
         self.assertEqual(mgr._dac_ir.address, config.DAC_ADDR_IR)
         self.assertEqual(mgr._dac_red.address, config.DAC_ADDR_RED)
 

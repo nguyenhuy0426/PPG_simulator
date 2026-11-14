@@ -4,9 +4,7 @@ dac_manager.py — Dual MCP4725 DAC manager for Raspberry Pi 4.
 Port of dac_manager.cpp. Uses adafruit-circuitpython-mcp4725 via I2C.
 In dry-run mode, simulates DAC output without hardware.
 
-Channel mapping [VERIFIED-USER, fixed — never swap]:
-    0x60 (DAC_ADDR_IR)  = IR  TX channel
-    0x61 (DAC_ADDR_RED) = Red TX channel
+Channel mapping: config.DAC_ADDR_IR / DAC_ADDR_RED (IR 0x61, Red 0x60).
 
 Thread ownership: the SignalEngine generation thread is the sole writer while
 a simulation runs; UI code (calibration frame) writes only after stopping the
@@ -32,7 +30,7 @@ ERROR_LOG_INTERVAL = 1000
 
 
 class DACManager:
-    """Manager for dual MCP4725 12-bit DACs (IR: 0x60, Red: 0x61)."""
+    """Manager for the IR and Red MCP4725 12-bit DACs."""
 
     def __init__(self):
         self._ready = False
@@ -47,7 +45,7 @@ class DACManager:
         self._last_write_ok_red = True
 
     def begin(self) -> bool:
-        """Initialize both MCP4725 DACs on the I2C bus (IR 0x60 first, then Red 0x61)."""
+        """Initialize both MCP4725 DACs on the I2C bus (IR first, then Red)."""
         if DRY_RUN:
             log.info("[DACManager] DRY-RUN mode — simulated DACs")
             self._ready = True
@@ -60,7 +58,6 @@ class DACManager:
             import adafruit_mcp4725
 
             i2c = busio.I2C(board.SCL, board.SDA)
-            # Fixed channel mapping: 0x60 = IR, 0x61 = Red [VERIFIED-USER].
             self._dac_ir = adafruit_mcp4725.MCP4725(i2c, address=DAC_ADDR_IR)
             self._dac_red = adafruit_mcp4725.MCP4725(i2c, address=DAC_ADDR_RED)
             self._ready = True

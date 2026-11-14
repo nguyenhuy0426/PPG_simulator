@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
-    SIGNAL_BUFFER_SIZE, DAC_CENTER_VALUE, DAC_IDLE_VALUE, FS_TIMER_HZ,
+    SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ,
     RX_MODE, RX_TDM_SLOTS, RX_TDM_SLOT_S, RX_TDM_READ_DELAY_S,
 )
 from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES
@@ -71,18 +71,15 @@ class SignalEngine:
         self.ppg_params = PPGParameters()
 
         # Ring buffers
-        self._buf_ir = [DAC_CENTER_VALUE] * SIGNAL_BUFFER_SIZE
-        self._buf_red = [DAC_CENTER_VALUE] * SIGNAL_BUFFER_SIZE
+        self._buf_ir = [DAC_IDLE_VALUE] * SIGNAL_BUFFER_SIZE
+        self._buf_red = [DAC_IDLE_VALUE] * SIGNAL_BUFFER_SIZE
         self._buf_display_ir = [0.0] * SIGNAL_BUFFER_SIZE
         self._buf_display_red = [0.0] * SIGNAL_BUFFER_SIZE
         self._read_idx = 0
         self._write_idx = 0
 
-        # Interpolation state
-        self._prev_ir = DAC_CENTER_VALUE
-        self._prev_red = DAC_CENTER_VALUE
-        self._curr_ir = DAC_CENTER_VALUE
-        self._curr_red = DAC_CENTER_VALUE
+        # Interpolation state; None until the first model sample of a run
+        self._prev_ir = self._prev_red = self._curr_ir = self._curr_red = None
         self._prev_disp_ir = 0.0
         self._curr_disp_ir = 0.0
         self._prev_disp_red = 0.0
@@ -172,8 +169,11 @@ class SignalEngine:
             self._read_idx = 0
             self._write_idx = 0
             self._interp_counter = 0
-            self._prev_ir = self._curr_ir = DAC_CENTER_VALUE
-            self._prev_red = self._curr_red = DAC_CENTER_VALUE
+            # Unseeded: the first tick interpolates from its own sample. Seeding
+            # from mid-scale (1.64 V) drove both LEDs to 1.64 V for one tick,
+            # which overloads the IR receive path (see docs/hardware-validation).
+            self._prev_ir = self._curr_ir = None
+            self._prev_red = self._curr_red = None
             self._prev_disp_ir = self._curr_disp_ir = 0.0
             self._prev_disp_red = self._curr_disp_red = 0.0
             self._sample_count = 0
@@ -335,9 +335,10 @@ class SignalEngine:
                 ir_v, red_v, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
                 stamp = self.ppg_model.simulated_time_s
             else:
-                frequency, amplitude_mv = self._calibration
+                frequency, ir_peak_mv, red_peak_mv = self._calibration
                 self._cal_time += MODEL_DT_PPG
-                ir_v = red_v = amplitude_mv / 2000 * (1 + math.sin(2 * math.pi * frequency * self._cal_time))
+                phase = 1 + math.sin(2 * math.pi * frequency * self._cal_time)
+                ir_v, red_v = ir_peak_mv / 2000 * phase, red_peak_mv / 2000 * phase
                 disp_ir, disp_red, stamp = ir_v, red_v, self._cal_time
             self._display_history.append((stamp, disp_ir, disp_red))
             if self._recording:
@@ -351,6 +352,9 @@ class SignalEngine:
         # DAC voltage mapping: 0 V → 0, 3.28 V → 4095 (12-bit)
         self._curr_ir = self._v_to_dac(ir_v)
         self._curr_red = self._v_to_dac(red_v)
+        if self._prev_ir is None:
+            self._prev_ir, self._prev_red = self._curr_ir, self._curr_red
+            self._prev_disp_ir, self._prev_disp_red = disp_ir, disp_red
         self._curr_disp_ir = disp_ir
         self._curr_disp_red = disp_red
 
@@ -595,13 +599,19 @@ class SignalEngine:
         with self._model_lock:
             return list(self._display_history)
 
-    def start_calibration(self, frequency_hz, amplitude_mv):
+    def start_calibration(self, frequency_hz, amplitude_mv, red_amplitude_mv=None):
+        """0-to-peak sine on both DACs. IR and RED take separate peaks because
+        each LED->OPT101 path has its own linear window (scripts/calibrate_optical.py)."""
         from config import DAC_FULLSCALE_MV
+        if red_amplitude_mv is None:
+            red_amplitude_mv = amplitude_mv
         if not math.isfinite(frequency_hz) or not 1 <= frequency_hz <= 10:
             raise ValueError("Calibration frequency must be 1–10 Hz")
-        if not math.isfinite(amplitude_mv) or not 100 <= amplitude_mv <= DAC_FULLSCALE_MV:
-            raise ValueError(f"Calibration amplitude must be 100–{DAC_FULLSCALE_MV:g} mV")
-        self.start_simulation(self.ppg_params.condition, calibration=(frequency_hz, amplitude_mv))
+        for peak in (amplitude_mv, red_amplitude_mv):
+            if not math.isfinite(peak) or not 100 <= peak <= DAC_FULLSCALE_MV:
+                raise ValueError(f"Calibration amplitude must be 100–{DAC_FULLSCALE_MV:g} mV")
+        self.start_simulation(self.ppg_params.condition,
+                              calibration=(frequency_hz, amplitude_mv, red_amplitude_mv))
 
     @property
     def is_calibrating(self):

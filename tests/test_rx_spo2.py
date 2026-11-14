@@ -5,6 +5,7 @@ import random
 import time
 import unittest
 
+from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED
 from core.rx_spo2 import estimate_rx_spo2
 from hw.opt101_rx import RXSample
 
@@ -105,7 +106,7 @@ class PanelTest(unittest.TestCase):
 
     def test_red_lane_shows_rate_and_spo2_estimate_together(self):
         ir, red = pair(.6)
-        panel = self.make_panel(FakeReceiver({0: live(ir), 4: live(red)}))
+        panel = self.make_panel(FakeReceiver({ADC_CHANNEL_IR: live(ir), ADC_CHANNEL_RED: live(red)}))
         panel.periodic_update()
         self.assertRegex(panel.lanes[0].badge, r"^Nhịp RX  7[4-6] bpm$")
         self.assertRegex(panel.lanes[1].badge, r"^Nhịp RX  7[4-6] bpm$")
@@ -116,7 +117,7 @@ class PanelTest(unittest.TestCase):
 
     def test_no_spo2_without_both_channels(self):
         ir, _red = pair(.6)
-        panel = self.make_panel(FakeReceiver({0: live(ir)}, {4: "disabled"}))
+        panel = self.make_panel(FakeReceiver({ADC_CHANNEL_IR: live(ir)}, {ADC_CHANNEL_RED: "disabled"}))
         panel.periodic_update()
         self.assertEqual(panel.lanes[1].badge2, "")
 

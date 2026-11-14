@@ -128,7 +128,7 @@ and [current sequence and hardware validation](docs/ppg_touch_sequence_output_20
 | DAC Rate               | Pi: 500 Hz target; configurable; Linux/I²C timing requires measurement |
 | Data Recording         | 100 Hz model commands, timestamped CSV in `dataset/` |
 | DAC Voltage Range      | Configured 0–3.28 V (0 → 0, 3.28 V → 4095) |
-| Live RX ADC Channels   | A0 (IR) & A4 (Red) on Grove Base Hat (I2C 0x08) |
+| Live RX ADC Channels   | A4 (IR) & A0 (Red) on Grove Base Hat (I2C 0x08) |
 
 ---
 
@@ -140,7 +140,7 @@ and [current sequence and hardware validation](docs/ppg_touch_sequence_output_20
 MCP4725 DACs (I2C Bus 1):
   GPIO2 (pin 3)   → I2C1_SDA
   GPIO3 (pin 5)   → I2C1_SCL
-  Addresses: 0x60 (IR channel), 0x61 (Red channel)
+  Addresses: 0x61 (IR channel), 0x60 (Red channel)
 
 Display:
   HDMI → Any screen (auto-detect resolution)
@@ -382,9 +382,24 @@ HR coupling and beat variability deliberately change the instantaneous AC/HR.
 then Start calibration. Opening the page alone does not start output. Leaving the
 page stops an active calibration. Sine calibration drives both MCP4725 DAC channels simultaneously.
 
+**Optical operating levels (after moving an LED carrier or the receiver):** each
+LED→OPT101 path has its own linear window. On 2026-11-14 the IR path reached its
+~2.0 V ceiling at only ~550 mV DAC, and any drive past that knee made the IR
+reading fall ~45 % within 20 s and stay low for seconds afterwards. That, not the
+ADC or the UI, clipped the Calib sine and made Classic IR drift and shrink.
+Re-measure and store per-channel DC/AC with the app stopped:
+
+```bash
+.venv/bin/python scripts/calibrate_optical.py --apply
+```
+
+It pulses each LED alone, finds dark level, turn-on, ceiling and knee, checks a
+20 s hold for drift, then writes `dc_*_mv`/`ac_*_mv` (old config kept as
+`config.json.bak-*`). Keep Calib sine peaks under the reported IR knee.
+
 **Live RX card:** every page shows an RX card to the right of its TX plot
 (the Signal setup window has none). The receiver samples the Grove Base Hat ADC at 100 Hz and refreshes the UI at up to 10 Hz,
-plotting an 8-second rolling window for A0 (IR) and A4 (Red). Sensor readings display raw
+plotting an 8-second rolling window for A4 (IR) and A0 (Red). Sensor readings display raw
 millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 

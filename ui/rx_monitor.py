@@ -1,13 +1,14 @@
 """Shared read-only view of the existing receiver; never starts ADC or DAC IO."""
 import time
 
+from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED
 from core.rx_heart_rate import estimate_rx_rate
 from core.rx_spo2 import estimate_rx_spo2
 from hw.opt101_rx import OPT101Receiver, raw_to_millivolts
 from ui import theme as T
 from ui.trace_view import Lane, LaneView
 
-RX_CHANNELS = ((0, "IR", T.IR), (4, "RED", T.RED))
+RX_CHANNELS = ((ADC_CHANNEL_IR, "IR", T.IR), (ADC_CHANNEL_RED, "RED", T.RED))
 REFRESH_S = 0.1
 MV_PER_CODE = raw_to_millivolts(1)   # the conversion is linear: one multiply per sample instead of a call
 DEFAULT_MAX_GAP_S = 0.05
@@ -81,7 +82,7 @@ def calibration_coefficients():
 
 
 class RXPanel(LaneView):
-    """A0/A4 lanes shown next to TX on every page; reads, never starts, the receiver."""
+    """IR/RED lanes shown next to TX on every page; reads, never starts, the receiver."""
 
     def __init__(self, master, language="en", receiver=None, channels=RX_CHANNELS, **kwargs):
         super().__init__(master, **kwargs)
