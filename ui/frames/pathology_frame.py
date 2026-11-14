@@ -5,6 +5,7 @@ import customtkinter as ctk
 from calibration import r_target_from_spo2
 from config import DAC_ADDR_IR, DAC_ADDR_RED, DRY_RUN, FS_TIMER_HZ
 from core.signal_engine import SignalEngine
+from hw.beeper import HeartBeeper
 from models import limits
 from ui import icons
 from ui import theme as T
@@ -91,6 +92,11 @@ class PathologyFrame(ctk.CTkFrame):
         rx.grid_rowconfigure(1, weight=1)
         self.rx_title = T.label(rx, "", u(14), True, anchor="w", height=header_h)
         self.rx_title.grid(row=0, column=0, sticky="w", padx=u(10), pady=u(6))
+        # Pulse tone on each received beat (hw.beeper); the choice is saved in config.json.
+        self.beeper = HeartBeeper.get_instance()
+        self.beep_btn = T.outline_button(rx, "", height=header_h, width=u(130), font=T.font(u(13), True),
+                                         command=self.toggle_beep)
+        self.beep_btn.grid(row=0, column=0, sticky="e", padx=(0, u(8)), pady=u(6))
         rx_holder = ctk.CTkFrame(rx, fg_color=T.DARK, corner_radius=u(6))
         rx_holder.grid(row=1, column=0, sticky="nsew", padx=u(6), pady=(0, u(6)))
         self.rx_panel = RXPanel(rx_holder, language=self.language, height=plot_h)
@@ -121,6 +127,7 @@ class PathologyFrame(ctk.CTkFrame):
         self.language = language
         self.tx_title.configure(text=text(language, "tx_card"))
         self.rx_title.configure(text=text(language, "rx_card"))
+        self._paint_beep()
         self.condition_menu.set_values(condition_labels(language))
         self.condition_menu.set(condition_labels(language)[self.engine.ppg_params.condition])
         for key, card in self.cards.items():
@@ -150,6 +157,19 @@ class PathologyFrame(ctk.CTkFrame):
         self.condition_menu.set(condition_labels(self.language)[p.condition])
         self._last_tx_render = 0.0
         self.periodic_update()
+
+    def _paint_beep(self):
+        self.beep_btn.configure(text=text(self.language, "beep_on" if self.beeper.enabled else "beep_off"),
+                                text_color=T.ACCENT if self.beeper.enabled else T.MUTED)
+
+    def toggle_beep(self):
+        from config_store import load_config, save_config
+        self.beeper.set_enabled(not self.beeper.enabled)
+        self._paint_beep()
+        config = load_config()
+        config["beep_enabled"] = self.beeper.enabled
+        if not save_config(config):
+            self._say(None, T.ERROR, raw="config.json")
 
     def update_param(self, key, value):
         attr, span = self.fields[key][:2]

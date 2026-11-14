@@ -196,6 +196,9 @@ class RXPanel(LaneView):
             result = estimate_rx_spo2(live["IR"], live["RED"], a, b)
             self._spo2 = (now, result)
             self._spo2_state = state
+            if getattr(self, "vitals", False):   # the pulse tone's pitch follows the received SpO2, as on a bedside monitor
+                from hw.beeper import HeartBeeper
+                HeartBeeper.get_instance().set_spo2(result.spo2)
         label, reasons = _SPO2["vi" if self.language == "vi" else "en"]
         tag = _SPO2_CAL["vi" if self.language == "vi" else "en"].get(getattr(self, "_spo2_state", "none"), "")
         ratio = "" if result.ratio is None else f"  R {result.ratio:.2f}"

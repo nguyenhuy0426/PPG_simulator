@@ -282,3 +282,18 @@ trống của HAT.
   phát 99 / 95 / 85 / 75 % → thu **99 / 95 / 85 / 76 %** (R 0.37 / 0.48 / 0.81 / 1.10).
 - Giới hạn: hiệu chuẩn theo đường quang lúc chạy. Làn IR trôi trong ngày (mục 11–13), chỉnh carrier hoặc đổi DC thì
   phải chạy lại. Đây là kiểm tra vòng phát–thu của bộ mô phỏng, không phải hiệu chuẩn SpO2 lâm sàng.
+
+## 15. 23:40: tiếng bíp theo nhịp thu (`core/beat_detector.py`, `hw/beeper.py`)
+
+- Bộ dò đỉnh nhân quả trên làn IR thu (RED nếu IR chưa khoá): khử gai + trung bình 5 mẫu (trễ 60 ms), đỉnh xác nhận khi
+  tín hiệu rơi 25 % biên độ, độ nhô ≥ max(5 mV, 5σ nhiễu, ½ biên độ các nhịp gần đây). Khoá sau 4 nhịp đều (±35 %) mới
+  kêu. Chỉ kêu khi đang phát PPG (Classic/playback), không kêu khi Calib. Cao độ 880 Hz ở SpO2 100 %, giảm ½ cung mỗi
+  1 % (SpO2 thu), 660 Hz khi chưa có SpO2. Nút "Tiếng bíp: bật/tắt" ở thẻ RX trang Classic, lưu `beep_enabled`.
+- Mô phỏng (dạng sóng model + nhiễu 1 mV + gai 1–3 mẫu như Pi): 15–300 bpm và 5 tình trạng bệnh lý: không thừa tiếng,
+  hụt ≤ 2 % ở 300 bpm; trễ trung vị 90–210 ms ở 60–300 bpm, 0.35–0.6 s ở 15–30 bpm. AC ≥ 10 mV đủ; 5 mV hầu như
+  không kêu (tín hiệu yếu). Nhiễu + gai + đợt nhiễu σ 15 mV trong 120 s: 0 tiếng.
+- Trên Pi (ghi từ monitor của sink HDMI bằng `pw-record`): `pw-play` mặc định (độ trễ 100 ms) cắt tiếng 70 ms thành
+  45 + 30 ms có lỗ 40 ms; `--latency 10ms` phát liền khi GUI đang chạy (20 ms thêm một tiếng 10 ms). Với 10 ms:
+  22 tiếng/19.9 s, mỗi tiếng 65–75 ms, 64.5/phút khi nhịp RX 64–65 bpm, cao độ ~726 Hz (FFT, phân giải 23 Hz;
+  SpO2 93 % → 718 Hz). Tắt tiếng: sink im lặng 5.9 s. Chỉ kiểm được tín hiệu tới sink; loa/màn hình HDMI có phát ra
+  tiếng hay không thì chưa kiểm.

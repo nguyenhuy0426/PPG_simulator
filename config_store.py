@@ -67,7 +67,7 @@ _EXTRA_FIELDS = (
 
 # Written by Settings / Calibration directly; save_current_config() keeps them
 # when it rebuilds the file from the PPG parameters at exit.
-PRESERVED_KEYS = ("ble_enabled", "calib_tolerance_mv", "rx_spo2_calibration")
+PRESERVED_KEYS = ("ble_enabled", "calib_tolerance_mv", "rx_spo2_calibration", "beep_enabled")
 
 
 def load_config() -> dict:

@@ -151,6 +151,10 @@ def main():
 
     # ─── Normal GUI mode (BLE enabled by default) ─────────────────────────────
     # Simulation will be started manually via the GUI
+    from hw.beeper import HeartBeeper
+    beeper = HeartBeeper.get_instance()
+    beeper.set_enabled(config.get("beep_enabled", True))
+    beeper.start()
 
     # Initialize UI
     app = CTkApp(language=config.get("language", "en"), theme=config.get("theme", "light"),
@@ -174,6 +178,7 @@ def main():
         if ble_server is not None:
             ble_server.stop()
         save_current_config(engine, app.language, app.theme)
+        beeper.stop()
         rx.shutdown()
         engine.shutdown()
         log.info("Shutdown complete.")
