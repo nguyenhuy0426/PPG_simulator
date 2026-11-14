@@ -18,7 +18,8 @@ Changed, and why:
 - optional heart-rate condition (Config.hr_cond, off in every released checkpoint): a Fourier embedding of the
   window's rate in bpm, through a zero-initialised MLP, added to every input token, so a model built with it starts
   exactly as the checkpoint it is loaded from (load_init) and learns the condition at fine-tuning. The rate label of a
-  real window is window_rate, the autocorrelation rate of the feature tier's rate_bpm (30-200 bpm).
+  real window is heart_rate: the first autocorrelation peak in 30-200 bpm, not window_rate (the feature tier's
+  rate_bpm), whose global maximum lands on the two-beat lag of about a quarter of MIMIC windows.
 Sizes are chosen for two T4s (fp16): "base" 30.7 M parameters (backbone 25.3 M), "large" 99.9 M (backbone 85.0 M,
 GPT-PPG's 85 M class).
 """
@@ -44,6 +45,36 @@ def window_rate(x, fs=40):
     lo, hi = RATE_LAGS
     lag = lo+acf[:, lo:hi].argmax(1)
     return 60.*fs/lag.float()
+
+
+HR_PEAK_SHARE = .5   # a lag is a beat when its autocorrelation is a local maximum of at least this share of the top
+
+
+def heart_rate(x, fs=40):
+    """Heart rate (bpm) of windows x [n, L]: the shortest lag in RATE_LAGS whose autocorrelation is a local maximum of
+    at least HR_PEAK_SHARE of the range's maximum and is that high again near twice the lag (the range's maximum if
+    no lag is).
+
+    window_rate takes the global maximum, which on a pulse train with beat-to-beat amplitude or shape differences is
+    often the two-beat lag: against the median peak interval it reads half the rate on 23 % of MIMIC PERFORM windows
+    (MAE 15.0 bpm; this rule 3.8), and against ECG it reads CapnoBase at MAE 4.5 bpm (this rule 0.8). It is the
+    condition label, the rate bank and hr_mae; window_rate stays the feature tier's rate_bpm, which only has to be
+    the same statistic on real and generated windows."""
+    x = x.float()
+    centered = x-x.mean(1, keepdim=True)
+    spectrum = torch.fft.rfft(centered, 2*x.shape[1], dim=1)
+    acf = torch.fft.irfft(spectrum.abs().square(), dim=1)[:, :x.shape[1]]
+    lo, hi = RATE_LAGS
+    seg = acf[:, lo-1:hi+1]                  # one lag on each side for the local-maximum test
+    inner = seg[:, 1:-1]
+    level = HR_PEAK_SHARE*inner.amax(1, keepdim=True)
+    # a beat repeats: the autocorrelation near twice the lag is high too, which a lag inside one beat (between the
+    # systolic and the dicrotic wave) does not have
+    lags = torch.arange(lo, hi, device=x.device)
+    twice = torch.stack([acf[:, 2*lags+d] for d in range(-2, 3)]).amax(0)
+    peak = (inner >= seg[:, :-2]) & (inner > seg[:, 2:]) & (inner >= level) & (twice >= level)
+    first = torch.where(peak.any(1), peak.float().argmax(1), inner.argmax(1))
+    return 60.*fs/(lo+first).float()
 
 
 def hr_embedding(bpm):

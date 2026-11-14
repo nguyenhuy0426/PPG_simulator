@@ -439,7 +439,7 @@ def test_judge_kernel_stages_every_module_the_judge_imports_and_mounts_shards_pl
     out = st.stage(tmp_path/"k", "judge", owner="halovie2412", shards=(1, 2), solos=(0,), stage=0,
                    datasets=("ppg-physigpt-shard0-data-v1",))
     meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
-    assert meta["id"] == "halovie2412/ppg-physigpt-judge0-v1" and meta["enable_gpu"]
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge0-v1-fid" and meta["enable_gpu"]
     assert meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-stage0-v1" and len(meta["kernel_sources"]) == 4
     assert meta["dataset_sources"] == ["halovie2412/ppg-physigpt-shard0-data-v1"]
     assert "rglob('release.pt')" in script and "'--mode', mode" in script and "CUDA_VISIBLE_DEVICES" in script
@@ -508,20 +508,20 @@ def test_decay_kernel_resumes_the_stage_output_and_the_judge_can_judge_it(tmp_pa
         st.stage(tmp_path/"d0", "decay", **kw)
     judge = st.stage(tmp_path/"j", "judge", from_slug="ppg-physigpt-decay0-v1", **kw)
     meta, script = json.loads((judge/"kernel-metadata.json").read_text()), (judge/"run.py").read_text()
-    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1" and meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-decay0-v1"
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-fid" and meta["kernel_sources"][-1] == "halovie2412/ppg-physigpt-decay0-v1"
     assert "mounted('ppg-physigpt-decay0-v1')" in script and "mounted('ppg-physigpt-stage0-v1')" not in script
 
 
-def test_judge_kernel_can_sample_with_more_ode_steps_and_skip_the_model_independent_controls(tmp_path):
+def test_judge_kernel_can_sample_with_more_ode_steps_without_raw_waveform_judges(tmp_path):
     from ml.kaggle_physigpt import stage as st
     kw = dict(owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-v1")
     plain = (st.stage(tmp_path/"a", "judge", **kw)/"run.py").read_text()
-    assert "'--gen-steps', '32'" in plain and "controls = run('controls'" in plain
-    out = st.stage(tmp_path/"b", "judge", gen_steps=128, skip_controls=True, **kw)
+    assert "'--gen-steps', '32'" in plain and "run('model'" not in plain and "run('controls'" not in plain
+    out = st.stage(tmp_path/"b", "judge", gen_steps=128, **kw)
     meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
-    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-g128" and meta["title"] == "ppg-physigpt-judge-decay0-v1-g128"
-    assert "'--gen-steps', '128'" in script and "controls = None" in script and "run('controls'" not in script
-    assert "if controls:" in script
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-g128-fid" and meta["title"] == "ppg-physigpt-judge-decay0-v1-g128-fid"
+    assert "'--gen-steps', '128'" in script and "run('controls'" not in script
+    assert "run('model'" not in script
 
 
 def test_unclamped_sampling_keeps_patch_values_the_clip_removed_and_the_judge_kernel_can_request_it(tmp_path):
@@ -535,9 +535,9 @@ def test_unclamped_sampling_keeps_patch_values_the_clip_removed_and_the_judge_ke
     assert torch.equal(model.sample_patch(h, 2, clamp=True), model.sample_patch(h, 2))   # the default is unchanged
     from ml.kaggle_physigpt import stage as st
     out = st.stage(tmp_path/"j", "judge", owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-v1",
-                   no_clamp=True, skip_controls=True)
+                   no_clamp=True)
     meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
-    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-noclamp" and "'--gen-steps', '32', '--no-clamp')" in script
+    assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-v1-noclamp-fid" and "'--gen-steps', '32', '--no-clamp')" in script
     assert "--no-clamp" not in (st.stage(tmp_path/"k", "judge", owner="halovie2412", stage=0, shards=(1,))/"run.py").read_text()
 
 
@@ -589,10 +589,9 @@ def test_fidelity_tier_separates_matching_features_from_shifted_ones_and_keeps_t
     assert same["real_other_people"]["mean_similarity"] > .9 and "passes" not in same["real_other_people"]
 
 
-def test_judge_kernel_with_no_judge_seeds_only_samples_and_compares_features(tmp_path):
+def test_judge_kernel_only_samples_and_compares_features(tmp_path):
     from ml.kaggle_physigpt import stage as st
-    out = st.stage(tmp_path/"j", "judge", owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-sharp8-v1",
-                   judge_seeds=0)
+    out = st.stage(tmp_path/"j", "judge", owner="halovie2412", stage=0, shards=(1,), from_slug="ppg-physigpt-decay0-sharp8-v1")
     meta, script = json.loads((out/"kernel-metadata.json").read_text()), (out/"run.py").read_text()
     assert meta["id"] == "halovie2412/ppg-physigpt-judge-decay0-sharp8-v1-fid" and meta["title"] == meta["id"].split("/")[1]
     assert "run('features', '0', '--checkpoint', str(found[0]), '--gen-steps', '32')" in script
@@ -1038,3 +1037,13 @@ def test_domain_prompts_weigh_people_equally_and_stay_in_the_training_rows():
     assert abs((view["subject"][ids] == "b").mean()-.5) < .05   # 2 windows of b against 10 of a
     with pytest.raises(ValueError, match="no training windows"):
         domain_prompts(view, bank, "none", 4, np.random.default_rng(0))
+
+
+def test_feature_classifier_auc_handles_ties_and_preserves_separation():
+    from ml.kaggle_physigpt import judge_physigpt as jp
+    same = np.zeros((80, 2))
+    tied = jp.classify(same, same, same[:40], same[:40], seed=0)
+    separated = jp.classify(same, same+1, same[:40], same[:40]+1, seed=0)
+    for name in ("logreg", "trees"):
+        assert tied[name] == dict(auc=.5, accuracy=.5)
+        assert separated[name] == dict(auc=1., accuracy=1.)

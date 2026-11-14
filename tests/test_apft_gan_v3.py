@@ -7,7 +7,7 @@ import torch
 from ml.kaggle_physigpt import gan
 from ml.kaggle_physigpt.judge_physigpt import generate, signal_features
 from ml.kaggle_physigpt.mimic_wdb import rate_features
-from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, build, load_init, window_rate
+from ml.kaggle_physigpt.model import CONFIGS, PhysiGPT, build, heart_rate, load_init, window_rate
 from dataclasses import replace
 
 
@@ -43,6 +43,45 @@ def test_soft_features_match_the_feature_tier():
 def test_window_rate_is_the_feature_tier_rate():
     x = pulses(32, 1)
     np.testing.assert_allclose(window_rate(torch.from_numpy(x)).numpy(), rate_features(x)[1], rtol=1e-5)
+
+
+def alternans(bpm, ratio, n=8, seed=0):
+    """Pulse trains at bpm whose beats alternate in amplitude (1, ratio, 1, ...), min-max normalised, [n, 1200]."""
+    rng = np.random.default_rng(seed)
+    t = np.arange(1200)/40
+    rows = []
+    for _ in range(n):
+        beat = t*bpm/60+rng.uniform()
+        phase, index = beat % 1, np.floor(beat)
+        x = np.where(index % 2, ratio, 1.)*(np.exp(-((phase-.2)/.08)**2)+.4*np.exp(-((phase-.45)/.1)**2))
+        x = x+.01*rng.standard_normal(len(t))
+        rows.append((x-x.min())/(x.max()-x.min()))
+    return np.array(rows, dtype=np.float32)
+
+
+@pytest.mark.parametrize("bpm", [60, 80, 110])
+def test_heart_rate_reads_the_beat_where_the_feature_rate_reads_two(bpm):
+    """The rate label bug: on beats of alternating amplitude the global autocorrelation maximum is the two-beat lag."""
+    x = torch.from_numpy(alternans(bpm, .5))
+    assert np.allclose(window_rate(x).numpy(), bpm/2, rtol=.06)           # the feature tier's rate: half
+    np.testing.assert_allclose(heart_rate(x).numpy(), bpm, rtol=.04)       # the label: the beat
+
+
+def pulse_rates(n=16, seed=0):
+    """The rates (bpm) pulses(n, seed) was drawn at (the same generator calls in the same order)."""
+    rng = np.random.default_rng(seed)
+    rates = []
+    for _ in range(n):
+        rates.append(rng.uniform(40, 150))
+        rng.uniform(), rng.standard_normal(1200)
+    return np.array(rates)
+
+
+def test_heart_rate_reads_the_drawn_rate_of_every_pulse_window():
+    x, true = torch.from_numpy(pulses(32, 1)), pulse_rates(32, 1)
+    np.testing.assert_allclose(heart_rate(x).numpy(), true, rtol=.04)
+    # the feature tier's rate misses some of these single-beat windows too (a third or half of the rate)
+    assert (np.abs(window_rate(x).numpy()/true-1) > .2).sum() >= 1
 
 
 def test_feature_distance_is_zero_on_the_same_batch_and_differentiable():

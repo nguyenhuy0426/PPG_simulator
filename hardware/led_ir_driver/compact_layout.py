@@ -42,11 +42,6 @@ def compact(input_path=FILE):
         'R8': (149.81, 127), 'R9': (161, 132.5),
         'C2': (127, 130.5), 'C4': (143, 130.5),
         'C5': (144, 121.5), 'C7': (134.3, 116.35),
-        # v2.0 per-channel I2C: header, then 100R (upper) / 3-pad jumper (lower)
-        # cells between each 2.00 mm header and its module socket.
-        'J8': (129, 111.5), 'J9': (162, 111.5),
-        'R11': (113, 104.6), 'JP1': (113, 107.6), 'R12': (121, 104.6), 'JP2': (121, 107.6),
-        'R13': (146, 104.6), 'JP3': (146, 107.6), 'R14': (154, 104.6), 'JP4': (154, 107.6),
     }
     nets = {}
     for net in src.GetNetsByNetcode().values():
@@ -123,10 +118,6 @@ def compact(input_path=FILE):
     trace('/SENSE_RED',[(148,135),(159.45,135),(159.45,134.5)],p.B_Cu,.28)
     via('/SENSE_RED',(159.45,134.5))
     trace('/SENSE_RED',[(159.45,134.5),(159.45,132.5)],p.F_Cu,.25)
-    # Layer changes for the v2.0 I2C routes in routing_paths.json.
-    for net,pos in (('/SCL_H_IR',(110.2,106.6)),('/SDA_H_IR',(118.4,109.2)),
-                    ('/SCL_H_RED',(143.2,106.6)),('/SDA_H_RED',(151.4,109.2))):
-        via(net,pos)
 
     def line(a, b, layer, width=.05):
         shape = p.PCB_SHAPE()
@@ -137,38 +128,26 @@ def compact(input_path=FILE):
         shape.SetWidth(mm(width))
         board.Add(shape)
 
-    def silk(value,x,y,size=.8,back=False,angle=0):
+    def silk(value,x,y,size=.8,back=False):
         label=p.PCB_TEXT(board)
         label.SetText(value);label.SetPosition(vec(x,y));label.SetTextSize(vec(size,size))
         label.SetTextThickness(mm(.1));label.SetLayer(p.B_SilkS if back else p.F_SilkS)
-        label.SetMirrored(back);label.SetTextAngle(p.EDA_ANGLE(angle,p.DEGREES_T));board.Add(label)
+        label.SetMirrored(back);board.Add(label)
 
-    silk('PPG LED/IR TX 70x40 v2.0',135,101.5,.8)
+    silk('PPG LED/IR TX 70x40',135,101.5,.8)
     silk('IR',119,101.5,.8)
     silk('RED',151,101.5,.8)
     silk('DATN: PPG-Simulator',135,101.4,.8,True)
     silk('Nguyen Nhat Huy - Pham Thanh Vy',135,102.9,.8,True)
     for ref,x in (('J1',110.7),('J2',125.0),('J3',143.7),('J4',165.5)):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
-        names={'J1':('IR','GND','SCL','SDA','3V3','I2CGND'),
-               'J2':('IR','GND'),
-               'J3':('RED','GND','SCL','SDA','3V3','I2CGND'),
+        names={'J1':('IR','GND','SCL','SDA','3V3','GND'),
+               'J2':('IR','GND','SCL','SDA','3V3','GND'),
+               'J3':('RED','GND','SCL','SDA','3V3','GND'),
                'J4':('RED','GND')}[ref]
         for number,name in enumerate(names,1):
             pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
             silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
-    # v2.0 I2C headers (Grove order) and jumper/resistor columns.
-    for ref,x in (('J8',126.3),('J9',159.3)):
-        f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
-        for number,name in enumerate(('SCL','SDA','3V3','GND'),1):
-            pad=next(q for q in f.Pads() if q.GetNumber()==str(number))
-            silk(name,x,p.ToMM(pad.GetPosition().y),.8,True)
-    silk('I2C',129,109.6,.8); silk('I2C',162,109.6,.8)
-    # Signal name above each R; BYP under jumper pad 1, 100R under pad 3.
-    for x,sig,jp,r in ((113,'SCL','JP1','R11'),(121,'SDA','JP2','R12'),(146,'SCL','JP3','R13'),(154,'SDA','JP4','R14')):
-        silk(sig,x,103.0,.8); silk('BYP',x-1.55,109.8,.8); silk('100R',x+1.55,109.8,.8)
-        # Rear: SCL cell labels on the R/JP gap row, SDA cell labels below its jumper.
-        silk(f'{jp}/{r} {sig}',x,106.1 if sig=='SCL' else 110.0,.8,True)
     for ref,names in (('J5',('5V','IR-')),('J6',('5V','RED-')),('J7',('5V','GND'))):
         f=next(q for q in board.GetFootprints() if q.GetReference()==ref)
         for number,name in enumerate(names,1):
@@ -191,9 +170,9 @@ def compact(input_path=FILE):
     zone = p.ZONE(board)
     zone.SetLayer(p.F_Cu)
     zone.SetNet(ground)
-    zone.SetLocalClearance(mm(.5))
+    zone.SetLocalClearance(mm(.3))
     zone.SetPadConnection(p.ZONE_CONNECTION_THERMAL)
-    zone.SetThermalReliefGap(mm(.5))
+    zone.SetThermalReliefGap(mm(.3))
     zone.SetThermalReliefSpokeWidth(mm(.4))
     zone.SetMinThickness(mm(.25))
     zone.SetIslandRemovalMode(p.ISLAND_REMOVAL_MODE_ALWAYS)
@@ -203,9 +182,9 @@ def compact(input_path=FILE):
         zone.Outline().Append(pos.x, pos.y)
     board.Add(zone)
     back=p.ZONE(board)
-    back.SetLayer(p.B_Cu);back.SetNet(ground);back.SetLocalClearance(mm(.5))
+    back.SetLayer(p.B_Cu);back.SetNet(ground);back.SetLocalClearance(mm(.3))
     back.SetPadConnection(p.ZONE_CONNECTION_THERMAL)
-    back.SetThermalReliefGap(mm(.5));back.SetThermalReliefSpokeWidth(mm(.4))
+    back.SetThermalReliefGap(mm(.3));back.SetThermalReliefSpokeWidth(mm(.4))
     back.SetMinThickness(mm(.25));back.SetIslandRemovalMode(p.ISLAND_REMOVAL_MODE_ALWAYS)
     back.Outline().NewOutline()
     for x,y in ((100.6,100.6),(169.4,100.6),(169.4,139.4),(100.6,139.4)):

@@ -100,7 +100,7 @@ python3 -m ml.kaggle_physigpt.stage <dir> decay --owner halovie2412 --stage 0 --
     --datasets ppg-physigpt-shard0-data-v1 --config large --epochs 300 --from-slug ppg-physigpt-stage0-large-v1 \
     --tag large --decay-steps 3000 --micro 256 --lr 0.0004
 python3 -m ml.kaggle_physigpt.stage <dir> judge --owner halovie2412 --stage 0 --shards 1 2 3 4 --solos 0 \
-    --datasets ppg-physigpt-shard0-data-v1 --from-slug ppg-physigpt-decay0-large-v1 --judge-seeds 0   # feature tier only
+    --datasets ppg-physigpt-shard0-data-v1 --from-slug ppg-physigpt-decay0-large-v1   # feature-only evaluation
 ```
 
 Measured results (strict judge, feature tier, held-out flow loss) are in [docs/physigpt](../../docs/physigpt/README.md).

@@ -12,8 +12,8 @@ mimic_wdb for --hours into /kaggle/working/shard, then stage 0 of train.py on th
 budget. Its shard mounts later like any data shard (Windows finds it by manifest.json).
 gan (T4 x2): gan.py (APFT-GAN) on the mounted shards, fine-tuning the release.pt of --from-slug (the V1 large decay
 kernel) against a critic, after a smoke run of the tiny config on synthetic windows on the same GPUs.
-judge (T4 x2): ml.kaggle_physigpt.judge_physigpt on the mounted shards and a finished stage's release.pt: the model
-judge and its features on GPU 0, the null and damaged-real control judges on GPU 1, as separate processes.
+judge (T4 x2): feature-only evaluation of a finished release against held-out people; accuracy and AUC
+are reported for LogisticRegression and Trees. Historical strict-judge experiments remain separate.
 sample (T4 x2): generator windows only, from a checkpoint in a dataset, without real data, for an account that
 cannot mount the shards; judge --generated-slug --cpu then scores them on the account that can (no GPU quota).
 solotrain k (T4 x2): stage 0 again on solo k's shard (its output mounted), after smoke runs that measure eager
@@ -49,7 +49,7 @@ SOURCES["gan"] = SOURCES["judge"]+["ml/kaggle_multidomain/physiogan_r.py", "ml/k
                                    "ml/kaggle_physigpt/gan.py", "ml/kaggle_physigpt/kernel_eval.py"]
 # PSF-GAN, the pure GAN (pure_gan.py): APFT-GAN's helpers and the in-kernel evaluation
 SOURCES["puregan"] = SOURCES["gan"]+["ml/kaggle_physigpt/pure_gan.py"]
-EVAL_HOURS = dict(gan=1.0, puregan=.75)   # after training: 9,000 windows, the feature tier and one strict-judge fit
+EVAL_HOURS = dict(gan=1.0, puregan=.75)   # conservative reserve for sampling and the feature-only evaluation
 # RSR-FlowGAN (ml/kaggle_multidomain/rsr_flowgan.py) on the v3 pack and the app bundle: its module-level imports
 SOURCES["rsrgan"] = ["ml/kaggle_lsm/train_lsm.py", "ml/kaggle_physigpt/mimic_wdb.py", "ml/kaggle_physigpt/model.py",
                      "ml/kaggle_physigpt/train.py", "ml/kaggle_physigpt/judge_physigpt.py",
@@ -88,12 +88,12 @@ def solotrain_slug(k):
     return f"ppg-physigpt-solo{k}-train-v1"
 
 
-def evaluation(sampler, strict_seeds):
+def evaluation(sampler):
     """Kernel lines after training: the release's windows on the held-out people (kernel_eval), into /kaggle/working/eval.
     sampler defines sample(n, seed) -> windows."""
     return (sampler+"from ml.kaggle_physigpt.kernel_eval import evaluate, generated_sets\n"
             "import torch\ntorch.cuda.empty_cache()\n"
-            f"evaluate(generated_sets(sample), data, '/kaggle/working/eval', 'cuda', {list(strict_seeds)!r})")
+            "evaluate(generated_sets(sample), data, '/kaggle/working/eval')")
 
 
 def mount_lookup(owner):
@@ -111,9 +111,8 @@ def mount_lookup(owner):
 
 def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hours=10.5, stage=0, shards=(0,),
               config="base", epochs=4., extra=(), smoke_only=False, solos=(), datasets=(), owner=OWNER,
-              kernel_hours=KERNEL_HOURS, checkpoint="release.pt", judge_seeds=3, decay_steps=0, from_slug=None,
-              gen_steps=32, skip_controls=False, no_clamp=False, hold_steps=0, tag="", generated_slug=None, cpu=False,
-              strict_seeds=(0,)):
+              kernel_hours=KERNEL_HOURS, checkpoint="release.pt", decay_steps=0, from_slug=None,
+              gen_steps=32, no_clamp=False, hold_steps=0, tag="", generated_slug=None, cpu=False):
     if kind == "data":
         args = ["--output", "/kaggle/working/shard", "--start", str(start), "--stop", str(stop), "--cap", str(cap),
                 "--target", str(target), "--hours", str(hours)]
@@ -167,8 +166,7 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 f"*{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
                 + evaluation("from ml.kaggle_physigpt.judge_physigpt import generate\n"
                              "release = '/kaggle/working/gan/gan_release.pt'\n"
-                             f"sample = lambda n, seed: generate(release, n, seed, 'cuda', steps={gen_steps})\n",
-                             strict_seeds))
+                             f"sample = lambda n, seed: generate(release, n, seed, 'cuda', steps={gen_steps})\n"))
     if kind == "puregan":
         slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
         initial = "init = []\n"
@@ -186,7 +184,7 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 f"puregan(['--data', *data, '--output', '/kaggle/working/gan', '--config', 'base', "
                 f"*init, *{list(extra)!r}, '--hours', f'{{left:.3f}}'])\n"
                 + evaluation("release = '/kaggle/working/gan/gan_release.pt'\n"
-                             "sample = lambda n, seed: generate_release(release, n, seed, 'cuda')\n", strict_seeds))
+                             "sample = lambda n, seed: generate_release(release, n, seed, 'cuda')\n"))
     if kind == "sample":
         if len(datasets) != 1:
             raise ValueError("sample: --datasets names the one dataset holding the checkpoint")
@@ -207,8 +205,6 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
     if cpu and not generated_slug:
         raise ValueError("judge --cpu scores samples drawn elsewhere: it needs --generated-slug")
     if kind == "judge" and generated_slug:
-        if judge_seeds != 0:
-            raise ValueError("judge --generated-slug is the feature tier only: --judge-seeds 0")
         slugs = [shard_slug(k) for k in shards]+[solo_slug(k) for k in solos]+list(datasets)
         return (mount_lookup(owner)
                 + "import os, subprocess\n"
@@ -236,20 +232,8 @@ def entry_for(kind, shard=0, start=0, stop=10**9, cap=300, target=5_000_000, hou
                 "            '--mode', mode, '--device', 'cuda', '--threads', '4', *more]\n"
                 "    return subprocess.Popen(argv, env=env)\n")
         sampling = f"'--gen-steps', '{gen_steps}'" + (", '--no-clamp'" if no_clamp else "")
-        if judge_seeds == 0:   # the feature tier only: sample, compare features, no strict judge fit
-            return (head+f"codes = [run('features', '0', '--checkpoint', str(found[0]), {sampling}).wait()]\n"
-                    "print('judge exit codes (features):', codes, flush=True)\n"
-                    "if any(codes):\n    raise SystemExit(f'judge failed: {codes}')")
-        return (head
-                + f"seeds = {[str(i) for i in range(judge_seeds)]!r}\n"
-                + f"model = run('model', '0', '--checkpoint', str(found[0]), '--seeds', *seeds, {sampling})\n"
-                + ("controls = None\n" if skip_controls else "controls = run('controls', '1', '--seeds', '0')\n")
-                + "codes = [model.wait()]\n"
-                "if codes[0] == 0:\n"
-                "    codes.append(run('features', '0', '--checkpoint', str(found[0]),\n"
-                "                     '--generated', out+'/model/generated.npy').wait())\n"
-                "if controls:\n    codes.append(controls.wait())\n"
-                "print('judge exit codes (model, features, controls):', codes, flush=True)\n"
+        return (head+f"codes = [run('features', '0', '--checkpoint', str(found[0]), {sampling}).wait()]\n"
+                "print('judge exit codes (features):', codes, flush=True)\n"
                 "if any(codes):\n    raise SystemExit(f'judge failed: {codes}')")
     new, replay = (shards, ()) if stage == 0 else (shards[-1:], shards[:-1])
     new = [shard_slug(k) for k in new]+[solo_slug(k) for k in solos]+list(datasets)
@@ -367,8 +351,7 @@ def stage(output, kind, owner=OWNER, source_owner=None, **kw):
             judge += f"-g{kw['gen_steps']}"
         if kw.get("no_clamp"):
             judge += "-noclamp"
-        if kw.get("judge_seeds", 3) == 0:
-            judge += "-fid"
+        judge += "-fid"
         # Kaggle takes the kernel's slug from its title, so a title that is not the id's own slug splits them.
         meta = dict(id=f"{owner}/{judge}", title=f"PPG physiGPT Judge{k} v1" if judge == f"ppg-physigpt-judge{k}-v1" else judge,
                     enable_gpu=True,
@@ -423,7 +406,6 @@ def main(argv=None):
     parser.add_argument("--smoke-only", action="store_true", help="tpu: versions and the synthetic smoke run only")
     parser.add_argument("--plateau", type=int, default=0, help="train.py --plateau (evaluations of patience)")
     parser.add_argument("--checkpoint", default="release.pt", help="judge: checkpoint file of the stage output")
-    parser.add_argument("--judge-seeds", type=int, default=3, help="judge: judge seeds for the generated source")
     parser.add_argument("--decay-steps", type=int, default=0,
                         help="decay: steps of lr decay after the stage's stable.pt (kind decay resumes it)")
     parser.add_argument("--hold-steps", type=int, default=0, help="decay: steps at the peak rate before the decay")
@@ -433,7 +415,6 @@ def main(argv=None):
     parser.add_argument("--diff-weight", type=float, default=0., help="train.py --diff-weight (0: off)")
     parser.add_argument("--gen-steps", type=int, default=32, help="judge: Heun steps per patch of the generator")
     parser.add_argument("--no-clamp", action="store_true", help="judge: sample patches without clipping to [0, 1]")
-    parser.add_argument("--skip-controls", action="store_true", help="judge: do not rerun the model-independent controls")
     parser.add_argument("--from-slug", default=None,
                         help="judge/gan: release source; puregan: same-owner kernel whose gan_release.pt initializes G")
     parser.add_argument("--generated-slug", default=None,
@@ -444,17 +425,15 @@ def main(argv=None):
     parser.add_argument("--gan-steps", type=int, default=0, help="gan: gan.py --steps (0: its default)")
     parser.add_argument("--adv-weight", type=float, default=0., help="gan: gan.py --adv-weight (0: its default)")
     parser.add_argument("--patience", type=int, default=0, help="gan: gan.py --patience (0: no early stop)")
-    parser.add_argument("--strict-seeds", type=int, nargs="*", default=[0],
-                        help="gan/puregan: strict-judge seeds of the in-kernel evaluation (none: feature tier only)")
     parser.add_argument("--gan-extra", default="",
                         help="gan/puregan: further gan.py / pure_gan.py options as one string, given with = (--gan-extra=\"--hr-cond --feature-weight 1\")")
     args = parser.parse_args(argv)
     data = dict(shard=args.shard, start=args.start, stop=args.stop, cap=args.cap, target=args.target, hours=args.hours)
     train = dict(stage=args.stage, shards=tuple(args.shards), solos=tuple(args.solos), config=args.config,
                  epochs=args.epochs, datasets=tuple(args.datasets), kernel_hours=args.kernel_hours,
-                 checkpoint=args.checkpoint, judge_seeds=args.judge_seeds, decay_steps=args.decay_steps,
-                 from_slug=args.from_slug, gen_steps=args.gen_steps, skip_controls=args.skip_controls, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag,
-                 generated_slug=args.generated_slug, cpu=args.cpu, strict_seeds=tuple(args.strict_seeds))
+                 checkpoint=args.checkpoint, decay_steps=args.decay_steps,
+                 from_slug=args.from_slug, gen_steps=args.gen_steps, no_clamp=args.no_clamp, hold_steps=args.hold_steps, tag=args.tag,
+                 generated_slug=args.generated_slug, cpu=args.cpu)
     extra = ((["--plateau", str(args.plateau)] if args.plateau else [])
              + (["--plateau-delta", str(args.plateau_delta)] if args.plateau_delta else [])
              + (["--eval-every", str(args.eval_every)] if args.eval_every else [])

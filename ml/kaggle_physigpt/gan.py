@@ -416,8 +416,8 @@ def worker(rank, world, args):
                                                   generator_updates=g_updates, rt_ema=rt_ema, hr_cond=args.hr_cond,
                                                   max_memory_gb=torch.cuda.max_memory_allocated(device)/2**30
                                                   if cuda else None,
-                                                  note="selection on training records only; realism is judged by the "
-                                                       "strict judge and the feature tier on held-out people"))
+                                                  note="selection on training records only; feature fidelity and feature-classifier "
+                                                       "accuracy/AUC are evaluated on held-out people"))
         log.close()
     if world > 1:
         dist.barrier()

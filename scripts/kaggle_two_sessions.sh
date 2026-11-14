@@ -4,7 +4,7 @@
 #   apft    APFT-GAN v3 (ml/kaggle_physigpt/gan.py) from the V1 large release, heart-rate conditioned
 # Both mount the MIMIC-III shards and the V1 release of SOURCE_OWNER (default halovie2412), which must be shared
 # with OWNER on Kaggle. Each kernel trains, then scores its best checkpoint on the 180 held-out people
-# (eval/summary.json: mean similarity in %, per feature, tree accuracy, strict-judge AUC).
+# (eval/summary.json: mean similarity in %, per feature, LogisticRegression/Trees accuracy and AUC).
 #
 # Usage (from the repository root, on a claude/model-benchmark-* branch, with `kaggle` logged in):
 #   scripts/kaggle_two_sessions.sh push [psf|apft|both]   stage and push the kernels (default both)
@@ -17,13 +17,12 @@
 # conda; otherwise give it: KAGGLE=/path/to/kaggle scripts/kaggle_two_sessions.sh push
 #
 # Settings by environment: OWNER, SOURCE_OWNER, OUT (default runs/kaggle), PSF_EXTRA and APFT_EXTRA (extra options of
-# pure_gan.py / gan.py as one string), STRICT_SEEDS (strict-judge seeds of the evaluation, default "0").
+# pure_gan.py / gan.py as one string).
 set -euo pipefail
 
 OWNER=${OWNER:-charlesday2612}
 SOURCE_OWNER=${SOURCE_OWNER:-halovie2412}
 OUT=${OUT:-runs/kaggle}
-STRICT_SEEDS=${STRICT_SEEDS:-0}
 # PSF-GAN: 256 windows per T4 and step; the time budget and --patience end it, the lr decay follows the time budget
 PSF_EXTRA=${PSF_EXTRA:---hr-cond --batch 256 --eval-every 2000 --patience 10}
 # APFT-GAN v3: --steps is a ceiling; --patience 8 at --eval-every 250 stops after 2000 steps without a new best
@@ -31,7 +30,7 @@ APFT_EXTRA=${APFT_EXTRA:---hr-cond}
 PSF_TAG=psf-gan
 APFT_TAG=apft-gan-v3-hr
 COMMON=(--owner "$OWNER" --source-owner "$SOURCE_OWNER" --stage 0 --shards 1 2 3 4 --solos 0
-        --datasets ppg-physigpt-shard0-data-v1 --strict-seeds $STRICT_SEEDS)
+        --datasets ppg-physigpt-shard0-data-v1)
 
 slug() { echo "$OWNER/ppg-physigpt-$1-v1"; }
 
@@ -145,16 +144,19 @@ for tag in tags:
               f"best step {g.get('best', {}).get('step')}")
 if rows:
     ref = next(iter(rows.values()))
-    print(f"\n{'':24}" + "".join(f"{t:>18}" for t in rows) + f"{'real vs real':>16}")
+    print(f"\n{'':24}" + "".join(f"{t:>18}" for t in rows) + f"{'real / chance*':>16}")
     print(f"{'mean similarity %':24}" + "".join(f"{r['mean_similarity_percent']:>18}" for r in rows.values())
           + f"{ref['real_vs_real_percent']:>16}")
-    print(f"{'tree accuracy':24}" + "".join(f"{r['tree_accuracy']:>18.3f}" for r in rows.values()) + f"{0.5:>16}")
-    print(f"{'strict judge AUC':24}" + "".join(f"{r.get('strict_judge_auc', float('nan')):>18.3f}" for r in rows.values()))
+    for key, label in (("logreg_accuracy", "LogisticRegression acc"), ("logreg_auc", "LogisticRegression AUC"),
+                       ("tree_accuracy", "Trees accuracy"), ("tree_auc", "Trees AUC")):
+        print(f"{label:24}" + "".join(f"{r.get(key, float('nan')):>18.3f}" for r in rows.values())
+              + f"{0.5:>16}")
     print(f"{'verdict':24}" + "".join(f"{r['verdict']:>18}" for r in rows.values()))
     for k in ref["feature_percent"]:
         print(f"{k:24}" + "".join(f"{r['feature_percent'][k]:>18}" for r in rows.values())
               + f"{ref['real_vs_real_feature_percent'][k]:>16}")
-    print("\ntarget: mean >= 95 %, every feature >= 90 % (or its real-vs-real value), tree accuracy <= 0.60")
+    print("\n* Similarity column: measured real vs real. Classifier column: theoretical chance 0.5 (accuracy/AUC).")
+    print("target: mean >= 95 %, every feature >= 90 % (or its real-vs-real value), tree accuracy <= 0.60")
 PY
 }
 

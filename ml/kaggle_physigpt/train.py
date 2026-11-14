@@ -12,7 +12,7 @@ or, when that loss has risen above its best (overfitting, which a decay only dee
 best.pt is the state with the lowest held-out flow loss so far.
 Validation is the held-out records of every mounted shard (fixed subset, fixed noise). Next-patch NLL and flow loss
 measure fit only; best.pt and --plateau choose states on those records, so they are not a test set. Whether
-samples are realistic is the strict judge's job in a later round, on people kept out of training and selection.
+samples match the reference features is evaluated separately; shape metrics do not establish clinical realism.
 """
 import argparse
 import contextlib
@@ -401,7 +401,7 @@ def worker(rank, world, args):
                        final=evaluate(model, data, device, cuda),
                        samples=release_samples(model, data, output, device, args.sample_steps),
                        note="fit and sanity statistics only, on held-out records that also chose best.pt and the "
-                            "plateau; realism is judged by the strict judge on separate people in a later round")
+                            "plateau; feature fidelity is evaluated separately against held-out people")
         save_json(output/"stage_summary.json", summary)
         log.close()
     if world > 1:

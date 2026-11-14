@@ -1,74 +1,20 @@
-# Panel V-cut PPG — 70 × 80 mm
+# Official OPT101 + LED/IR driver panel
 
-> **Lưu ý (2026-11-04):** bản driver trong panel này chưa cập nhật theo quy định nhà mạch (vùng GND cách đồng 0,50 mm; pad J8/J9 1,50 mm). Chỉ `led_ir_driver/` và `PPG_LED_IR_driver.zip` đã cập nhật. Dựng lại panel (`build_panel.py`) rồi chạy lại DRC và `verify_panel.py` trước khi gửi in panel.
+Open `ppg_panel.kicad_pro` in KiCad 10. This 70 × 60 mm, 1.6 mm thick,
+two-layer panel contains one 70 × 20 mm OPT101 receiver and one 70 × 40 mm
+shared-I²C LED/IR driver. Their nets are isolated. BPW34 is not included.
 
-Mở `ppg_panel.kicad_pro` / `ppg_panel.kicad_pcb` bằng KiCad 10.
-Đây là **panel gia công gồm ba thiết kế khác nhau**, mỗi thiết kế một bản:
+The outer rectangle is `Edge.Cuts`. One full-width V-score centre line is on
+`Cmts.User`, 20 mm from the top (KiCad Y = 70 mm); it is not a milled slot.
+Separate the bare boards before assembly. Confirm V-score depth, tolerances,
+clearances and pricing for two designs with the board house.
 
-| Vị trí từ cạnh trên | Board sau tách | Kích thước |
-|---|---|---|
-| Y = 0–20 mm | OPT101 receiver v1.5 | 70 × 20 mm |
-| Y = 20–40 mm | BPW34 receiver v1.4 | 70 × 20 mm |
-| Y = 40–80 mm | LED/IR driver v2.0 | 70 × 40 mm |
+To rebuild from the two source PCB files, run `build_panel.py` with KiCad 10
+Python, then run `verify_panel.py` and KiCad DRC. The manifest records source
+hashes. The independent audit checks source parity, electrical separation and
+copper clearance from the score; CAD checks do not qualify a physical board.
 
-Hai đường V-cut ở **Y = 20 và 40 mm**, chạy thẳng hết chiều ngang 70 mm.
-Tọa độ trong file KiCad: góc trên trái (50,50); các đường cắt Y=70 và 90.
-Không có khe phay giữa board: V-cut dùng chung đường biên, khoảng hở cơ khí
-trước khi bẻ bằng 0. Sau khi tách là ba PCB độc lập. Toàn bộ đồng, pad, via
-và vùng đồng cách tâm đường cắt ít nhất **1,5 mm mỗi phía**; không có đường
-điện xuyên qua đường cắt. Các net và reference trong panel được đặt tiền tố
-OPT/BPW/TX để không nối nhầm GND hoặc nguồn giữa các board.
-
-**Chỉ dẫn nhà in:** FR-4 dày 1,6 mm, 2 lớp đồng 1 oz, soldermask hai mặt,
-silkscreen trắng hai mặt. `Edge_Cuts` là duy nhất đường bao phay ngoài.
-File `ppg_panel-User_Comments.gbr` chỉ chứa hai **tâm đường V-score hai mặt**;
-không coi là lớp đồng, không phay thành hai khe xuyên. Bản vẽ
-`reports/vcut_drawing.pdf` giải thích vị trí và kích thước. Nhà in chọn độ
-sâu V-score theo quy trình FR-4 1,6 mm và xác nhận dung sai/khoảng hở của họ.
-Tách panel trước khi hàn/cắm IC, module và photodiode; làm sạch phần ba via
-ở mép bẻ nếu cần. Không cấp điện cho cả panel như một board hệ thống.
-
-Diện tích PCB giảm **75,6 → 56 cm² (25,93%)**. Đây là giảm diện tích thực,
-không phải bảo đảm giảm giá tương ứng: cần báo đúng **3 designs / panel**,
-vì nhà in có thể tính phí ghép thiết kế hoặc V-cut. Không cần thanh biên cho
-bộ PCB trần này; nếu nhà in yêu cầu thanh biên thì diện tích báo giá tăng.
-
-## Kiểm tra
-
-- Cả ba source: ERC/DRC và đối chiếu schematic–PCB.
-- Panel: DRC, 0 kết nối thiếu; kiểm tra độc lập net, pad, drill, vị trí và
-  từng đoạn đồng so với source, khoảng hở lỗ khoan và V-cut.
-- `reports/panel_audit.json` chứa bề rộng đường theo từng net và khoảng cách
-  tới từng lỗ; `reports/manifest.json` lưu SHA-256 của ba PCB nguồn.
-- `ELECTRICAL_REVIEW.md` giải thích đường nguồn, RC và những giới hạn điện
-  chưa thể chứng minh bằng CAD. DRC sạch không chứng minh mạch đã chạy thật.
-
-Schematic vẫn ở ba project riêng. Không cập nhật panel từ một schematic
-trống và không sửa điện trực tiếp trong panel. Sau khi sửa source, chạy
-`build_panel.py`, DRC refill, `verify_panel.py`, rồi xuất lại Gerber/drill.
-Scripts dùng Python có `pcbnew` của KiCad 10.
-
-## Gá in 3D mới
-
-Hai receiver dùng hai biến thể thanh U trong `docs/system_3d/out/print_bambu_180/`:
-`14_ga_chu_U_OPT101_70x20.stl`, `15_ga_chu_U_BPW34_70x20.stl`.
-Driver dùng `16_ga_driver_70x40.stl`. Xem mechanical/README.md của từng project.
-Trục quang danh nghĩa và khoảng cách hai kênh 38,5 mm được giữ nguyên.
-
-## Khoảng hở khi tách panel
-
-Đồng cách tâm V-cut ≥1,5 mm mỗi phía. Bao footprint các R/C cách V-cut ≥2 mm (bản hiện tại ≥2,095 mm), có kiểm tra tự động trong verify_panel.py. Không thay điều này cho giới hạn cơ khí của nhà in. Tách panel trần trước khi hàn, dùng dụng cụ tách V-score để hạn chế uốn PCB gần tụ gốm; không bẻ mạnh panel đã lắp linh kiện.
-
-## Layout 45°
-
-Ba board và panel đã vát góc rẽ dây 45°. Xem [đánh giá bố trí hai mặt và V-score](LAYOUT_REVIEW.md).
-
-## Driver v2.0 trong panel (2026-10-31)
-
-Board driver nay có cổng I²C riêng cho từng module MCP4725 (TX_J8 IR, TX_J9 RED),
-bốn điện trở 100 Ω 0805 (TX_R11–R14) và bốn jumper hàn 3 pad (TX_JP1–JP4, mặc
-định hở). Panel sinh lại bằng `build_panel.py`: DRC 0 vi phạm, 0 kết nối thiếu;
-`verify_panel.py` đạt 648 kiểm tra; đồng cách tâm V-cut tối thiểu 1,500 mm, bao
-R/C cách V-cut tối thiểu 2,095 mm (không đổi). Lỗ PTH tăng từ 108 lên 116
-(+4 via, +8 lỗ J8/J9, −4 lỗ nhóm I²C cũ của J2). Hồ sơ hàn dán cập nhật trong
-`assembly/`. Chưa đo trên board v2.0 thật.
+The driver restores v1.9 and does not include later v2.0 manufacturing-rule
+changes. Old three-board Gerbers and assembly files are obsolete and have
+been removed. Verify current fabrication requirements, then regenerate and
+inspect the panel Gerbers and drills before ordering.

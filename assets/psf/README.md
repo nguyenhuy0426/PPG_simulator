@@ -1,34 +1,21 @@
-# PSF-GAN FP32 FT v1 — bản mô phỏng thử nghiệm
+# PSF J3 — baseline chính thức của dự án (2026-11-12)
 
-Nguồn: [Kaggle version 1 / script 365965110](https://www.kaggle.com/code/charlesday2612/ppg-physigpt-psf-gan-fp32-ft-v1).
-Checkpoint EMA được chọn ở bước 500; train dừng vì patience ở 4.500 bước, không có bước lỗi số học hoặc rollback.
+J3 là lựa chọn mặc định chính thức của dự án theo yêu cầu người dùng và quy tắc thay thế đã khóa: không giảm trung bình similarity. Đây vẫn là **mô phỏng thử nghiệm**, không phải model đạt toàn bộ tiêu chí realism hay đã kiểm định lâm sàng.
 
-| Phép kiểm tra | Kết quả |
-|---|---:|
-| Selection trên dữ liệu train | 94,17% |
-| Test: trung bình 22 × (1−KS) | 93,54% |
-| Thật so với thật | 95,83% |
-| Tree accuracy thật/giả | 94,25% |
-| Strict judge AUC | 0,99999875 |
+- Generator: `generator.ts`, checkpoint EMA bước **5500**, SHA256 `cc550e4a0e4279ab0b93aa19b920d488e9fa0402c148764691e38aa7f28941b4`.
+- Nguồn: https://www.kaggle.com/code/halovie2412/ppg-physigpt-psf-j3-v1 .
+- Held-out: mean 22 × (1−KS) **94,94%**, LogisticRegression real/fake accuracy **53,8%**, AUC **0,5562395**; Trees accuracy **66,625%**, AUC **0,73839225**. Các chỉ số classifier này là kết quả lịch sử từ `target.json`, dùng rank AUC cũ có xử lý điểm hòa khác evaluator sklearn hiện tại; mục tiêu phân biệt ở mức ngẫu nhiên là accuracy 50% và AUC 0,5. Similarity không phải accuracy của thiết bị.
+- Verdict **fail**, `accepted_global_target=false`, `clinical_validation=false` được giữ nguyên. Mean chưa đạt 95%; tree vượt mức tối đa 60%.
+- J4/J5 có tree thấp hơn nhưng mean 94,91% giảm so với J3. J6 chọn bước 0, có 84 tensor generator trùng J4/J5 và HR bank khác; mean 95,44% không chứng minh cải thiện trọng số, tree 64,05% vẫn fail. Không có model thắng mọi tiêu chí.
 
-Người dùng chấp nhận tiếp tục thử nghiệm từ điểm selection 94,17%. Báo cáo tự động vẫn là **fail** theo tiêu chí cũ, được giữ nguyên trong `evaluation.json`. Model chưa tạo được phân bố không phân biệt với dữ liệu thật; chưa kiểm định lâm sàng.
+`manifest.json`, `evaluation.json`, `target.json` và `official_selection.json` mô tả J3. Báo cáo model cũ đã được giữ trong bản sao lưu, không dùng để xác nhận J3. Lịch sử đánh giá và phân tích so sánh nằm tại `runs/pi-models-20261111/RELEASE_AUDIT.md` trong checkout nguồn.
 
-## Runtime
+## Runtime và giới hạn
 
-- `generator.ts`: TorchScript CPU, 7.218.900 tham số; chỉ generator, không cần discriminator để sinh sóng.
-- Input: z float32 `[1,128]`, HR yêu cầu float32 `[1]` trong 40–180 bpm, noise float32 `[1,6,1600]`.
-- Output: float32 `[1,1200]`, 40 Hz, 30 giây, chuẩn hóa [0,1]. Batch runtime cố định là 1; không dùng trace này cho batch khác.
-- `core.psf_preview.PSFSequenceGenerator` kiểm tra checksum, seed, HR và đầu ra; không truy cập I2C/DAC/sensor. UI sinh sóng trong tiến trình riêng, chỉ phát khi người dùng nhấn nút.
-- HR là điều kiện yêu cầu, không bảo đảm HR đo từ sóng bằng đúng giá trị đó. Không có điều khiển notch, chẩn đoán bệnh lý hoặc SpO₂.
-- IR/RED trong ứng dụng được suy từ cùng một sóng với biên độ danh định; không phải hai kênh sinh lý đo thật hoặc mô hình quang học đã hiệu chuẩn.
-- `real_train_strip.json`: một đoạn MIMIC-III Waveform Database thuộc split train, 0,5–8 Hz và min-max; chỉ để tham khảo, không ghép cặp với sóng sinh. Nguồn dữ liệu: https://physionet.org/content/mimic3wdb/1.0/ .
+TorchScript CPU: z float32 `[1,128]`, HR float32 `[1]` trong 40–180 bpm, noise float32 `[1,6,1600]`; output `[1,1200]` tại 40 Hz (30 giây), chuẩn hóa [0,1]. Batch runtime là 1. HR là điều kiện yêu cầu, không bảo đảm HR đo bằng đúng giá trị đó. `core.psf_preview.PSFSequenceGenerator` kiểm tra checksum và dữ liệu trước khi tạo clip; app chỉ phát khi người dùng yêu cầu.
 
-## Kiểm chứng và triển khai
+IR/RED được suy từ cùng một sóng với biên độ danh định; không phải hai kênh sinh lý đo thật hay mô hình quang học đã hiệu chuẩn. `real_train_strip.json` là tham khảo MIMIC-III thuộc split train, không ghép cặp với tín hiệu sinh.
 
-Đã so sánh exporter với generator gốc bằng đúng noise: khớp chính xác trên CPU. Trace/eager khớp ở HR 40/75/120/180. Runtime local x86_64 PyTorch 2.10.0 đã kiểm tra 8 trường hợp HR/seed, tính lặp lại, miền giá trị, cấu trúc JSON worker và chuyển sang clip 30 giây. Xem `runtime-checks.json`.
+Kiểm tra Pi ARM64 trước đăng ký đã nạp J3 và so sánh bốn HR 40/75/120/180: sai số cực đại 1,3232231e-5 so với fixture host, dưới 1e-4. Range worker 10 cửa sổ hoàn thành 12,42 s. GUI dry-run đã pass; các kết quả này không xác nhận DAC/LED/OPT101, chất lượng quang học hoặc hiệu năng lâm sàng. Chi tiết và thời điểm đo nằm trong `docs/hardware-validation/2026-11-12-pi-range/README.md`.
 
-Trong app: Neural → **PSF-GAN · thử nghiệm** → chọn HR → **Sinh đoạn mới**. Đổi HR yêu cầu sinh lại; đổi DC/AC chỉ đổi điện áp, giữ nguyên hình dạng. Gaussian và LSM vẫn có lựa chọn riêng.
-
-Pi 4 ARM64 RAM4 GB, PyTorch2.5.1 đã nạp TorchScript và sinh đủ1.200 mẫu trong UI (staged smoke khoảng8,6s gồm nạp model). GUI được kiểm tra bằng dry-run. Bản UI Pi đã được ghép theo code riêng của Pi, giữ Gaussian/LSM. Xem pi-deployment.json và báo cáo triển khai để biết kiểm tra sau cài và vị trí sao lưu.
-
-Chưa đo DAC, LED, OPT101 hoặc đường quang bằng model này. Deployment-manifest.json cũ mô tả gói delta trên laptop, không đại diện hash các file UI đã ghép riêng cho Pi.
+Chính sách đánh giá mới chỉ dùng classifier trên feature; raw waveform strict judge bị vô hiệu hóa cho các lần đánh giá sau. Việc bỏ phép đo không cải thiện model: J3 vẫn fail tiêu chí toàn cục, trong đó tree accuracy vượt ngưỡng 60%. Báo cáo và dữ liệu nghiên cứu lịch sử được giữ nguyên.

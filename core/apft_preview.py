@@ -26,7 +26,8 @@ class APFTSequenceGenerator:
             raise ValueError('APFT generator checksum mismatch')
         self.model = build(torch.load(path, map_location='cpu', weights_only=True)).eval()
 
-    def generate(self, seed, heart_rate=75.):
+    def window(self, seed, heart_rate=75.):
+        """One validated 30 s, 40 Hz min-max window as 1200 floats."""
         if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**32:
             raise ValueError('Seed must be an integer from 0 to 4294967295')
         if not math.isfinite(heart_rate) or not 40 <= heart_rate <= 180:
@@ -37,7 +38,10 @@ class APFTSequenceGenerator:
         if (tuple(wave.shape) != (1, 1200) or not torch.isfinite(wave).all()
                 or wave.min() < 0 or wave.max() > 1 or wave.max() - wave.min() < 1e-6):
             raise ValueError('Invalid APFT waveform')
-        samples = [(i / 40, 1.5 + .045 * x, 1.5 + .0216 * x) for i, x in enumerate(wave[0].tolist())]
+        return wave[0].tolist()
+
+    def generate(self, seed, heart_rate=75.):
+        samples = [(i / 40, 1.5 + .045 * x, 1.5 + .0216 * x) for i, x in enumerate(self.window(seed, heart_rate))]
         return Preview('APFT-GAN', samples, 40, seed, float(heart_rate), None,
                        self.manifest['sha256'], (float(heart_rate),), 'apft_gan_v3_hr_v1',
                        dict(exploratory=True, paired_ir_red=False, hr_control='requested, not guaranteed',

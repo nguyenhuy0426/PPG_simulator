@@ -193,6 +193,7 @@ def classify(train_real, train_fake, test_real, test_fake, seed=None):
     """Feature-only classifiers, real against generated: fitted on the train sets, scored on the test sets."""
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
     x = np.vstack([train_real, train_fake])
     y = np.r_[np.zeros(len(train_real)), np.ones(len(train_fake))]
     mu, sd = x.mean(0), x.std(0)+1e-9
@@ -201,9 +202,8 @@ def classify(train_real, train_fake, test_real, test_fake, seed=None):
     for name, model in (("logreg", LogisticRegression(max_iter=3000)),
                         ("trees", HistGradientBoostingClassifier(max_iter=200, random_state=seed))):
         score = model.fit((x-mu)/sd, y).predict_proba((np.vstack([test_real, test_fake])-mu)/sd)[:, 1]
-        order = np.argsort(np.argsort(score))+1
         pos = yt == 1
-        out[name] = dict(auc=float((order[pos].sum()-pos.sum()*(pos.sum()+1)/2)/(pos.sum()*(~pos).sum())),
+        out[name] = dict(auc=float(roc_auc_score(yt, score)),
                          accuracy=float(((score > .5) == pos).mean()))
     return out
 
@@ -443,10 +443,12 @@ def main(argv=None):
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     real = Real(args.data)
-    info = dict(kind=args.kind, parameters=sj.parameters(args.kind), judge_steps=sj.JUDGES[args.kind]["steps"],
+    info = dict(mode=args.mode,
                 people={k: real.people(k) for k in ("fit", "inner", "control_train", "control_eval", "held_out")},
                 windows={k: int(len(v)) for k, v in real.rows.items()}, sizes=SIZES, seeds=args.seeds,
                 gen_steps=args.gen_steps, clamp=not args.no_clamp)
+    if args.mode != "features":
+        info.update(kind=args.kind, parameters=sj.parameters(args.kind), judge_steps=sj.JUDGES[args.kind]["steps"])
     print(json.dumps(info), flush=True)
     if args.mode == "controls":
         results = []

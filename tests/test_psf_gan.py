@@ -154,7 +154,10 @@ def test_warm_start_preserves_release_and_starts_new_optimizer_state(tmp_path):
         pg.main(common+['--output', str(tmp_path/'nan'), '--steps', '0'])
 
 
-def test_kernel_evaluation_reports_percentages_against_real_people(tmp_path):
+def test_kernel_evaluation_reports_percentages_and_feature_classifiers_without_raw_judge(tmp_path, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("raw-waveform judge must not run")
+    monkeypatch.setattr(kernel_eval.jp.sj, "fit", forbidden)
     people_shard(tmp_path/"shard")
     sizes = dict(fit=60, inner=20, eval=40)
     windows = kernel_eval.generated_sets(lambda n, seed: _pulse_set(seed % 1000, n), sizes)
@@ -163,6 +166,11 @@ def test_kernel_evaluation_reports_percentages_against_real_people(tmp_path):
     assert 0 <= summary["mean_similarity_percent"] <= 100 and 0 <= summary["real_vs_real_percent"] <= 100
     assert len(summary["feature_percent"]) == 22 and (tmp_path/"eval"/"target.json").exists()
     assert json.loads((tmp_path/"eval"/"summary.json").read_text()) == summary
+    target = json.loads((tmp_path/"eval"/"target.json").read_text())
+    for key, name in (("logreg", "logreg"), ("tree", "trees")):
+        for metric in ("accuracy", "auc"):
+            assert summary[f"{key}_{metric}"] == target["generated"]["classifier"][name][metric]
+    assert "strict_judge_auc" not in summary and not (tmp_path/"eval"/"generated_judge.json").exists()
     np.testing.assert_array_equal(np.load(tmp_path/"eval"/"generated.npy"), windows)
     assert np.load(tmp_path/"eval"/"generated.npy").dtype == np.float32
 
@@ -182,9 +190,9 @@ def test_puregan_and_gan_kernels_train_then_evaluate(tmp_path):
     assert "init = ['--init', str(found[0])]" in run and 'fp32=True' in run
     compile(run, '<staged>', 'exec')
     st.main([str(tmp_path/"g"), "gan", *common, "--config", "large", "--from-slug", "ppg-physigpt-decay0-large-v1",
-             "--tag", "apft-gan-v3", "--strict-seeds"])
+             "--tag", "apft-gan-v3"])
     run = (tmp_path/"g"/"run.py").read_text()
-    assert "evaluate(generated_sets(sample), data, '/kaggle/working/eval', 'cuda', [])" in run
+    assert "evaluate(generated_sets(sample), data, '/kaggle/working/eval')" in run
 
 
 def test_cached_sampler_draws_the_windows_of_the_uncached_one():
@@ -203,3 +211,10 @@ def test_cached_sampler_draws_the_windows_of_the_uncached_one():
     x = patches.reshape(3, -1)
     x = (x-x.min(1, keepdim=True).values)/(x.max(1, keepdim=True).values-x.min(1, keepdim=True).values)
     torch.testing.assert_close(cached, x, atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("option", ["--strict-seeds", "--judge-seeds", "--skip-controls"])
+def test_stage_rejects_removed_raw_judge_options(tmp_path, option):
+    with pytest.raises(SystemExit) as error:
+        st.main([str(tmp_path/"unused"), "judge", option])
+    assert error.value.code == 2 and not (tmp_path/"unused").exists()
