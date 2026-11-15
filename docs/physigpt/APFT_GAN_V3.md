@@ -1,8 +1,10 @@
 # APFT-GAN v3: why the GAN stage did not help, what changed, and the next run
 
 Engineering evaluation of normalised 30 s, 40 Hz PPG shape (0.5-8 Hz view, per-window min-max). Nothing here is
-clinical validation or a Pi/DAC/OPT101 measurement. **v3 has not been trained yet**: every v3 number below is a
-plan or a CPU smoke result, not a result.
+clinical validation or a Pi/DAC/OPT101 measurement. The v3 numbers in sections 1-6 were written before the run as a plan
+or a CPU smoke result. The run `ppg-physigpt-apft-gan-v3-hr-v1` has since produced checkpoint 1250 (feature mean 1 - KS
+95.28 %, tree accuracy 0.613, strict judge AUC 1.0, verdict fail; `assets/apft/manifest.json`), which the app ships as
+APFT-GAN (section 7).
 
 ## 1. Where the models stand (from `results.json`, 180 held-out MIMIC people, 22 features)
 
@@ -171,7 +173,19 @@ spending its quota on NaN steps. Tested on CPU with injected NaN losses; the fp1
 instead of the whole prefix (same windows for a seed; `tests/test_psf_gan.py`). On the cloud CPU, 64 large windows
 at 16 Heun steps took 7.6 s instead of 17.8 s. APFT-GAN's rollout and the evaluation sampling use it.
 
-## 7. Pi 4 deployment (not measured on the Pi)
+## 7. Pi 4 deployment
+
+Measured on the Pi 4 (15/11/2026, PyTorch 2.5.1 fp32, one thread, app GUI running; details and data in
+`docs/hardware-validation/2026-11-14-ir-overload/README.md` §18-20): checkpoint 1250 as released took 10.2 s to load and
+94.8 s per 30 s window, about 50 times the cloud estimate below. `core/apft_fast.py` keeps the weights and the samples
+bit-identical and brings this to 6.6 s and 45.7 s (no random init on load; the flow head's (h, t)-only terms, about 60 %
+of its multiply-adds, computed once per patch for the 16 flow times). A batch of 8 windows takes 57 s, since one-row
+products are bound by reading the weights. Dynamic int8 (qnnpack) reached 21.7 s but moved the generated feature
+distribution (1 - KS 0.82-0.86 against fp32, where fp32 against itself is 0.91), so it is not used. The requested HR is
+followed only partly in 60-100 bpm (38-56 % of windows within 10 %) and not outside it (~80 bpm), so the Neural page
+takes an HR range inside 60-100 bpm and keeps only windows whose measured beat rate falls in it (`core/apft_range.py`).
+
+The pre-deployment estimate, kept for reference:
 
 Generation is autoregressive: 30 transformer passes and, per patch, 2x16-1 = 31 flow-head calls. For one large
 window that is roughly 2 x 85 M x (1+...+30 tokens, ~465) ~ 80 GFLOP for the backbone without a KV cache, plus the

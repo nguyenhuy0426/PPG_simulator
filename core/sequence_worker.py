@@ -5,8 +5,9 @@ import json
 
 # The Neural page kills a worker that has not answered after this many seconds (ui/frames/neural_frame.py).
 WORKER_TIMEOUT_S = 120
-# APFT-GAN on the Pi 4 (PyTorch 2.5.1, one thread, GUI running): 12 s to load the 402 MB checkpoint and 91-100 s per
-# 30 s window, measured 15/11/2026 (docs/hardware-validation/2026-11-14-ir-overload/README.md section 18).
+# APFT-GAN on the Pi 4 (PyTorch 2.5.1, one thread, GUI running, core/apft_fast.py): ~7 s to load the 402 MB checkpoint
+# plus 57 s per batch of 8 windows; an HR-range search stops after 240 s (core/apft_range.py). Measured 15/11/2026,
+# docs/hardware-validation/2026-11-14-ir-overload/README.md sections 18-20.
 APFT_TIMEOUT_S = 300
 HR_MODELS = ('PSF-GAN', 'APFT-GAN')     # take a requested heart rate
 

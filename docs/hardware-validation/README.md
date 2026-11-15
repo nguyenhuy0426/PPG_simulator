@@ -26,7 +26,8 @@ For each generator the script:
 
 1. runs the worker that the Neural page starts (`python -m core.sequence_worker`), which must
    answer within the 120 s after which the page gives up (`WORKER_TIMEOUT_S` in
-   `core/sequence_worker.py`);
+   `core/sequence_worker.py`; APFT-GAN has 300 s, `APFT_TIMEOUT_S`, and was timed separately in
+   `2026-11-14-ir-overload/README.md` §18-20);
 2. loads the model with the app's loader, which checks its SHA-256 against
    `assets/neural/manifest.json`;
 3. feeds the noise vectors and conditions stored in `assets/neural/generator_reference.json`

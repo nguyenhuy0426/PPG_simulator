@@ -16,7 +16,8 @@
 ## 📋 Overview
 
 The Raspberry Pi runtime synthesizes IR/RED signals at 100 Hz, interpolates them
-for a nominal 500 Hz dual-MCP4725 output on ARM64, and acquires OPT101 signals separately.
+for a 200 Hz dual-MCP4725 output on ARM64 (500 Hz lost samples with the GUI and RX running),
+and acquires OPT101 signals separately.
 `PPG_DAC_RATE_HZ` supports 100/200/500/1000 Hz; desktop default is 1000 Hz.
 Pi GUI + BLE + A0 verification at 500 Hz completed 30 seconds without buffer
 overruns or dropped samples. Optical waveform fidelity is still unverified.
@@ -41,6 +42,21 @@ remains a historical exploratory result; test has already been viewed.
 **RX beside TX & Bench Diagnostics (October 2026):**
 - **Live A0/A4 RX card on every page:** Classic, Calibration, Recordings and PPG morphology each show a read-only RX card next to the TX plot (the earlier bottom dock, and the RX strip inside the Signal setup window, are removed). It displays the rolling 8-second window of raw ADC mV at up to 10 Hz refresh, with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
 - **Physical Sensor Diagnostic Protocol:** A bench test and signal conditioning plan is established for OPT101 / CJMCU-101 modules, covering internal 1 MΩ feedback verification, 3.3 V Grove Hat input limits, dark readings, stepped sine wave tests (1–10 Hz), and RC low-pass filtering at $f_c \approx 33.9\text{ Hz}$ ([docs/opt101-a0-diagnostic-2026-10-01.md](docs/opt101-a0-diagnostic-2026-10-01.md)).
+
+**RX analysis and APFT on the Pi (November 2026):** measured on the Pi 4 with the real DAC/OPT101 loop; details,
+scripts and raw captures in [docs/hardware-validation/2026-11-14-ir-overload](docs/hardware-validation/2026-11-14-ir-overload/README.md).
+- **Channel mapping and IR level:** IR = MCP4725 0x61 → ADC A4, RED = 0x60 → A0. The DAC code always reads back as
+  written. Held above about 600–750 mV DAC, the IR receive level falls with on-time (1.9 → 0.8 V in 150 s at 1000 mV)
+  and recovers after a rest; at ≤ 600 mV it holds within 2 % (§17). This sits after the DAC (IR LED/driver or optics),
+  not in software.
+- **RX SpO₂:** per-beat peak-to-trough ratio of ratios; the Calibration page's "SpO₂ calibration" sweeps 98/90/80/70 %
+  and fits the receive path's A', B' (§13–14). The Classic SpO₂ setpoint releases a manual RED AC so R follows it.
+- **Pulse tone:** a short beep on every received beat once the rhythm is regular, pitch falling with RX SpO₂, through
+  the desktop sound server (§15). Verified on the Pi's HDMI sink, not through a speaker.
+- **RX respiratory rate:** spectral fusion of per-beat baseline, amplitude and interval (Charlton 2018) over 30–60 s,
+  shown only when the peak is clear: read 10/18/27/36 brpm at 16 % modulation on the Pi, mostly "unclear" at the
+  default 4 % (§16). An engineering check of the optical loop, not a clinical respiratory rate.
+- **APFT-GAN on the Neural page** with an HR min–max range of 60–100 bpm (§18–20), see *Neural waveform models* below.
 
 | Live monitor | Waveform setup | 30-second sequence |
 |---|---|---|
@@ -70,9 +86,13 @@ The app's Neural page offers the fitted three-Gaussian shaper and three 30 s, 40
 (BIDMC, no rate control; `assets/neural/`), PSF-GAN (requested HR; `assets/psf/`) and APFT-GAN v3 HR v1 (checkpoint
 1250, 100.5 M parameters, `assets/apft/`, weights in Git LFS). APFT takes an HR min–max range inside 60–100 bpm: the
 worker measures each generated window's beat rate and keeps only one inside the range (`core/apft_range.py`). None has paired
-IR/RED or calibrated SpO₂. Each window is made in a separate worker process with one BLAS thread. On the Pi 4 with the
-GUI running APFT takes about 12 s to load and 91–100 s per window at ~100 % of one core and 970 MB RAM, so the page allows
-it 300 s ([measurement](docs/hardware-validation/2026-11-14-ir-overload/README.md#18-1511-1500-apft-gan-trên-pi-4-thời-gian-và-cpu-apft_benchpy-apft_benchjsonl)).
+IR/RED or calibrated SpO₂; SpO₂ and respiration are not model inputs. Each window is made in a separate worker process
+with one BLAS thread. APFT runs in float32 with the same weights as released; `core/apft_fast.py` skips the random
+initialisation on load and computes the flow head's time-only terms once per patch, which gives bit-identical windows.
+Measured on the Pi 4 with the GUI running: load 10.2 → 6.6 s, one window 94.8 → 45.7 s at ~100 % of one core, a batch of 8
+windows 57 s; an HR-range request usually finishes in one or two batches (about 1–2.5 min), and the page allows 300 s.
+Dynamic int8 was faster (21.7 s) but changed the generated waveforms, so it is not used. Measurements:
+[§18–20](docs/hardware-validation/2026-11-14-ir-overload/README.md).
 
 PhysioMix (round 9) and PhysioFlow (round 10) were removed from the app with every research generator that did not
 improve on them. A strict real-vs-generated judge retrained per source on unseen people (C2ST, validation AUC; 0.5 =
@@ -84,12 +104,14 @@ further work: PhysioFlow-R (R1, mean 0.759 over seeds 0.745–0.785 at 16 Heun s
 their code is in git history. These are engineering evaluations of normalized waveform shape, not clinical
 validation, and they were not measured on the Pi/DAC/OPT101.
 
-PPG-physiGPT (`ml/kaggle_physigpt/`, research only, not in the app) is an unconditional GPT-PPG-style patch
+PPG-physiGPT (`ml/kaggle_physigpt/`) is an unconditional GPT-PPG-style patch
 transformer with a flow-matching head, pretrained on MIMIC-III WDB on Kaggle 2 x T4. The strict judge still separates
 every variant (AUC 1.0). On a second, feature-level tier (1 - KS over 14 waveform features against unseen people),
 the 99.9M large model reaches 0.941 against 0.933 for the best 30.7M base, where real people score 0.960. It is the
 V1 release: V1 asks for 95% of the real-vs-real similarity (large: 98.1%). The V2 target, absolute 0.95 with a
 feature-only tree classifier at most 0.60 accurate (large: 0.618), is not met; the gap left is 5-8 Hz detail. Results and run records: [docs/physigpt](docs/physigpt/README.md).
+Its heart-rate-conditioned adversarial fine-tune, APFT-GAN v3 HR v1 (checkpoint 1250, verdict still "fail" with strict judge
+AUC 1.0), is the APFT-GAN mode of the Neural page described above.
 
 #### Earlier models (history)
 
