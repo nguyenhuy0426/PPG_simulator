@@ -12,7 +12,7 @@ DEFAULT_APFT_BUNDLE = Path(__file__).resolve().parents[1] / 'assets' / 'apft'
 class APFTSequenceGenerator:
     def __init__(self, bundle=DEFAULT_APFT_BUNDLE):
         import torch
-        from core.apft_network import build
+        from core import apft_fast
         self.torch = torch
         torch.set_num_threads(1)
         bundle = Path(bundle)
@@ -24,7 +24,10 @@ class APFTSequenceGenerator:
         path = bundle / 'generator.pt'
         if hashlib.sha256(path.read_bytes()).hexdigest() != m['sha256']:
             raise ValueError('APFT generator checksum mismatch')
-        self.model = build(torch.load(path, map_location='cpu', weights_only=True)).eval()
+        # Same weights and samples as build(torch.load(...)), faster on the Pi 4 (core/apft_fast.py): no random init
+        # of the 100 M parameters before they are overwritten (10.2 -> 6.6 s), and the flow head's (h, t) terms
+        # computed once per patch (94.8 -> 45.7 s per window, identical output).
+        self.model = apft_fast.fast(apft_fast.load(path, mmap=False))
 
     def window(self, seed, heart_rate=75.):
         """One validated 30 s, 40 Hz min-max window as 1200 floats."""

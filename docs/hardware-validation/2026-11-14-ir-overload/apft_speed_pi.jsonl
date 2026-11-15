@@ -1,0 +1,10 @@
+{"label": "sha256", "wall_s": 4.22, "cpu_pct_one_core": 86.0, "rss_mb": 197}
+{"label": "load fp32: torch.load + build (as shipped)", "wall_s": 6.85, "cpu_pct_one_core": 100.0, "rss_mb": 589}
+{"label": "load fp32: mmap + meta build", "wall_s": 11.58, "cpu_pct_one_core": 77.6, "rss_mb": 638}
+{"label": "dynamic int8 quantisation", "wall_s": 3.96, "cpu_pct_one_core": 70.7, "rss_mb": 1116, "engine": "onednn"}
+{"label": "window fp32 (as shipped)", "wall_s": 94.76, "cpu_pct_one_core": 99.7, "rss_mb": 1136, "threads": 1}
+{"label": "window fp32 + precompute", "wall_s": 45.66, "cpu_pct_one_core": 99.8, "rss_mb": 1136, "threads": 1}
+{"label": "window int8 + precompute", "wall_s": 21.71, "cpu_pct_one_core": 99.3, "rss_mb": 1237, "threads": 1}
+{"variant": "fp32", "max_abs_diff_vs_fp32": 0.0, "corr": 1.0}
+{"variant": "fp32_fast", "max_abs_diff_vs_fp32": 0.0, "corr": 1.0}
+{"variant": "int8_fast", "max_abs_diff_vs_fp32": 0.7685602903366089, "corr": 0.4129769802093506}

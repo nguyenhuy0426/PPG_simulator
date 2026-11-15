@@ -29,7 +29,7 @@ from ui.trace_view import Lane, LaneView
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
                hr='Nhịp tim yêu cầu / bpm', dc='DC / mV', ac='AC IR / mV',
-               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm', apft='APFT-GAN · ~2 phút',
+               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm', apft='APFT-GAN · ~1 phút',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
                real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
@@ -45,7 +45,7 @@ COPY = {
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
                hr='Requested heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
-               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental', apft='APFT-GAN · ~2 min',
+               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental', apft='APFT-GAN · ~1 min',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
                real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
@@ -63,7 +63,7 @@ COPY = {
 GAN_MODES = ('LSM-GAN', 'PSF-GAN', 'APFT-GAN')
 MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf', 'APFT-GAN': 'apft'}
 REFERENCE_BUNDLES = {'PSF-GAN': DEFAULT_PSF_BUNDLE, 'APFT-GAN': DEFAULT_APFT_BUNDLE}
-TYPICAL_S = {'APFT-GAN': 110}    # Pi 4: 12 s load + 91-100 s per window (core/sequence_worker.py)
+TYPICAL_S = {'APFT-GAN': 60}     # Pi 4: ~10 s load + ~46 s per window (core/apft_fast.py)
 # One torch/BLAS thread per worker: the GUI process needs the other cores (on the Pi 4, 4 threads made APFT slower).
 WORKER_ENV = {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
 

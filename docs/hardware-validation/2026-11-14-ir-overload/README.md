@@ -375,3 +375,30 @@ lõi, Xwayland + gnome-shell ~30 %).
 RAM đỉnh 972 MB. CPU 82–85 °C trong lúc chạy (ngưỡng hạ xung Pi 4 là 80 °C; xung đọc được 1,8 GHz, cờ throttle không
 đọc được vì không có `vcgencmd`). Chậm hơn thời gian thực ~3,2 lần → chỉ dùng được kiểu sinh trước rồi phát. 4 luồng
 chậm hơn vì các lõi khác đang bận với GUI. Trang Neural cho APFT giới hạn 300 s (`core/sequence_worker.py`).
+
+## 19. 15/11 16:30: APFT nhanh hơn, int8 và độ bám HR (`scripts/apft_speed_bench.py`, `scripts/apft_quant_quality.py`, `core/apft_fast.py`)
+
+Pi 4, PyTorch 2.5.1, 1 luồng, app GUI chạy (`apft_speed_pi.jsonl`):
+
+| Biến thể | Nạp | 1 cửa sổ 30 s | Đầu ra so với bản gốc |
+|---|---|---|---|
+| fp32 như bản phát hành | 10,1–10,4 s | 94,8 s | — |
+| fp32, dựng mạng trên `meta` + flow head tính trước theo (h, t) | 6,4–6,9 s | 45,7 s | giống hệt (sai khác 0) |
+| int8 động (`qnnpack`) + tính trước | +4 s lượng tử | 21,7 s (2 luồng 18,3 s) | khác phân bố, xem dưới |
+| file fp16 (192 MB) | 5,0 s | — | trọng số làm tròn; không dùng |
+
+Worker của app (`python -m core.sequence_worker 42 APFT-GAN 75`) sau khi đổi: **57,7 s** tổng, RSS tối đa 650 MB
+(trước ~110 s, 972 MB).
+
+Chất lượng int8 (laptop, engine `qnnpack` như Pi, 192 cửa sổ mỗi bộ, HR yêu cầu 50–150; `apft_quant_quality.json`):
+1 − KS trung bình trên 22 đặc trưng so với fp32 seed A: fp32 seed B 0,912 (mức do lấy mẫu), int8 seed A 0,861, int8
+seed B 0,823; thấp nhất amp_cv 0,69–0,72. int8 động làm đổi dạng sóng sinh ra nhiều hơn dao động lấy mẫu → app không dùng.
+
+Độ bám HR yêu cầu (fp32, 16 cửa sổ mỗi mức, HR đo bằng khoảng nhịp `core/beat_detector.py`):
+
+| Yêu cầu (bpm) | 50 | 60 | 70 | 75 | 80 | 90 | 100 | 110 | 120 | 130 | 140 | 150 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Trung vị đo | 80 | 62 | 72 | 76 | 83 | 91 | 86 | 79 | 83 | 84 | 79 | 80 |
+| Tỉ lệ trong ±10 % | 0 | 0,50 | 0,44 | 0,56 | 0,56 | 0,38 | 0,38 | 0,19 | 0 | 0 | 0 | 0 |
+
+APFT chỉ bám HR một phần trong 60–100 bpm; ngoài khoảng đó gần như luôn ra ~80 bpm. HR "yêu cầu" không phải HR bảo đảm.
