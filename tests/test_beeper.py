@@ -85,6 +85,28 @@ def run(engine, enabled=True, spo2=None, seconds=20):
     return player.tones
 
 
+class NewOnlyReceiver(FakeReceiver):
+    """Has the cheap get_samples_after; get_samples_since (whole-buffer copy) must not be used by the poller."""
+
+    def get_samples_since(self, channel, since):
+        raise AssertionError("the pulse tone must poll get_samples_after")
+
+    def get_samples_after(self, channel, after):
+        return [s for s in FakeReceiver.get_samples_since(self, channel, -1.0) if s.timestamp > after]
+
+
+def test_poller_reads_only_new_samples_when_the_receiver_offers_it():
+    values, _ = pulse_wave(90, 20)
+    receiver, player = NewOnlyReceiver(values), FakePlayer()
+    beeper = B.HeartBeeper(receiver=receiver, engine=FakeEngine(), player=player)
+    t = 0.0
+    while t < 20:
+        receiver.now = t
+        beeper.poll(t)
+        t += B.POLL_S
+    assert 20 <= len(player.tones) <= 30
+
+
 def test_tones_follow_the_received_beats_of_a_ppg_output():
     tones = run(FakeEngine(), spo2=97.0)
     assert 20 <= len(tones) <= 30                                # 90 bpm for 20 s, minus the lock-in beats

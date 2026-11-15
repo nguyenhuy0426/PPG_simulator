@@ -1,4 +1,5 @@
 """Shared read-only view of the existing receiver; never starts ADC or DAC IO."""
+import threading
 import time
 
 from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED, OPT101_SATURATION_MV
@@ -16,7 +17,7 @@ MV_PER_CODE = raw_to_millivolts(1)   # the conversion is linear: one multiply pe
 DEFAULT_MAX_GAP_S = 0.05
 RATE_REFRESH_S = 2.0   # rate and SpO2 recomputed at most every 2 s: ~3 ms per channel on the laptop, far more on the Pi, and the value moves slowly
 RR_MAX_GAP_S = 0.25    # Pi RX has 50-110 ms holes under GUI load; harmless for 4-40 breaths/min, fatal for a 30 s gap-free rule at 50 ms
-RR_REFRESH_S = 5.0     # RR looks at 30-60 s and costs ~80 ms on the Pi: refresh it less often
+RR_REFRESH_S = 10.0    # RR looks at 30-60 s, ~0.2 s per lane on the Pi (worker thread), and moves slowly
 
 # Received pulse rate shown in each live lane header: (label, reasons there is none).
 _RATE = {
@@ -114,6 +115,7 @@ class RXPanel(LaneView):
         self._rates = {}       # channel -> (computed_at, RxRate)
         self._spo2 = None      # (computed_at, RxSpo2)
         self._rr = None        # (computed_at, RxRespRate)
+        self._rr_job = None    # worker thread computing the next RR (0.2-0.5 s on the Pi 4, off the Tk thread)
         self._filters = {ch: StreamFilter() for ch, _name, _color in self.channels}
 
     def set_language(self, language):
@@ -157,18 +159,35 @@ class RXPanel(LaneView):
         self.update_lanes(lanes, end_s=0.0)
 
     def rr_badge(self, live, now):
-        """Respiratory rate from 30-60 s of the IR lane; empty while IR is not being read."""
+        """Respiratory rate from 30-60 s of the IR lane (plus RED when read); empty while IR is not being read.
+
+        The estimate runs on a worker thread: ~0.22 s per lane on the Pi 4 would otherwise stall the Tk loop
+        (an earlier per-sample version took 6 s and starved the RX and DAC threads: "Lost" counted up). The badge
+        shows the latest finished result meanwhile."""
         if "IR" not in live:
             self._rr = None
             return ""
         computed_at, result = self._rr or (None, None)
-        if (computed_at is None or now - computed_at >= RR_REFRESH_S) and self._may_estimate(computed_at):
-            channel = next(ch for ch, name, _ in self.channels if name == "IR")
+        job = getattr(self, "_rr_job", None)
+        if (computed_at is None or now - computed_at >= RR_REFRESH_S) and not (job and job.is_alive()):
+            lane = {name: ch for ch, name, _ in self.channels}
             since = getattr(self.receiver, "get_samples_since", None)
-            history = since(channel, now - RR_WINDOW_S) if since else live["IR"]
-            result = estimate_rx_rr(history, now=now, max_gap_s=RR_MAX_GAP_S)
-            self._rr = (now, result)
+            history = since(lane["IR"], now - RR_WINDOW_S) if since else live["IR"]
+            red = None
+            if "RED" in live:   # the RED lane's breathing features join the fusion while it is being read
+                red = since(lane["RED"], now - RR_WINDOW_S) if since else live["RED"]
+            self._rr = (now, result)   # due again only RR_REFRESH_S after this request
+
+            def work(history=history, red=red, at=now):
+                self._rr = (at, estimate_rx_rr(history, now=at, max_gap_s=RR_MAX_GAP_S, red_samples=red))
+            self._rr_job = threading.Thread(target=work, daemon=True, name="RxRespRate")
+            self._rr_job.start()
+            if computed_at is None:        # first estimate: wait for it so the badge is never blank at start
+                self._rr_job.join()
+            computed_at, result = self._rr
         label, reasons = _RR["vi" if self.language == "vi" else "en"]
+        if result is None:
+            return f"{label}  …"
         if result.brpm is None:
             return f"{label}  — {reasons.get(result.reason, result.reason)}"
         unit = "lần/phút" if self.language == "vi" else "/min"

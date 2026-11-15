@@ -297,3 +297,27 @@ trống của HAT.
   22 tiếng/19.9 s, mỗi tiếng 65–75 ms, 64.5/phút khi nhịp RX 64–65 bpm, cao độ ~726 Hz (FFT, phân giải 23 Hz;
   SpO2 93 % → 718 Hz). Tắt tiếng: sink im lặng 5.9 s. Chỉ kiểm được tín hiệu tới sink; loa/màn hình HDMI có phát ra
   tiếng hay không thì chưa kiểm.
+
+## 16. 15/11: nhịp thở RR từ dạng sóng PPG thu (`core/rx_resp_rate.py`, `rrcapture*.py`, `rreval.py`)
+
+- Cách tính: mỗi nhịp lấy 3 đặc trưng (mức nền RIIV, biên độ RIAV, khoảng nhịp RIFV) trên làn IR và, khi đang đọc
+  được, làn RED. Nhịp tìm bằng `core/beat_detector.py` (đáy→đỉnh, khử gai) trên lưới 100 Hz; mỗi chuỗi lọc Hampel,
+  lấy mẫu 4 Hz, bỏ xu hướng, cửa sổ Hann, phổ 4–min(40, 0.45×nhịp mạch)/phút bước 0.25; phổ chuẩn hoá rồi cộng
+  (spectral fusion, Charlton 2018). Chỉ ra số khi đỉnh chiếm ≥ 0.30 công suất trong ±1/phút và ≥ 3× điểm mạnh nhất
+  cách ≥ 2/phút. Bỏ phần tối ở đầu cửa sổ (trước khi bấm Start) thay vì báo "có mẫu 0 mV" suốt 60 s; bỏ mẫu mới
+  hơn `now` (trước đây báo "mẫu lỗi").
+- Mô phỏng (dạng sóng model + nhiễu 1 mV): độ sâu mặc định 4 % đọc đúng 6–27/phút; tắt hô hấp thì không ra số
+  (điểm ≤ 0.40 / 2.4).
+- Pi, app dừng, thu 64 s mỗi mức (`rrcap4.json.gz`, `rrcap16.json.gz`; HR 91, AC IR 56 mV):
+  - độ sâu 16 %: RR 10 / 18 / 27 / 36 → 10.0–10.1 / 17.9–18.0 / 26.9–27.0 / 35.9–36.1 (IR+RED, cửa sổ 35–63 s);
+  - độ sâu 4 %: phần lớn "unclear", IR+RED đọc 10 và 18 ở một số cửa sổ; không có số sai. Lý do: mức nền làn IR
+    dao động 45–55 mV (trôi, bước nhảy, gai tới +300 mV) so với ~4 mV điều biến hô hấp.
+- Pi GUI (16 %): RR 12 → 12/phút, RR 27 → 25–27/phút, RR 18 → 16/phút (lúc dùng bản chậm).
+- Hiệu năng: bản đầu chạy bộ dò từng mẫu tốn 3 s/làn trên Pi, trên luồng Tk → RX thủng, "Lost" tăng. Giờ: khử gai
+  cả chuỗi một lần (thêm lối thoát sớm chính xác: 12 → 4 ms/6000 mẫu trên laptop, kết quả giống hệt), 0.22 s/làn,
+  chạy trong luồng riêng mỗi 10 s.
+- Phát hiện kèm: luồng bíp gọi `get_samples_since` (sao chép cả bộ đệm 6400 mẫu dưới khoá receiver) 100 lần/s →
+  luồng thu chờ khoá. Thêm `get_samples_after` (chỉ đọc mẫu mới từ đầu mới nhất), luồng bíp bỏ làn RED khi IR đã
+  khoá, bộ dò chỉ khử gai đoạn đuôi (546 → 232 µs/mẫu). 2 phút Classic trên Pi: Lost 1076 (bản đã commit) → 342;
+  tắt bíp: 26. Chế độ không GUI: RX đúng 100 Hz, khe lớn nhất 25 ms; còn lỗ RX > 50 ms khi chạy GUI ở cả bản đã
+  commit — chưa xử lý.

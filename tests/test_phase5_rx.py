@@ -188,6 +188,17 @@ class TestSamplesAndBuffers(unittest.TestCase):
         self.assertEqual(rx.get_samples_since(IR, full[-1].timestamp + 1.0), ())
         self.assertEqual(rx.get_samples_since(IR, -1.0), full)
 
+    def test_get_samples_after_returns_only_the_newer_samples(self):
+        # The pulse tone polls this 100 times a second; it must equal the strict filter without copying the buffer.
+        rx, _ = make_receiver()
+        for _ in range(10):
+            rx._acquire_once()
+        full = rx.get_samples(IR)
+        for index in (0, 3, 9):
+            after = full[index].timestamp
+            self.assertEqual(rx.get_samples_after(IR, after), tuple(x for x in full if x.timestamp > after))
+        self.assertEqual(rx.get_samples_after(IR, -1.0), full)
+
 
 # ─────────────────────────── Validation & saturation ───────────────────────────
 

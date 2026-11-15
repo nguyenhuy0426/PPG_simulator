@@ -37,16 +37,25 @@ def noise_sigma(values: Sequence[float]) -> float:
     return 1.4826 * d2[len(d2) // 2] / 6 ** .5 if d2 else 0.0
 
 
-def despike(values: Sequence[float]) -> List[float]:
+def despike(values: Sequence[float], sigma: float = None) -> List[float]:
     """Replace runs of 1..MAX_SPIKE_LEN samples that all sit on one side of the straight line
-    between their two neighbours, farther than the threshold, by that line."""
+    between their two neighbours, farther than the threshold, by that line.
+
+    `sigma`: the noise sigma when the caller already has it (streaming over a short tail)."""
     out = list(values)
-    threshold = max(MIN_SPIKE_MV, SPIKE_SIGMAS * noise_sigma(values))
+    threshold = max(MIN_SPIKE_MV, SPIKE_SIGMAS * (noise_sigma(values) if sigma is None else sigma))
     n = len(out)
     for length in range(1, MAX_SPIKE_LEN + 1):
+        first = 1 / (length + 1)
         i = 1
         while i + length < n:
             a, b = out[i - 1], out[i + length]
+            # Exact early exit: every sample of the run must clear the threshold, so the first one must.
+            # Most positions stop here (100 -> ~25 ms for 60 s at 100 Hz on the Pi 4).
+            d0 = out[i] - (a + (b - a) * first)
+            if -threshold <= d0 <= threshold:
+                i += 1
+                continue
             line = [a + (b - a) * (k + 1) / (length + 1) for k in range(length)]
             dev = [out[i + k] - line[k] for k in range(length)]
             # A spike returns to the trend: it must stand out more than the neighbours differ,

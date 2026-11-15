@@ -341,6 +341,20 @@ class OPT101Receiver:
             samples = tuple(state.buffer)
         return samples[bisect_left(samples, since, key=_timestamp):]
 
+    def get_samples_after(self, channel: int, after: float) -> Tuple[RXSample, ...]:
+        """Samples with timestamp > `after`, oldest first, walking the buffer from its newest end: the cost (and
+        the time the acquisition thread waits on the lock) is the number of new samples, not the 6400-sample
+        buffer that get_samples_since copies. For pollers that run often (the pulse tone, 50 Hz)."""
+        state = self._state(channel)
+        out = []
+        with self._lock:
+            for sample in reversed(state.buffer):
+                if sample.timestamp <= after:
+                    break
+                out.append(sample)
+        out.reverse()
+        return tuple(out)
+
     def sample_count(self, channel: int) -> int:
         state = self._state(channel)
         with self._lock:

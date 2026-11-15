@@ -175,15 +175,26 @@ class HeartBeeper:
             self._since = {ch: now for ch in self._detectors}     # never replay old samples later
             return None
         beats = {}
+        ir_locked = self._detectors[ADC_CHANNEL_IR].locked
         for channel, detector in self._detectors.items():
-            since = self._since.get(channel, now)
-            samples = receiver.get_samples_since(channel, since)
+            since = self._since.setdefault(channel, now)     # first poll: start from now, never replay old samples
+            if channel == ADC_CHANNEL_RED and ir_locked:
+                # The tone follows IR while it is locked; the RED detector is only a fallback. Skipping it
+                # halves this thread's share of the GIL-bound core on the Pi 4 (~0.23 ms a sample).
+                detector.reset()
+                self._since[channel] = now
+                continue
+            # Only the new samples: get_samples_since copies the whole 64 s buffer under the receiver lock, which
+            # 100 times a second (2 lanes x 50 Hz) starved the acquisition thread on the Pi 4 (RX holes, DAC
+            # "Lost" 661 in 2 min vs 26 with the tone off).
+            newer = getattr(receiver, "get_samples_after", None)
+            samples = newer(channel, since) if newer else receiver.get_samples_since(channel, since + 1e-6)
             for s in samples:
                 beat = detector.feed(s.timestamp, s.raw * MV_PER_CODE)
                 if beat is not None:
                     beats[channel] = beat
             if samples:
-                self._since[channel] = samples[-1].timestamp + 1e-6
+                self._since[channel] = samples[-1].timestamp
         lane = ADC_CHANNEL_IR if self._detectors[ADC_CHANNEL_IR].locked else ADC_CHANNEL_RED
         if lane in beats and self.player.beep(pitch_hz(self._spo2)):
             self.last_beat = (now, lane, beats[lane])

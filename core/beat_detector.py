@@ -22,7 +22,9 @@ from collections import deque
 from core.rx_filter import MAX_SPIKE_LEN, SMOOTH_HALF, despike, noise_sigma
 
 DELAY = MAX_SPIKE_LEN + 1 + SMOOTH_HALF   # samples read behind the newest: right-hand context for despike + mean
-BUFFER = 32                        # despike window: noise sigma from ~0.3 s
+BUFFER = 32                        # noise sigma from ~0.3 s
+TAIL = DELAY + SMOOTH_HALF + MAX_SPIKE_LEN + 4   # samples despiked per call: the read point +- the mean and a spike
+NOISE_EVERY = 16                   # samples between noise sigma updates (a sort of BUFFER values)
 CONFIRM_DROP = 0.25                # fraction of the rise the signal must fall back to confirm a peak
 MIN_PROMINENCE_MV = 5.0            # ~6 ADC codes, the rate estimator's MIN_SWING_CODES
 RELATIVE_PROMINENCE = 0.5          # of the median rise of the recent beats (dicrotic bump < this)
@@ -36,10 +38,12 @@ MAX_GAP_S = 0.25                   # a longer hole in the samples restarts the p
 
 
 class BeatDetector:
-    def __init__(self):
+    def __init__(self, record=False):
+        self.record = record                      # keep every accepted peak in .accepted (offline use)
         self.reset()
 
     def reset(self):
+        self.accepted = []                        # (peak time, rise) of every accepted peak, locked or not
         self._raw = deque(maxlen=BUFFER)          # (t, mV)
         self._last_t = None
         self._lo = self._hi = None
@@ -47,6 +51,7 @@ class BeatDetector:
         self._beats = deque(maxlen=LOCK_BEATS + 2)
         self._rises = deque(maxlen=5)
         self._noise = 0.0
+        self._count = 0
         self.locked = False
 
     @property
@@ -65,12 +70,25 @@ class BeatDetector:
         self._check_unlock(t)
         if len(self._raw) <= DELAY + SMOOTH_HALF:
             return None
-        raw = [v for _, v in self._raw]
-        self._noise = noise_sigma(raw)
-        values = despike(raw)
+        # Per-sample cost on the Pi 4 was 0.55 ms (whole-buffer despike + sort every sample) x 2 lanes x 91 Hz:
+        # 17 % of the GIL-bound core. Only the tail around the read point is despiked, sigma refreshed every
+        # NOISE_EVERY samples.
+        self._count += 1
+        if self._count % NOISE_EVERY == 1 or not self._noise:
+            self._noise = noise_sigma([v for _, v in self._raw])
+        tail = [v for _, v in list(self._raw)[-TAIL:]]
+        values = despike(tail, sigma=self._noise)
+        offset = len(self._raw) - len(tail)
         index = len(values) - 1 - DELAY
         window = values[index - SMOOTH_HALF:index + SMOOTH_HALF + 1]
-        return self._step(self._raw[index][0], sum(window) / len(window))
+        return self._step(self._raw[offset + index][0], sum(window) / len(window))
+
+    def feed_clean(self, t, x, noise_sigma_mv):
+        """Offline path: one sample already despiked and smoothed by the caller (whole series at once), with
+        its noise sigma. Skips the per-sample despike of feed(), ~0.5 ms a sample on the Pi 4."""
+        self._noise = noise_sigma_mv
+        self._check_unlock(t)
+        return self._step(t, x)
 
     def _check_unlock(self, now):
         interval = self.interval_s
@@ -107,6 +125,8 @@ class BeatDetector:
                 return None
         self._rises.append(rise)
         self._beats.append(peak_t)
+        if self.record:
+            self.accepted.append((peak_t, rise))
         if not self.locked:
             self.locked = self._regular()
         return peak_t if self.locked else None
