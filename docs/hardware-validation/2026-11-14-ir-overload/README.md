@@ -321,3 +321,41 @@ trống của HAT.
   khoá, bộ dò chỉ khử gai đoạn đuôi (546 → 232 µs/mẫu). 2 phút Classic trên Pi: Lost 1076 (bản đã commit) → 342;
   tắt bíp: 26. Chế độ không GUI: RX đúng 100 Hz, khe lớn nhất 25 ms; còn lỗ RX > 50 ms khi chạy GUI ở cả bản đã
   commit — chưa xử lý.
+
+## 17. 15/11 13:45: IR 900 → 700 mV rồi giật lên ở cùng lệnh DAC (`irdrift.py`, `irhold.py`, `analyze_irdrift.py`)
+
+App dừng, chỉ probe trên bus. Đọc lại MCP4725 mỗi 0.5 s, RED giữ 1000 mV làm làn đối chứng (`irdrift.json.gz`):
+
+| Pha (IR DAC) | IR thu (trung vị 3 s) | RED thu |
+|---|---|---|
+| Bật nguội 1000 mV, giữ 150 s | 1924 → 1475 → 1156 → 986 → 901 → 849 → 804 (vẫn đang giảm) | 1246 → 1235 |
+| Tắt 5 s rồi bật 1000 mV 30 s | 958 → 871 → 800 | 1235 |
+| Tắt 60 s rồi bật 1000 mV 30 s | 1911 → 1306 → 1172 → 1103 | 1234 |
+| Xung 1000 mV, 50 ms / 500 ms (10 %), 90 s | đỉnh xung 2000–2005 suốt 90 s (≈ trần OPT101, có thể đang bị xén) | 1231–1235 |
+| Giữ 300 mV 90 s | 348 → 348 | 1233 |
+
+- Mã DAC đọc lại luôn đúng (1248 = 1000 mV, 375 = 300 mV). Không có cờ thiếu áp; CPU 68–76 °C. RED cùng loại DAC,
+  cùng nguồn, cùng phần mềm: lệch ≤ 1 %.
+- IR chỉ tụt khi LED IR sáng liên tục ở mức cao. Nghỉ 60 s thì hồi gần hết, nghỉ 5 s thì hồi rất ít. Chạy xung 10 %
+  ở cùng mức thì không tụt. Đây là hiệu ứng tích luỹ theo năng lượng, có "trí nhớ" vài chục giây (dạng nhiệt).
+
+Giữ IR một mình 60 s ở từng mức, nghỉ 45 s giữa các mức (`irhold.json.gz`):
+
+| IR DAC (mV) | 0–1 s | 10 s | 30 s | 60 s | Thay đổi |
+|---|---|---|---|---|---|
+| 450 | 651 | 649 | 648 | 648 | −0.5 % |
+| 600 | 989 | 984 | 982 | 968 | −2 % |
+| 750 | 1350 | 1323 | 1124 | 912 | −32 % |
+| 900 | 1549 | 1440 | 1130 | 1045 | −33 % |
+
+**Kết luận:** DAC không phát sai. Làn IR có một ngưỡng ở khoảng 600–750 mV DAC (~1.0–1.35 V thu): dưới ngưỡng thì ổn
+định, trên ngưỡng thì tụt mạnh theo thời gian sáng và hồi lại khi nghỉ. Ở 1000 mV DAC, IR thu lúc mới bật ~1.9 V, sát
+trần đảm bảo 2.0 V của OPT101 (V_S − 1.3 V), tức IR đang quá sáng so với RED (1235 mV ở cùng lệnh). Cú "giật lên
+1100 mV" trong app khớp với LED IR được nghỉ (Stop/Start, đổi trang, đoạn điều chế thấp) rồi sáng lại; lần đo này
+không thấy bước nhảy tự phát nào ngoài một chớp 0.2 s (+80/−146 mV) ở giây 51.
+
+Linh kiện cụ thể chưa xác định. Ánh sáng vài µW lên OPT101 không thể làm nóng nó, và phục hồi quá tải của OPT101 là
+50 µs, nên nghi phía phát IR (LED IR/driver nóng lên). Ngưỡng 600–750 mV DAC cũng trùng với mục 6 dù vị trí quang đã
+đổi; mục 7 thì thấy ngưỡng ở 1200 mV. Thử tách không cần dụng cụ: chắn một lớp giấy giữa LED IR và OPT101 để thu còn
+~600 mV ở 1000 mV DAC. Nếu vẫn tụt → phía phát (theo dòng); nếu hết tụt → phía thu (theo mức sáng). Có DMM thì đo
+V trên R_sense IR khi giữ 1000 mV 2 phút.
