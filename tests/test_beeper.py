@@ -6,7 +6,7 @@ import pytest
 
 from config import ADC_CHANNEL_IR, ADC_CHANNEL_RED
 from hw import beeper as B
-from tests.test_beat_detector import pulse_wave
+from test_beat_detector import pulse_wave
 
 Sample = namedtuple("Sample", "timestamp raw saturated")
 

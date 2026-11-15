@@ -359,3 +359,19 @@ Linh kiện cụ thể chưa xác định. Ánh sáng vài µW lên OPT101 khôn
 đổi; mục 7 thì thấy ngưỡng ở 1200 mV. Thử tách không cần dụng cụ: chắn một lớp giấy giữa LED IR và OPT101 để thu còn
 ~600 mV ở 1000 mV DAC. Nếu vẫn tụt → phía phát (theo dòng); nếu hết tụt → phía thu (theo mức sáng). Có DMM thì đo
 V trên R_sense IR khi giữ 1000 mV 2 phút.
+
+## 18. 15/11 15:00: APFT-GAN trên Pi 4: thời gian và CPU (`apft_bench.py`, `apft_bench.jsonl`)
+
+APFT-GAN v3 HR v1, checkpoint 1250 (100,5 M tham số, float32, SHA256 khớp `assets/apft/manifest.json`), PyTorch 2.5.1,
+`OMP_NUM_THREADS=OPENBLAS_NUM_THREADS=1`, torch 1 luồng như app. App GUI vẫn chạy (Pathology, output tắt; ~50–90 % một
+lõi, Xwayland + gnome-shell ~30 %).
+
+| Bước | Thời gian | CPU tiến trình | CPU toàn máy (4 lõi) |
+|---|---|---|---|
+| Nạp (SHA256 402 MB + `torch.load` + dựng mạng) | 11,9 s | 91 % một lõi | 75 % |
+| 1 cửa sổ 30 s (1200 mẫu, 40 Hz, 30 patch × Heun 16 bước), 1 luồng, 3 lần | 91–100 s | 98–100 % một lõi | 67–86 % |
+| Cùng việc, 4 luồng, 2 lần | 123–128 s | ~192 % | ~89 % |
+
+RAM đỉnh 972 MB. CPU 82–85 °C trong lúc chạy (ngưỡng hạ xung Pi 4 là 80 °C; xung đọc được 1,8 GHz, cờ throttle không
+đọc được vì không có `vcgencmd`). Chậm hơn thời gian thực ~3,2 lần → chỉ dùng được kiểu sinh trước rồi phát. 4 luồng
+chậm hơn vì các lõi khác đang bận với GUI. Trang Neural cho APFT giới hạn 300 s (`core/sequence_worker.py`).

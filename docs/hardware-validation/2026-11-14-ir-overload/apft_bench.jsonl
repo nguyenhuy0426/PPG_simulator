@@ -1,0 +1,9 @@
+{"torch": "2.5.1", "env": {"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1"}}
+{"label": "load (sha256 + torch.load + build)", "wall_s": 11.91, "proc_cpu_s": 10.87, "proc_pct_of_one_core": 91.3, "system_pct_all_4_cores": 75.1, "peak_rss_mb": 972, "temp_c": 82.776}
+{"threads": 1}
+{"label": "1 thread (app setting): 30 s window seed 1 HR 75.0", "wall_s": 100.2, "proc_cpu_s": 98.08, "proc_pct_of_one_core": 97.9, "system_pct_all_4_cores": 86.0, "peak_rss_mb": 972, "temp_c": 83.75}
+{"label": "1 thread (app setting): 30 s window seed 2 HR 120.0", "wall_s": 98.36, "proc_cpu_s": 96.68, "proc_pct_of_one_core": 98.3, "system_pct_all_4_cores": 80.2, "peak_rss_mb": 972, "temp_c": 82.776}
+{"label": "1 thread (app setting): 30 s window seed 3 HR 60.0", "wall_s": 90.95, "proc_cpu_s": 90.77, "proc_pct_of_one_core": 99.8, "system_pct_all_4_cores": 66.7, "peak_rss_mb": 972, "temp_c": 83.263}
+{"label": "4 threads: 30 s window seed 4 HR 75.0", "wall_s": 123.33, "proc_cpu_s": 237.52, "proc_pct_of_one_core": 192.6, "system_pct_all_4_cores": 88.9, "peak_rss_mb": 972, "temp_c": 84.237}
+{"label": "4 threads: 30 s window seed 5 HR 120.0", "wall_s": 127.79, "proc_cpu_s": 245.8, "proc_pct_of_one_core": 192.3, "system_pct_all_4_cores": 89.7, "peak_rss_mb": 972, "temp_c": 84.724}
+{"peak_cpu0_khz": 1800000}

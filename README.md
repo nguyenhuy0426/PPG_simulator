@@ -66,8 +66,12 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 ### Neural waveform models
 
-The app's Neural page offers the fitted three-Gaussian shaper and the LSM-GAN sequence (normalized 30 s strip at 40 Hz,
-BIDMC, no rate control, no paired IR/RED, no calibrated SpO₂); `assets/neural/manifest.json` lists the packaged files.
+The app's Neural page offers the fitted three-Gaussian shaper and three 30 s, 40 Hz sequence generators: LSM-GAN
+(BIDMC, no rate control; `assets/neural/`), PSF-GAN (requested HR; `assets/psf/`) and APFT-GAN v3 HR v1 (checkpoint
+1250, 100.5 M parameters, requested HR 40–180 bpm not guaranteed; `assets/apft/`, weights in Git LFS). None has paired
+IR/RED or calibrated SpO₂. Each window is made in a separate worker process with one BLAS thread. On the Pi 4 with the
+GUI running APFT takes about 12 s to load and 91–100 s per window at ~100 % of one core and 970 MB RAM, so the page allows
+it 300 s ([measurement](docs/hardware-validation/2026-11-14-ir-overload/README.md#18-1511-1500-apft-gan-trên-pi-4-thời-gian-và-cpu-apft_benchpy-apft_benchjsonl)).
 
 PhysioMix (round 9) and PhysioFlow (round 10) were removed from the app with every research generator that did not
 improve on them. A strict real-vs-generated judge retrained per source on unseen people (C2ST, validation AUC; 0.5 =

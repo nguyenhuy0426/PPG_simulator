@@ -1,5 +1,6 @@
 """Touch controls, finite sequence synthesis, shared DAC output and real A0 RX."""
 from dataclasses import replace
+import os
 import secrets
 import json
 from pathlib import Path
@@ -12,7 +13,9 @@ from tkinter import filedialog
 import customtkinter as ctk
 
 from core.neural_preview import export_preview, gaussian_preview, reference_preview, sequence_reference_preview, Preview
+from core.apft_preview import DEFAULT_APFT_BUNDLE
 from core.psf_preview import DEFAULT_PSF_BUNDLE
+from core.sequence_worker import HR_MODELS, timeout_s
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from hw.opt101_rx import OPT101Receiver
@@ -26,35 +29,43 @@ from ui.trace_view import Lane, LaneView
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
                hr='Nhịp tim yêu cầu / bpm', dc='DC / mV', ac='AC IR / mV',
-               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm',
+               fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm', apft='APFT-GAN · ~2 phút',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
                real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
-               info='PSF nhận HR yêu cầu; LSM không điều khiển HR. GAN không có điều khiển notch. A4 tắt; chưa đo SpO₂.',
+               info='PSF và APFT nhận HR yêu cầu; LSM không điều khiển HR. GAN không có điều khiển notch. A4 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
-               busy='Đang sinh chuỗi trên CPU…',
+               busy='Đang sinh chuỗi trên CPU…', busy_timed='Đang sinh {name} trên CPU… {elapsed:.0f} s (thường ~{typical} s, tối đa {limit} s)',
                detail='Seed {seed} · 40 Hz · v2 thăm dò · Real = đoạn train 30 s; không gán nhãn bệnh lý.',
                psf_detail='PSF · seed {seed} · HR yêu cầu {hr:.0f} bpm · 40 Hz · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
+               apft_detail='APFT · seed {seed} · HR yêu cầu {hr:.0f} bpm (không bảo đảm) · 40 Hz · checkpoint {step} · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
+               timeout='{name} quá {limit} s, đã dừng tiến trình sinh.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
                hr='Requested heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
-               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental',
+               fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental', apft='APFT-GAN · ~2 min',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
                real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
-               info='PSF accepts requested HR; LSM has no HR control. GAN has no notch control. A4 off; no measured SpO₂.',
+               info='PSF and APFT accept requested HR; LSM has no HR control. GAN has no notch control. A4 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
-               busy='Generating sequence on CPU…',
+               busy='Generating sequence on CPU…', busy_timed='Generating {name} on CPU… {elapsed:.0f} s (typically ~{typical} s, at most {limit} s)',
                detail='Seed {seed} · 40 Hz · exploratory v2 · Real = 30 s train strip; no diagnosis labels.',
                psf_detail='PSF · seed {seed} · requested HR {hr:.0f} bpm · 40 Hz · research simulation; IR/RED not calibrated.',
+               apft_detail='APFT · seed {seed} · requested HR {hr:.0f} bpm (not guaranteed) · 40 Hz · checkpoint {step} · research simulation; IR/RED not calibrated.',
+               timeout='{name} took longer than {limit} s; the generator process was stopped.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.'),
 }
-GAN_MODES = ('LSM-GAN', 'PSF-GAN')
-MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf'}
+GAN_MODES = ('LSM-GAN', 'PSF-GAN', 'APFT-GAN')
+MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf', 'APFT-GAN': 'apft'}
+REFERENCE_BUNDLES = {'PSF-GAN': DEFAULT_PSF_BUNDLE, 'APFT-GAN': DEFAULT_APFT_BUNDLE}
+TYPICAL_S = {'APFT-GAN': 110}    # Pi 4: 12 s load + 91-100 s per window (core/sequence_worker.py)
+# One torch/BLAS thread per worker: the GUI process needs the other cores (on the Pi 4, 4 threads made APFT slower).
+WORKER_ENV = {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
 
 
 class NeuralFrame(ctk.CTkFrame):
@@ -67,6 +78,7 @@ class NeuralFrame(ctk.CTkFrame):
         self._process = None
         self._stdout = self._stderr = None
         self._busy, self._was_playing, self._pending = False, False, None
+        self._busy_mode = None
         self._last_live_render = 0.0
         u = T.ui
         self.grid_columnconfigure(0, weight=1)
@@ -155,7 +167,7 @@ class NeuralFrame(ctk.CTkFrame):
         self.generate_btn.configure(text=t['generate'])
         self.export_btn.configure(text=t['export'])
         self.info.configure(text=self._info_text())
-        self.mode_menu.configure(values=[t['fitted'],t['lsm'],t['psf']])
+        self.mode_menu.configure(values=[t['fitted'],t['lsm'],t['psf'],t['apft']])
         self.mode_menu.set(self._mode_label())
         self._sync_profile_menu()
         self.left_label.configure(text=t['tx'])
@@ -181,8 +193,8 @@ class NeuralFrame(ctk.CTkFrame):
         try:
             if self.mode=='LSM-GAN':
                 self.previews['Real sequence']=sequence_reference_preview()
-            elif self.mode=='PSF-GAN':
-                self.previews['Real sequence']=sequence_reference_preview(DEFAULT_PSF_BUNDLE)
+            elif self.mode in REFERENCE_BUNDLES:
+                self.previews['Real sequence']=sequence_reference_preview(REFERENCE_BUNDLES[self.mode])
         except (OSError,ValueError,KeyError) as exc:
             self.status.configure(text=str(exc),text_color=T.ERROR)
 
@@ -195,7 +207,7 @@ class NeuralFrame(ctk.CTkFrame):
         self._load_reference()
         self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
         self._sync_profile_menu()
-        if (self.mode=='PSF-GAN' and self.mode in self.previews
+        if (self.mode in HR_MODELS and self.mode in self.previews
                 and self.previews[self.mode].hr_target!=float(self.hr_slider.get())):
             self.previews.pop(self.mode)
         self.render()
@@ -210,8 +222,8 @@ class NeuralFrame(ctk.CTkFrame):
 
     def adjust(self,key):
         self._stop_owned_output()
-        if key=='hr' and self.mode=='PSF-GAN':
-            self.previews.pop('PSF-GAN',None)
+        if key=='hr' and self.mode in HR_MODELS:
+            self.previews.pop(self.mode,None)
         if self._pending is not None:
             self.after_cancel(self._pending)
         # Only debounce cheap Gaussian rendering. GAN inference never runs on slider events.
@@ -231,7 +243,8 @@ class NeuralFrame(ctk.CTkFrame):
         if self._busy:
             return
         self._busy=True
-        if self.mode=='PSF-GAN':
+        self._busy_mode=self.mode
+        if self.mode in HR_MODELS:
             self.hr_slider.configure(state='disabled')
         self.status.configure(text=COPY[self.language]['busy'],text_color=T.MUTED)
         self.generate_btn.configure(state='disabled')
@@ -239,12 +252,13 @@ class NeuralFrame(ctk.CTkFrame):
         self._stdout, self._stderr = tempfile.TemporaryFile(), tempfile.TemporaryFile()
         self._started = time.monotonic()
         command=[sys.executable,'-m','core.sequence_worker',str(secrets.randbits(32))]
-        if self.mode=='PSF-GAN':
+        if self.mode in HR_MODELS:
             command+=[self.mode,str(self.hr_slider.get())]
         try:
             self._process = subprocess.Popen(
                 command,
-                cwd=Path(__file__).resolve().parents[2],stdout=self._stdout,stderr=self._stderr)
+                cwd=Path(__file__).resolve().parents[2],stdout=self._stdout,stderr=self._stderr,
+                env={**os.environ,**WORKER_ENV})
         except OSError as exc:
             self._finish_inference(str(exc))
 
@@ -287,6 +301,9 @@ class NeuralFrame(ctk.CTkFrame):
         t=COPY[self.language]
         if self.mode=='PSF-GAN':
             return t['psf_detail'].format(seed=preview.seed,hr=preview.hr_target)
+        if self.mode=='APFT-GAN':
+            return t['apft_detail'].format(seed=preview.seed,hr=preview.hr_target,
+                                           step=(preview.provenance or {}).get('checkpoint_step','?'))
         if self.mode=='LSM-GAN':
             return t['detail'].format(seed=preview.seed)
         return t['reference']
@@ -342,10 +359,16 @@ class NeuralFrame(ctk.CTkFrame):
                 self._stderr.seek(0)
                 error=self._stderr.read().decode(errors='replace')[-1200:] if result else None
                 self._finish_inference(error)
-            elif time.monotonic()-self._started>120:
-                self._process.kill()
-                self._process.wait(timeout=2)
-                self._finish_inference('GAN inference timed out after 120 s')
+            else:
+                elapsed,limit=time.monotonic()-self._started,timeout_s(self._busy_mode)
+                if elapsed>limit:
+                    self._process.kill()
+                    self._process.wait(timeout=2)
+                    self._finish_inference(COPY[self.language]['timeout'].format(name=self._busy_mode,limit=limit))
+                elif self._busy_mode in TYPICAL_S:
+                    self.status.configure(text=COPY[self.language]['busy_timed'].format(
+                        name=self._busy_mode,elapsed=elapsed,typical=TYPICAL_S[self._busy_mode],limit=limit),
+                        text_color=T.MUTED)
         self.rx_panel.periodic_update()
         playing=self.engine.is_waveform_playing
         if playing:
