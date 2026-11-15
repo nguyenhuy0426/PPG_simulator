@@ -20,18 +20,31 @@ def main(argv=None):
     parser.add_argument('seed', type=int)
     parser.add_argument('model', nargs='?', default='LSM-GAN', choices=('LSM-GAN', *HR_MODELS))
     parser.add_argument('hr', nargs='?', type=float, default=75.0, help='requested HR in bpm (PSF-GAN and APFT-GAN)')
+    parser.add_argument('--hr-range', nargs=2, type=float, metavar=('LO', 'HI'),
+                        help='APFT-GAN only: keep only a window whose measured HR is in [LO, HI] (60-100 bpm)')
     args = parser.parse_args(argv)
+    if args.hr_range and args.model != 'APFT-GAN':
+        parser.error('--hr-range is for APFT-GAN')
     if args.model == 'PSF-GAN':
         from core.psf_preview import PSFSequenceGenerator
         preview = PSFSequenceGenerator().generate(args.seed, args.hr)
     elif args.model == 'APFT-GAN':
-        from core.apft_preview import APFTSequenceGenerator
-        preview = APFTSequenceGenerator().generate(args.seed, args.hr)
+        from core.apft_preview import APFTSequenceGenerator, RangeMiss
+        if args.hr_range:
+            try:
+                preview = APFTSequenceGenerator().generate_in_range(args.seed, *args.hr_range)
+            except RangeMiss as miss:
+                # Exit 2 with the tries on stdout: the page words the miss in its own language.
+                print(json.dumps(dict(error='hr_range', range=[miss.lo, miss.hi], tries=miss.tries)))
+                return 2
+        else:
+            preview = APFTSequenceGenerator().generate(args.seed, args.hr)
     else:
         from core.neural_preview import LSMSequenceGenerator
         preview = LSMSequenceGenerator().generate(args.seed)
     print(json.dumps(asdict(preview), allow_nan=False))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

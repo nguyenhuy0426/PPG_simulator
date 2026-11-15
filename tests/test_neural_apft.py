@@ -35,7 +35,7 @@ class WorkerTest(unittest.TestCase):
                 calls.append((seed, hr))
                 return fake_preview(seed, hr)
         module = types.ModuleType("core.apft_preview")
-        module.APFTSequenceGenerator = FakeGenerator
+        module.APFTSequenceGenerator, module.RangeMiss = FakeGenerator, ValueError
         out = io.StringIO()
         with mock.patch.dict(sys.modules, {"core.apft_preview": module}), contextlib.redirect_stdout(out):
             sequence_worker.main(["7", "APFT-GAN", "90"])
@@ -101,22 +101,57 @@ class NeuralPageApftTest(unittest.TestCase):
         self.neural_frame.subprocess.Popen = self._popen
         self.page._process, self.page._busy = None, False
 
-    def select_apft(self):
+    def select_apft(self, lo=70, hi=80):
         page = self.page
-        page.hr_slider.set(90)
+        page.mode = "Gaussian (fitted)"
+        page.hr_min_slider.set(lo)
+        page.hr_max_slider.set(hi)
+        page.adjust("hr_max")
         page.change_mode(self.neural_frame.COPY["vi"]["apft"])
         self.assertEqual(page.mode, "APFT-GAN")
         return self.started[-1]
 
-    def test_menu_lists_apft_and_its_reference_strip(self):
-        process = self.select_apft()
-        self.assertIn(self.neural_frame.COPY["vi"]["apft"], self.page.mode_menu._values)
-        self.assertEqual(process.command[-4:-2], ["core.sequence_worker", process.command[-3]])
-        self.assertEqual(process.command[-2], "APFT-GAN")
-        self.assertEqual(float(process.command[-1]), 90.0)
+    def range_preview(self, measured=74.2, lo=70.0, hi=80.0):
+        preview = fake_preview(7, (lo + hi) / 2)
+        preview.provenance.update(hr_range=[lo, hi], hr_measured_bpm=measured, batch_index=1,
+                                  tries=[[7, 0, 72.5, 88.0, 0.0], [7, 1, 77.5, measured, 0.0]])
+        return preview
+
+    def test_apft_asks_the_worker_for_the_hr_range(self):
+        process = self.select_apft(70, 80)
+        page = self.page
+        self.assertIn(self.neural_frame.COPY["vi"]["apft"], page.mode_menu._values)
+        self.assertEqual(process.command[-5:], ["APFT-GAN", "75", "--hr-range", "70", "80"])
         self.assertEqual((process.env["OMP_NUM_THREADS"], process.env["OPENBLAS_NUM_THREADS"]), ("1", "1"))
-        self.assertEqual(self.page.previews["Real sequence"].variant, "real_train_30s")
-        self.assertTrue(self.page.hr_slider._disabled)          # no HR change while a window is being made
+        self.assertEqual(page.previews["Real sequence"].variant, "real_train_30s")
+        self.assertTrue(page.hr_min_slider._disabled and page.hr_max_slider._disabled)   # fixed while generating
+
+    def test_apft_shows_min_and_max_instead_of_one_hr(self):
+        page = self.page
+        self.select_apft()
+        page.update_idletasks()
+        self.assertFalse(page.hr_slider.winfo_ismapped() and page.hr_slider.grid_info())
+        self.assertTrue(page.hr_min_slider.grid_info() and page.hr_max_slider.grid_info())
+        self.assertEqual((page.hr_min_slider.minimum, page.hr_max_slider.maximum), (60.0, 100.0))
+        page._process, page._busy = None, False
+        page.change_mode(self.neural_frame.COPY["vi"]["fitted"])
+        self.assertTrue(page.hr_slider.grid_info())
+        self.assertFalse(page.hr_min_slider.grid_info())
+
+    def test_min_and_max_keep_two_bpm_apart(self):
+        page = self.page
+        self.select_apft(70, 80)
+        page._process, page._busy = None, False
+        page._set_hr_controls("normal")
+        page.hr_min_slider.set(95)
+        page.adjust("hr_min")
+        self.assertEqual(page.hr_range, [95.0, 97.0])
+        page.hr_max_slider.set(60)
+        page.adjust("hr_max")
+        self.assertEqual(page.hr_range, [60.0, 62.0])
+        page.hr_min_slider.set(100)
+        page.adjust("hr_min")
+        self.assertEqual(page.hr_range, [98.0, 100.0])
 
     def test_apft_survives_past_120_s_and_stops_at_300_s(self):
         page = self.page
@@ -131,25 +166,40 @@ class NeuralPageApftTest(unittest.TestCase):
         self.assertIn("300 s", page.status.cget("text"))
         self.assertFalse(page._busy)
 
-    def test_finished_window_is_shown_with_its_checkpoint(self):
+    def test_window_in_range_is_shown_with_its_measured_rate(self):
         page = self.page
-        process = self.select_apft()
-        page._stdout.write(json.dumps(asdict(fake_preview(7, 90.0))).encode())
+        process = self.select_apft(70, 80)
+        page._stdout.write(json.dumps(asdict(self.range_preview(74.2))).encode())
         process.result = 0
         page.periodic_update()
         self.assertIn("APFT-GAN", page.previews)
         self.assertFalse(page._busy)
         text = page.status.cget("text")
-        self.assertIn("APFT", text)
-        self.assertIn("1250", text)
-        self.assertIn("90", text)
+        for part in ("74.2", "70–80", "2 lần", "1250"):
+            self.assertIn(part, text)
 
-    def test_moving_the_hr_slider_drops_the_stale_window(self):
+    def test_no_window_in_range_is_reported_not_played(self):
         page = self.page
-        self.select_apft()
+        process = self.select_apft(70, 72)
+        page._stdout.write(json.dumps(dict(error="hr_range", range=[70.0, 72.0],
+                                           tries=[[1, 0, 70.5, 83.4, 0.0], [1, 1, 71.5, None, 1.0],
+                                                  [2, 0, 60.0, 74.6, 0.0]])).encode())
+        process.result = 2
+        page.periodic_update()
+        self.assertNotIn("APFT-GAN", page.previews)
+        text = page.status.cget("text")
+        for part in ("3 đoạn", "70–72", "75–83 bpm"):
+            self.assertIn(part, text)
+        self.assertEqual(str(page.play_btn.cget("state")), "disabled")
+
+    def test_changing_the_range_drops_the_stale_window(self):
+        page = self.page
+        self.select_apft(70, 80)
         page._process, page._busy = None, False
-        page.previews["APFT-GAN"] = fake_preview(7, 90.0)
-        page.adjust("hr")
+        page._set_hr_controls("normal")
+        page.previews["APFT-GAN"] = self.range_preview(74.2, 70.0, 80.0)
+        page.hr_max_slider.set(90)
+        page.adjust("hr_max")
         self.assertNotIn("APFT-GAN", page.previews)
 
 

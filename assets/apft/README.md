@@ -6,7 +6,7 @@ Source: the user's Kaggle kernel `charlesday2612/ppg-physigpt-apft-gan-v3-hr-v1`
 
 Held-out feature mean1−KS95.28%, tree real/fake accuracy61.275%, strict judge AUC1.0. Automated verdict remains fail. This is not clinical validation.
 
-In the app: Neural page → "APFT-GAN". Pi 4 ARM64 4 GB, PyTorch 2.5.1, measured 15/11/2026 with the GUI running: 12 s to load, 91–100 s per 30 s window at ~100 % of one core, 972 MB peak RAM (`docs/hardware-validation/2026-11-14-ir-overload/README.md` §18). The worker runs with `OPENBLAS_NUM_THREADS=1` / `OMP_NUM_THREADS=1` and one torch thread; 4 threads were slower on the Pi. The Neural page allows APFT 300 s (`core/sequence_worker.py`). Generate before playback.
+In the app: Neural page → "APFT-GAN", with an HR min–max range of 60–100 bpm; each window's beat rate is measured and only a window inside the range is played (`core/apft_range.py`). Pi 4 ARM64 4 GB, PyTorch 2.5.1, measured 15/11/2026 with the GUI running: 12 s to load, 91–100 s per 30 s window at ~100 % of one core, 972 MB peak RAM (`docs/hardware-validation/2026-11-14-ir-overload/README.md` §18). The worker runs with `OPENBLAS_NUM_THREADS=1` / `OMP_NUM_THREADS=1` and one torch thread; 4 threads were slower on the Pi. The Neural page allows APFT 300 s (`core/sequence_worker.py`). Generate before playback.
 
 IR/RED derive from the same normalized waveform and nominal AC/DC. No calibrated optical or SpO₂ model. Real reference is an unpaired MIMIC-III TRAIN segment for visual comparison only. No LED/DAC test has been performed with this bundle.
 

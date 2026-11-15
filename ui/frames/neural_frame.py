@@ -14,6 +14,7 @@ import customtkinter as ctk
 
 from core.neural_preview import export_preview, gaussian_preview, reference_preview, sequence_reference_preview, Preview
 from core.apft_preview import DEFAULT_APFT_BUNDLE
+from core.apft_range import DEFAULT_RANGE, HR_LIMITS, MIN_WIDTH
 from core.psf_preview import DEFAULT_PSF_BUNDLE
 from core.sequence_worker import HR_MODELS, timeout_s
 from core.signal_engine import SignalEngine
@@ -28,34 +29,40 @@ from ui.trace_view import Lane, LaneView
 
 COPY = {
     'vi': dict(title='PPG · Gaussian và chuỗi GAN', generate='Sinh đoạn mới',
-               hr='Nhịp tim yêu cầu / bpm', dc='DC / mV', ac='AC IR / mV',
+               hr='Nhịp tim yêu cầu / bpm', hr_min='HR tối thiểu / bpm', hr_max='HR tối đa / bpm',
+               dc='DC / mV', ac='AC IR / mV',
                fitted='Gaussian đã fit', lsm='LSM-GAN · thăm dò', psf='PSF-GAN · thử nghiệm', apft='APFT-GAN · ~1 phút',
                with_notch='Có notch rõ', no_notch='Không có notch rõ',
                play='Phát LED · 30 s', source='Nguồn dạng sóng', seek='Vị trí', stop='Dừng đầu ra', export='Xuất CSV',
                real='Tham chiếu real', tx='Tín hiệu phát TX', rx='Tín hiệu thu RX · OPT101',
-               info='PSF và APFT nhận HR yêu cầu; LSM không điều khiển HR. GAN không có điều khiển notch. A4 tắt; chưa đo SpO₂.',
+               info='PSF nhận HR yêu cầu; APFT nhận khoảng HR 60–100 bpm (đo lại từng đoạn); LSM không điều khiển HR. GAN không có điều khiển notch. A4 tắt; chưa đo SpO₂.',
                ready='Chưa phát · chọn nguồn, kéo slider rồi nhấn Phát LED.',
-               busy='Đang sinh chuỗi trên CPU…', busy_timed='Đang sinh {name} trên CPU… {elapsed:.0f} s (thường ~{typical} s, tối đa {limit} s)',
+               busy='Đang sinh chuỗi trên CPU…', busy_timed='Đang sinh {name} trên CPU… {elapsed:.0f} s (~{typical} s mỗi lượt sinh, tối đa {limit} s)',
                detail='Seed {seed} · 40 Hz · v2 thăm dò · Real = đoạn train 30 s; không gán nhãn bệnh lý.',
                psf_detail='PSF · seed {seed} · HR yêu cầu {hr:.0f} bpm · 40 Hz · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
                apft_detail='APFT · seed {seed} · HR yêu cầu {hr:.0f} bpm (không bảo đảm) · 40 Hz · checkpoint {step} · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
                timeout='{name} quá {limit} s, đã dừng tiến trình sinh.',
+               apft_range_detail='APFT · seed {seed} · HR đo {hr:.1f} bpm, trong khoảng {lo:g}–{hi:g} · {tries} lần sinh · 40 Hz · checkpoint {step} · mô phỏng nghiên cứu; IR/RED chưa hiệu chuẩn.',
+               range_miss='APFT: đã sinh {n} đoạn, không đoạn nào có HR trong {lo:g}–{hi:g} bpm (HR đo được {measured}). Nới rộng khoảng hoặc nhấn Sinh đoạn mới.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
-               hr='Requested heart rate / bpm', dc='DC / mV', ac='IR AC / mV',
+               hr='Requested heart rate / bpm', hr_min='HR min / bpm', hr_max='HR max / bpm',
+               dc='DC / mV', ac='IR AC / mV',
                fitted='Fitted Gaussian', lsm='LSM-GAN · exploratory', psf='PSF-GAN · experimental', apft='APFT-GAN · ~1 min',
                with_notch='Visible notch', no_notch='No visible notch',
                play='Play LED · 30 s', source='Waveform source', seek='Position', stop='Stop output', export='Export CSV',
                real='Real reference', tx='TX output signal', rx='RX received signal · OPT101',
-               info='PSF and APFT accept requested HR; LSM has no HR control. GAN has no notch control. A4 off; no measured SpO₂.',
+               info='PSF takes a requested HR; APFT takes an HR range of 60–100 bpm (each window measured); LSM has no HR control. GAN has no notch control. A4 off; no measured SpO₂.',
                ready='Idle · choose source, adjust sliders, then press Play LED.',
-               busy='Generating sequence on CPU…', busy_timed='Generating {name} on CPU… {elapsed:.0f} s (typically ~{typical} s, at most {limit} s)',
+               busy='Generating sequence on CPU…', busy_timed='Generating {name} on CPU… {elapsed:.0f} s (~{typical} s per generation round, at most {limit} s)',
                detail='Seed {seed} · 40 Hz · exploratory v2 · Real = 30 s train strip; no diagnosis labels.',
                psf_detail='PSF · seed {seed} · requested HR {hr:.0f} bpm · 40 Hz · research simulation; IR/RED not calibrated.',
                apft_detail='APFT · seed {seed} · requested HR {hr:.0f} bpm (not guaranteed) · 40 Hz · checkpoint {step} · research simulation; IR/RED not calibrated.',
                timeout='{name} took longer than {limit} s; the generator process was stopped.',
+               apft_range_detail='APFT · seed {seed} · measured HR {hr:.1f} bpm, inside {lo:g}–{hi:g} · {tries} generated · 40 Hz · checkpoint {step} · research simulation; IR/RED not calibrated.',
+               range_miss='APFT: {n} windows generated, none with HR in {lo:g}–{hi:g} bpm (measured HR {measured}). Widen the range or press New sequence.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.'),
@@ -63,6 +70,7 @@ COPY = {
 GAN_MODES = ('LSM-GAN', 'PSF-GAN', 'APFT-GAN')
 MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf', 'APFT-GAN': 'apft'}
 REFERENCE_BUNDLES = {'PSF-GAN': DEFAULT_PSF_BUNDLE, 'APFT-GAN': DEFAULT_APFT_BUNDLE}
+RANGE_MODE = 'APFT-GAN'          # takes an HR min-max range; the worker keeps only a window measured inside it
 TYPICAL_S = {'APFT-GAN': 60}     # Pi 4: ~10 s load + ~46 s per window (core/apft_fast.py)
 # One torch/BLAS thread per worker: the GUI process needs the other cores (on the Pi 4, 4 threads made APFT slower).
 WORKER_ENV = {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
@@ -87,7 +95,7 @@ class NeuralFrame(ctk.CTkFrame):
 
         source, self.source_title, tools = K.section(self, span=3)
         source.grid(row=1, column=0, sticky='ew', pady=(0, u(8)))
-        source.grid_columnconfigure((0, 1, 2), weight=1, uniform='touch')
+        self._source = source
         menu = dict(height=u(34), font=T.font(u(13)), dropdown_font=T.font(u(14)), icon_size=u(14), pad=u(10))
         self.mode_menu = SelectButton(tools, [''], command=self.change_mode, width=u(190), **menu)
         self.mode_menu.pack(side='left', padx=(0, u(6)))
@@ -96,14 +104,15 @@ class NeuralFrame(ctk.CTkFrame):
         self.generate_btn = K.secondary_button(tools, command=self.generate, width=126)
         self.generate_btn.pack(side='left')
         self.control_labels = {}
-        for col,(key,lo,hi,step,value) in enumerate((('hr',40,180,1,75),('dc',0,1500,1,1500),('ac',0,1500,1,45))):
+        self.hr_range=list(DEFAULT_RANGE)
+        for key,lo,hi,step,value in (('hr',40,180,1,75),('hr_min',*HR_LIMITS,1,DEFAULT_RANGE[0]),
+                                     ('hr_max',*HR_LIMITS,1,DEFAULT_RANGE[1]),('dc',0,1500,1,1500),('ac',0,1500,1,45)):
             label=T.label(source,'',u(12),text_color=T.MUTED,anchor='w')
-            label.grid(row=1,column=col,sticky='ew',padx=u(12))
             self.control_labels[key]=label
             control=TouchSlider(source,lo,hi,step,value=value,inline=True,
                                 command=lambda _value,k=key:self.adjust(k))
-            control.grid(row=2,column=col,sticky='ew',padx=u(12),pady=(0,u(10)))
             setattr(self,key+'_slider',control)
+        self._layout_controls()
 
         plots=ctk.CTkFrame(self,fg_color='transparent')
         plots.grid(row=3,column=0,sticky='nsew')
@@ -143,6 +152,30 @@ class NeuralFrame(ctk.CTkFrame):
         self.bind('<Configure>',self._fit_status,add='+')
         self.set_language(self.language)
         self.generate()
+
+    def _control_keys(self):
+        return ('hr_min','hr_max','dc','ac') if self.mode==RANGE_MODE else ('hr','dc','ac')
+
+    def _layout_controls(self):
+        """APFT: HR min and HR max replace the single requested HR (four columns); other modes: three columns."""
+        u=T.ui
+        keys=self._control_keys()
+        for key in ('hr','hr_min','hr_max','dc','ac'):
+            label,control=self.control_labels[key],getattr(self,key+'_slider')
+            if key in keys:
+                col=keys.index(key)
+                label.grid(row=1,column=col,sticky='ew',padx=u(12))
+                control.grid(row=2,column=col,sticky='ew',padx=u(12),pady=(0,u(10)))
+            else:
+                label.grid_remove()
+                control.grid_remove()
+        for col in range(4):
+            self._source.grid_columnconfigure(col,weight=1 if col<len(keys) else 0,
+                                              uniform='touch' if col<len(keys) else '')
+
+    def _set_hr_controls(self,state):
+        for key in ('hr','hr_min','hr_max'):
+            getattr(self,key+'_slider').configure(state=state)
 
     def _fit_status(self,_event=None):
         # CTkFrame delivers <Configure> from its inner canvas, so read the frame's own width.
@@ -205,10 +238,10 @@ class NeuralFrame(ctk.CTkFrame):
         self.mode_menu.set(self._mode_label())
         self.info.configure(text=self._info_text())
         self._load_reference()
-        self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
+        self._layout_controls()
+        self._set_hr_controls('disabled' if self.mode=='LSM-GAN' else 'normal')
         self._sync_profile_menu()
-        if (self.mode in HR_MODELS and self.mode in self.previews
-                and self.previews[self.mode].hr_target!=float(self.hr_slider.get())):
+        if self.mode in self.previews and not self._preview_matches(self.previews[self.mode]):
             self.previews.pop(self.mode)
         self.render()
         if self.mode not in self.previews:
@@ -220,9 +253,34 @@ class NeuralFrame(ctk.CTkFrame):
         self._sync_profile_menu()
         self.generate()
 
+    def _preview_matches(self,preview):
+        """A cached window still fits the controls: same requested HR (PSF) or same HR range (APFT)."""
+        if self.mode==RANGE_MODE:
+            return (preview.provenance or {}).get('hr_range')==[float(v) for v in self.hr_range]
+        if self.mode in HR_MODELS:
+            return preview.hr_target==float(self.hr_slider.get())
+        return True
+
+    def _adjust_range(self,key):
+        """Keep HR min + MIN_WIDTH <= HR max by moving the other end."""
+        lo,hi=float(self.hr_min_slider.get()),float(self.hr_max_slider.get())
+        if hi-lo<MIN_WIDTH:
+            if key=='hr_min':
+                hi=min(HR_LIMITS[1],lo+MIN_WIDTH)
+                lo=hi-MIN_WIDTH
+            else:
+                lo=max(HR_LIMITS[0],hi-MIN_WIDTH)
+                hi=lo+MIN_WIDTH
+            self.hr_min_slider.set(lo)
+            self.hr_max_slider.set(hi)
+        self.hr_range=[lo,hi]
+
     def adjust(self,key):
         self._stop_owned_output()
-        if key=='hr' and self.mode in HR_MODELS:
+        if key in ('hr_min','hr_max'):
+            self._adjust_range(key)
+        if key in ('hr','hr_min','hr_max') and self.mode in HR_MODELS and self.mode in self.previews \
+                and not self._preview_matches(self.previews[self.mode]):
             self.previews.pop(self.mode,None)
         if self._pending is not None:
             self.after_cancel(self._pending)
@@ -245,14 +303,17 @@ class NeuralFrame(ctk.CTkFrame):
         self._busy=True
         self._busy_mode=self.mode
         if self.mode in HR_MODELS:
-            self.hr_slider.configure(state='disabled')
+            self._set_hr_controls('disabled')
         self.status.configure(text=COPY[self.language]['busy'],text_color=T.MUTED)
         self.generate_btn.configure(state='disabled')
         self.play_btn.configure(state='disabled')
         self._stdout, self._stderr = tempfile.TemporaryFile(), tempfile.TemporaryFile()
         self._started = time.monotonic()
         command=[sys.executable,'-m','core.sequence_worker',str(secrets.randbits(32))]
-        if self.mode in HR_MODELS:
+        if self.mode==RANGE_MODE:
+            lo,hi=self.hr_range
+            command+=[self.mode,f'{(lo+hi)/2:g}','--hr-range',f'{lo:g}',f'{hi:g}']
+        elif self.mode in HR_MODELS:
             command+=[self.mode,str(self.hr_slider.get())]
         try:
             self._process = subprocess.Popen(
@@ -276,7 +337,7 @@ class NeuralFrame(ctk.CTkFrame):
                     stream.close()
             self._process=None
             self._busy=False
-            self.hr_slider.configure(state='disabled' if self.mode=='LSM-GAN' else 'normal')
+            self._set_hr_controls('disabled' if self.mode=='LSM-GAN' else 'normal')
             self.generate_btn.configure(state='normal')
             self.render()
         if error:
@@ -297,10 +358,27 @@ class NeuralFrame(ctk.CTkFrame):
             raise ValueError('Generate a waveform first')
         return WaveformClip.from_preview(preview,float(self.dc_slider.get()),float(self.ac_slider.get()))
 
+    def _range_miss_text(self):
+        """The worker's exit-2 report (no window measured inside the range), in the page language."""
+        try:
+            self._stdout.seek(0)
+            miss=json.loads(self._stdout.read().decode())
+            lo,hi=miss['range']
+            rates=[tr[3] for tr in miss['tries'] if tr[3] is not None]
+            measured=f'{min(rates):.0f}–{max(rates):.0f} bpm' if rates else '–'
+            return COPY[self.language]['range_miss'].format(n=len(miss['tries']),lo=lo,hi=hi,measured=measured)
+        except (ValueError,KeyError,TypeError,IndexError):
+            return None
+
     def _status_detail(self,preview):
         t=COPY[self.language]
         if self.mode=='PSF-GAN':
             return t['psf_detail'].format(seed=preview.seed,hr=preview.hr_target)
+        info=preview.provenance or {}
+        if self.mode=='APFT-GAN' and 'hr_range' in info:
+            return t['apft_range_detail'].format(seed=preview.seed,hr=info['hr_measured_bpm'],lo=info['hr_range'][0],
+                                                 hi=info['hr_range'][1],tries=len(info.get('tries',())),
+                                                 step=info.get('checkpoint_step','?'))
         if self.mode=='APFT-GAN':
             return t['apft_detail'].format(seed=preview.seed,hr=preview.hr_target,
                                            step=(preview.provenance or {}).get('checkpoint_step','?'))
@@ -358,6 +436,8 @@ class NeuralFrame(ctk.CTkFrame):
             if result is not None:
                 self._stderr.seek(0)
                 error=self._stderr.read().decode(errors='replace')[-1200:] if result else None
+                if result==2 and self._busy_mode==RANGE_MODE:
+                    error=self._range_miss_text() or error
                 self._finish_inference(error)
             else:
                 elapsed,limit=time.monotonic()-self._started,timeout_s(self._busy_mode)

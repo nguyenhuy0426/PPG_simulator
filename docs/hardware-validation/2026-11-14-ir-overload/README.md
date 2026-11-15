@@ -402,3 +402,22 @@ seed B 0,823; thấp nhất amp_cv 0,69–0,72. int8 động làm đổi dạng 
 | Tỉ lệ trong ±10 % | 0 | 0,50 | 0,44 | 0,56 | 0,56 | 0,38 | 0,38 | 0,19 | 0 | 0 | 0 | 0 |
 
 APFT chỉ bám HR một phần trong 60–100 bpm; ngoài khoảng đó gần như luôn ra ~80 bpm. HR "yêu cầu" không phải HR bảo đảm.
+
+## 20. 15/11 17:00: khoảng HR min–max cho APFT (`core/apft_range.py`, `scripts/apft_range_eval.py`)
+
+Trang Neural, chế độ APFT: hai thanh **HR min / HR max**, giới hạn 60–100 bpm (vùng mà mục 19 cho thấy model còn bám
+HR yêu cầu), rộng tối thiểu 2 bpm. Worker sinh mỗi lượt 8 cửa sổ trong một lần gọi, HR yêu cầu trải đều trong khoảng;
+mỗi cửa sổ được đếm nhịp bằng `core/beat_detector.py` (bỏ "nhịp" đến sớm hơn 65 % khoảng nhịp trung vị, ví dụ sóng
+dicrotic ở nhịp đầu; loại cửa sổ có > 5 % khoảng nhịp lệch > 35 %, tức có nhịp bị sót). Chỉ nhận cửa sổ có HR đo nằm
+trong khoảng, chọn cái gần giữa khoảng nhất; lượt sau dời mọi yêu cầu ngược với độ lệch trung vị. Hết 240 s mà không có
+thì báo lỗi kèm HR đo được, **không phát** cửa sổ ngoài khoảng.
+
+- Batch gần như miễn phí trên Pi 4 (1 luồng, app chạy): 1 / 2 / 4 / 8 cửa sổ mỗi lần gọi mất 44,0 / 44,9 / 49,0 / 57,4 s.
+- Tỉ lệ tìm được trong ngân sách (laptop, checkpoint thật, 20 lần mỗi khoảng, `apft_range_eval.json`): 4 lượt × 8 cửa
+  sổ: 60–65 15/20, 70–75 19/20, 70–80 20/20, 85–90 18/20, 95–100 18/20, 60–100 20/20 (trung bình 1,0–2,2 lượt). Cùng
+  ngân sách nhưng 1 cửa sổ mỗi lượt chỉ được 5–13/20 với khoảng 5–10 bpm.
+- Pi, app thật: 70–80 → 79,2 bpm (1 cửa sổ, bản trước batch, ~55 s); khi phát ra LED, ước lượng RX đọc 79 bpm ở cả IR
+  và RED. 70–80 → 73,9 bpm và 70–75 → 70,5 bpm (1 lượt 8 cửa sổ, ~80 s gồm nạp).
+
+HR là HR đo trên dạng sóng phát, không phải HR "yêu cầu". SpO₂/RR không phải đầu vào của APFT (model học PPG một kênh,
+không có nhãn RR, không có cặp IR/RED); chúng chỉ có thể thêm bằng lớp vật lý sau model.

@@ -6,6 +6,15 @@ from pathlib import Path
 
 from core.neural_preview import Preview
 
+
+class RangeMiss(ValueError):
+    """No window's measured HR fell inside the requested range within the time budget."""
+
+    def __init__(self, lo, hi, tries):
+        self.lo, self.hi, self.tries = lo, hi, tries
+        measured = ', '.join('-' if t[3] is None else f'{t[3]:.1f}' for t in tries)
+        super().__init__(f'APFT: no window in {lo:g}-{hi:g} bpm after {len(tries)} tries (measured {measured})')
+
 DEFAULT_APFT_BUNDLE = Path(__file__).resolve().parents[1] / 'assets' / 'apft'
 
 
@@ -43,11 +52,41 @@ class APFTSequenceGenerator:
             raise ValueError('Invalid APFT waveform')
         return wave[0].tolist()
 
-    def generate(self, seed, heart_rate=75.):
-        samples = [(i / 40, 1.5 + .045 * x, 1.5 + .0216 * x) for i, x in enumerate(self.window(seed, heart_rate))]
+    def _preview(self, window, seed, heart_rate, **extra):
+        samples = [(i / 40, 1.5 + .045 * x, 1.5 + .0216 * x) for i, x in enumerate(window)]
         return Preview('APFT-GAN', samples, 40, seed, float(heart_rate), None,
                        self.manifest['sha256'], (float(heart_rate),), 'apft_gan_v3_hr_v1',
-                       dict(exploratory=True, paired_ir_red=False, hr_control='requested, not guaranteed',
-                            checkpoint_step=self.manifest['checkpoint_step'], clinical_validation=False,
-                            generation='30 autoregressive patches, 40 samples each; 16-step Heun flow head',
-                            preprocessing='MIMIC-III PPG 0.5–8 Hz, min-max, 30 s at 40 Hz'))
+                       {**dict(exploratory=True, paired_ir_red=False, hr_control='requested, not guaranteed',
+                               checkpoint_step=self.manifest['checkpoint_step'], clinical_validation=False,
+                               generation='30 autoregressive patches, 40 samples each; 16-step Heun flow head',
+                               preprocessing='MIMIC-III PPG 0.5–8 Hz, min-max, 30 s at 40 Hz'), **extra})
+
+    def generate(self, seed, heart_rate=75.):
+        return self._preview(self.window(seed, heart_rate), seed, heart_rate)
+
+    def windows(self, seed, heart_rates):
+        """Validated min-max windows, one per requested HR, from one batched generator call (seed drives the batch)."""
+        if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**32:
+            raise ValueError('Seed must be an integer from 0 to 4294967295')
+        if not heart_rates or not all(math.isfinite(h) and 40 <= h <= 180 for h in heart_rates):
+            raise ValueError('APFT HR targets must be 40–180 bpm')
+        torch = self.torch
+        with torch.inference_mode():
+            waves = self.model.generate(len(heart_rates), steps=16, seed=seed,
+                                        hr=torch.tensor([float(h) for h in heart_rates]))
+        if (tuple(waves.shape) != (len(heart_rates), 1200) or not torch.isfinite(waves).all()
+                or waves.min() < 0 or waves.max() > 1):
+            raise ValueError('Invalid APFT waveform')
+        return [w.tolist() for w in waves]
+
+    def generate_in_range(self, seed, lo, hi, budget_s=None):
+        """A window whose measured beat rate lies in [lo, hi] bpm (core/apft_range.py), or RangeMiss."""
+        from core import apft_range
+        result = apft_range.search(self.windows, lo, hi, seed,
+                                   apft_range.DEFAULT_BUDGET_S if budget_s is None else budget_s)
+        if result.window is None:
+            raise RangeMiss(float(lo), float(hi), result.tries)
+        return self._preview(result.window, result.seed, result.request, hr_range=[float(lo), float(hi)],
+                             hr_measured_bpm=round(result.check.bpm, 2), hr_beats=result.check.beats,
+                             batch_index=result.index, batch=apft_range.BATCH, tries=result.tries,
+                             hr_control='measured beat rate inside the requested range')

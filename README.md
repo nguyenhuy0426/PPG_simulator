@@ -68,7 +68,8 @@ for scope, evidence, commercial-reference comparison and physical validation sti
 
 The app's Neural page offers the fitted three-Gaussian shaper and three 30 s, 40 Hz sequence generators: LSM-GAN
 (BIDMC, no rate control; `assets/neural/`), PSF-GAN (requested HR; `assets/psf/`) and APFT-GAN v3 HR v1 (checkpoint
-1250, 100.5 M parameters, requested HR 40–180 bpm not guaranteed; `assets/apft/`, weights in Git LFS). None has paired
+1250, 100.5 M parameters, `assets/apft/`, weights in Git LFS). APFT takes an HR min–max range inside 60–100 bpm: the
+worker measures each generated window's beat rate and keeps only one inside the range (`core/apft_range.py`). None has paired
 IR/RED or calibrated SpO₂. Each window is made in a separate worker process with one BLAS thread. On the Pi 4 with the
 GUI running APFT takes about 12 s to load and 91–100 s per window at ~100 % of one core and 970 MB RAM, so the page allows
 it 300 s ([measurement](docs/hardware-validation/2026-11-14-ir-overload/README.md#18-1511-1500-apft-gan-trên-pi-4-thời-gian-và-cpu-apft_benchpy-apft_benchjsonl)).
