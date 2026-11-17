@@ -329,6 +329,39 @@ class CalibrationFrame(ctk.CTkFrame):
         if self.tx_range.cget("text") != text:
             self.tx_range.configure(text=text)
 
+    # ---- BLE protocol v3 (ui/remote.py) ----
+    def remote_parts(self):
+        from ui.remote import color_kind
+        dots = []
+        for name, _channel in LANES:
+            color = self.dots[name].cget("text_color")
+            state = "blink" if color == T.PANEL else ("idle" if color == T.FAINT else color_kind(color))
+            dots.append([state, self.dot_text[name].cget("text")])
+        return [("cal", {"run": bool(self.engine.is_calibrating or self._spo2_run is not None),
+                         "sweep": self._spo2_run is not None,
+                         "f": float(self.frequency_slider.get()), "ir": float(self.ir_slider.get()),
+                         "red": float(self.red_slider.get()), "sw": float(self.swing_slider.get()),
+                         "tol": float(self.tolerance_slider.get()), "dots": dots, "tr": self.tx_range.cget("text")}),
+                ("calst", {"s": self.status.cget("text"), "c": color_kind(self.status.cget("text_color"))})]
+
+    def remote_apply(self, request):
+        """Phone request: the same sliders and buttons as on this page."""
+        from comm.ble_remote import number
+        for key, slider in (("f", self.frequency_slider), ("ir", self.ir_slider), ("red", self.red_slider),
+                            ("sw", self.swing_slider), ("tol", self.tolerance_slider)):
+            value = number(request.get(key))
+            if value is not None:
+                slider.set(value)
+                if key == "tol":
+                    self._tolerance_changed(value)
+        if request.get("spo2") is True:
+            self.start_spo2_calibration()
+        if "run" in request:
+            running = self.engine.is_calibrating or self._spo2_run is not None
+            if bool(request["run"]) != running:
+                self.toggle()
+        self.periodic_update()
+
     def periodic_update(self):
         if not self.winfo_ismapped():
             return

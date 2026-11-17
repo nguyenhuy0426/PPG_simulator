@@ -309,6 +309,18 @@ class PathologyFrame(ctk.CTkFrame):
                  [(t, r * 1000) for t, _ir, r in history]),
         ]
 
+    # ── BLE protocol v3 (ui/remote.py) ──
+    def remote_parts(self):
+        from ui.remote import color_kind
+        dot, headline, detail = self._status()
+        kind = "muted"
+        if self._message is not None and time.monotonic() < self._message_until:
+            detail, color = self._message
+            kind = color_kind(color)
+        p = self.engine.ppg_params
+        return [("mon", {"dot": "off" if dot == T.FAINT else color_kind(dot), "h": headline, "d": detail,
+                         "dk": kind, "beep": bool(self.beeper.enabled), "rm": p.ac_red_mv is not None})]
+
     def periodic_update(self):
         # Widgets only. Recording is pumped by the engine; hidden canvases are
         # not redrawn while the DAC writer is active.

@@ -348,9 +348,12 @@ virtual environments, bytecode and generated package caches.
 The simulator can be driven from the Android app (`com.medical.simulator`)
 over BLE GATT: `pip install -r requirements/ble.txt`, then run with `--ble`
 (GUI) or `--ble-only` (headless). The phone advertises-pairs as central, sends
-JSON setpoint commands (HR/SpO₂/RR/PI/noise/condition plus AC/DC amplitude
+JSON setpoint commands (HR/SpO₂/RR/noise/condition plus AC/DC amplitude
 0–1500 mV per channel) and receives the 50 Hz waveform plus a 5 Hz status
-snapshot with bidirectional sync. Full contract: `docs/ble_protocol.md`.
+snapshot with bidirectional sync. Protocol v3 adds the other pages: the phone
+switches the Pi's page and drives Calibration, Recordings and PPG morphology
+(models still run on the Pi), and receives the TX/RX plots and each page's state.
+Full contract: `docs/ble_protocol.md`.
 
 ```bash
 PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble        # GUI + BLE

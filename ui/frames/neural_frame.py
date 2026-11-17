@@ -430,6 +430,71 @@ class NeuralFrame(ctk.CTkFrame):
         except (ValueError,RuntimeError) as exc:
             self.status.configure(text=str(exc),text_color=T.ERROR)
 
+    # ---- BLE protocol v3 (ui/remote.py) ----
+    def remote_parts(self):
+        from comm.ble_remote import preview_parts
+        from ui.remote import color_kind
+        playing=self.engine.is_waveform_playing
+        state={'mode':self.mode,'prof':self.profile,'ml':self._mode_label(),'hr':float(self.hr_slider.get()),
+               'lo':float(self.hr_min_slider.get()),'hi':float(self.hr_max_slider.get()),
+               'dc':float(self.dc_slider.get()),'ac':float(self.ac_slider.get()),'seek':float(self.seek.get()),
+               'busy':bool(self._busy),'play':bool(playing),
+               'can':self.previews.get(self.mode) is not None and not self._busy}
+        parts=[('nn',state),('nnst',{'s':self.status.cget('text'),'c':color_kind(self.status.cget('text_color'))}),
+               ('nni',{'i':self.info.cget('text')})]
+        if not playing:     # the TX card shows the generated window and its reference, not live output
+            parts+=preview_parts([list(lane.points) for lane in self.trace.lanes])
+        return parts
+
+    def remote_tx_rows(self):
+        """While a window plays: (clip time, generated mV, real reference mV at that time), as the TX card draws
+        them; [] otherwise (the idle card is the preview, sent as parts)."""
+        from bisect import bisect_left
+        if not self.engine.is_waveform_playing:
+            return []
+        preview=self.previews.get('Real sequence' if self.mode in GAN_MODES else 'Real reference')
+        key=(id(preview),float(self.dc_slider.get()),float(self.ac_slider.get()))
+        if getattr(self,'_ref_cache',(None,))[0]!=key:
+            rows=self._reference_rows()
+            self._ref_cache=(key,[r[0] for r in rows],[r[1]*1000 for r in rows])
+        _key,times,values=self._ref_cache
+        out=[]
+        for t,ir,_red in self.engine.get_display_history()[-100:]:
+            ref=None
+            if times:
+                ref=values[min(len(times)-1,bisect_left(times,t))]
+            out.append((t,ir*1000,ref))
+        return out
+
+    def remote_apply(self,request):
+        """Phone request: the same menus, sliders and buttons as on this page."""
+        from comm.ble_remote import number
+        t=COPY[self.language]
+        mode=request.get('mode')
+        if mode in ('Gaussian (fitted)',)+GAN_MODES and mode!=self.mode:
+            self.change_mode(t[MODE_KEYS.get(mode,'fitted')])
+        profile=request.get('prof')
+        if profile in ('With notch','No notch') and profile!=self.profile and self.mode not in GAN_MODES:
+            self.change_profile(t['with_notch' if profile=='With notch' else 'no_notch'])
+        for key,name in (('hr','hr'),('lo','hr_min'),('hi','hr_max'),('dc','dc'),('ac','ac')):
+            value=number(request.get(key))
+            if value is None:
+                continue
+            if name.startswith('hr') and (self._busy or self.mode=='LSM-GAN'):
+                continue            # disabled on the Pi too while a window is generated / for LSM
+            getattr(self,name+'_slider').set(value)
+            self.adjust(name)
+        seek=number(request.get('seek'))
+        if seek is not None:
+            self.seek.set(max(0.0,min(22.0,seek)))
+            self.render()
+        if request.get('gen') is True and not self._busy:
+            self.generate()
+        if 'play' in request and bool(request['play'])!=bool(self.engine.is_waveform_playing):
+            if self._busy:
+                return
+            self.toggle_output()
+
     def periodic_update(self):
         if self._process is not None:
             result=self._process.poll()

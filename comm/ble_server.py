@@ -8,6 +8,11 @@ Re-implements the historical comm/ble_server.py surface using `bless` 0.3.0
     WRITE    ...def1   app -> Pi   UTF-8 JSON command (delta merge)
     NOTIFY   ...def2   Pi  -> app  UTF-8 "%.2f" display-IR millivolts, ~50 Hz
     STATUS   ...def3   Pi  -> app  UTF-8 JSON snapshot, ~5 Hz (+ readable)
+    STREAM   ...def4   Pi  -> app  v3: TX/RX samples of the page on screen, ~10 Hz
+    UI       ...def5   Pi  -> app  v3: page state as JSON parts (+ readable)
+
+Protocol v3 (comm/ble_remote.py) adds page commands ("view", "cal", "nn", "rec",
+"beep", "gauss"), queued here and applied by the Tk app on its own thread.
 
 Protocol v2 command keys additionally drive simulation run state, CSV
 recording and CSV playback ("run", "record", "pb", "pb_file"); the status
@@ -33,11 +38,16 @@ See docs/ble_protocol.md.
 """
 
 import asyncio
+from collections import deque
 import json
 import os
 import threading
 import time
 
+from comm.ble_remote import (
+    STREAM_BACKLOG, STREAM_RATE_HZ, STREAM_UUID, UI_ROTATE_INTERVAL_S, UI_SEND_INTERVAL_S, UI_UUID, fit_part,
+    pack_stream, remote_request,
+)
 from comm.logger import log
 from config import DAC_FULLSCALE_MV, DAC_MAX_VALUE
 
@@ -163,8 +173,10 @@ def origin_for_tick(now, android_grace_until):
 class BLECommandHandler:
     """Pure command application logic (testable without BlueZ/bless)."""
 
-    def __init__(self, engine):
+    def __init__(self, engine, remote_queue=None):
+        """remote_queue(request): receives the v3 page keys of a command for the Tk thread (None: ignored)."""
         self.engine = engine
+        self.remote_queue = remote_queue
 
     def handle_command(self, obj):
         """Apply a decoded command dict (delta merge). Returns what was applied.
@@ -331,6 +343,14 @@ class BLECommandHandler:
                     applied["pb_file"] = filename
             guarded("pb", apply_pb)
 
+        # Protocol v3 page keys: queued, applied by the GUI (a headless run has none to apply them).
+        request = remote_request(obj)
+        if request and self.remote_queue is not None:
+            def apply_remote():
+                self.remote_queue(request)
+                applied.update(request)
+            guarded("remote", apply_remote)
+
         # "origin" and "seq" (and any unknown key) are deliberately ignored:
         # origin/echo bookkeeping is server-side only (T4 grace window).
         return applied
@@ -443,6 +463,8 @@ class _SimulatorBlessServer:
             def read(self, char, **kwargs):
                 if str(char.UUID).lower() == STATUS_UUID:
                     return owner.status_bytes()
+                if str(char.UUID).lower() == UI_UUID:
+                    return owner.ui_page_bytes()
                 return bytes(char.value or b"")
 
             def write(self, char, value: bytes, **kwargs):
@@ -461,7 +483,14 @@ class BleServer:
         writes; None keeps SECURE_WRITES_DEFAULT."""
         self.engine = engine
         self.secure_writes = SECURE_WRITES_DEFAULT if secure_writes is None else bool(secure_writes)
-        self.handler = BLECommandHandler(engine)
+        # v3: page requests for the Tk thread, stream samples and page-state parts from it.
+        self._remote_lock = threading.Lock()
+        self._ui_requests = deque(maxlen=32)
+        self._stream_tx = deque(maxlen=STREAM_BACKLOG)
+        self._stream_rx = deque(maxlen=STREAM_BACKLOG)
+        self._ui_parts = {}             # part name -> encoded JSON
+        self._ui_dirty = deque()        # names of parts that changed since they were last sent
+        self.handler = BLECommandHandler(engine, remote_queue=self._queue_ui_request)
         self._thread = None
         self._loop = None
         self._shutdown_evt = None
@@ -617,6 +646,18 @@ class BleServer:
             None,
             GATTAttributePermissions.readable,
         )
+        await server.add_new_characteristic(
+            SERVICE_UUID, STREAM_UUID,
+            GATTCharacteristicProperties.notify,
+            bytearray(b"T|R"),
+            GATTAttributePermissions.readable,
+        )
+        await server.add_new_characteristic(
+            SERVICE_UUID, UI_UUID,
+            GATTCharacteristicProperties.read | GATTCharacteristicProperties.notify,
+            None,
+            GATTAttributePermissions.readable,
+        )
 
         using_external_advertising = False
         try:
@@ -662,6 +703,8 @@ class BleServer:
 
         wave_task = asyncio.create_task(self._waveform_loop())
         status_task = asyncio.create_task(self._status_loop())
+        stream_task = asyncio.create_task(self._stream_loop())
+        ui_task = asyncio.create_task(self._ui_loop())
         watch_task = asyncio.create_task(self._bluez_watch_loop(self._bluez_owner))
         cmd_file_task = None
         if CMD_FILE_PATH:
@@ -670,13 +713,13 @@ class BleServer:
         try:
             await self._shutdown_evt.wait()
         finally:
-            wave_task.cancel()
-            status_task.cancel()
-            watch_task.cancel()
+            for task in (wave_task, status_task, stream_task, ui_task, watch_task):
+                task.cancel()
             if cmd_file_task is not None:
                 cmd_file_task.cancel()
             try:
-                await asyncio.gather(wave_task, status_task, watch_task, return_exceptions=True)
+                await asyncio.gather(wave_task, status_task, stream_task, ui_task, watch_task,
+                                     return_exceptions=True)
             except Exception:
                 pass
             try:
@@ -821,3 +864,85 @@ class BleServer:
 
     def status_bytes(self):
         return self._status_payload
+
+    # ─── Protocol v3: page requests, stream and page state ───────────────────
+
+    def _queue_ui_request(self, request):
+        """Bless thread: keep a page request for the Tk thread (oldest dropped past 32)."""
+        with self._remote_lock:
+            self._ui_requests.append(request)
+
+    def take_ui_requests(self):
+        """Tk thread: the queued page requests, oldest first."""
+        with self._remote_lock:
+            requests = list(self._ui_requests)
+            self._ui_requests.clear()
+        return requests
+
+    def push_stream(self, tx_pairs, rx_pairs):
+        """Tk thread: append "ir,red" samples; past STREAM_BACKLOG per side the oldest are dropped."""
+        with self._remote_lock:
+            self._stream_tx.extend(tx_pairs)
+            self._stream_rx.extend(rx_pairs)
+
+    def publish_ui(self, parts):
+        """Tk thread: the page-state parts [(name, fields)] of the page on screen; changed ones go out first.
+
+        Parts not in `parts` (another page's) are dropped, so the rotation only carries the current page.
+        """
+        encoded = {name: fit_part(name, fields) for name, fields in parts}   # fields may set their own "k"
+        with self._remote_lock:
+            for name, data in encoded.items():
+                if self._ui_parts.get(name) != data and name not in self._ui_dirty:
+                    self._ui_dirty.append(name)
+            self._ui_parts = encoded
+            self._ui_dirty = deque(name for name in self._ui_dirty if name in encoded)
+
+    def ui_page_bytes(self):
+        with self._remote_lock:
+            return self._ui_parts.get("page", b"{}")
+
+    async def _stream_loop(self):
+        interval = 1.0 / STREAM_RATE_HZ
+        errors = 0
+        while not self._shutdown_evt.is_set():
+            try:
+                with self._remote_lock:
+                    frame, used_tx, used_rx = pack_stream(list(self._stream_tx), list(self._stream_rx))
+                    for _ in range(used_tx):
+                        self._stream_tx.popleft()
+                    for _ in range(used_rx):
+                        self._stream_rx.popleft()
+                if used_tx or used_rx:
+                    await self._push(STREAM_UUID, frame)
+                errors = 0
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                errors += 1
+                if errors <= 3 or errors % 100 == 0:
+                    log.warning(f"[BLE] Stream notify error x{errors}: {exc}")
+            await asyncio.sleep(interval)
+
+    async def _ui_loop(self):
+        rotation = 0
+        last_rotate = 0.0
+        while not self._shutdown_evt.is_set():
+            try:
+                data = None
+                with self._remote_lock:
+                    if self._ui_dirty:
+                        data = self._ui_parts.get(self._ui_dirty.popleft())
+                    elif self._ui_parts and time.monotonic() - last_rotate >= UI_ROTATE_INTERVAL_S:
+                        names = sorted(self._ui_parts)
+                        rotation %= len(names)
+                        data = self._ui_parts[names[rotation]]
+                        rotation += 1
+                        last_rotate = time.monotonic()
+                if data is not None:
+                    await self._push(UI_UUID, data)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning(f"[BLE] UI notify error: {exc}")
+            await asyncio.sleep(UI_SEND_INTERVAL_S)

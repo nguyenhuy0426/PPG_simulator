@@ -296,6 +296,50 @@ class PlaybackFrame(ctk.CTkFrame):
             if label.cget("text") != text:
                 label.configure(text=text)
 
+    # ─── BLE protocol v3 (ui/remote.py) ──────────────────────────────────────
+    def _recording_names(self):
+        now = time.monotonic()
+        cached = getattr(self, "_names_cache", None)
+        if cached is None or now - cached[0] > 2.0:
+            files = sorted(self.dataset_dir.glob("*.csv"), reverse=True)
+            cached = (now, [p.name for p in files if p.name != "temp_recording.csv"])
+            self._names_cache = cached
+        return cached[1]
+
+    def remote_parts(self):
+        from comm.ble_remote import UI_PART_MAX_BYTES
+        names = self._recording_names()
+        chunks, chunk, size = [], [], 40
+        for name in names[:60]:
+            if chunk and size + len(name) + 3 > UI_PART_MAX_BYTES:
+                chunks.append(chunk)
+                chunk, size = [], 40
+            chunk.append(name)
+            size += len(name) + 3
+        chunks.append(chunk)
+        parts = [(f"ls{i}", {"k": "ls", "c": i, "m": len(chunks), "f": c}) for i, c in enumerate(chunks)]
+        metrics = [label.cget("text") for label, _unit in self.metric_values.values()]
+        duration = self.times[-1] if self.samples else 0.0
+        parts.append(("rec", {"sel": self.current_name or "", "play": bool(self.is_playing),
+                              "pos": round(float(self.position), 2), "dur": round(float(duration), 2),
+                              "m": metrics, "i": self.info.cget("text") if self.samples else ""}))
+        return parts
+
+    def remote_apply(self, request):
+        """Phone request: load (select) a recording; play/pause/stop arrive as protocol v2 "pb"."""
+        name = request.get("sel")
+        if isinstance(name, str):
+            name = Path(name).name
+            if name and name in self._recording_names():
+                self._pick(self.dataset_dir / name)
+
+    def remote_tx_rows(self):
+        """The last second of the recording up to the playback position, (t, IR mV, RED mV); [] unless playing."""
+        if not self.is_playing or not self.samples:
+            return []
+        idx = max(0, bisect.bisect_right(self.times, self.position) - 1)
+        return [(t, ir * 1000.0, red * 1000.0) for t, ir, red in self.samples[max(0, idx - 100):idx + 1]]
+
     def periodic_update(self):
         self.rx_panel.periodic_update()
         if not self.is_playing: return

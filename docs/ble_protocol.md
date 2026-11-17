@@ -1,4 +1,4 @@
-# BLE Remote-Control Protocol (Android ↔ PPG Simulator) — v2
+# BLE Remote-Control Protocol (Android ↔ PPG Simulator) — v2 + v3 pages
 
 FROZEN contract between this app (`comm/ble_server.py`, `bless` peripheral) and
 the Android controller app `com.medical.simulator` (`ble/RpiBleManager.java`,
@@ -303,6 +303,66 @@ always show what the generator outputs.
 `ac_ir_mv` / `ac_red_mv` / `dc_ir_mv` / `dc_red_mv` are echoed back with the
 applied (clamped / re-derived) values so both UIs converge on the same
 numbers.
+
+## Protocol v3: remote pages
+
+v3 lets the Android app drive every page of the Pi app (Monitor, Calibration,
+Recordings, PPG morphology) instead of only the Monitor setpoints. The page logic
+stays in the Pi frames; the phone sends page commands and shows what the Pi
+reports. Code: `comm/ble_remote.py` (pure helpers), `comm/ble_server.py`
+(characteristics, queues), `ui/remote.py` (Tk side), `remote_parts()` /
+`remote_apply()` in each `ui/frames/*_frame.py`. v1/v2 keys and frames are unchanged.
+
+| Role | UUID | Properties | Content |
+|---|---|---|---|
+| Stream | `12345678-1234-5678-1234-56789abcdef4` | notify, ~10 Hz | `T<ir>,<red>;…\|R<ir>,<red>;…` in mV, about 50 samples/s per side |
+| UI | `12345678-1234-5678-1234-56789abcdef5` | read + notify | one JSON part `{"k": kind, …}` per notification |
+
+**Stream.** `T` is what the TX plot of the page on the Pi's screen draws: the DAC
+command history (Monitor while running, Calibration while calibrating), the
+generated window and its real reference at the same clip time (PPG morphology while
+playing), or the recording at the playback position (Recordings while playing);
+otherwise nothing. `R` is the raw OPT101 receiver: A4 (IR), with the A0 (RED) sample
+within 30 ms of it, decimated to 20 ms; dry-run and disabled lanes send nothing. An
+empty value is a lane without a sample; nothing is invented. Every frame is
+≤ 240 bytes; past 2 s of backlog the oldest samples are dropped.
+
+**UI parts.** Built on the Tk thread every 250 ms for the page on screen only, at
+most 240 bytes each (long texts are shortened with "…"), so an MTU of 256 keeps
+every part whole; the app requests 517. Changed parts are sent first (one per
+50 ms), all parts are re-sent in rotation (one per 250 ms), and a read of the
+characteristic returns the `page` part.
+
+| `k` | Fields |
+|---|---|
+| `page` | `v` page (`monitor`, `calibration`, `recordings`, `neural`), `lang`, `hw` (`hardware`/`dry_run`/`no_dac`), `st` [buffer, lost, clipped], `hz` [model, DAC], `ver` |
+| `tx` | `l` [[title, detail] per TX lane], `p` [placeholder, sub] |
+| `rxi`, `rxr` | IR / RED receiver lane: `t` title, `d` detail, `b`, `b2` badges (received rate, SpO₂, RR), `m`, `s` message when the lane has no samples |
+| `mon` | Monitor status line `dot`, `h`, `d`, `dk`; `beep`; `rm` (RED AC manual) |
+| `cal`, `calst` | sliders `f`, `ir`, `red`, `sw`, `tol`; `run`, `sweep`; `dots` [[state, text] IR, RED]; `tr` sent range; status `s`, `c` |
+| `nn`, `nnst`, `nni`, `pv` | `mode`, `prof`, `hr`, `lo`, `hi`, `dc`, `ac`, `seek`, `busy`, `play`, `can`; status; page info; preview chunks `pv` (`id`, lane `l` of `n`, chunk `c` of `m`, `lo`/`hi` mV, `t` s, `v` 0–999) |
+| `ls`, `rec` | recording names in chunks (`c` of `m`, `f`); `sel`, `play`, `pos`, `dur`, `m` recorded setpoints, `i` file info |
+
+**Commands** (on the Command characteristic, queued for the Tk thread, applied with
+the same methods as the Pi's own buttons and sliders; the addressed page is shown
+first, since Calibration and Neural playback stop when their page is left):
+
+```json
+{"view":"calibration"}
+{"beep":false}   {"gauss":true}
+{"cal":{"f":1,"ir":500,"red":500,"sw":100,"tol":20,"run":true}}   {"cal":{"spo2":true}}
+{"nn":{"mode":"APFT-GAN","lo":70,"hi":80,"dc":500,"ac":45,"gen":true}}   {"nn":{"play":true}}
+{"rec":{"sel":"data_1.csv"}}   (play/pause/resume/stop stay on v2 "pb")
+```
+
+Shapes the pages cannot use are dropped before queueing (`remote_request`); values
+are clamped by the page widgets. A headless `--ble-only` run has no pages: v3 page
+commands are queued and never applied, and no UI parts are sent. The PPG
+morphology models run in the Pi's worker process; the phone never runs them.
+
+Verified 2026-11-17 on the Pi 4 with a Samsung SM-G960F (Android 10) running the
+app: every command above was applied (`[BLE] Command applied` lines), the Pi screen
+and the phone showed the same values, and Lost stayed 0 while streaming.
 
 ## Running
 

@@ -15,6 +15,7 @@ from ui.frames.neural_frame import NeuralFrame
 from ui.responsive import profile_for_screen
 from ui.i18n import LANGUAGES, normalise_language, text
 from ui.nav_rail import NavRail
+from ui.remote import RemoteBridge
 
 
 class CTkApp(ctk.CTk):
@@ -82,6 +83,7 @@ class CTkApp(ctk.CTk):
             "Neural": NeuralFrame(self.page_host, fg_color="transparent"),
         }
         self.page_host.frames = self.frames
+        self.remote = RemoteBridge(self)
         self.signal_setup_window = None
         self.signal_setup_panel = None
         self.signal_setup_visible = False
@@ -388,6 +390,8 @@ class CTkApp(ctk.CTk):
         request = self.engine.take_playback_request()
         if request is not None:
             self.frames["Playback"].handle_playback_request(*request)
+        # Protocol v3: phone page requests in, page state and TX/RX samples out (ui/remote.py).
+        self.remote.tick()
         # BLE can mutate engine state while any tab is visible. Refresh every
         # frame, not only the active one, so returning to a tab never appears
         # to be the moment the command was received. This also advances a
