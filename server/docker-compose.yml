@@ -1,0 +1,47 @@
+# Trial stack: MQTT broker, PostgreSQL and the recordings API. See docs/remote_mqtt.md.
+# Secrets come from server/.env and server/secrets/ (both git-ignored); scripts/setup_trial.sh creates them.
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl:/mosquitto/config/acl:ro
+      - ./mosquitto/passwd:/mosquitto/config/passwd:ro
+      - ./mosquitto/certs:/mosquitto/config/certs:ro
+      - ./mosquitto/data:/mosquitto/data
+
+  db:
+    image: postgres:16.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ppgsim
+      POSTGRES_USER: ppgsim
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in server/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppgsim -d ppgsim"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ppgsim:${POSTGRES_PASSWORD}@db:5432/ppgsim
+      API_TOKENS_FILE: /run/secrets/api_tokens.json
+    volumes:
+      - ./secrets/api_tokens.json:/run/secrets/api_tokens.json:ro
+    ports:
+      # Plain HTTP on the LAN for the trial; put a TLS reverse proxy (Caddy/nginx) in front on a public server.
+      - "8000:8000"
+
+volumes:
+  pgdata:

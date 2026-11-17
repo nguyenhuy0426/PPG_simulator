@@ -44,29 +44,38 @@ class RemoteBridge:
         self._published_at = 0.0
 
     @property
-    def ble(self):
-        ble = getattr(self.app, "ble_server", None)
-        return ble if ble is not None and hasattr(ble, "take_ui_requests") else None
+    def links(self):
+        """The remote links with the v3 interface: the BLE server and the MQTT remote (comm/mqtt_remote.py)."""
+        found = []
+        for attr in ("ble_server", "mqtt_remote"):
+            link = getattr(self.app, attr, None)
+            if link is not None and hasattr(link, "take_ui_requests"):
+                found.append(link)
+        return found
 
     # ── tick ──
     def tick(self):
-        ble = self.ble
-        if ble is None:
-            return
-        for request in ble.take_ui_requests():
-            self.apply(request)
-        if ble.connection_state() != BLE_CONNECTED:     # nobody subscribed: build nothing
+        links = self.links
+        for link in links:
+            for request in link.take_ui_requests():
+                self.apply(request)
+        watched = [link for link in links if link.connection_state() == BLE_CONNECTED]
+        if not watched:                                  # nobody subscribed: build nothing
             self._tx_last = self._rx_last = None
             return
         try:
-            ble.push_stream(self._tx_pairs(), self._rx_pairs())
+            tx, rx = self._tx_pairs(), self._rx_pairs()  # built once, sent on every watched link
+            for link in watched:
+                link.push_stream(tx, rx)
         except Exception:
             log.exception("[Remote] stream samples failed")
         now = time.monotonic()
         if now - self._published_at >= UI_PUBLISH_INTERVAL_S:
             self._published_at = now
             try:
-                ble.publish_ui(self.parts())
+                parts = self.parts()
+                for link in watched:
+                    link.publish_ui(parts)
             except Exception:
                 log.exception("[Remote] page state failed")
 

@@ -30,6 +30,9 @@ parser.add_argument("--ble-secure", action=argparse.BooleanOptionalAction, defau
                     help="Accept BLE command writes only over an encrypted link, i.e. from "
                          "a phone that has paired with the Pi (docs/ble_protocol.md); "
                          "--no-ble-secure accepts them from any central (current default)")
+parser.add_argument("--no-remote", action="store_true",
+                    help="Do not start the MQTT remote or the recording upload even when "
+                         "~/.config/ppg-simulator/remote.json configures them")
 parser.add_argument("--page", choices=("Pathology", "Calibration", "Playback", "Neural"),
                     default="Pathology", help="Initial GUI page; output stays off")
 args = parser.parse_args()
@@ -75,6 +78,25 @@ def start_ble(engine, enabled=True, secure_writes=None):
         except RuntimeError as exc:
             log.error(f"BLE unavailable: {exc}")
     return ble
+
+
+def start_internet_links(engine):
+    """MQTT remote control and recording upload (docs/remote_mqtt.md); each is None unless configured."""
+    if args.no_remote:
+        return None, None
+    from pathlib import Path
+    from comm.mqtt_remote import start_mqtt
+    from comm.record_sync import start_sync
+    mqtt = start_mqtt(engine)
+    sync = start_sync(Path(__file__).resolve().parent / "dataset")
+    return mqtt, sync
+
+
+def stop_internet_links(mqtt, sync):
+    from comm.record_sync import stop_sync
+    if mqtt is not None:
+        mqtt.stop()
+    stop_sync(sync)
 
 
 def save_current_config(engine, language="en", theme="light"):
@@ -126,10 +148,12 @@ def main():
     if not args.no_ble or args.ble_only:
         ble_server = start_ble(engine, args.ble_only or config.get("ble_enabled", True),
                               secure_writes=args.ble_secure)
+    mqtt_remote, record_sync = start_internet_links(engine)
 
     # ─── Headless BLE mode: no GUI, run until interrupted ────────────────────
     if args.ble_only:
         if ble_server is None or ble_server.last_error:
+            stop_internet_links(mqtt_remote, record_sync)
             rx.shutdown()
             engine.shutdown()
             sys.exit(1)
@@ -143,6 +167,7 @@ def main():
         finally:
             if ble_server is not None:
                 ble_server.stop()
+            stop_internet_links(mqtt_remote, record_sync)
             save_current_config(engine, config.get("language", "en"), config.get("theme", "light"))
             rx.shutdown()
             engine.shutdown()
@@ -159,6 +184,7 @@ def main():
     # Initialize UI
     app = CTkApp(language=config.get("language", "en"), theme=config.get("theme", "light"),
                  ble_server=ble_server)
+    app.mqtt_remote = mqtt_remote     # ui/remote.py serves the phone on every link it finds on the app
     app._show_frame(args.page)
 
     # Do not let SIGINT/SIGTERM raise KeyboardInterrupt in the middle of a Tk
@@ -177,6 +203,7 @@ def main():
     finally:
         if ble_server is not None:
             ble_server.stop()
+        stop_internet_links(mqtt_remote, record_sync)
         save_current_config(engine, app.language, app.theme)
         beeper.stop()
         rx.shutdown()

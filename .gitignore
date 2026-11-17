@@ -62,3 +62,11 @@ kaggle.json
 # Local model weights above the 100 MB GitHub limit and bulky run outputs; keep on disk, never commit.
 assets/apft/generator.pt
 runs/
+
+# Trial server (server/): secrets, certificates and broker state stay local.
+server/.env
+server/secrets/
+server/mosquitto/passwd
+server/mosquitto/certs/
+server/mosquitto/data/
+server/mosquitto/acl

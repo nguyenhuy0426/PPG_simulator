@@ -1,0 +1,9 @@
+# Every Pi logs in with its device id as user name and may only use its own topics.
+pattern write ppgsim/%u/status
+pattern write ppgsim/%u/online
+pattern write ppgsim/%u/stream
+pattern write ppgsim/%u/ui
+pattern read ppgsim/%u/cmd
+pattern read ppgsim/%u/client
+
+# Apps: one block per app account, listing the Pi it may control (scripts/setup_trial.sh appends these).

@@ -1,0 +1,4 @@
+# Internet links (optional): MQTT remote control (comm/mqtt_remote.py).
+# The recording upload (comm/record_sync.py) uses only the standard library.
+# Install: .venv/bin/python -m pip install -r requirements/remote.txt
+paho-mqtt>=2.1,<3

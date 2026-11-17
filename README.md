@@ -360,6 +360,17 @@ PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble        # GUI + BLE
 PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble-only   # headless
 ```
 
+### 4. Remote control over the internet and recordings in a database (trial)
+
+The same commands and page state also travel over an MQTT broker (TLS), so the
+app can control the Pi from anywhere, and every finished recording in
+`dataset/` is copied to PostgreSQL through a small HTTPS API while the CSV on
+the Pi stays the primary copy. Both start only when
+`~/.config/ppg-simulator/remote.json` configures them (`pip install -r
+requirements/remote.txt`; `--no-remote` turns them off). A trial broker,
+database and API run from `server/` (`server/scripts/setup_trial.sh`).
+Details, security notes and what was tested: `docs/remote_mqtt.md`.
+
 ---
 
 ## Operation

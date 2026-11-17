@@ -33,6 +33,17 @@ COPY = {
                missing="Recording not found: {name}"),
 }
 METRICS = (("hr", "bpm"), ("spo2", "%"), ("rr", "brpm"), ("pi", "%"), ("condition", ""))
+# Database copy (comm/record_sync.py) after each file name; nothing when sync is not configured.
+SYNC_MARKS = {"synced": "   ✓ DB", "pending": "   … DB", "error": "   ✗ DB"}
+SYNC_CODES = {"synced": "s", "pending": "p", "error": "e"}
+
+
+def sync_state(name):
+    """'synced', 'pending', 'error' or None for a recording file name."""
+    from comm import record_sync
+    sync = record_sync.current()
+    state = sync.state_of(name) if sync is not None else None
+    return state[0] if state else None
 
 
 class PlaybackFrame(ctk.CTkFrame):
@@ -165,7 +176,8 @@ class PlaybackFrame(ctk.CTkFrame):
             T.label(self.files, COPY[self.language]["empty"], u(12), text_color=T.MUTED,
                     wraplength=u(170), justify="left").pack(anchor="w", padx=u(6), pady=u(12))
         for path in files:
-            button = ctk.CTkButton(self.files, text=path.name, anchor="w", height=u(36), corner_radius=u(6),
+            mark = SYNC_MARKS.get(sync_state(path.name), "")
+            button = ctk.CTkButton(self.files, text=path.name + mark, anchor="w", height=u(36), corner_radius=u(6),
                                    font=T.font(u(12)), fg_color="transparent", text_color=T.INK,
                                    hover_color=T.SUBTLE, image=icons.icon("recordings", T.MUTED, u(16)),
                                    compound="left", command=lambda p=path: self._pick(p))
@@ -318,6 +330,8 @@ class PlaybackFrame(ctk.CTkFrame):
             size += len(name) + 3
         chunks.append(chunk)
         parts = [(f"ls{i}", {"k": "ls", "c": i, "m": len(chunks), "f": c}) for i, c in enumerate(chunks)]
+        # Database copy of each listed file, one letter per name in list order: s synced, p pending, e error.
+        parts.append(("sy", {"k": "sy", "s": "".join(SYNC_CODES.get(sync_state(n), "-") for n in names[:60])}))
         metrics = [label.cget("text") for label, _unit in self.metric_values.values()]
         duration = self.times[-1] if self.samples else 0.0
         parts.append(("rec", {"sel": self.current_name or "", "play": bool(self.is_playing),
