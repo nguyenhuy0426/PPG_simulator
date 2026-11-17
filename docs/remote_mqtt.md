@@ -12,6 +12,26 @@ Phone app ──MQTT/TLS 8883──► Mosquitto ◄──MQTT/TLS── Pi 4 (m
 The Pi only connects out; it never listens on the internet. Signal generation and the DACs stay on the Pi,
 so network delay never changes the output waveform, only how fast a setpoint arrives.
 
+## Connecting a phone (quickest path)
+
+1. On the Pi: **Phone** on the left menu shows a QR code (`ui/pair_dialog.py`, `comm/pairing.py`).
+2. In the app: connect icon → **Scan the Pi's QR code**. The phone saves the Pi and connects at once:
+   over the internet when the Pi has a broker set up, otherwise straight to its Bluetooth address (no scan list).
+3. Next time the app opens it reconnects by itself to the link that last worked. **Disconnect** turns that
+   off until the next connection. The connect menu also offers **Connect to <Pi>** as a single tap.
+
+The code is `ppgsim://pair?v=1&n=<BLE name>&a=<BLE address>&d=<device>&h=<host>&p=<port>&t=1&u=<app user>&k=<app
+password>&f=<CA sha256>`. It carries the phone account from the `"pair"` section of `remote.json`, never the
+Pi's own broker password. Anyone who can see the Pi screen can pair, as with a Wi-Fi QR; the broker ACL keeps
+that account to this Pi's topics. With a private CA the phone pins it by fingerprint: the broker sends its
+chain (server + CA, `setup_trial.sh` builds it), the CA whose SHA-256 matches becomes the only trust anchor and
+the chain is validated against it; the host name is checked as usual. Without `f` the system CAs apply.
+
+Bluetooth without the QR: the scan list connects by itself when exactly one simulator answers within 1.5 s.
+
+`"pair"` in `remote.json`: `{"username": "phone1", "password": "…", "host": "<optional public host>",
+"port": 8883}`. The QR needs `qrcode` (`requirements/remote.txt`).
+
 ## MQTT topics (`comm/mqtt_remote.py`)
 
 | Topic | Direction | QoS | Payload |

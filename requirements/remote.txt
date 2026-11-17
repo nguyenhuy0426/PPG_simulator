@@ -1,4 +1,5 @@
-# Internet links (optional): MQTT remote control (comm/mqtt_remote.py).
+# Phone links (optional): MQTT remote control (comm/mqtt_remote.py) and the pairing QR (ui/pair_dialog.py).
 # The recording upload (comm/record_sync.py) uses only the standard library.
 # Install: .venv/bin/python -m pip install -r requirements/remote.txt
 paho-mqtt>=2.1,<3
+qrcode>=7.4,<9

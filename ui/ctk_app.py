@@ -56,6 +56,7 @@ class CTkApp(ctk.CTk):
         for key, text_key, icon_name in self.nav_keys:
             self.rail.add_page(key, icon_name, text(self.language, text_key))
         self.rail.add_spacer()
+        self.pair_item = self.rail.add("phone", "phone", text(self.language, "pair_short"), self.open_pairing)
         self.theme_item = self.rail.add("theme", "moon", "", self.toggle_theme)
         self.signal_setup_bubble = self.rail.add("settings", "sliders", text(self.language, "settings_short"),
                                                  self.toggle_signal_setup)
@@ -244,6 +245,13 @@ class CTkApp(ctk.CTk):
         self.signal_setup_panel = panel
         return panel
 
+    def open_pairing(self):
+        """The pairing QR for the phone app (Bluetooth and, when configured, the internet link)."""
+        from ui.pair_dialog import PairDialog
+        if getattr(self, "_pair_dialog", None) is None:
+            self._pair_dialog = PairDialog(self, ADVERTISED_NAME)
+        self._pair_dialog.show()
+
     # ─── Phone control (BLE): the Pi advertises, the phone connects ───
     def _toggle_ble(self):
         ble = self.ble_server
@@ -297,6 +305,7 @@ class CTkApp(ctk.CTk):
         for key, text_key, _icon in self.nav_keys:
             self.nav_buttons[key].set_label(text(language, text_key))
         self.signal_setup_bubble.set_label(text(language, "settings_short"))
+        self.pair_item.set_label(text(language, "pair_short"))
         self._paint_theme_item()
         for key, (name, _value) in self.footer_values.items():
             name.configure(text=text(language, key))

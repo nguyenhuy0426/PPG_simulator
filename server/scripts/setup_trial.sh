@@ -23,6 +23,8 @@ if [ ! -f mosquitto/certs/server.crt ]; then
   printf "subjectAltName=%s\nextendedKeyUsage=serverAuth\n" "$SAN" > secrets/server.ext
   openssl x509 -req -in secrets/server.csr -CA mosquitto/certs/ca.crt -CAkey secrets/ca.key \
     -CAcreateserial -days 825 -extfile secrets/server.ext -out mosquitto/certs/server.crt 2>/dev/null
+  # Send the chain (server + CA): a phone paired by QR pins the CA by its fingerprint.
+  cat mosquitto/certs/ca.crt >> mosquitto/certs/server.crt
 fi
 # The broker runs as uid 1883 and reads these through a read-only mount.
 chmod 755 mosquitto/certs; chmod 644 mosquitto/certs/*
@@ -55,13 +57,15 @@ PY
 chmod 644 secrets/api_tokens.json   # read by the API container user
 
 # The Pi's ~/.config/ppg-simulator/remote.json (copy it with scp, then chmod 600 on the Pi).
-python3 - "$HOST" "$DEVICE" <<'PY'
+python3 - "$HOST" "$DEVICE" "$APP" <<'PY'
 import json, sys
-host, device = sys.argv[1:]
+host, device, app = sys.argv[1:]
 cfg = {"device_id": device,
        "mqtt": {"host": host, "port": 8883, "tls": True, "ca_file": "~/.config/ppg-simulator/ca.crt",
                 "username": device, "password": open(f"secrets/{device}.mqtt").read()},
-       "sync": {"url": f"http://{host}:8000", "token": open(f"secrets/{device}.token").read().strip()}}
+       "sync": {"url": f"http://{host}:8000", "token": open(f"secrets/{device}.token").read().strip()},
+       # The phone account shown in the Pi's pairing QR (comm/pairing.py).
+       "pair": {"username": app, "password": open(f"secrets/{app}.mqtt").read()}}
 json.dump(cfg, open("secrets/pi_remote.json", "w"), indent=1)
 PY
 if docker compose version >/dev/null 2>&1; then

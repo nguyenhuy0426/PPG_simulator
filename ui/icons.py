@@ -133,10 +133,18 @@ def _save(draw, s, rgba):
     _stroke(draw, s, rgba, ((5, 15), (5, 19), (19, 19), (19, 15)))
 
 
+def _phone(draw, s, rgba):
+    # Handset outline with the speaker slot: "connect a phone".
+    draw.rounded_rectangle((7 * s, 3 * s, 17 * s, 21 * s), radius=2.2 * s, outline=rgba, width=round(_STROKE * s))
+    _stroke(draw, s, rgba, ((10.5, 6), (13.5, 6)))
+    _circle(draw, s, rgba, 12, 17.5, 1.1, fill=True)
+
+
 _SHAPES = {
     "menu": _menu, "monitor": _monitor, "calibration": _calibration, "recordings": _recordings,
     "morphology": _morphology, "sliders": _sliders, "sun": _sun, "moon": _moon, "chevron": _chevron,
     "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "pause": _pause, "save": _save,
+    "phone": _phone,
 }
 NAMES = tuple(_SHAPES)
 
