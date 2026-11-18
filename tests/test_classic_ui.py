@@ -130,6 +130,7 @@ class TestClassicPage(unittest.TestCase):
             self.page._paint_noise_card(engine.ppg_params)
             self.assertFalse(self.page.cards["noise"]._enabled)
             self.assertIn("Nhiễu trắng", self.page.cards["noise"].badge.cget("text"))
+            self.assertIn("Nhiễu trắng", dict(self.page.remote_parts())["mon"]["nb"])   # the phone card shows it too
         finally:
             engine.load_parameters(saved)
             self.page._paint_noise_card(engine.ppg_params)

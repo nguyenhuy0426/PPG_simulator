@@ -175,18 +175,20 @@ class PathologyFrame(ctk.CTkFrame):
         if not save_config(config):
             self._say(None, T.ERROR, raw="config.json")
 
+    def _noise_badge(self, p):
+        """None while the noise kind is proportional (the level acts), else the badge naming the kind."""
+        kind = getattr(p, "noise_kind", NOISE_PROPORTIONAL)
+        if kind == NOISE_PROPORTIONAL:
+            return None
+        from ui.frames.advanced_frame import COPY as SETTINGS
+        name = SETTINGS.get(self.language, SETTINGS["en"])["noises"].get(kind, kind)
+        return text(self.language, "badge_noise_kind").format(kind=name)
+
     def _paint_noise_card(self, p):
         """The level only acts on the proportional noise kind; another kind from Settings is named on the card."""
-        kind = getattr(p, "noise_kind", NOISE_PROPORTIONAL)
-        proportional = kind == NOISE_PROPORTIONAL
-        card = self.cards["noise"]
-        card.set_enabled(proportional)
-        if proportional:
-            card.set_badge(None)
-        else:
-            from ui.frames.advanced_frame import COPY as SETTINGS
-            name = SETTINGS.get(self.language, SETTINGS["en"])["noises"].get(kind, kind)
-            card.set_badge(text(self.language, "badge_noise_kind").format(kind=name))
+        badge = self._noise_badge(p)
+        self.cards["noise"].set_enabled(badge is None)
+        self.cards["noise"].set_badge(badge)
 
     def update_param(self, key, value):
         attr, span = self.fields[key][:2]
@@ -336,7 +338,8 @@ class PathologyFrame(ctk.CTkFrame):
             kind = color_kind(color)
         p = self.engine.ppg_params
         return [("mon", {"dot": "off" if dot == T.FAINT else color_kind(dot), "h": headline, "d": detail,
-                         "dk": kind, "beep": bool(self.beeper.enabled), "rm": p.ac_red_mv is not None})]
+                         "dk": kind, "beep": bool(self.beeper.enabled), "rm": p.ac_red_mv is not None,
+                         "nb": self._noise_badge(p) or ""})]
 
     def periodic_update(self):
         # Widgets only. Recording is pumped by the engine; hidden canvases are
