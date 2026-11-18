@@ -8,7 +8,7 @@ SpO2 70 % as ~78 %. A pulse oximeter is calibrated the same way: its own R again
 The run plays the Classic waveform at POINTS SpO2 targets, reads R from the received IR/RED after SETTLE_S at
 each, and fits A', B' by least squares. The fit holds for the DC levels it was made at (x0 / DC changes with
 DC) and for the optics as they were; it is only applied while the DC levels match, and moving a carrier needs
-a new run. This calibrates a loop-back check of this simulator, not a clinical SpO2 measurement.
+a new run. One fit is kept per DC pair: switching between DC levels that were each calibrated needs no new run. This calibrates a loop-back check of this simulator, not a clinical SpO2 measurement.
 """
 from dataclasses import asdict, dataclass
 import math
@@ -22,6 +22,7 @@ SETTLE_S = 4.0                       # RED AC steps at once; leave the old R out
 MEASURE_S = 12.0                     # >= MIN_SECONDS and >= 8 beats at 40 bpm
 MAX_RESIDUAL = 2.0                   # % SpO2; a worse straight line means the lanes are not stable/linear
 DC_MATCH_MV = 20.0                   # the fit is applied only while each sent DC is this close to the fit's
+MAX_SAVED = 8                        # fits kept, one per DC pair; a new run at the same DC replaces the old fit
 CONFIG_KEY = "rx_spo2_calibration"
 
 
@@ -77,11 +78,18 @@ def fit(points):
     return a, b, max(abs(s - (a - b * r)) for s, r in points)
 
 
-_cache = {"loaded": False, "value": None}
+_cache = {"loaded": False, "value": ()}
 
 
-def current():
-    """The saved calibration (read from config.json once)."""
+def parse_saved(raw):
+    """Calibrations from config.json: a list of fits (one per DC pair), or the single fit older versions wrote."""
+    entries = [raw] if isinstance(raw, dict) else raw if isinstance(raw, list) else []
+    parsed = (RxSpo2Calibration.from_dict(e) if isinstance(e, dict) else None for e in entries)
+    return tuple(c for c in parsed if c is not None)
+
+
+def saved():
+    """The saved calibrations, oldest first (read from config.json once)."""
     if not _cache["loaded"]:
         _cache["loaded"] = True
         try:
@@ -89,26 +97,41 @@ def current():
             raw = load_config().get(CONFIG_KEY)
         except Exception:
             raw = None
-        _cache["value"] = RxSpo2Calibration.from_dict(raw) if isinstance(raw, dict) else None
+        _cache["value"] = parse_saved(raw)
     return _cache["value"]
 
 
+def with_calibration(calibrations, calibration):
+    """The list after adding a fit: it replaces any fit at the same DC levels; the oldest drop past MAX_SAVED."""
+    kept = [c for c in calibrations if not c.applies_to(calibration.dc_ir_mv, calibration.dc_red_mv)]
+    return tuple(kept + [calibration])[-MAX_SAVED:]
+
+
 def save(calibration):
-    """Store in config.json; returns False when the file could not be written (the fit is still used)."""
+    """Add to the saved fits in config.json (fits at other DC levels stay); returns False when the file could not
+    be written (the fit is still used until the app exits)."""
     from config_store import load_config, save_config
-    _cache.update(loaded=True, value=calibration)
+    calibrations = with_calibration(saved(), calibration)
+    _cache.update(loaded=True, value=calibrations)
     config = load_config()
-    config[CONFIG_KEY] = calibration.to_dict()
+    config[CONFIG_KEY] = [c.to_dict() for c in calibrations]
     return save_config(config)
 
 
 def coefficients_for(params):
-    """(a, b, state) for reading the received R: state 'calibrated', 'other_dc' or 'none'."""
-    cal = current()
-    if cal is None:
+    """(a, b, state) for reading the received R: state 'calibrated', 'other_dc' or 'none'.
+
+    The fit made closest to the sent DC levels (within DC_MATCH_MV on both) is used. Received R / sent R changes
+    with DC on this rig (each lane has its own zero, §13), so a fit made at other DC levels is not used; the
+    generator's A, B then read the received SpO2 high."""
+    calibrations = saved()
+    if not calibrations:
         return params.spo2_coeff_a, params.spo2_coeff_b, "none"
-    if not cal.applies_to(*sent_dc(params)):
+    dc_ir, dc_red = sent_dc(params)
+    matching = [c for c in calibrations if c.applies_to(dc_ir, dc_red)]
+    if not matching:
         return params.spo2_coeff_a, params.spo2_coeff_b, "other_dc"
+    cal = min(reversed(matching), key=lambda c: max(abs(c.dc_ir_mv - dc_ir), abs(c.dc_red_mv - dc_red)))
     return cal.a, cal.b, "calibrated"
 
 

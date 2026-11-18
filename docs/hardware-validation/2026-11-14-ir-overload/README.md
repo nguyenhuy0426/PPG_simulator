@@ -280,6 +280,10 @@ trống của HAT.
   sai lệch tối đa 0.3 %.
 - Kiểm ở Classic với mức không dùng để khớp (đọc nhãn "SpO₂ RX ước tính (đã hiệu chuẩn)" sau 30 s mỗi mức):
   phát 99 / 95 / 85 / 75 % → thu **99 / 95 / 85 / 76 %** (R 0.37 / 0.48 / 0.81 / 1.10).
+- 18/11: Classic chạy DC 600/600 mV trong khi bản khớp duy nhất làm ở 1000/1000, nên app dùng A, B của bộ phát. Kết quả:
+  phát 97 % thì thu 99–100 %, phát 99 % thì "ngoài thang". Từ nay `config.json` giữ một bản khớp cho mỗi cặp DC
+  (tối đa 8, chạy lại ở cùng DC thì thay bản cũ; vẫn đọc được dạng một bản cũ). Kết quả trong khoảng 100–102 % hiện là
+  100 %, giống máy đo SpO2.
 - Giới hạn: hiệu chuẩn theo đường quang lúc chạy. Làn IR trôi trong ngày (mục 11–13), chỉnh carrier hoặc đổi DC thì
   phải chạy lại. Đây là kiểm tra vòng phát–thu của bộ mô phỏng, không phải hiệu chuẩn SpO2 lâm sàng.
 

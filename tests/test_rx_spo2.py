@@ -74,6 +74,12 @@ class EstimatorTest(unittest.TestCase):
         self.assertEqual(estimate_rx_spo2(ir, channel(60, 1200, phase=math.pi), A, B).reason, "mismatch")
         self.assertEqual(estimate_rx_spo2(channel(20, 40, seed=1), red, A, B, ir_dark=35).reason, "no_dc")
 
+    def test_just_over_100_reads_100(self):
+        result = estimate_rx_spo2(*pair(.37), A, B)  # 110 - 25*0.37 = 100.75 %
+        self.assertEqual(result.reason, "ok")
+        self.assertEqual(result.spo2, 100.)
+        self.assertAlmostEqual(result.ratio, .37, delta=.03)
+
     def test_out_of_scale_keeps_r_and_gives_no_value(self):
         result = estimate_rx_spo2(*pair(.2), A, B)  # 110 - 25*0.2 = 105 %
         self.assertEqual(result.reason, "out_of_range")

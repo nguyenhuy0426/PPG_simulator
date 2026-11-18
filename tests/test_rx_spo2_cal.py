@@ -131,15 +131,73 @@ def test_a_flat_lane_fails_without_a_calibration():
     assert not engine.running and engine.loaded is not None
 
 
+def fit_at(dc_ir, dc_red, a=118.0, b=31.0, created=0.0):
+    return cal.RxSpo2Calibration(a, b, dc_ir, dc_red, 0.5, ((98.0, 0.6), (70.0, 1.5)), created)
+
+
 def test_saved_fit_applies_only_at_its_dc_levels(monkeypatch):
-    fit = cal.RxSpo2Calibration(118.0, 31.0, 1000.0, 1000.0, 0.5, ((98.0, 0.6), (70.0, 1.5)), 0.0)
     monkeypatch.setitem(cal._cache, "loaded", True)
-    monkeypatch.setitem(cal._cache, "value", fit)
+    monkeypatch.setitem(cal._cache, "value", (fit_at(1000.0, 1000.0),))
     assert cal.coefficients_for(params()) == (118.0, 31.0, "calibrated")
     assert cal.coefficients_for(params(dc_ir_mv=1200.0)) == (110.0, 25.0, "other_dc")
     assert cal.coefficients_for(params(output_dc_offset_mv=100.0))[2] == "other_dc"
-    monkeypatch.setitem(cal._cache, "value", None)
+    monkeypatch.setitem(cal._cache, "value", ())
     assert cal.coefficients_for(params()) == (110.0, 25.0, "none")
+
+
+def test_each_dc_pair_keeps_its_own_fit(monkeypatch):
+    """The Pi bug: the only fit was made at DC 1000/1000 and Classic ran at 600/600, so the generator's A, B read
+    the received R (lower than sent) as 99-100 % for 97 % and out of scale for 99 %."""
+    monkeypatch.setitem(cal._cache, "loaded", True)
+    monkeypatch.setitem(cal._cache, "value", (fit_at(1000.0, 1000.0), fit_at(600.0, 600.0, a=112.0, b=36.0)))
+    assert cal.coefficients_for(params()) == (118.0, 31.0, "calibrated")
+    assert cal.coefficients_for(params(dc_ir_mv=600.0, dc_red_mv=610.0)) == (112.0, 36.0, "calibrated")
+    assert cal.coefficients_for(params(dc_ir_mv=800.0, dc_red_mv=800.0))[2] == "other_dc"
+
+
+def test_a_new_fit_replaces_only_the_one_at_its_dc():
+    old = (fit_at(1000.0, 1000.0), fit_at(600.0, 600.0, created=1.0))
+    new = fit_at(605.0, 595.0, a=111.0, created=2.0)
+    assert cal.with_calibration(old, new) == (old[0], new)
+    many = tuple(fit_at(100.0 * i, 100.0 * i, created=i) for i in range(1, cal.MAX_SAVED + 1))
+    kept = cal.with_calibration(many, fit_at(5000.0, 5000.0))
+    assert len(kept) == cal.MAX_SAVED and kept[0] == many[1] and kept[-1].dc_ir_mv == 5000.0
+
+
+def test_saved_list_and_the_older_single_fit_both_load():
+    one, two = fit_at(1000.0, 1000.0), fit_at(600.0, 600.0)
+    assert cal.parse_saved(one.to_dict()) == (one,)
+    assert cal.parse_saved([one.to_dict(), {"a": 1}, "x", two.to_dict()]) == (one, two)
+    assert cal.parse_saved(None) == () and cal.parse_saved("x") == ()
+
+
+def test_save_writes_every_fit_to_the_config(monkeypatch):
+    import config_store
+    stored = {"rx_spo2_calibration": fit_at(1000.0, 1000.0).to_dict(), "dc_ir_mv": 600.0}
+    monkeypatch.setattr(config_store, "load_config", lambda: dict(stored))
+    monkeypatch.setattr(config_store, "save_config", lambda c: stored.update(c) or True)
+    monkeypatch.setitem(cal._cache, "loaded", False)
+    assert cal.save(fit_at(600.0, 600.0, a=112.0))
+    assert cal.parse_saved(stored[cal.CONFIG_KEY]) == (fit_at(1000.0, 1000.0), fit_at(600.0, 600.0, a=112.0))
+    assert stored["dc_ir_mv"] == 600.0
+
+
+def test_runs_at_two_dc_levels_both_read_the_sent_spo2(monkeypatch):
+    monkeypatch.setitem(cal._cache, "loaded", True)
+    monkeypatch.setitem(cal._cache, "value", ())
+    for dc in (1000.0, 600.0):
+        engine = FakeEngine(params(dc_ir_mv=dc, dc_red_mv=dc))
+        run = run_calibration(engine, FakeReceiver(engine))
+        assert run.error is None, run.error
+        monkeypatch.setitem(cal._cache, "value", cal.with_calibration(cal._cache["value"], run.calibration))
+    for dc in (1000.0, 600.0):
+        p = params(dc_ir_mv=dc, dc_red_mv=dc)
+        a, b, state = cal.coefficients_for(p)
+        assert state == "calibrated"
+        for spo2 in (99.0, 97.0, 85.0):
+            ir, red = zip(*waveform(p, 12, spo2))
+            got = estimate_rx_spo2(lane(ir, ADC_CHANNEL_IR, 0.0), lane(red, ADC_CHANNEL_RED, 0.0), a, b)
+            assert got.spo2 == pytest.approx(spo2, abs=1.5), (dc, spo2, got)
 
 
 def test_config_round_trip_and_rejects_broken_entries():

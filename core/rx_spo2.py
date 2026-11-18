@@ -23,6 +23,10 @@ MIN_DC_CODES = 12          # about 10 mV above dark; below this the AC/DC ratio 
 MIN_BEATS = 3              # complete beats needed for the per-beat median R
 SWING_SMOOTH = 3           # samples (30 ms at 100 Hz) averaged before a beat's peak-to-trough: removes noise, not pulse
 SPO2_GRID_HZ = 100.0       # the RX rate: a 50 Hz grid skips the narrow RED systolic peak (99 % read as out of scale)
+# % SpO2 above 100 still shown as 100 %, as a pulse oximeter shows it: at a 99-100 % setpoint the spread of R
+# between beats and the fit error (accepted up to 2 %, rx_spo2_cal.MAX_RESIDUAL) put readings just over 100.
+# Further above is a wrong A, B for this path and stays "out_of_range".
+CEILING_TOLERANCE = 2.0
 
 
 @dataclass(frozen=True)
@@ -119,6 +123,8 @@ def estimate_rx_spo2(ir_samples, red_samples, coeff_a, coeff_b, ir_dark=0., red_
         return RxSpo2(None, None, "weak", seconds)
     ratio = _percentile(swings, .5)*dc_ir/dc_red
     spo2 = coeff_a-coeff_b*ratio
+    if 100. < spo2 <= 100.+CEILING_TOLERANCE:
+        spo2 = 100.
     if not 0. <= spo2 <= 100.:
         return RxSpo2(None, ratio, "out_of_range", seconds)
     return RxSpo2(spo2, ratio, "ok", seconds)
