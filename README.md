@@ -50,13 +50,28 @@ scripts and raw captures in [docs/hardware-validation/2026-11-14-ir-overload](do
   and recovers after a rest; at ≤ 600 mV it holds within 2 % (§17). This sits after the DAC (IR LED/driver or optics),
   not in software.
 - **RX SpO₂:** per-beat peak-to-trough ratio of ratios; the Calibration page's "SpO₂ calibration" sweeps 98/90/80/70 %
-  and fits the receive path's A', B' (§13–14). The Classic SpO₂ setpoint releases a manual RED AC so R follows it.
-- **Pulse tone:** a short beep on every received beat once the rhythm is regular, pitch falling with RX SpO₂, through
-  the desktop sound server (§15). Verified on the Pi's HDMI sink, not through a speaker.
+  and fits the receive path's A', B' (§13–14). One fit is kept per DC pair (up to 8, matched within 20 mV), so run the
+  calibration at the DC levels you use; readings of 100–102 % are shown as 100 %. The Classic SpO₂ setpoint releases a
+  manual RED AC so R follows it.
+- **APFT-GAN on the Neural page** with an HR min–max range of 60–100 bpm (§18–20), see *Neural waveform models* below.
+- **Pulse tone:** a short 880 Hz beep on every received beat, streamed through one `aplay` process so beeps do not
+  click or drop (§15). Beat detection locks within about three beats after Start, including the dark → DC step.
+  Heard on the Pi's HDMI monitor speaker.
 - **RX respiratory rate:** spectral fusion of per-beat baseline, amplitude and interval (Charlton 2018) over 30–60 s,
   shown only when the peak is clear: read 10/18/27/36 brpm at 16 % modulation on the Pi, mostly "unclear" at the
   default 4 % (§16). An engineering check of the optical loop, not a clinical respiratory rate.
-- **APFT-GAN on the Neural page** with an HR min–max range of 60–100 bpm (§18–20), see *Neural waveform models* below.
+
+**Recordings, phone and remote (18 November 2026):**
+- **Classic** shows HR, SpO₂, respiration and a **Noise** card (0–1 × AC); PI is no longer shown on any page.
+- **Recordings** plays a saved CSV to the LEDs (it takes the DAC over from Classic) and deletes a recording (two taps).
+  Files damaged by the old record-pump race (a few rows out of time order) are put back in order on load.
+- **Database upload is opt-in:** a recording reaches PostgreSQL only when the user taps **Upload to DB** for that file
+  (two taps, on the Pi or the phone); nothing is uploaded automatically.
+- **PPG morphology:** *Save to Recordings* stores the current window as a Recordings CSV; *Export CSV* sends it
+  (`time_s, ir_v, red_v`) to the phone, which saves it where the user picks.
+- **MQTT** can use several brokers at once (the Pi's own Mosquitto over Tailscale and a cloud broker such as EMQX);
+  `server/pi_broker/` installs and configures the broker on the Pi. The Android controller is
+  [MedicalSimulator](https://github.com/halovie123/MedicalSimulator).
 
 | Live monitor | Waveform setup | 30-second sequence |
 |---|---|---|
@@ -65,7 +80,7 @@ scripts and raw captures in [docs/hardware-validation/2026-11-14-ir-overload](do
 ### What's complete in v5
 
 - Light controls, charcoal IR/RED plots, large setpoints and timestamp axes. The UI scales automatically from compact 7-inch 1024×600 panels through Full-HD/QHD desktop displays.
-- HR 10–300 bpm; respiration 1–150 brpm; SpO₂ target 0–100%; PI convenience input 0.01–30%.
+- HR 10–300 bpm; respiration 1–150 brpm; SpO₂ target 0–100%; noise level 0–1 × AC. PI is no longer shown in the UI.
 - Independent IR/RED AC and DC, AC/DC ownership, output offset, gain and polarity.
 - PPG, sine, triangle and square waveforms; independent SP/DN/DP timing for each channel.
 - Baseline, amplitude and frequency respiratory modulation, inhale/exhale ratio, per-channel variation and periodic apnea.
@@ -363,9 +378,11 @@ PPG_DRY_RUN=1 .venv/bin/python main.py --dry-run --ble-only   # headless
 ### 4. Remote control over the internet and recordings in a database (trial)
 
 The same commands and page state also travel over an MQTT broker (TLS), so the
-app can control the Pi from anywhere, and every finished recording in
-`dataset/` is copied to PostgreSQL through a small HTTPS API while the CSV on
-the Pi stays the primary copy. Both start only when
+app can control the Pi from anywhere (one or more brokers, tried in order; the
+Pi's own broker is set up with `server/pi_broker/`). A recording in `dataset/`
+is copied to PostgreSQL through a small HTTP API only when the user taps
+**Upload to DB** for it; the CSV on the Pi stays the primary copy. The trial
+API on the local network uses plain HTTP, so its token is not encrypted. Both start only when
 `~/.config/ppg-simulator/remote.json` configures them (`pip install -r
 requirements/remote.txt`; `--no-remote` turns them off). A trial broker,
 database and API run from `server/` (`server/scripts/setup_trial.sh`).
@@ -375,7 +392,7 @@ Details, security notes and what was tested: `docs/remote_mqtt.md`.
 
 ## Operation
 
-**Monitor:** adjust HR, SpO₂ target, respiration and PI with sliders, or type a
+**Monitor:** adjust HR, SpO₂ target, respiration and noise with sliders, or type a
 value and press Enter. Run starts TX; Stop parks both DAC command values at zero.
 Record CSV starts capture; Save recording closes the file into `dataset/data_N.csv`.
 Closing the app saves an active recording. The plotted signal is generated TX,
@@ -422,7 +439,9 @@ Opening the screen does not activate DAC output without an explicit Play action.
 The TX card stacks the generated lane over the real reference lane; the RX card
 on the right shows A0/A4 from the receiver.
 
-**Recordings:** review saved TX command CSVs without driving hardware. The session
+**Recordings:** review saved TX command CSVs. Play sends the recorded DAC codes to
+the LEDs in place of Classic; the trash button deletes a file and Upload to DB
+sends one file to the database (each asks for a second tap). The session
 list is a drawer that folds to one icon and closes after a recording is picked.
 Recorded TX sits on the left and the live RX card on the right; that RX is the ADC
 reading at viewing time, not data stored in the recording. New files
