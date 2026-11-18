@@ -17,6 +17,9 @@ from ui import theme as T
 
 COPY = {
     "vi": dict(title="Bản ghi", subtitle="Lệnh mô hình TX đã ghi ở 100 Hz. Phát lại đưa đúng các lệnh DAC đó ra LED, thay cho Classic.",
+               upload="Lên DB", upload_confirm="Gửi lên DB?", in_db="Đã ở DB", uploading="Đang gửi…",
+               upload_failed="Lỗi gửi DB", no_db="Chưa cấu hình DB",
+               upload_requested="{name}: đã yêu cầu gửi lên database (chỉ file này).",
                delete="Xoá", confirm="Xoá thật?", deleted="Đã xoá {name}",
                delete_failed="Không xoá được {name}: {why}",
                leds="Đang phát {name} ra LED (output Classic đã dừng).",
@@ -31,6 +34,9 @@ COPY = {
                rx="RX trực tiếp · OPT101",
                missing="Không tìm thấy bản ghi: {name}"),
     "en": dict(title="Recordings", subtitle="TX model commands recorded at 100 Hz. Playback sends those DAC commands to the LEDs, in place of Classic.",
+               upload="Upload to DB", upload_confirm="Upload it?", in_db="In the DB", uploading="Uploading…",
+               upload_failed="DB upload error", no_db="No database set up",
+               upload_requested="{name}: upload to the database requested (this file only).",
                delete="Delete", confirm="Delete it?", deleted="Deleted {name}",
                delete_failed="Could not delete {name}: {why}",
                leds="Playing {name} on the LEDs (Classic output stopped).",
@@ -48,16 +54,22 @@ COPY = {
 # PI is not shown (HR, SpO2, RR are the setpoints a user sets); the CSV keeps its PI_% column.
 METRICS = (("hr", "bpm"), ("spo2", "%"), ("rr", "brpm"), ("condition", ""))
 # Database copy (comm/record_sync.py) after each file name; nothing when sync is not configured.
+# "local": kept on the Pi only; it goes to the database only after Upload to DB (comm/record_sync.py).
 SYNC_MARKS = {"synced": "   ✓ DB", "pending": "   … DB", "error": "   ✗ DB"}
-SYNC_CODES = {"synced": "s", "pending": "p", "error": "e"}
+SYNC_CODES = {"synced": "s", "pending": "p", "error": "e", "local": "l"}
 
 
 def sync_state(name):
-    """'synced', 'pending', 'error' or None for a recording file name."""
+    """'synced', 'pending', 'error', 'local' or None for a recording file name."""
     from comm import record_sync
     sync = record_sync.current()
     state = sync.state_of(name) if sync is not None else None
     return state[0] if state else None
+
+
+def sync_available():
+    from comm import record_sync
+    return record_sync.current() is not None
 
 
 class PlaybackFrame(ctk.CTkFrame):
@@ -75,6 +87,11 @@ class PlaybackFrame(ctk.CTkFrame):
                                              state="disabled")
         self.delete_btn.pack(side="right", padx=(0, T.ui(8)))
         self._delete_armed = None      # Tk after-id while "Delete it?" waits for the second tap
+        self.upload_btn = K.secondary_button(actions, command=self.upload_selected, width=136, icon="upload",
+                                             state="disabled")
+        self.upload_btn.pack(side="right", padx=(0, T.ui(8)))
+        self._upload_armed = None      # the same two-tap confirmation: nothing leaves the Pi on one stray tap
+        self._upload_shown = None
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.grid(row=1, column=0, sticky="nsew")
@@ -234,6 +251,7 @@ class PlaybackFrame(ctk.CTkFrame):
         self.status.configure(text=t["scope"], text_color=T.MUTED)
         self.play_btn.configure(state="normal")
         self._disarm_delete()
+        self._disarm_upload()
         self._paint_play()
         self._highlight()
         self._publish_state()
@@ -300,6 +318,61 @@ class PlaybackFrame(ctk.CTkFrame):
 
     def _output_position(self):
         return min(self.times[-1], self._clip_offset + self.engine.waveform_position_s)
+
+    # ─── Database upload, only for the file the user picks (two taps) ───────
+    def _upload_state(self):
+        """(label key, enabled, colour) of the upload button for the selected file."""
+        if not self.current_name:
+            return "upload", False, T.INK
+        if not sync_available():
+            return "no_db", False, T.MUTED
+        state = sync_state(self.current_name)
+        if state == "synced":
+            return "in_db", False, T.OK
+        if state == "pending":
+            return "uploading", False, T.MUTED
+        if state == "error":
+            return "upload_failed", False, T.ERROR      # approved already: the sync thread keeps retrying it
+        if self._upload_armed is not None:
+            return "upload_confirm", True, T.ACCENT
+        return "upload", True, T.INK
+
+    def _paint_upload(self):
+        shown = self._upload_state()
+        if shown == self._upload_shown:
+            return
+        self._upload_shown = shown
+        key, enabled, color = shown
+        self.upload_btn.configure(text=COPY[self.language][key], state="normal" if enabled else "disabled",
+                                  text_color=color)
+
+    def _disarm_upload(self):
+        if self._upload_armed is not None:
+            self.after_cancel(self._upload_armed)
+            self._upload_armed = None
+        self._paint_upload()
+
+    def upload_selected(self):
+        if not self.current_name:
+            return
+        if self._upload_armed is None:
+            self._upload_armed = self.after(4000, self._disarm_upload)
+            self._paint_upload()
+            return
+        self._disarm_upload()
+        self.request_upload(self.current_name)
+
+    def request_upload(self, name):
+        """Consent for one recording to go to the database (comm/record_sync.py); the phone asks the same way."""
+        from comm import record_sync
+        sync = record_sync.current()
+        name = Path(str(name)).name
+        if sync is None or name not in self._recording_names() or not sync.request_upload(name):
+            return False
+        self.status.configure(text=COPY[self.language]["upload_requested"].format(name=name), text_color=T.MUTED)
+        self.on_show()
+        self._paint_upload()
+        return True
 
     # ─── Deleting a recording (two taps: the button asks once) ───────────────
     def _paint_delete(self):
@@ -413,7 +486,9 @@ class PlaybackFrame(ctk.CTkFrame):
         values = dict(zip(("hr", "spo2", "rr", "pi", "condition"), self.parameters[idx]))
         for key, (label, unit) in self.metric_values.items():
             value = values[key]
-            if isinstance(value, str):
+            if value is None:
+                text = "—"
+            elif isinstance(value, str):
                 text = (condition_labels(self.language)[CONDITION_NAMES.index(value)]
                         if value in CONDITION_NAMES else value)
             else:
@@ -451,7 +526,8 @@ class PlaybackFrame(ctk.CTkFrame):
         duration = self.times[-1] if self.samples else 0.0
         parts.append(("rec", {"sel": self.current_name or "", "play": bool(self.is_playing),
                               "pos": round(float(self.position), 2), "dur": round(float(duration), 2),
-                              "m": metrics, "i": self.info.cget("text") if self.samples else ""}))
+                              "m": metrics, "i": self.info.cget("text") if self.samples else "",
+                              "db": bool(sync_available())}))
         return parts
 
     def remote_apply(self, request):
@@ -461,6 +537,9 @@ class PlaybackFrame(ctk.CTkFrame):
             name = Path(name).name
             if name and name in self._recording_names():
                 self._pick(self.dataset_dir / name)
+        upload = request.get("up")          # the phone confirmed on its side
+        if isinstance(upload, str) and upload:
+            self.request_upload(upload)
 
     def remote_tx_rows(self):
         """The last second of the recording up to the playback position, (t, IR mV, RED mV); [] unless playing."""
@@ -471,6 +550,7 @@ class PlaybackFrame(ctk.CTkFrame):
 
     def periodic_update(self):
         self.rx_panel.periodic_update()
+        self._paint_upload()
         if not self.is_playing: return
         ended = False
         if self._clip is None:

@@ -72,9 +72,11 @@ class SyncSettings:
     token: str = ""
     ca_file: str = ""
     interval_s: float = 15.0
+    auto_upload: bool = False   # False: a recording is uploaded only when the user asks (privacy)
 
     def __repr__(self):     # never print the token
-        return f"SyncSettings(device_id={self.device_id!r}, url={self.url!r}, interval_s={self.interval_s})"
+        return (f"SyncSettings(device_id={self.device_id!r}, url={self.url!r}, interval_s={self.interval_s}, "
+                f"auto_upload={self.auto_upload})")
 
 
 def _bool(value, default):
@@ -182,4 +184,5 @@ def sync_settings(data=None):
         token=str(env("PPG_SYNC_TOKEN") or section.get("token") or ""),
         ca_file=os.path.expanduser(str(env("PPG_SYNC_CA_FILE") or section.get("ca_file") or "")),
         interval_s=float(section.get("interval_s", 15.0)),
+        auto_upload=_bool(section.get("auto_upload"), False),
     )

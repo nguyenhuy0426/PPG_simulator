@@ -73,10 +73,11 @@ def api():
     server.shutdown()
 
 
-def make_sync(tmp_path, api, token=TOKEN):
+def make_sync(tmp_path, api, token=TOKEN, auto_upload=True):
+    """auto_upload=True: the upload-everything mode these transport tests exercise; the default is consent."""
     folder = tmp_path / "dataset"
     folder.mkdir(exist_ok=True)
-    settings = SyncSettings(device_id="pi4-test", url=api.url, token=token)
+    settings = SyncSettings(device_id="pi4-test", url=api.url, token=token, auto_upload=auto_upload)
     return rs.RecordSync(settings, folder=folder), folder
 
 
@@ -155,3 +156,53 @@ def test_outbox_survives_a_restart(tmp_path, api):
 
 def test_token_is_not_in_the_settings_repr():
     assert TOKEN not in repr(SyncSettings(device_id="d", url="https://x", token=TOKEN))
+
+
+def test_nothing_is_uploaded_until_the_user_asks_for_that_file(tmp_path, api):
+    sync, folder = make_sync(tmp_path, api, auto_upload=False)
+    write_csv(folder, "data_1.csv", "a,b\n1,2\n")
+    write_csv(folder, "data_2.csv", "a,b\n3,4\n")
+    sync.run_once()
+    assert api.requests == 0 and sync.state_of("data_1.csv")[0] == rs.LOCAL
+    assert sync.request_upload("data_2.csv")
+    sync.run_once()
+    assert api.requests == 1 and [v["name"] for v in api.store.values()] == ["data_2.csv"]
+    assert sync.state_of("data_2.csv")[0] == rs.SYNCED and sync.state_of("data_1.csv")[0] == rs.LOCAL
+
+
+def test_consent_covers_one_version_and_refuses_odd_names(tmp_path, api):
+    sync, folder = make_sync(tmp_path, api, auto_upload=False)
+    path = write_csv(folder, "data_1.csv", "a,b\n1,2\n")
+    assert sync.request_upload("data_1.csv")
+    sync.run_once()
+    path.write_text("a,b\n9,9\n")                      # saved again under the same name
+    old = time.time() - 10
+    os.utime(path, (old + 5, old + 5))
+    sync.run_once()
+    assert api.requests == 1 and sync.state_of("data_1.csv")[0] == rs.LOCAL
+    write_csv(folder, "temp_recording.csv", "x\n")
+    assert not sync.request_upload("temp_recording.csv")
+    assert not sync.request_upload("missing.csv")
+
+
+def test_an_outbox_from_before_consent_keeps_synced_rows_and_holds_the_rest(tmp_path, api):
+    import sqlite3
+    path = tmp_path / "old.sqlite3"
+    db = sqlite3.connect(path)
+    db.executescript("""CREATE TABLE files (name TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL,
+        mtime_ns INTEGER NOT NULL, uuid TEXT NOT NULL, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+        next_try REAL NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '', synced_at REAL,
+        PRIMARY KEY (name, sha256));""")
+    db.execute("INSERT INTO files VALUES ('a.csv','1',1,1,'u1','synced',1,0,'',1)")
+    db.execute("INSERT INTO files VALUES ('b.csv','2',1,1,'u2','error',3,0,'HTTP 500',NULL)")
+    db.commit()
+    db.close()
+    outbox = rs.Outbox(path)
+    assert outbox.latest_states() == {"a.csv": (rs.SYNCED, ""), "b.csv": (rs.LOCAL, "")}
+    assert outbox.due(time.time()) == []
+
+
+def test_auto_upload_setting_is_off_unless_set():
+    from comm.remote_config import sync_settings
+    assert sync_settings({"sync": {"url": "https://x"}}).auto_upload is False
+    assert sync_settings({"sync": {"url": "https://x", "auto_upload": True}}).auto_upload is True

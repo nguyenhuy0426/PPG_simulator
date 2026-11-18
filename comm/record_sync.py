@@ -16,6 +16,13 @@ are retried with a growing delay (SYNC_BACKOFF_MAX_S at most); a rejected
 token or a conflicting id is kept as an error and shown, not retried at once.
 A recording replaced under the same name (CSVLogger reuses a name the phone
 chose) has a new sha256 and is uploaded as a new version.
+
+Nothing leaves the Pi unless the user asks: a file version starts "local" and is
+uploaded only after request_upload(name) (the Upload button on the Pi or the
+phone Recordings page). That consent is per version: a file saved again under
+the same name is local again. sync.auto_upload = true in remote.json restores
+the earlier upload-everything behaviour. Rows written by an older version of
+this module keep what they were: synced ones stay synced, the rest become local.
 """
 import hashlib
 import json
@@ -41,7 +48,7 @@ AUTH_RETRY_S = 600.0                        # a rejected token is tried again on
 HTTP_TIMEOUT_S = 30.0
 HASH_CHUNK = 1 << 20
 
-PENDING, SYNCED, ERROR = "pending", "synced", "error"
+LOCAL, PENDING, SYNCED, ERROR = "local", "pending", "synced", "error"   # local: kept on the Pi, not asked to upload
 
 
 def file_sha256(path):
@@ -84,6 +91,12 @@ class Outbox:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as db:
             db.executescript(self.SCHEMA)
+            columns = {r["name"] for r in db.execute("PRAGMA table_info(files)")}
+            if "approved" not in columns:
+                # Before uploads needed consent: what the server already has stays synced, the rest waits.
+                db.execute("ALTER TABLE files ADD COLUMN approved INTEGER NOT NULL DEFAULT 0")
+                db.execute("UPDATE files SET approved = 1 WHERE state = ?", (SYNCED,))
+                db.execute("UPDATE files SET state = ?, next_try = 0, last_error = '' WHERE approved = 0", (LOCAL,))
 
     def _connect(self):
         db = sqlite3.connect(self.path, timeout=5)
@@ -95,10 +108,11 @@ class Outbox:
             return db.execute("SELECT 1 FROM files WHERE name=? AND size=? AND mtime_ns=?",
                               (name, size, mtime_ns)).fetchone() is not None
 
-    def add(self, name, sha256, size, mtime_ns, rec_uuid):
+    def add(self, name, sha256, size, mtime_ns, rec_uuid, approved=False):
         with self._connect() as db:
-            db.execute("INSERT OR IGNORE INTO files(name, sha256, size, mtime_ns, uuid, state) "
-                       "VALUES (?, ?, ?, ?, ?, ?)", (name, sha256, size, mtime_ns, rec_uuid, PENDING))
+            db.execute("INSERT OR IGNORE INTO files(name, sha256, size, mtime_ns, uuid, state, approved) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                       (name, sha256, size, mtime_ns, rec_uuid, PENDING if approved else LOCAL, int(approved)))
             # The same bytes again with a new mtime (copied back, touched): keep the row, update the stamp.
             db.execute("UPDATE files SET size=?, mtime_ns=? WHERE name=? AND sha256=?",
                        (size, mtime_ns, name, sha256))
@@ -106,8 +120,15 @@ class Outbox:
     def due(self, now, limit=5):
         with self._connect() as db:
             return [dict(r) for r in db.execute(
-                "SELECT * FROM files WHERE state != ? AND next_try <= ? ORDER BY next_try LIMIT ?",
+                "SELECT * FROM files WHERE approved = 1 AND state != ? AND next_try <= ? ORDER BY next_try LIMIT ?",
                 (SYNCED, now, limit))]
+
+    def approve(self, name, sha256):
+        """Consent to upload this version; True when it was not already approved."""
+        with self._connect() as db:
+            changed = db.execute("UPDATE files SET approved = 1, state = ?, next_try = 0, attempts = 0, last_error = '' "
+                                 "WHERE name = ? AND sha256 = ? AND approved = 0", (PENDING, name, sha256)).rowcount
+        return bool(changed)
 
     def mark(self, name, sha256, state, error="", next_try=0.0, attempts=None):
         with self._connect() as db:
@@ -193,9 +214,32 @@ class RecordSync:
                 continue
             sha = file_sha256(path)
             self.outbox.add(path.name, sha, st.st_size, st.st_mtime_ns,
-                            recording_uuid(self.settings.device_id, path.name, sha))
+                            recording_uuid(self.settings.device_id, path.name, sha),
+                            approved=getattr(self.settings, "auto_upload", False))
             added += 1
         return added
+
+    def request_upload(self, name):
+        """The user's consent to upload the current version of dataset/<name>; False when there is no such file.
+
+        Runs on the caller's thread (it hashes the file once); the upload itself happens on the sync thread."""
+        name = Path(str(name)).name
+        path = self.folder / name
+        if name == TEMP_NAME or not name.lower().endswith(".csv") or not path.is_file():
+            return False
+        st = path.stat()
+        sha = file_sha256(path)
+        self.outbox.add(name, sha, st.st_size, st.st_mtime_ns, recording_uuid(self.settings.device_id, name, sha))
+        self.outbox.approve(name, sha)
+        log.info(f"[Sync] {name}: upload requested by the user")
+        self._refresh_states()
+        self.nudge()
+        return True
+
+    def _refresh_states(self):
+        states = self.outbox.latest_states()
+        with self._states_lock:
+            self._states = states
 
     def run_once(self, now=None):
         self.scan(now)
@@ -203,9 +247,7 @@ class RecordSync:
             if self._stop.is_set():
                 break
             self._upload_row(row)
-        states = self.outbox.latest_states()
-        with self._states_lock:
-            self._states = states
+        self._refresh_states()
 
     def _upload_row(self, row):
         name, sha = row["name"], row["sha256"]

@@ -140,6 +140,13 @@ def _phone(draw, s, rgba):
     _circle(draw, s, rgba, 12, 17.5, 1.1, fill=True)
 
 
+def _upload(draw, s, rgba):
+    # Arrow out of a tray: "send a copy away", the reverse of save.
+    _stroke(draw, s, rgba, ((12, 15), (12, 4.5)))
+    _stroke(draw, s, rgba, ((8, 8.5), (12, 4.5), (16, 8.5)))
+    _stroke(draw, s, rgba, ((5, 15), (5, 19), (19, 19), (19, 15)))
+
+
 def _trash(draw, s, rgba):
     _stroke(draw, s, rgba, ((4.5, 7), (19.5, 7)))
     _stroke(draw, s, rgba, ((9.5, 7), (9.5, 4.5), (14.5, 4.5), (14.5, 7)))
@@ -152,7 +159,7 @@ _SHAPES = {
     "menu": _menu, "monitor": _monitor, "calibration": _calibration, "recordings": _recordings,
     "morphology": _morphology, "sliders": _sliders, "sun": _sun, "moon": _moon, "chevron": _chevron,
     "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "pause": _pause, "save": _save,
-    "phone": _phone, "trash": _trash,
+    "phone": _phone, "trash": _trash, "upload": _upload,
 }
 NAMES = tuple(_SHAPES)
 

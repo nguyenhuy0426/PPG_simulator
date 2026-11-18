@@ -97,9 +97,10 @@ class FakeEngine:
 def page(tmp_path, engine):
     frame = PlaybackFrame.__new__(PlaybackFrame)
     frame.engine, frame.language, frame.dataset_dir = engine, "en", tmp_path
-    for name in ("status", "play_btn", "delete_btn", "title_label", "info", "trace", "rx_panel"):
+    for name in ("status", "play_btn", "delete_btn", "upload_btn", "title_label", "info", "trace", "rx_panel"):
         setattr(frame, name, Mock())
     frame.metric_values, frame._delete_armed, frame._names_cache = {}, None, None
+    frame._upload_armed, frame._upload_shown = None, None
     frame.samples, frame.parameters, frame.times = [], [], []
     frame.is_playing, frame.position, frame._origin = False, 0.0, 0.0
     frame._clip, frame._clip_offset, frame.current_name, frame._timing = None, 0.0, "", ""
