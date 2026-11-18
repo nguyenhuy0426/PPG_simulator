@@ -93,3 +93,23 @@ def test_a_gap_in_the_samples_restarts_the_peak_search():
     for i in range(100):
         d.feed(i / 100, 700.0 + i)                           # rising, no peak yet
     assert d.feed(5.0, 600.0) is None                        # 4 s hole then lower: not a "peak" across the hole
+
+
+@pytest.mark.parametrize("hr", (40, 69, 150))
+def test_first_tone_comes_within_three_beats_of_the_light_coming_on(hr):
+    """On the Pi the tone started only ~one 8 s screen after Start: the dark -> DC step kept the trough at the
+    dark level, so no pulse fell far enough to confirm for up to 4 s, then 4 beats were needed to lock."""
+    dark_s, period = 3.0, 60.0 / hr
+    values = [4.0] * int(dark_s * 100) + rx_like(pulse_wave(hr, 15)[0])
+    beats, _ = detect(values)
+    assert beats and beats[0] - dark_s < 3 * period + 0.3
+    assert all(g > .6 * period for g in gaps(beats))
+
+
+def test_a_level_step_is_not_a_beat_and_does_not_block_the_next_ones():
+    values = rx_like(pulse_wave(75, 10)[0])
+    values = values[:400] + [v + 400 for v in values[400:]]       # DC steps up 400 mV at 4 s
+    beats, _ = detect(values)
+    period = 0.8
+    assert all(g > .6 * period for g in gaps(beats))
+    assert sum(g > 1.5 * period for g in gaps(beats)) <= 1          # at most the beat on the step is missed

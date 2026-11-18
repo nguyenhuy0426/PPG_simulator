@@ -301,6 +301,21 @@ trống của HAT.
   22 tiếng/19.9 s, mỗi tiếng 65–75 ms, 64.5/phút khi nhịp RX 64–65 bpm, cao độ ~726 Hz (FFT, phân giải 23 Hz;
   SpO2 93 % → 718 Hz). Tắt tiếng: sink im lặng 5.9 s. Chỉ kiểm được tín hiệu tới sink; loa/màn hình HDMI có phát ra
   tiếng hay không thì chưa kiểm.
+- 18/11: ghi sink trong 20 s cho thấy cách mỗi tiếng một `pw-play` có 6/23 tiếng bị thủng 4–5 ms, và khoảng cách
+  giữa các tiếng nhảy theo bậc ~21 ms (vòng đọc 20 ms + thời gian mở tiến trình). Nay app giữ một luồng `aplay` mở
+  trong lúc phát và chèn tiếng vào đúng mẫu: đỉnh nhịp + độ trễ cố định (độ trễ xác nhận chậm nhất của 8 nhịp gần
+  đây + 170 ms). Ghi lại 25 s: 29 tiếng, mỗi tiếng 68–69 ms, không tiếng nào bị thủng, khoảng cách không còn theo
+  bậc 21 ms. Biến thiên còn lại gồm HRV đang bật ở Classic và độ lệch thời điểm đỉnh RX. Mất luồng thì app quay
+  về cách cũ (mỗi tiếng một tiến trình). Tiếng bíp ra đầu ra mặc định của PipeWire; sau lần khởi động 18/11, đầu ra
+  mặc định là "Built-in Audio Stereo" (jack 3.5 mm), không phải HDMI. Đã đặt HDMI làm đầu ra mặc định
+  (`wpctl set-default`, WirePlumber lưu lại qua các lần khởi động).
+- 18/11: tiếng bíp giờ cố định 880 Hz. Trước đây cao độ theo SpO2 thu, và là 660 Hz khi chưa có ước tính, nên nghe
+  ra nhiều tiếng khác nhau. Lúc bật output, bước nhảy tối → DC (~5 → 600 mV) giữ điểm đáy ở mức tối: không nhịp nào
+  rơi đủ 25 % của cú nhảy để được xác nhận, cho tới khi luật "đáy cũ hơn 4 s" bỏ nó, rồi còn cần 4 nhịp để khoá.
+  Mô phỏng ở 69 bpm: tiếng bíp đầu tiên sau 4.7 s. Nay bộ dò coi độ dốc > 10 V/s là bước nhảy mức, đỉnh chưa được
+  xác nhận sau 1.2 s là đỉnh của bước nhảy, upstroke dài quá 1.2 s thì lấy đáy trong 1.2 s gần nhất, và khoá sau
+  3 nhịp. Mô phỏng: 2.1 s ở 69 bpm. Trên Pi (ghi sink HDMI, HR 93): tiếng bíp đầu tiên khoảng 1.7–2.0 s sau lệnh
+  chạy, 15 tiếng đều ~880 Hz.
 
 ## 16. 15/11: nhịp thở RR từ dạng sóng PPG thu (`core/rx_resp_rate.py`, `rrcapture*.py`, `rreval.py`)
 

@@ -31,10 +31,13 @@ RELATIVE_PROMINENCE = 0.5          # of the median rise of the recent beats (dic
 NOISE_PROMINENCE = 5.0             # x the local white-noise sigma: an artefact burst of noise stays silent
 MIN_INTERVAL_S = 60.0 / 360.0      # the HR setpoint goes to 300 bpm, with beat-to-beat variation
 MAX_INTERVAL_S = 60.0 / 15.0
-LOCK_BEATS = 4                     # beats (3 intervals) before the first tone
+LOCK_BEATS = 3                     # beats (2 intervals) before the first tone
 IRREGULARITY = 0.35                # each interval within ±35 % of the median of the recent ones
 UNLOCK_PERIODS = 2.5               # no beat for this many median intervals -> unlocked
 MAX_GAP_S = 0.25                   # a longer hole in the samples restarts the peak search
+MAX_PEAK_WAIT_S = 1.2              # a candidate peak not confirmed by then is a level step, not a pulse
+MAX_RISE_S = 1.2                   # longest trough-to-peak upstroke (the model's is 0.8 s at 15 bpm)
+STEP_MV_PER_S = 10000.0            # 10 V/s on the smoothed signal: a level step; a 500 mV pulse rises at ~5 V/s
 
 
 class BeatDetector:
@@ -48,6 +51,7 @@ class BeatDetector:
         self._last_t = None
         self._lo = self._hi = None
         self._lo_t = self._hi_t = None
+        self._recent = deque()                    # (t, smoothed mV) of the last MAX_RISE_S
         self._beats = deque(maxlen=LOCK_BEATS + 2)
         self._rises = deque(maxlen=5)
         self._noise = 0.0
@@ -100,10 +104,26 @@ class BeatDetector:
     def _step(self, t, x):
         # A trough older than the longest beat interval belongs to another level (the lane was dark, the DC
         # stepped): restart from here, or a 1 V step would need a 250 mV fall to confirm the next 50 mV pulse.
-        if self._lo is None or x < self._lo or t - self._lo_t > MAX_INTERVAL_S:
+        # A peak still unconfirmed after MAX_PEAK_WAIT_S is the top of such a step (a real one is confirmed
+        # within ~0.6 s even at 15 bpm): restart then too, so the tone starts ~1 s after the light comes on.
+        recent = self._recent
+        prev = recent[-1] if recent else None
+        recent.append((t, x))
+        while t - recent[0][0] > MAX_RISE_S:
+            recent.popleft()
+        # The output switching on (dark -> DC) is a step far steeper than any pulse upstroke: start the search on
+        # top of it, so the first full pulse after it is already a beat.
+        step = prev is not None and t > prev[0] and abs(x - prev[1]) / (t - prev[0]) > STEP_MV_PER_S
+        if (step or self._lo is None or x < self._lo or t - self._lo_t > MAX_INTERVAL_S
+                or t - self._hi_t > MAX_PEAK_WAIT_S):
             self._lo, self._lo_t, self._hi, self._hi_t = x, t, x, t
             return None
         if x > self._hi:
+            # No upstroke lasts longer than MAX_RISE_S (0.8 s at 15 bpm): an older trough is the dark level before
+            # the light came on (or a DC step), and each new pulse peak on top of it kept the search open. The
+            # trough of this pulse is the lowest point of the last MAX_RISE_S.
+            if t - self._lo_t > MAX_RISE_S:
+                self._lo_t, self._lo = min(recent, key=lambda s: s[1])
             self._hi, self._hi_t = x, t
             return None
         rise = self._hi - self._lo
