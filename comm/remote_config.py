@@ -9,9 +9,17 @@ systemd unit can supply them instead. Both links stay off unless configured.
     {
       "device_id": "pi4-lab1",
       "mqtt": {"host": "broker.example.org", "port": 8883, "tls": true,
-               "ca_file": "", "username": "pi4-lab1", "password": "..."},
+               "ca_file": "", "username": "pi4-lab1", "password": "...",
+               "cert_file": "", "key_file": ""},
       "sync": {"url": "https://api.example.org", "token": "...", "ca_file": ""}
     }
+
+cert_file/key_file: a client certificate instead of a password.
+
+"mqtt" may also be a list: the Pi then keeps a connection to every broker in it at
+once (for example its own Mosquitto reached by phones over Tailscale, and a cloud
+broker), and a phone may use whichever it reaches. An optional "name" labels each
+one in the log.
 """
 from dataclasses import dataclass
 import json
@@ -35,10 +43,26 @@ class MqttSettings:
     ca_file: str = ""
     username: str = ""
     password: str = ""
+    cert_file: str = ""     # client certificate (PEM) and its private key, both or neither
+    key_file: str = ""
+    name: str = ""          # label in the log when several brokers are configured
 
     def __repr__(self):     # never print the password
-        return (f"MqttSettings(device_id={self.device_id!r}, host={self.host!r}, port={self.port}, "
-                f"tls={self.tls}, username={self.username!r})")
+        return (f"MqttSettings(name={self.name!r}, device_id={self.device_id!r}, host={self.host!r}, port={self.port}, "
+                f"tls={self.tls}, username={self.username!r}, cert_file={self.cert_file!r})")
+
+    @property
+    def client_id(self):
+        return f"ppgsim-{self.device_id}-pi"
+
+    @property
+    def label(self):
+        return self.name or f"{self.host}:{self.port}"
+
+    @property
+    def loopback(self):
+        """A broker on this Pi itself: plain MQTT never leaves the machine."""
+        return self.host in ("127.0.0.1", "::1", "localhost")
 
 
 @dataclass(frozen=True)
@@ -86,14 +110,46 @@ def device_id(data):
 
 
 def mqtt_settings(data=None):
-    """MqttSettings, or None when no broker host is configured."""
+    """MqttSettings of the first broker, or None when no broker host is configured."""
+    brokers = mqtt_settings_list(data)
+    return brokers[0] if brokers else None
+
+
+def mqtt_settings_list(data=None):
+    """MqttSettings of every configured broker ("mqtt" is one object or a list); [] when none.
+
+    The PPG_MQTT_* environment variables apply to the first broker only.
+    """
     data = load_file() if data is None else data
-    section = data.get("mqtt") or {}
-    env = os.environ.get
+    sections = data.get("mqtt") or {}
+    if isinstance(sections, dict):
+        sections = [sections]
+    if not isinstance(sections, list):
+        raise ValueError("mqtt must be an object or a list of objects")
+    out = []
+    for index, section in enumerate(sections):
+        if not isinstance(section, dict):
+            raise ValueError(f"mqtt[{index}] must be an object")
+        settings = _one_broker(data, section, os.environ.get if index == 0 else (lambda *_a: None))
+        if settings is not None:
+            out.append(settings)
+    labels = [s.label for s in out]
+    if len(set(labels)) != len(labels):
+        raise ValueError(f"mqtt brokers must differ: {labels}")
+    return out
+
+
+def _one_broker(data, section, env):
     host = str(env("PPG_MQTT_HOST") or section.get("host") or "").strip()
     if not host:
         return None
-    tls = _bool(env("PPG_MQTT_TLS", section.get("tls", True)), True)
+    tls = _bool(env("PPG_MQTT_TLS") or section.get("tls", True), True)
+    cert_file = os.path.expanduser(str(env("PPG_MQTT_CERT_FILE") or section.get("cert_file") or ""))
+    key_file = os.path.expanduser(str(env("PPG_MQTT_KEY_FILE") or section.get("key_file") or ""))
+    if bool(cert_file) != bool(key_file):
+        raise ValueError("mqtt cert_file and key_file must be given together")
+    if cert_file and not tls:
+        raise ValueError("a client certificate needs tls")
     return MqttSettings(
         device_id=device_id(data),
         host=host,
@@ -102,6 +158,9 @@ def mqtt_settings(data=None):
         ca_file=os.path.expanduser(str(env("PPG_MQTT_CA_FILE") or section.get("ca_file") or "")),
         username=str(env("PPG_MQTT_USERNAME") or section.get("username") or ""),
         password=str(env("PPG_MQTT_PASSWORD") or section.get("password") or ""),
+        cert_file=cert_file,
+        key_file=key_file,
+        name=str(section.get("name") or ""),
     )
 
 

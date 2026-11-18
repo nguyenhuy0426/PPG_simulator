@@ -6,7 +6,9 @@ internet itself. Topics, for device id <id> (comm/remote_config.py):
     ppgsim/<id>/cmd      app -> Pi   QoS 1  command JSON, exactly as on the BLE command characteristic,
                                             plus an optional "cid" (command id) used to drop redelivered copies
     ppgsim/<id>/client   app -> Pi   QoS 0  presence ping (any payload) every few seconds while an app watches
-    ppgsim/<id>/status   Pi -> app   QoS 1  status JSON (the BLE STATUS frame), retained
+    ppgsim/<id>/status   Pi -> app   QoS 1  status JSON (the BLE STATUS frame); retained on change, at most
+                                            once per RETAIN_MIN_INTERVAL_S (AWS IoT Core allows one retained
+                                            publish per topic per second), the 5 Hz updates are not retained
     ppgsim/<id>/online   Pi -> app   QoS 1  "1" / "0", retained; "0" is also the broker's last will
     ppgsim/<id>/stream   Pi -> app   QoS 0  "T<ir>,<red>;...|R<ir>,<red>;..." mV, ~10 per second (BLE STREAM)
     ppgsim/<id>/ui       Pi -> app   QoS 0  one page-state part per message (BLE UI)
@@ -16,6 +18,10 @@ same limits apply; v3 page requests are queued for the Tk thread exactly like
 the BLE ones (ui/remote.py takes them from every link). Stream and page state
 are only built and sent while an app has pinged within VIEWER_TIMEOUT_S, so an
 idle Pi sends nothing but the retained status on change.
+
+Several brokers (remote.json "mqtt" as a list): one MqttRemote per broker, held by an
+MqttGroup with the same interface. A command is applied whichever broker it comes
+from; stream and page state go only to brokers where an app is watching.
 
 Threading: paho runs its network loop in its own thread (on_message calls the
 thread-safe engine methods, like the bless thread); a publisher thread sends
@@ -41,6 +47,7 @@ CID_MEMORY = 64                 # recent command ids kept to drop QoS 1 redelive
 PART_MAX_BYTES = 4096           # page-state parts: no BLE MTU here, but keep messages small
 STREAM_MAX_BYTES = 2048         # one stream message carries the whole backlog of a tick
 STATUS_INTERVAL_S = 0.2         # status while an app watches (5 Hz, as over BLE)
+RETAIN_MIN_INTERVAL_S = 1.1     # retained publishes per topic: AWS IoT Core throttles more than 1 per second
 UI_REFRESH_S = 2.0              # every part re-sent this often for an app that just joined
 RECONNECT_MIN_S, RECONNECT_MAX_S = 1, 60
 KEEPALIVE_S = 30
@@ -93,7 +100,7 @@ class MqttRemote:
         if self._client_factory is not None:
             return self._client_factory()
         import paho.mqtt.client as mqtt
-        return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"ppgsim-{self.settings.device_id}-pi",
+        return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self.settings.client_id,
                            clean_session=True)
 
     def start(self):
@@ -102,8 +109,8 @@ class MqttRemote:
         client = self._make_client()
         if s.username:
             client.username_pw_set(s.username, s.password or None)
-        if s.tls:
-            client.tls_set(ca_certs=s.ca_file or None)      # None: the system CA store
+        if s.tls:                                           # ca None: the system CA store
+            client.tls_set(ca_certs=s.ca_file or None, certfile=s.cert_file or None, keyfile=s.key_file or None)
         client.will_set(self.topics.online, "0", qos=1, retain=True)
         client.reconnect_delay_set(RECONNECT_MIN_S, RECONNECT_MAX_S)
         client.on_connect = self._on_connect
@@ -115,10 +122,11 @@ class MqttRemote:
         client.loop_start()
         self._thread = threading.Thread(target=self._publish_loop, daemon=True, name="mqtt-publish")
         self._thread.start()
-        log.info(f"[MQTT] Connecting to {s.host}:{s.port} (tls={'on' if s.tls else 'OFF'}) "
-                 f"as device '{s.device_id}'")
-        if not s.tls:
-            log.warning("[MQTT] TLS is off: commands, password and signals travel unencrypted")
+        auth = "certificate" if s.cert_file else "password" if s.username else "none"
+        log.info(f"[MQTT] Connecting to {s.label} ({s.host}:{s.port}, tls={'on' if s.tls else 'off'}, "
+                 f"auth={auth}) as device '{s.device_id}'")
+        if not s.tls and not s.loopback:
+            log.warning(f"[MQTT] {s.label}: TLS is off: commands, password and signals travel unencrypted")
         return True
 
     def stop(self):
@@ -143,19 +151,19 @@ class MqttRemote:
         if getattr(reason_code, "is_failure", False):
             self._broker_up = False
             self.last_error = str(reason_code)
-            log.error(f"[MQTT] Broker refused the connection: {reason_code}")
+            log.error(f"[MQTT] {self.settings.label} refused the connection: {reason_code}")
             return
         self._broker_up = True
         self.last_error = ""
         client.subscribe([(self.topics.cmd, 1), (self.topics.client, 0)])
         client.publish(self.topics.online, "1", qos=1, retain=True)
         self._last_status = None            # republish the retained status
-        log.info("[MQTT] Connected to the broker")
+        log.info(f"[MQTT] Connected to {self.settings.label}")
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties=None):
         was_up, self._broker_up = self._broker_up, False
         if was_up and not self._stop.is_set():
-            log.warning(f"[MQTT] Broker connection lost ({reason_code}); reconnecting")
+            log.warning(f"[MQTT] {self.settings.label} connection lost ({reason_code}); reconnecting")
 
     def _on_message(self, _client, _userdata, msg):
         self._viewer_until = time.monotonic() + VIEWER_TIMEOUT_S
@@ -183,7 +191,7 @@ class MqttRemote:
                 self._recent_cids.append(cid)
         applied = self.handler.handle_command(obj)
         if applied:
-            log.info(f"[MQTT] Command applied: {applied}")
+            log.info(f"[MQTT] Command applied via {self.settings.label}: {applied}")
             # Same echo rule as BLE: the app's own echo is labelled "android" for a moment.
             self._grace_until = time.monotonic() + ANDROID_GRACE_S
             try:
@@ -243,13 +251,19 @@ class MqttRemote:
             return
         watching = now < self._viewer_until
         snapshot, origin, (p, running, recording, record_file, pb, pb_file) = self._status_payload()
-        if snapshot != self._last_status or (watching and now - last["status"] >= STATUS_INTERVAL_S):
+        # The retained copy (what an app sees first) follows every change, but at most once per
+        # RETAIN_MIN_INTERVAL_S; a change inside that window is retained on a later tick.
+        retain = (snapshot != self._last_status
+                  and now - last.get("retain", float("-inf")) >= RETAIN_MIN_INTERVAL_S)
+        if retain or (watching and now - last["status"] >= STATUS_INTERVAL_S):
             self._seq += 1
             payload = build_status_json(p, origin, self._seq, running=running, recording=recording,
                                         record_file=record_file, pb=pb, pb_file=pb_file)
-            client.publish(self.topics.status, payload, qos=1, retain=True)
-            self._last_status = snapshot
+            client.publish(self.topics.status, payload, qos=1, retain=retain)
             last["status"] = now
+            if retain:
+                self._last_status = snapshot
+                last["retain"] = now
         if not watching:
             with self._lock:
                 self._stream_tx.clear()
@@ -288,25 +302,71 @@ class MqttRemote:
                     log.warning(f"[MQTT] Publish error x{errors}: {exc}")
 
 
+class MqttGroup:
+    """Several MqttRemote links behind the one interface ui/remote.py and main.py use."""
+
+    def __init__(self, remotes):
+        self.remotes = list(remotes)
+
+    @property
+    def last_error(self):
+        return "; ".join(f"{r.settings.label}: {r.last_error}" for r in self.remotes if r.last_error)
+
+    def start(self):
+        for remote in self.remotes:
+            remote.start()
+        return True
+
+    def stop(self):
+        for remote in self.remotes:
+            remote.stop()
+
+    def connection_state(self):
+        """BLE_CONNECTED when an app watches through any broker (ui/remote.py then builds the stream)."""
+        states = [r.connection_state() for r in self.remotes]
+        for state in (BLE_CONNECTED, "broker", BLE_STARTING, BLE_ERROR):
+            if state in states:
+                return state
+        return BLE_OFF
+
+    def take_ui_requests(self):
+        return [request for r in self.remotes for request in r.take_ui_requests()]
+
+    def push_stream(self, tx_pairs, rx_pairs):
+        for remote in self.remotes:
+            if remote.connection_state() == BLE_CONNECTED:
+                remote.push_stream(tx_pairs, rx_pairs)
+
+    def publish_ui(self, parts):
+        for remote in self.remotes:
+            remote.publish_ui(parts)
+
+
 def start_mqtt(engine, settings=None):
-    """MqttRemote started from the settings file/environment, or None when no broker is configured."""
+    """MqttRemote (one broker) or MqttGroup (several) started from the settings file/environment; None when
+    no broker is configured. `settings` is one MqttSettings or a list of them."""
     from comm import remote_config
     try:
-        settings = settings or remote_config.mqtt_settings()
+        if settings is None:
+            settings = remote_config.mqtt_settings_list()
     except ValueError as exc:
         log.error(f"[MQTT] Settings rejected: {exc}")
         return None
-    if settings is None:
+    brokers = settings if isinstance(settings, list) else [settings]
+    if not brokers:
         return None
     try:
         import paho.mqtt.client  # noqa: F401
     except ImportError as exc:
         log.error(f"[MQTT] unavailable ({exc}) — install with: pip install -r requirements/remote.txt")
         return None
-    remote = MqttRemote(engine, settings)
-    try:
-        remote.start()
-    except Exception as exc:
-        remote.last_error = str(exc)
-        log.error(f"[MQTT] Could not start: {exc}")
-    return remote
+    remotes = []
+    for broker in brokers:
+        remote = MqttRemote(engine, broker)
+        try:
+            remote.start()
+        except Exception as exc:
+            remote.last_error = str(exc)
+            log.error(f"[MQTT] Could not start {broker.label}: {exc}")
+        remotes.append(remote)
+    return remotes[0] if len(remotes) == 1 else MqttGroup(remotes)

@@ -51,6 +51,29 @@ def test_public_host_override_and_system_ca():
     assert fields["h"] == "broker.example.org" and fields["p"] == "443" and "f" not in fields
 
 
+def test_two_brokers_for_the_phone_and_a_shared_ca_pin(tmp_path):
+    crt = make_cert(tmp_path)
+    local = MqttSettings(device_id="pi4-lab1", host="127.0.0.1", port=1883, tls=False, username="pi4-lab1",
+                         password="pi-secret")
+    pair = {**PAIR, "ca_file": str(crt), "brokers": [{"host": "ppg-rpi4.tail1234.ts.net", "port": 8883},
+                                                      {"host": "abc.emqxsl.com", "port": 8883}]}
+    fields = pairing.parse_pairing_uri(pairing.pairing_uri("Pi", "D8:3A:DD:42:BB:D6", local, pair))
+    assert (fields["h"], fields["p"], fields["h2"], fields["p2"]) == ("ppg-rpi4.tail1234.ts.net", "8883",
+                                                                     "abc.emqxsl.com", "8883")
+    assert fields["t"] == "1" and len(fields["f"]) == 64 and "pi-secret" not in str(fields)
+
+
+def test_loopback_broker_alone_gives_the_phone_nothing_to_reach():
+    local = MqttSettings(device_id="pi4-lab1", host="127.0.0.1", port=1883, tls=False)
+    fields = pairing.parse_pairing_uri(pairing.pairing_uri("Pi", "D8:3A:DD:42:BB:D6", local, PAIR))
+    assert not pairing.has_internet(fields)
+
+
+def test_bad_broker_host_is_refused():
+    with pytest.raises(ValueError):
+        pairing.pairing_uri("Pi", "", SETTINGS, {**PAIR, "brokers": [{"host": "x/y&k=1", "port": 8883}]})
+
+
 def test_bluetooth_only_without_internet_settings_or_app_account():
     for mqtt, pair in ((None, PAIR), (SETTINGS, None), (SETTINGS, {"password": "x"})):
         fields = pairing.parse_pairing_uri(pairing.pairing_uri("Pi", "D8:3A:DD:42:BB:D6", mqtt, pair))

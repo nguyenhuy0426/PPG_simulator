@@ -4,6 +4,8 @@
                  &d=<device id>&h=<broker host>&p=<port>     internet link (when remote.json configures it
                  &t=1&u=<app user>&k=<app password>           and has a "pair" section with the app account)
                  &f=<sha256 of the broker CA, hex>            pin of a private CA (absent: system CAs)
+                 &h2=<second broker host>&p2=<its port>       optional second broker, tried when the first
+                                                              cannot be reached (same account on both)
 
 The app account is the broker account phones use (server/scripts/setup_trial.sh
 creates it), not the Pi's own account. Showing the QR shares that password with
@@ -12,8 +14,14 @@ account to this Pi's topics.
 
 remote.json:
     "pair": {"username": "phone1", "password": "...", "host": "<optional public host>", "port": 8883}
+or, for brokers the phone reaches at other addresses than the Pi does (a Mosquitto on the Pi itself, which
+the Pi uses on 127.0.0.1 and phones over Tailscale; plus a cloud broker):
+    "pair": {"username": "phone1", "password": "...", "ca_file": "<private CA of a broker, optional>",
+             "brokers": [{"host": "ppg-rpi4.tailnet.ts.net", "port": 8883}, {"host": "x.emqxsl.com", "port": 8883}]}
+A TLS connection is accepted when either the system CAs or the pinned CA vouch for the broker.
 """
 import hashlib
+import os
 import re
 import ssl
 import subprocess
@@ -24,6 +32,8 @@ from comm.logger import log
 SCHEME = "ppgsim"
 VERSION = "1"
 MAC_RE = re.compile(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")
+HOST_RE = re.compile(r"^[A-Za-z0-9.-]{1,253}$")
+MAX_BROKERS = 2
 
 
 def ca_fingerprint(path):
@@ -58,17 +68,39 @@ def pairing_uri(ble_name="", ble_address="", mqtt=None, pair=None):
         fields["a"] = ble_address.upper()
     pair = pair or {}
     if mqtt is not None and pair.get("username"):
-        fields.update({
-            "d": mqtt.device_id,
-            "h": str(pair.get("host") or mqtt.host),
-            "p": str(int(pair.get("port") or mqtt.port)),
-            "t": "1" if mqtt.tls else "0",
-            "u": str(pair["username"]),
-            "k": str(pair.get("password") or ""),
-        })
-        if mqtt.tls and mqtt.ca_file:
-            fields["f"] = ca_fingerprint(mqtt.ca_file)
+        brokers = phone_brokers(mqtt, pair)
+        if brokers:
+            (host, port), rest = brokers[0], brokers[1:]
+            fields.update({
+                "d": mqtt.device_id,
+                "h": host,
+                "p": str(port),
+                "t": "1" if (mqtt.tls or pair.get("brokers")) else "0",
+                "u": str(pair["username"]),
+                "k": str(pair.get("password") or ""),
+            })
+            for n, (host, port) in enumerate(rest, start=2):
+                fields[f"h{n}"], fields[f"p{n}"] = host, str(port)
+            ca_file = pair.get("ca_file") or (mqtt.ca_file if mqtt.tls else "")
+            if ca_file:
+                fields["f"] = ca_fingerprint(os.path.expanduser(str(ca_file)))
     return f"{SCHEME}://pair?{urlencode(fields)}"
+
+
+def phone_brokers(mqtt, pair):
+    """[(host, port)] the phone should try in order: "brokers" from the pair section, else the single host
+    (a loopback broker is not reachable from a phone and gives none)."""
+    listed = pair.get("brokers")
+    if listed:
+        out = []
+        for item in listed[:MAX_BROKERS]:
+            host, port = str(item.get("host") or "").strip(), int(item.get("port") or 8883)
+            if not HOST_RE.match(host) or not 0 < port < 65536:
+                raise ValueError(f"pair broker {host!r}:{port} is not a valid host and port")
+            out.append((host, port))
+        return out
+    host = str(pair.get("host") or ("" if mqtt.loopback else mqtt.host))
+    return [(host, int(pair.get("port") or mqtt.port))] if host else []
 
 
 def parse_pairing_uri(uri):

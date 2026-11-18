@@ -10,7 +10,7 @@ import pytest
 
 from comm.ble_server import BLE_CONNECTED
 from comm.mqtt_remote import (
-    CMD_MAX_BYTES, UI_REFRESH_S, VIEWER_TIMEOUT_S, MqttRemote, Topics,
+    CMD_MAX_BYTES, RETAIN_MIN_INTERVAL_S, STATUS_INTERVAL_S, UI_REFRESH_S, VIEWER_TIMEOUT_S, MqttRemote, Topics,
 )
 from comm.remote_config import MqttSettings
 from models.limits import HEART_RATE
@@ -26,8 +26,8 @@ class FakeClient:
     def username_pw_set(self, user, password):
         self.calls.append(("auth", user, password is not None))
 
-    def tls_set(self, ca_certs=None):
-        self.calls.append(("tls", ca_certs))
+    def tls_set(self, ca_certs=None, certfile=None, keyfile=None):
+        self.calls.append(("tls", ca_certs, certfile, keyfile))
 
     def will_set(self, topic, payload, qos=0, retain=False):
         self.calls.append(("will", topic, payload, retain))
@@ -84,7 +84,7 @@ def test_topics_are_scoped_to_the_device():
 
 def test_start_sets_tls_auth_and_last_will(remote):
     r, client = remote
-    assert ("tls", "/tmp/ca.crt") in client.calls
+    assert ("tls", "/tmp/ca.crt", None, None) in client.calls
     assert ("auth", "pi4-test", True) in client.calls
     assert ("will", "ppgsim/pi4-test/online", "0", True) in client.calls
     assert ("ppgsim/pi4-test/cmd", 1) in client.subscribed
@@ -162,6 +162,85 @@ def test_own_echo_is_labelled_android_then_rpi(remote, monkeypatch):
     r._on_message(None, None, message(r.topics.cmd, json.dumps({"hr": 90})))
     r.publish_once(time.monotonic(), {"status": 0.0, "ui": 0.0})
     assert json.loads(client.on(r.topics.status)[-1][1])["origin"] == "android"
+
+
+def test_client_certificate_login_uses_the_thing_name():
+    client = FakeClient()
+    settings = MqttSettings(device_id="pi4-test", host="x-ats.iot.ap-southeast-1.amazonaws.com", port=8883,
+                            tls=True, cert_file="/k/pi.crt", key_file="/k/pi.key")
+    r = MqttRemote(FakeEngine(), settings, client_factory=lambda: client)
+    r.start()
+    r.stop()
+    assert ("tls", None, "/k/pi.crt", "/k/pi.key") in client.calls       # system CAs + client certificate
+    assert not any(c[0] == "auth" for c in client.calls)
+    assert settings.client_id == "ppgsim-pi4-test-pi"
+
+
+def test_cert_without_key_is_refused():
+    from comm import remote_config
+    with pytest.raises(ValueError):
+        remote_config.mqtt_settings({"mqtt": {"host": "h", "cert_file": "/k/pi.crt"}})
+
+
+def test_retained_status_is_at_most_once_per_interval(remote):
+    """AWS IoT Core throttles retained publishes above 1/s per topic; the 5 Hz updates go unretained."""
+    r, client = remote
+    r._on_message(None, None, message(r.topics.client, "hi"))
+    now = time.monotonic()
+    last = {"status": 0.0, "ui": now}
+    t = now
+    retained_times = []
+    for i in range(30):                                 # 3 s of 10 Hz ticks with the HR changing every tick
+        r.engine.ppg_params.heart_rate = 60 + i
+        client.published.clear()
+        r.publish_once(t, last)
+        for topic, _payload, _qos, retain in client.on(r.topics.status):
+            if retain:
+                retained_times.append(t)
+        t += 0.1
+    gaps = [b - a for a, b in zip(retained_times, retained_times[1:])]
+    assert retained_times and min(gaps) >= RETAIN_MIN_INTERVAL_S - 1e-9
+    r.engine.ppg_params.heart_rate = 120                 # the last change still becomes retained
+    for _ in range(int(RETAIN_MIN_INTERVAL_S / 0.1) + 2):
+        client.published.clear()
+        r.publish_once(t, last)
+        t += 0.1
+        if any(p[3] for p in client.on(r.topics.status)):
+            break
+    final = [p for p in client.on(r.topics.status) if p[3]]
+    assert final and json.loads(final[-1][1])["hr"] == 120
+    assert STATUS_INTERVAL_S < RETAIN_MIN_INTERVAL_S
+
+
+def test_several_brokers_form_a_group_and_stream_only_where_watched(monkeypatch):
+    from comm import remote_config
+    from comm.mqtt_remote import MqttGroup
+    data = {"device_id": "pi4-test", "mqtt": [
+        {"name": "tailscale", "host": "127.0.0.1", "port": 1883, "tls": False, "username": "a", "password": "b"},
+        {"name": "emqx", "host": "x.emqxsl.com", "port": 8883, "username": "a", "password": "c"}]}
+    brokers = remote_config.mqtt_settings_list(data)
+    assert [b.label for b in brokers] == ["tailscale", "emqx"] and brokers[0].loopback and brokers[1].tls
+    clients = [FakeClient(), FakeClient()]
+    remotes = [MqttRemote(FakeEngine(), b, client_factory=lambda c=c: c) for b, c in zip(brokers, clients)]
+    group = MqttGroup(remotes)
+    group.start()
+    for r, c in zip(remotes, clients):
+        r._stop.set()
+        r._on_connect(c, None, None, SimpleNamespace(is_failure=False))
+    assert group.connection_state() == "broker"
+    remotes[1]._on_message(None, None, message(remotes[1].topics.client, "hi"))      # app watches via EMQX
+    remotes[1]._on_message(None, None, message(remotes[1].topics.cmd, json.dumps({"nn": {"gen": True}})))
+    assert group.connection_state() == BLE_CONNECTED
+    assert group.take_ui_requests() == [{"nn": {"gen": True}}]
+    group.push_stream(["1,2"], ["3,4"])
+    assert list(remotes[0]._stream_tx) == [] and list(remotes[1]._stream_tx) == ["1,2"]
+    group.stop()
+
+
+def test_duplicate_brokers_are_refused():
+    from comm import remote_config
+    with pytest.raises(ValueError):
+        remote_config.mqtt_settings_list({"mqtt": [{"host": "a"}, {"host": "a"}]})
 
 
 def test_refused_connection_is_reported(remote):
