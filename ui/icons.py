@@ -140,11 +140,19 @@ def _phone(draw, s, rgba):
     _circle(draw, s, rgba, 12, 17.5, 1.1, fill=True)
 
 
+def _trash(draw, s, rgba):
+    _stroke(draw, s, rgba, ((4.5, 7), (19.5, 7)))
+    _stroke(draw, s, rgba, ((9.5, 7), (9.5, 4.5), (14.5, 4.5), (14.5, 7)))
+    _stroke(draw, s, rgba, ((6.5, 7), (7.5, 19.5), (16.5, 19.5), (17.5, 7)))
+    _stroke(draw, s, rgba, ((10, 10.5), (10, 16)))
+    _stroke(draw, s, rgba, ((14, 10.5), (14, 16)))
+
+
 _SHAPES = {
     "menu": _menu, "monitor": _monitor, "calibration": _calibration, "recordings": _recordings,
     "morphology": _morphology, "sliders": _sliders, "sun": _sun, "moon": _moon, "chevron": _chevron,
     "collapse": _collapse, "record": _record, "stop": _stop, "play": _play, "pause": _pause, "save": _save,
-    "phone": _phone,
+    "phone": _phone, "trash": _trash,
 }
 NAMES = tuple(_SHAPES)
 

@@ -402,6 +402,17 @@ class SignalEngine:
     def is_waveform_playing(self):
         return self._running and self._waveform_clip is not None
 
+    @property
+    def current_clip(self):
+        """The clip of the latest start (kept after it runs out), or None when the latest start was not a clip."""
+        return self._waveform_clip
+
+    @property
+    def waveform_position_s(self):
+        """Seconds of the clip already sent to the output; it does not advance while paused."""
+        with self._model_lock:
+            return self._clip_tick * MODEL_DT_PPG
+
     # Model mutations and generation share one lock, so a tick sees complete settings.
     def _update_model(self, method, *args, **kwargs):
         with self._model_lock:

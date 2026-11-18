@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import math
 from config import DAC_FULLSCALE_V
 
+MAX_SAMPLES = 100*60*30     # 30 min at 100 Hz (~25 MB of row tuples): a recording played to the LEDs may be this long
+
 
 @dataclass(frozen=True)
 class WaveformClip:
@@ -21,11 +23,34 @@ class WaveformClip:
         clip.validate()
         return clip
 
+    @classmethod
+    def from_recording(cls, samples, name, start_s=0.0, rate=100.0):
+        """A recording's (t, IR V, RED V) rows from start_s on, linearly resampled onto a uniform grid at `rate`
+        (the engine's 100 Hz tick; recordings are written on that tick, a dropped row is bridged)."""
+        times = [row[0] for row in samples]
+        end = times[-1] if times else 0.0
+        if not 0.0 <= start_s < end:
+            raise ValueError("Start must lie inside the recording")
+        count = int((end-start_s)*rate)+1
+        if count > MAX_SAMPLES:
+            raise ValueError(f"Recording is longer than {MAX_SAMPLES/100/60:.0f} min from this point")
+        rows, j = [], 0
+        for i in range(count):
+            t = start_s+i/rate
+            while j+1 < len(samples) and times[j+1] <= t:
+                j += 1
+            a, b = samples[j], samples[min(j+1, len(samples)-1)]
+            w = 0.0 if b[0] == a[0] else min(1.0, max(0.0, (t-a[0])/(b[0]-a[0])))
+            rows.append((i/rate, a[1]+w*(b[1]-a[1]), a[2]+w*(b[2]-a[2])))
+        clip = cls(tuple(rows), float(rate), name)
+        clip.validate()
+        return clip
+
     def validate(self):
         if not math.isfinite(self.sample_rate) or not 1 <= self.sample_rate <= 100:
             raise ValueError("Clip sample rate must be 1–100 Hz")
-        if not 2 <= len(self.samples) <= 100*300:
-            raise ValueError("Clip must contain 2–30000 samples")
+        if not 2 <= len(self.samples) <= MAX_SAMPLES:
+            raise ValueError(f"Clip must contain 2–{MAX_SAMPLES} samples")
         for i, row in enumerate(self.samples):
             if len(row) != 3 or not all(math.isfinite(v) for v in row):
                 raise ValueError("Clip contains invalid samples")

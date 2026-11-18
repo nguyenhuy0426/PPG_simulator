@@ -4,6 +4,7 @@ from pathlib import Path
 import customtkinter as ctk
 from comm.logger import log
 from core.signal_engine import SignalEngine
+from core.waveform_clip import WaveformClip
 from ui.recordings import load_recording
 from ui.rx_monitor import RXPanel
 from ui.trace_view import TraceView
@@ -15,7 +16,13 @@ from ui import theme as T
 
 
 COPY = {
-    "vi": dict(title="Bản ghi", subtitle="Lệnh mô hình TX đã ghi ở 100 Hz. Phát lại chỉ trên màn hình, không điều khiển LED.",
+    "vi": dict(title="Bản ghi", subtitle="Lệnh mô hình TX đã ghi ở 100 Hz. Phát lại đưa đúng các lệnh DAC đó ra LED, thay cho Classic.",
+               delete="Xoá", confirm="Xoá thật?", deleted="Đã xoá {name}",
+               delete_failed="Không xoá được {name}: {why}",
+               leds="Đang phát {name} ra LED (output Classic đã dừng).",
+               finished="Đã phát xong {name}; LED tắt. Bấm Phát ở Classic để chạy lại Classic.",
+               screen_only="Chỉ phát trên màn hình, không ra LED: {why}",
+               taken="Output đã chuyển sang trang khác; phát lại dừng.",
                sessions="Phiên đã ghi", select="Chọn một bản ghi", empty="Chưa có bản ghi.\nHãy Phát rồi bấm Ghi CSV.",
                play="Phát lại", pause="Tạm dừng", replay="Phát lại từ đầu", none="Chưa chọn bản ghi",
                hr="Nhịp tim", spo2="SpO₂ mục tiêu", rr="Nhịp thở", pi="PI", condition="Tình trạng",
@@ -23,7 +30,13 @@ COPY = {
                scope="Bản ghi chỉ chứa lệnh mô hình TX. RX bên phải là ADC đọc lúc này, không thuộc bản ghi.",
                rx="RX trực tiếp · OPT101",
                missing="Không tìm thấy bản ghi: {name}"),
-    "en": dict(title="Recordings", subtitle="TX model commands recorded at 100 Hz. Playback is on screen only; it does not drive the LEDs.",
+    "en": dict(title="Recordings", subtitle="TX model commands recorded at 100 Hz. Playback sends those DAC commands to the LEDs, in place of Classic.",
+               delete="Delete", confirm="Delete it?", deleted="Deleted {name}",
+               delete_failed="Could not delete {name}: {why}",
+               leds="Playing {name} on the LEDs (Classic output stopped).",
+               finished="Finished {name}; LEDs off. Start Classic to run Classic again.",
+               screen_only="On screen only, not on the LEDs: {why}",
+               taken="Another page took the output; playback stopped.",
                sessions="Recorded sessions", select="Select a recording", empty="No saved recordings.\nStart output, then Record CSV.",
                play="Play", pause="Pause", replay="Replay", none="No recording selected",
                hr="Heart rate", spo2="SpO₂ target", rr="Respiration", pi="PI", condition="Condition",
@@ -57,6 +70,10 @@ class PlaybackFrame(ctk.CTkFrame):
         self.page_title, self.subtitle, actions = K.page_header(self)
         self.play_btn = K.primary_button(actions, state="disabled", command=self.toggle_playback, width=132)
         self.play_btn.pack(side="right")
+        self.delete_btn = K.secondary_button(actions, command=self.delete_selected, width=112, icon="trash",
+                                             state="disabled")
+        self.delete_btn.pack(side="right", padx=(0, T.ui(8)))
+        self._delete_armed = None      # Tk after-id while "Delete it?" waits for the second tap
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.grid(row=1, column=0, sticky="nsew")
@@ -110,6 +127,8 @@ class PlaybackFrame(ctk.CTkFrame):
         self.is_playing = False
         self.position = 0.0
         self._origin = 0.0
+        self._clip = None              # the WaveformClip this page put on the output, while it is there
+        self._clip_offset = 0.0        # recording time at which that clip starts
         self.current_name = ""
         self._timing = ""
         self.engine.set_playback_state(False, "", "")
@@ -130,6 +149,7 @@ class PlaybackFrame(ctk.CTkFrame):
             self.title_label.configure(text=t["select"])
         for key, name in self.metric_names.items():
             name.configure(text=t[key])
+        self._paint_delete()
         self.trace.empty_text = t["none"]
         if self.samples:
             self.info.configure(text=t["samples"].format(n=len(self.samples), d=self.times[-1], timing=self._timing))
@@ -212,16 +232,38 @@ class PlaybackFrame(ctk.CTkFrame):
         self.info.configure(text=t["samples"].format(n=len(samples), d=self.times[-1], timing=timing))
         self.status.configure(text=t["scope"], text_color=T.MUTED)
         self.play_btn.configure(state="normal")
+        self._disarm_delete()
         self._paint_play()
         self._highlight()
         self._publish_state()
         self._render(0)
 
     # ─── Playback primitives (Tk thread; also driven by phone "pb" commands) ──
+    # The recording goes to the LEDs as a WaveformClip through the engine's single DAC writer, which stops
+    # whatever Classic was sending. When the DACs are missing (or a Classic CSV recording is running) it plays on
+    # screen only and says why.
+    def _owns_output(self):
+        return self._clip is not None and self.engine.current_clip is self._clip and self.engine.is_running
+
+    def _start_output(self, position):
+        t = COPY[self.language]
+        self._clip = None
+        try:
+            clip = WaveformClip.from_recording(self.samples, self.current_name, position)
+            self.engine.start_waveform(clip)
+        except (ValueError, RuntimeError) as exc:
+            log.warning(f"[Playback] {self.current_name} not sent to the LEDs: {exc}")
+            self.status.configure(text=t["screen_only"].format(why=exc), text_color=T.WARN)
+            return
+        self._clip, self._clip_offset = clip, position
+        self.status.configure(text=t["leds"].format(name=self.current_name), text_color=T.OK)
+
     def play(self):
         if self.is_playing or not self.samples:
             return
         if self.position >= self.times[-1]: self.position = 0.0
+        if not (self._owns_output() and self.engine.resume_simulation()):
+            self._start_output(self.position)
         self._origin = time.monotonic() - self.position
         self.is_playing = True
         self._paint_play()
@@ -229,7 +271,11 @@ class PlaybackFrame(ctk.CTkFrame):
 
     def pause_playback(self):
         if self.samples and self.is_playing:
-            self.position = min(self.times[-1], time.monotonic() - self._origin)
+            if self._owns_output():
+                self.engine.pause_simulation()          # the LEDs hold the last level until Play or Stop
+                self.position = self._output_position()
+            else:
+                self.position = min(self.times[-1], time.monotonic() - self._origin)
             self.is_playing = False
             self._paint_play()
         self._publish_state()
@@ -237,13 +283,79 @@ class PlaybackFrame(ctk.CTkFrame):
     def resume_playback(self):
         self.play()
 
+    def _release_output(self):
+        if self._owns_output():
+            self.engine.stop_simulation()
+        self._clip = None
+
     def stop_playback(self):
+        self._release_output()
         self.is_playing = False
         self.position = 0.0
         if self.samples:
             self._paint_play()
             self._render(0)
         self._publish_state()
+
+    def _output_position(self):
+        return min(self.times[-1], self._clip_offset + self.engine.waveform_position_s)
+
+    # ─── Deleting a recording (two taps: the button asks once) ───────────────
+    def _paint_delete(self):
+        t = COPY[self.language]
+        armed = self._delete_armed is not None
+        self.delete_btn.configure(text=t["confirm"] if armed else t["delete"],
+                                  state="normal" if self.current_name else "disabled",
+                                  text_color=T.ERROR if armed else T.INK)
+
+    def _disarm_delete(self):
+        if self._delete_armed is not None:
+            self.after_cancel(self._delete_armed)
+            self._delete_armed = None
+        self._paint_delete()
+
+    def delete_selected(self):
+        if not self.current_name:
+            return
+        if self._delete_armed is None:
+            self._delete_armed = self.after(4000, self._disarm_delete)
+            self._paint_delete()
+            return
+        self._disarm_delete()
+        self.delete_recording(self.current_name)
+
+    def delete_recording(self, name):
+        """Remove one saved recording from dataset/ (its database copy, if any, stays on the server)."""
+        t = COPY[self.language]
+        name = Path(str(name)).name
+        path = self.dataset_dir / name
+        if not name.lower().endswith(".csv") or name == "temp_recording.csv" or not path.is_file():
+            return False
+        if name == self.current_name:
+            self._release_output()
+            self.is_playing, self.position = False, 0.0
+        try:
+            path.unlink()
+        except OSError as exc:
+            self.status.configure(text=t["delete_failed"].format(name=name, why=exc), text_color=T.ERROR)
+            return False
+        log.info(f"[Playback] deleted recording {name}")
+        if name == self.current_name:
+            self.samples, self.parameters, self.times = [], [], []
+            self.current_name, self._timing = "", ""
+            self.title_label.configure(text=t["select"])
+            self.info.configure(text="")
+            self.play_btn.configure(state="disabled")
+            self.trace.update_samples([])
+            for label, _unit in self.metric_values.values():
+                label.configure(text="—")
+            self._paint_play()
+        self._names_cache = None
+        self.on_show()
+        self._paint_delete()
+        self.status.configure(text=t["deleted"].format(name=name), text_color=T.MUTED)
+        self._publish_state()
+        return True
 
     def start_named_playback(self, basename):
         """Phone-commanded playback of one saved recording by file name."""
@@ -357,10 +469,28 @@ class PlaybackFrame(ctk.CTkFrame):
     def periodic_update(self):
         self.rx_panel.periodic_update()
         if not self.is_playing: return
-        self.position = min(self.times[-1], time.monotonic() - self._origin)
+        ended = False
+        if self._clip is None:
+            self.position = min(self.times[-1], time.monotonic() - self._origin)     # screen only
+        elif self.engine.current_clip is self._clip:
+            self.position = self._output_position()     # follows what the DACs really sent
+            ended = not self.engine.is_running          # the clip ran out, or Stop from the phone
+        else:
+            self._clip = None                           # Classic (or another page) started its own output
+            self.is_playing = False
+            self.status.configure(text=COPY[self.language]["taken"], text_color=T.WARN)
+            self._paint_play()
+            self._publish_state()
+            return
         idx = max(0, bisect.bisect_right(self.times, self.position)-1)
         self._render(idx)
-        if self.position >= self.times[-1]:
+        if ended or self.position >= self.times[-1]:
+            if ended:
+                self._clip = None
+                self.status.configure(text=COPY[self.language]["finished"].format(name=self.current_name),
+                                      text_color=T.MUTED)
+                if self.position < self.times[-1] - 0.05:
+                    self.position = 0.0
             self.is_playing = False
             self._paint_play()
             self._publish_state()
