@@ -25,7 +25,7 @@ COPY = {
                taken="Output đã chuyển sang trang khác; phát lại dừng.",
                sessions="Phiên đã ghi", select="Chọn một bản ghi", empty="Chưa có bản ghi.\nHãy Phát rồi bấm Ghi CSV.",
                play="Phát lại", pause="Tạm dừng", replay="Phát lại từ đầu", none="Chưa chọn bản ghi",
-               hr="Nhịp tim", spo2="SpO₂ mục tiêu", rr="Nhịp thở", pi="PI", condition="Tình trạng",
+               hr="Nhịp tim", spo2="SpO₂ mục tiêu", rr="Nhịp thở", condition="Tình trạng",
                samples="{n:,} mẫu · {d:.2f} s · {timing}",
                scope="Bản ghi chỉ chứa lệnh mô hình TX. RX bên phải là ADC đọc lúc này, không thuộc bản ghi.",
                rx="RX trực tiếp · OPT101",
@@ -39,13 +39,14 @@ COPY = {
                taken="Another page took the output; playback stopped.",
                sessions="Recorded sessions", select="Select a recording", empty="No saved recordings.\nStart output, then Record CSV.",
                play="Play", pause="Pause", replay="Replay", none="No recording selected",
-               hr="Heart rate", spo2="SpO₂ target", rr="Respiration", pi="PI", condition="Condition",
+               hr="Heart rate", spo2="SpO₂ target", rr="Respiration", condition="Condition",
                samples="{n:,} samples · {d:.2f} s · {timing}",
                scope="Recordings hold TX model commands only. RX on the right is the live ADC, not part of the recording.",
                rx="Live RX · OPT101",
                missing="Recording not found: {name}"),
 }
-METRICS = (("hr", "bpm"), ("spo2", "%"), ("rr", "brpm"), ("pi", "%"), ("condition", ""))
+# PI is not shown (HR, SpO2, RR are the setpoints a user sets); the CSV keeps its PI_% column.
+METRICS = (("hr", "bpm"), ("spo2", "%"), ("rr", "brpm"), ("condition", ""))
 # Database copy (comm/record_sync.py) after each file name; nothing when sync is not configured.
 SYNC_MARKS = {"synced": "   ✓ DB", "pending": "   … DB", "error": "   ✗ DB"}
 SYNC_CODES = {"synced": "s", "pending": "p", "error": "e"}
@@ -444,7 +445,9 @@ class PlaybackFrame(ctk.CTkFrame):
         parts = [(f"ls{i}", {"k": "ls", "c": i, "m": len(chunks), "f": c}) for i, c in enumerate(chunks)]
         # Database copy of each listed file, one letter per name in list order: s synced, p pending, e error.
         parts.append(("sy", {"k": "sy", "s": "".join(SYNC_CODES.get(sync_state(n), "-") for n in names[:60])}))
+        # Phone apps read "m" as [hr, spo2, rr, pi, condition] by index and skip index 3: keep it there, empty.
         metrics = [label.cget("text") for label, _unit in self.metric_values.values()]
+        metrics.insert(3, "")
         duration = self.times[-1] if self.samples else 0.0
         parts.append(("rec", {"sel": self.current_name or "", "play": bool(self.is_playing),
                               "pos": round(float(self.position), 2), "dur": round(float(duration), 2),

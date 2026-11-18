@@ -63,7 +63,7 @@ COPY = {
         offset_hint="0–2000 mV; DC + offset ≤ 3000", gain="AC gain", gain_hint="0.1–5.0 ×",
         notch="Local notch attenuation", notch_hint="0–1; 0.25 = 25% local reduction", spo2="SpO₂ target",
         spo2_hint="0–100 %, calibration dependent", above="AC above DC", below="AC below DC",
-        lock_ac="Hold AC when DC changes", lock_dc="Hold DC when PI changes",
+        lock_ac="Hold AC when DC changes", lock_dc="Hold DC when the AC/DC ratio changes",
         shape_note="Component centres at 60 bpm · SP < DN < DP · actual extrema may shift.\n"
                    "Notch 0 = no extra indentation; a natural valley may remain. Not a clinical normal range.",
         sp="Systolic peak", dn="Dicrotic notch", dp="Diastolic peak", time_hint="ms / 0–1000",
@@ -99,7 +99,7 @@ COPY = {
         offset_hint="0–2000 mV; DC + độ lệch ≤ 3000", gain="Hệ số khuếch đại AC", gain_hint="0,1–5,0 ×",
         notch="Độ suy giảm notch cục bộ", notch_hint="0–1; 0,25 = giảm cục bộ 25%", spo2="SpO₂ mục tiêu",
         spo2_hint="0–100 %, phụ thuộc hiệu chuẩn", above="AC phía trên DC", below="AC phía dưới DC",
-        lock_ac="Giữ AC khi DC thay đổi", lock_dc="Giữ DC khi PI thay đổi",
+        lock_ac="Giữ AC khi DC thay đổi", lock_dc="Giữ DC khi tỉ số AC/DC thay đổi",
         shape_note="Tâm các thành phần tính ở 60 bpm · SP < DN < DP · đỉnh/đáy thực tế có thể lệch.\n"
                    "Notch 0 = không lõm thêm; khe tự nhiên vẫn có thể còn. Không phải khoảng bình thường lâm sàng.",
         sp="Đỉnh tâm thu", dn="Khuyết dicrotic (notch)", dp="Đỉnh tâm trương", time_hint="ms / 0–1000",

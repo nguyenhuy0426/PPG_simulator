@@ -229,3 +229,13 @@ def test_two_threads_pumping_the_recording_keep_the_rows_in_order():
     first.join(1.0)
     second.join(1.0)
     assert written == sorted(written) and len(written) == 6
+
+
+def test_pi_is_not_shown_but_the_phone_still_finds_condition_at_index_4(tmp_path):
+    from ui.frames.playback_frame import METRICS
+    assert [k for k, _ in METRICS] == ["hr", "spo2", "rr", "condition"]
+    assert all("pi" not in COPY[lang] for lang in COPY)
+    frame = loaded(tmp_path, FakeEngine())
+    frame.metric_values = {k: (Mock(cget=Mock(return_value=f"<{k}>")), u) for k, u in METRICS}
+    rec = dict(frame.remote_parts())["rec"]
+    assert rec["m"] == ["<hr>", "<spo2>", "<rr>", "", "<condition>"]

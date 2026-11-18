@@ -39,7 +39,7 @@ _TEXT = {
         # Classic page
         "tx_card": "TX output signal", "rx_card": "RX received signal", "beep_on": "Beep: on", "beep_off": "Beep: off",
         "record": "Record CSV", "save_record": "Save CSV", "start": "Start output", "stop": "Stop output",
-        "hr": "Heart rate", "spo2": "SpO₂ target", "rr": "Respiration", "pi": "Perfusion index PI",
+        "hr": "Heart rate", "spo2": "SpO₂ target", "rr": "Respiration",
         "red_manual": "manual", "red_follows": "from SpO₂", "red_negative": "R < 0, clamped",
         "badge_red_manual": "RED AC manual", "badge_locked": "AC/DC locked",
         "tx_idle": "Output is off", "tx_idle_sub": "Press Start output; DACs hold 0 V until then",
@@ -92,7 +92,7 @@ _TEXT = {
         "clipped": "Cắt đỉnh",
         "tx_card": "Tín hiệu phát TX", "rx_card": "Tín hiệu thu RX", "beep_on": "Tiếng bíp: bật", "beep_off": "Tiếng bíp: tắt",
         "record": "Ghi CSV", "save_record": "Lưu CSV", "start": "Phát", "stop": "Dừng phát",
-        "hr": "Nhịp tim", "spo2": "SpO₂ mục tiêu", "rr": "Nhịp thở", "pi": "Chỉ số tưới máu PI",
+        "hr": "Nhịp tim", "spo2": "SpO₂ mục tiêu", "rr": "Nhịp thở",
         "red_manual": "đặt tay", "red_follows": "theo SpO₂", "red_negative": "R < 0, đã kẹp",
         "badge_red_manual": "Tách AC RED", "badge_locked": "Khoá AC/DC",
         "tx_idle": "Chưa phát", "tx_idle_sub": "Nhấn Phát để bắt đầu; DAC giữ 0 V cho tới lúc đó",
