@@ -46,7 +46,9 @@ COPY = {
                range_miss='APFT: đã sinh {n} đoạn, không đoạn nào có HR trong {lo:g}–{hi:g} bpm (HR đo được {measured}). Nới rộng khoảng hoặc nhấn Sinh đoạn mới.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
-               saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.'),
+               saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.',
+               save_rec='Lưu vào Recordings', saved_rec='Đã lưu vào Recordings: {name} (chỉ trên Pi, chưa lên DB)',
+               sending='Đang gửi {name} về điện thoại ({n} gói)…', sent='Đã chuyển xong CSV cho điện thoại.'),
     'en': dict(title='PPG · Gaussian and GAN sequences', generate='New sequence',
                hr='Requested heart rate / bpm', hr_min='HR min / bpm', hr_max='HR max / bpm',
                dc='DC / mV', ac='IR AC / mV',
@@ -65,9 +67,13 @@ COPY = {
                range_miss='APFT: {n} windows generated, none with HR in {lo:g}–{hi:g} bpm (measured HR {measured}). Widen the range or press New sequence.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
-               saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.'),
+               saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.',
+               save_rec='Save to Recordings', saved_rec='Saved to Recordings: {name} (on the Pi only, not in the DB)',
+               sending='Sending {name} to the phone ({n} parts)…', sent='CSV handed to the phone.'),
 }
 GAN_MODES = ('LSM-GAN', 'PSF-GAN', 'APFT-GAN')
+DATASET_DIR = Path(__file__).resolve().parents[2] / 'dataset'   # the Recordings page lists this folder
+TRANSFER_TTL_S = 120.0       # a CSV for the phone is offered this long when the phone never acknowledges it
 MODE_KEYS = {'LSM-GAN': 'lsm', 'PSF-GAN': 'psf', 'APFT-GAN': 'apft'}
 REFERENCE_BUNDLES = {'PSF-GAN': DEFAULT_PSF_BUNDLE, 'APFT-GAN': DEFAULT_APFT_BUNDLE}
 RANGE_MODE = 'APFT-GAN'          # takes an HR min-max range; the worker keeps only a window measured inside it
@@ -141,8 +147,11 @@ class NeuralFrame(ctk.CTkFrame):
         self.rx_panel=RXPanel(K.plot_holder(rx),language=self.language,height=120)
         self.rx_panel.pack(fill='both',expand=True,padx=u(3),pady=u(3))
 
+        self.save_rec_btn=K.secondary_button(actions,command=self.save_to_recordings,width=170,icon='recordings')
+        self.save_rec_btn.pack(side='left',padx=(0,u(8)))
         self.export_btn=K.secondary_button(actions,command=self.export,width=120,icon='save')
         self.export_btn.pack(side='left',padx=(0,u(8)))
+        self._transfer=None     # (id, parts, until): a CSV on its way to the phone as UI parts
         self.play_btn=K.primary_button(actions,command=self.toggle_output,width=150)
         self.play_btn.pack(side='left')
         self.status=T.label(self,'',u(12),text_color=T.MUTED,anchor='w',justify='left',wraplength=u(900),height=u(20))
@@ -199,6 +208,7 @@ class NeuralFrame(ctk.CTkFrame):
             label.configure(text=t[key])
         self.generate_btn.configure(text=t['generate'])
         self.export_btn.configure(text=t['export'])
+        self.save_rec_btn.configure(text=t['save_rec'])
         self.info.configure(text=self._info_text())
         self.mode_menu.configure(values=[t['fitted'],t['lsm'],t['psf'],t['apft']])
         self.mode_menu.set(self._mode_label())
@@ -404,6 +414,7 @@ class NeuralFrame(ctk.CTkFrame):
         K.set_running(self.play_btn,self.engine.is_waveform_playing,t['play'],t['stop'])
         self.play_btn.configure(state='normal' if preview is not None and not self._busy else 'disabled')
         self.export_btn.configure(state='normal' if preview is not None else 'disabled')
+        self.save_rec_btn.configure(state='normal' if preview is not None else 'disabled')
         if not self.engine.is_waveform_playing:
             start=self.seek.get()
             self._draw_tx([s for s in self.clip().samples if start<=s[0]<=start+8] if preview else [],
@@ -444,6 +455,11 @@ class NeuralFrame(ctk.CTkFrame):
                ('nni',{'i':self.info.cget('text')})]
         if not playing:     # the TX card shows the generated window and its reference, not live output
             parts+=preview_parts([list(lane.points) for lane in self.trace.lanes])
+        if self._transfer is not None:
+            if time.monotonic()<self._transfer[2]:
+                parts+=self._transfer[1]
+            else:
+                self._transfer=None
         return parts
 
     def remote_tx_rows(self):
@@ -490,6 +506,14 @@ class NeuralFrame(ctk.CTkFrame):
             self.render()
         if request.get('gen') is True and not self._busy:
             self.generate()
+        if request.get('save') is True and not self._busy:
+            self.save_to_recordings()
+        ident=request.get('exp')
+        if isinstance(ident,int) and not isinstance(ident,bool) and 0<ident<2**31:
+            self.start_transfer(ident)
+        if self._transfer is not None and request.get('exp_ok')==self._transfer[0]:
+            self._transfer=None
+            self.status.configure(text=COPY[self.language]['sent'],text_color=T.MUTED)
         if 'play' in request and bool(request['play'])!=bool(self.engine.is_waveform_playing):
             if self._busy:
                 return
@@ -538,6 +562,39 @@ class NeuralFrame(ctk.CTkFrame):
 
     def on_hide(self):
         self._stop_owned_output()
+
+    def save_to_recordings(self):
+        """The window as a recording (dataset/), listed and playable on the Recordings page; never uploaded by
+        this: the database gets it only through Upload to DB."""
+        from core.model_export import file_stem, recording_csv, save_recording
+        preview=self.previews.get(self.mode)
+        if preview is None:
+            return None
+        try:
+            path=save_recording(DATASET_DIR,file_stem(self.mode,preview,self.profile),
+                                recording_csv(self.clip(),preview,self.mode))
+        except (OSError,ValueError) as exc:
+            self.status.configure(text=str(exc),text_color=T.ERROR)
+            return None
+        self.status.configure(text=COPY[self.language]['saved_rec'].format(name=path.name),text_color=T.OK)
+        return path
+
+    def start_transfer(self,ident):
+        """Phone Export CSV: the window's CSV (time_s, ir_v, red_v) as parts; the phone saves it where the user
+        picks and acknowledges, or the parts stop after TRANSFER_TTL_S."""
+        from core.model_export import file_stem, transfer_parts, waveform_csv
+        preview=self.previews.get(self.mode)
+        if preview is None:
+            return False
+        name=file_stem(self.mode,preview,self.profile)+'.csv'
+        try:
+            parts=transfer_parts(waveform_csv(self.clip()),ident,name)
+        except ValueError as exc:
+            self.status.configure(text=str(exc),text_color=T.ERROR)
+            return False
+        self._transfer=(ident,parts,time.monotonic()+TRANSFER_TTL_S)
+        self.status.configure(text=COPY[self.language]['sending'].format(name=name,n=len(parts)),text_color=T.MUTED)
+        return True
 
     def export(self):
         preview=self.previews.get(self.mode)

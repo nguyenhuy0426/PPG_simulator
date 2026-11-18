@@ -33,8 +33,10 @@ def load_recording(path):
                 stamp = float(row["Time_s"]) if timestamped else i / LEGACY_RATE_HZ
                 if not math.isfinite(stamp) or stamp < 0:
                     raise ValueError("timestamps must be finite and strictly increasing")
-                numeric = [float(row[k]) for k in ("HR_BPM", "SpO2_%", "RR_BPM", "PI_%")]
-                if not all(math.isfinite(x) for x in numeric): raise ValueError("invalid parameter")
+                # Blank = not defined for this recording (a Model window has no SpO2/RR/PI): shown as "—".
+                numeric = [None if not str(row[k] or "").strip() else float(row[k])
+                           for k in ("HR_BPM", "SpO2_%", "RR_BPM", "PI_%")]
+                if not all(x is None or math.isfinite(x) for x in numeric): raise ValueError("invalid parameter")
             except (KeyError, TypeError, ValueError) as exc:
                 raise ValueError(f"Invalid CSV row {i + 2}: {exc}") from exc
             if previous is not None and stamp <= previous:
