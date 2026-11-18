@@ -107,6 +107,7 @@ class SignalEngine:
         # the Tk GUI and the status echo all read/write ONE source of truth.
         self._csv_logger = None
         self._record_ctl_lock = threading.Lock()
+        self._record_write_lock = threading.Lock()   # one batch drained and written at a time, in order
         self._record_pump = None
         self._record_pump_stop = threading.Event()
         self._record_pump_stop.set()
@@ -608,16 +609,18 @@ class SignalEngine:
     def pump_recording(self) -> int:
         """Drain buffered model rows into the CSV sink. Returns rows written.
 
-        Safe from any thread: draining is lock-guarded and every row is written
-        by exactly one caller because the buffer is emptied atomically.
+        Safe from any thread. The drain and the writes of one batch hold one lock: the record pump thread and the
+        Classic page both pump, and with only the drain locked their batches were written interleaved (a row
+        from the later batch landed among the earlier one's, and the file was refused for its timestamps).
         """
         logger = self._csv_logger
         if logger is None or not logger.is_logging:
             return 0
         rows = 0
-        for sample in self.drain_recording():
-            logger.log_data(*sample)
-            rows += 1
+        with self._record_write_lock:
+            for sample in self.drain_recording():
+                logger.log_data(*sample)
+                rows += 1
         return rows
 
     def _record_pump_loop(self):

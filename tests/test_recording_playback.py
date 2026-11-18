@@ -179,3 +179,53 @@ def test_delete_refuses_paths_outside_and_the_live_temp_file(tmp_path):
     assert not frame.delete_recording("temp_recording.csv") and temp.exists()
     assert not frame.delete_recording("missing.csv")
     outside.unlink()
+
+
+def test_a_few_rows_written_out_of_order_are_put_back_in_time_order(tmp_path):
+    """data_1.csv on the Pi: 3 of 46 511 rows written up to 0.08 s early (interleaved record batches)."""
+    path = write_csv(tmp_path / "c.csv", [(700 + i, 600) for i in range(300)])
+    lines = path.read_text().splitlines(keepends=True)
+    lines.insert(101, lines.pop(109))                    # the row of 1.08 s now sits after the one of 0.99 s
+    path.write_text("".join(lines))
+    samples, _, timing = load_recording(path)
+    assert [round(s[0], 2) for s in samples] == [round(i * 0.01, 2) for i in range(300)]
+    assert samples[108][1] == pytest.approx(volts(808)) and "out of order at 1 places" in timing
+    WaveformClip.from_recording(samples, "c.csv")
+
+
+def test_many_or_large_backward_steps_are_still_refused(tmp_path):
+    path = write_csv(tmp_path / "d.csv", [(700, 600)] * 200)
+    lines = path.read_text().splitlines(keepends=True)
+    lines.insert(150, lines.pop(10))                     # 1.4 s back
+    path.write_text("".join(lines))
+    with pytest.raises(ValueError, match="strictly increasing"):
+        load_recording(path)
+
+
+def test_two_threads_pumping_the_recording_keep_the_rows_in_order():
+    import threading
+    engine = SignalEngine()
+    written, started, release = [], threading.Event(), threading.Event()
+
+    class SlowLogger:
+        is_logging = True
+
+        def log_data(self, *row):
+            written.append(row[-1])
+            if len(written) == 1:
+                started.set()
+                release.wait(1.0)                        # the pump thread is still writing its batch
+
+    engine._csv_logger = SlowLogger()
+    engine._record_samples.extend((0, 0, 75, 98, 16, 4, "Normal", t / 100) for t in range(3))
+    first = threading.Thread(target=engine.pump_recording)
+    first.start()
+    assert started.wait(1.0)
+    engine._record_samples.extend((0, 0, 75, 98, 16, 4, "Normal", t / 100) for t in range(3, 6))
+    second = threading.Thread(target=engine.pump_recording)  # the Classic page pumps meanwhile
+    second.start()
+    second.join(0.2)
+    release.set()
+    first.join(1.0)
+    second.join(1.0)
+    assert written == sorted(written) and len(written) == 6
