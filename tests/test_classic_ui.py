@@ -114,8 +114,25 @@ class TestClassicPage(unittest.TestCase):
             card.command = command
         self.assertEqual(sent, [96.0, 94.0, 96.0, 95.0])
 
-    def test_pi_slider_is_removed(self):
-        self.assertEqual(list(self.page.cards), ["hr", "spo2", "rr"])
+    def test_setpoints_are_hr_spo2_rr_and_noise_without_pi(self):
+        self.assertEqual(list(self.page.cards), ["hr", "spo2", "rr", "noise"])
+
+    def test_noise_card_sets_the_proportional_level_and_names_another_kind(self):
+        engine = self.page.engine
+        saved = engine.get_ppg_params()
+        try:
+            engine.update_noise("proportional")
+            self.page.update_param("noise", 0.25)
+            self.assertEqual(engine.ppg_params.noise_level, 0.25)
+            self.page._paint_noise_card(engine.ppg_params)
+            self.assertTrue(self.page.cards["noise"]._enabled)
+            engine.update_noise("white", 0.5)
+            self.page._paint_noise_card(engine.ppg_params)
+            self.assertFalse(self.page.cards["noise"]._enabled)
+            self.assertIn("Nhiễu trắng", self.page.cards["noise"].badge.cget("text"))
+        finally:
+            engine.load_parameters(saved)
+            self.page._paint_noise_card(engine.ppg_params)
 
     def test_spo2_setpoint_hands_red_ac_back_to_the_spo2_derivation(self):
         engine = self.page.engine

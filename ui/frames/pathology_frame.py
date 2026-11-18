@@ -7,6 +7,7 @@ from config import DAC_ADDR_IR, DAC_ADDR_RED, DRY_RUN, FS_TIMER_HZ
 from core.signal_engine import SignalEngine
 from hw.beeper import HeartBeeper
 from models import limits
+from models.noise import NOISE_PROPORTIONAL
 from ui import icons
 from ui import theme as T
 from ui.i18n import condition_labels, text
@@ -107,6 +108,9 @@ class PathologyFrame(ctk.CTkFrame):
             "hr": ("heart_rate", limits.HEART_RATE, "bpm", 1, 0),
             "spo2": ("spo2", limits.SPO2, "%", 1, 0),
             "rr": ("resp_rate", limits.RESP_RATE, "brpm", 1, 0),
+            # The proportional artefact (level x AC on each lane), the same "noise" the phone sets. Settings can pick
+            # another noise kind; this card then shows which and stays read-only (the level would not act).
+            "noise": ("noise_level", limits.NOISE_LEVEL, "× AC", limits.NOISE_LEVEL.step, 2),
         }
         setpoints = ctk.CTkFrame(self, fg_color="transparent")
         setpoints.grid(row=2, column=0, sticky="ew", pady=(u(gap), 0))
@@ -171,13 +175,26 @@ class PathologyFrame(ctk.CTkFrame):
         if not save_config(config):
             self._say(None, T.ERROR, raw="config.json")
 
+    def _paint_noise_card(self, p):
+        """The level only acts on the proportional noise kind; another kind from Settings is named on the card."""
+        kind = getattr(p, "noise_kind", NOISE_PROPORTIONAL)
+        proportional = kind == NOISE_PROPORTIONAL
+        card = self.cards["noise"]
+        card.set_enabled(proportional)
+        if proportional:
+            card.set_badge(None)
+        else:
+            from ui.frames.advanced_frame import COPY as SETTINGS
+            name = SETTINGS.get(self.language, SETTINGS["en"])["noises"].get(kind, kind)
+            card.set_badge(text(self.language, "badge_noise_kind").format(kind=name))
+
     def update_param(self, key, value):
         attr, span = self.fields[key][:2]
         value = span.quantise(value)
         # SpO2 here sets the target the RED AC is derived from; a manual RED AC from Settings would keep R
         # (and so the received SpO2) fixed, so this page hands RED AC back to the SpO2 derivation.
         callbacks = {"hr": self.engine.update_heart_rate, "spo2": self.engine.update_spo2_target,
-                     "rr": self.engine.update_resp_rate}
+                     "rr": self.engine.update_resp_rate, "noise": self.engine.update_noise_level}
         try:
             callbacks[key](value)
             self.cards[key].set(getattr(self.engine.ppg_params, attr))
@@ -330,6 +347,7 @@ class PathologyFrame(ctk.CTkFrame):
         for key, (attr, *_rest) in self.fields.items():
             self.cards[key].set(getattr(p, attr))
         self.cards["spo2"].set_badge(text(self.language, "badge_red_manual") if p.ac_red_mv is not None else None)
+        self._paint_noise_card(p)
         condition = condition_labels(self.language)[p.condition]
         if self.condition_menu.get() != condition:
             self.condition_menu.set(condition)
