@@ -36,7 +36,8 @@ tín hiệu tổng hợp tiến gần tỉ lệ trên tín hiệu thật ở cù
   bước. Đây mới là preprint; mình chưa kiểm tra nó đã được bình duyệt hay chưa.
 
 Mục tiêu đặt ra (chưa đo): một strip 30 s mất dưới 1 s trên Cortex-A72. Phải đo bằng
-`scripts/verify_generators_on_pi.py`.
+`scripts/verify_generators_on_pi.py`. Script này không còn trong repo; lấy lại từ commit `b04a7f90` rồi sửa cho
+các generator hiện có (xem `docs/hardware-validation/README.md`).
 
 ## 3. Thử các kiến trúc sinh tín hiệu bên ngoài làm baseline
 

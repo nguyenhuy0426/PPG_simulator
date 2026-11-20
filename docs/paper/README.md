@@ -72,8 +72,9 @@ carried back into the LaTeX source by hand.
   data-availability statement.
 - "Low-cost" was dropped from the title and the text. If you want it back, support it with a component cost
   (actual purchase prices).
-- Time the deployed generators on the Pi with `scripts/verify_generators_on_pi.py` (same protocol as
-  Table 1; see `docs/hardware-validation/README.md`) and replace the statements that they were not
+- Time the deployed generators on the Pi (same protocol as Table 1). The script written for this,
+  `scripts/verify_generators_on_pi.py`, is no longer in the repository; restore it from commit `b04a7f90`
+  and adapt it (see `docs/hardware-validation/README.md`). Then replace the statements that they were not
   timed on the Pi (Sections 5.7 and 6.2, the limitations and Appendix A).
 - The paper is now centred on the generators; the simulator hardware, its timing counters and the failed
   optical loopback are in Appendix A. Once the optical path is validated, extend Appendix A (or move it back
