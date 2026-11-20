@@ -95,9 +95,17 @@ class PathologyFrame(ctk.CTkFrame):
         self.rx_title.grid(row=0, column=0, sticky="w", padx=u(10), pady=u(6))
         # Pulse tone on each received beat (hw.beeper); the choice is saved in config.json.
         self.beeper = HeartBeeper.get_instance()
-        self.beep_btn = T.outline_button(rx, "", height=header_h, width=u(130), font=T.font(u(13), True),
+        rx_tools = ctk.CTkFrame(rx, fg_color="transparent")
+        rx_tools.grid(row=0, column=0, sticky="e", padx=(0, u(8)), pady=u(6))
+        # AC balance (core/ac_balance.py): scales the DAC AC so the received AC matches the set AC.
+        self.ac_balance = getattr(master, "ac_balance", None)
+        self.balance_btn = T.outline_button(rx_tools, "", height=header_h, width=u(140), font=T.font(u(13), True),
+                                            command=self.toggle_ac_balance)
+        if self.ac_balance is not None:
+            self.balance_btn.pack(side="left", padx=(0, u(6)))
+        self.beep_btn = T.outline_button(rx_tools, "", height=header_h, width=u(130), font=T.font(u(13), True),
                                          command=self.toggle_beep)
-        self.beep_btn.grid(row=0, column=0, sticky="e", padx=(0, u(8)), pady=u(6))
+        self.beep_btn.pack(side="left")
         rx_holder = ctk.CTkFrame(rx, fg_color=T.DARK, corner_radius=u(6))
         rx_holder.grid(row=1, column=0, sticky="nsew", padx=u(6), pady=(0, u(6)))
         self.rx_panel = RXPanel(rx_holder, language=self.language, height=plot_h)
@@ -132,6 +140,7 @@ class PathologyFrame(ctk.CTkFrame):
         self.tx_title.configure(text=text(language, "tx_card"))
         self.rx_title.configure(text=text(language, "rx_card"))
         self._paint_beep()
+        self._paint_balance()
         self.condition_menu.set_values(condition_labels(language))
         self.condition_menu.set(condition_labels(language)[self.engine.ppg_params.condition])
         for key, card in self.cards.items():
@@ -161,6 +170,23 @@ class PathologyFrame(ctk.CTkFrame):
         self.condition_menu.set(condition_labels(self.language)[p.condition])
         self._last_tx_render = 0.0
         self.periodic_update()
+
+    def toggle_ac_balance(self):
+        from config_store import load_config, save_config
+        from core.ac_balance import CONFIG_ENABLED
+        if self.ac_balance is None:
+            return
+        self.ac_balance.set_enabled(not self.ac_balance.enabled)
+        self._paint_balance()
+        config = load_config()
+        config[CONFIG_ENABLED] = self.ac_balance.enabled
+        if not save_config(config):
+            self._say(None, T.ERROR, raw="config.json")
+
+    def _paint_balance(self):
+        on = self.ac_balance is not None and self.ac_balance.enabled
+        self.balance_btn.configure(text=text(self.language, "acbal_on" if on else "acbal_off"),
+                                   text_color=T.ACCENT if on else T.MUTED)
 
     def _paint_beep(self):
         self.beep_btn.configure(text=text(self.language, "beep_on" if self.beeper.enabled else "beep_off"),
@@ -321,10 +347,16 @@ class PathologyFrame(ctk.CTkFrame):
             red = max(0.0, ratio) * ac * p.dc_red_mv / p.dc_ir_mv
             how = text(lang, "red_negative") if ratio < 0 else text(lang, "red_follows")
         history = self.engine.get_display_history()
+        # With AC balance on, the plot stays the set waveform (what the receiver should get) and the header
+        # gives the factor the DAC AC is scaled by.
+        k_ir = k_red = ""
+        if self.engine.ac_balance_active:
+            f_ir, f_red = self.engine.ac_compensation
+            k_ir, k_red = f"    DAC AC ×{f_ir:.2f}", f"    DAC AC ×{f_red:.2f}"
         return [
-            Lane("IR", T.IR, f"AC {ac:.2f} mV    DC {p.dc_ir_mv:g} mV",
+            Lane("IR", T.IR, f"AC {ac:.2f} mV    DC {p.dc_ir_mv:g} mV{k_ir}",
                  [(t, ir * 1000) for t, ir, _red in history]),
-            Lane("RED", T.RED, f"AC {red:.2f} mV  {how}    DC {p.dc_red_mv:g} mV",
+            Lane("RED", T.RED, f"AC {red:.2f} mV  {how}    DC {p.dc_red_mv:g} mV{k_red}",
                  [(t, r * 1000) for t, _ir, r in history]),
         ]
 

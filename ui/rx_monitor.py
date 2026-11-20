@@ -98,7 +98,8 @@ def calibration_coefficients():
     levels match it ('calibrated'), else the generator's own SpO2 = A - B*R ('none' / 'other_dc')."""
     from core.rx_spo2_cal import coefficients_for
     from core.signal_engine import SignalEngine
-    return coefficients_for(SignalEngine.get_instance().get_ppg_params())
+    engine = SignalEngine.get_instance()
+    return coefficients_for(engine.get_ppg_params(), getattr(engine, "ac_balance_active", False))
 
 
 def remove_dc(points):

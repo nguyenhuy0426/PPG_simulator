@@ -256,6 +256,7 @@ PPG_simulator_raspi/
 ├── config_store.py              # JSON configuration persistence & validation
 ├── core/
 │   ├── signal_engine.py         # Signal generation thread & DAC output
+│   ├── ac_balance.py            # AC balance: DAC AC scaled so the received AC equals the set AC
 │   ├── csv_logger.py            # Dataset recording logic
 │   ├── tx_rx_logger.py          # Paired TX command & RX acquisition logger
 │   └── rate_scheduler.py        # Drift-free fixed-rate execution ticker
@@ -434,6 +435,18 @@ peak-to-peak swing (`AC 60 mV p-p`) instead of the received level. The Calibrati
 plots the received millivolts, because there the received level is checked against the sent one. Only the plot
 changes; the RX rate, SpO₂ and respiratory-rate estimates, the TX/RX log and the stream to the phone keep the raw
 samples. Each lane also shows its connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
+
+**AC balance (Classic):** each LED -> OPT101 path has its own small-signal gain, and the IR one grows with the DC
+level (DC sweep of 2026-11-21 at 45 mV AC: received/sent AC 1.28-2.08 on IR, 1.12-1.25 on RED). With
+**AC balance: on** (button on the RX card, saved in `config.json` as `ac_balance_enabled`, default on) the AC
+written to each DAC is scaled so the AC the OPT101 receives equals the AC set on the page (`core/ac_balance.py`):
+a feedforward factor 1/g(DC) from the measured gain table (`ac_gain_table` in `config.json` replaces the
+built-in one), then a closed-loop trim that compares the per-beat AC of TX and RX every 10 s and moves at most
+15 % per update within 0.6-1.6. The loop skips windows with OPT101 saturation, RX gaps, too few beats or an
+unsteady pulse, and holds during the receive SpO₂ calibration. The TX plot keeps the set waveform; its header
+gives the factor (`DAC AC ×0.53`). Only the Classic AC is scaled: DC, Calibration test signals and played clips
+are not. Receive SpO₂ fits record whether AC balance was on and apply only in that state. This balances the AC at
+this simulator's own receiver; it is not a calibration of another receiver.
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting

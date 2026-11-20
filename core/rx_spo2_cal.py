@@ -35,9 +35,11 @@ class RxSpo2Calibration:
     max_residual: float        # % SpO2
     points: tuple              # ((target SpO2, received R), ...)
     created: float             # unix time
+    ac_balance: bool = False   # made with core.ac_balance scaling the DAC AC; received R differs with it on/off
 
-    def applies_to(self, dc_ir_mv, dc_red_mv):
-        return abs(dc_ir_mv - self.dc_ir_mv) <= DC_MATCH_MV and abs(dc_red_mv - self.dc_red_mv) <= DC_MATCH_MV
+    def applies_to(self, dc_ir_mv, dc_red_mv, ac_balance=False):
+        return (abs(dc_ir_mv - self.dc_ir_mv) <= DC_MATCH_MV and abs(dc_red_mv - self.dc_red_mv) <= DC_MATCH_MV
+                and bool(ac_balance) == self.ac_balance)
 
     def to_dict(self):
         out = asdict(self)
@@ -54,7 +56,7 @@ class RxSpo2Calibration:
             return None
         if not all(math.isfinite(v) for v in values.values()) or values["b"] <= 0 or len(points) < 2:
             return None
-        return cls(points=points, **values)
+        return cls(points=points, ac_balance=bool(data.get("ac_balance", False)), **values)
 
 
 def sent_dc(params):
@@ -103,7 +105,8 @@ def saved():
 
 def with_calibration(calibrations, calibration):
     """The list after adding a fit: it replaces any fit at the same DC levels; the oldest drop past MAX_SAVED."""
-    kept = [c for c in calibrations if not c.applies_to(calibration.dc_ir_mv, calibration.dc_red_mv)]
+    kept = [c for c in calibrations
+            if not c.applies_to(calibration.dc_ir_mv, calibration.dc_red_mv, calibration.ac_balance)]
     return tuple(kept + [calibration])[-MAX_SAVED:]
 
 
@@ -118,8 +121,10 @@ def save(calibration):
     return save_config(config)
 
 
-def coefficients_for(params):
+def coefficients_for(params, ac_balance=False):
     """(a, b, state) for reading the received R: state 'calibrated', 'other_dc' or 'none'.
+
+    ac_balance: whether core.ac_balance is scaling the DAC AC now; only fits made in the same state apply.
 
     The fit made closest to the sent DC levels (within DC_MATCH_MV on both) is used. Received R / sent R changes
     with DC on this rig (each lane has its own zero, §13), so a fit made at other DC levels is not used; the
@@ -128,7 +133,7 @@ def coefficients_for(params):
     if not calibrations:
         return params.spo2_coeff_a, params.spo2_coeff_b, "none"
     dc_ir, dc_red = sent_dc(params)
-    matching = [c for c in calibrations if c.applies_to(dc_ir, dc_red)]
+    matching = [c for c in calibrations if c.applies_to(dc_ir, dc_red, ac_balance)]
     if not matching:
         return params.spo2_coeff_a, params.spo2_coeff_b, "other_dc"
     cal = min(reversed(matching), key=lambda c: max(abs(c.dc_ir_mv - dc_ir), abs(c.dc_red_mv - dc_red)))
@@ -159,6 +164,7 @@ class CalibrationRun:
 
     def start(self, now):
         self._snapshot = self.engine.get_ppg_params().copy()
+        self._balanced = bool(getattr(self.engine, "ac_balance_active", False))
         self.engine.update_spo2_target(self.points[0])
         self.engine.start_simulation(self._snapshot.condition)
         self._step_at = now
@@ -191,7 +197,7 @@ class CalibrationRun:
             self._finish(f"residual:{residual:.1f}")
             return
         self.calibration = RxSpo2Calibration(a, b, *sent_dc(self._snapshot), residual, tuple(self.results),
-                                             time.time())
+                                             time.time(), getattr(self, "_balanced", False))
         self._finish(None)
 
     def abort(self):

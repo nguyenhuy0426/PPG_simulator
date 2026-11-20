@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
-    SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ,
+    SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ, DAC_FULLSCALE_V,
 )
 from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES
 from hw.dac_manager import DACManager
@@ -98,6 +98,9 @@ class SignalEngine:
         self._cal_time = 0.0
         self._waveform_clip = None
         self._clip_tick = 0
+        # AC balance (core/ac_balance.py): factors on the AC part of the Classic output, (IR, RED). 1.0 = off.
+        self._ac_comp = (1.0, 1.0)
+        self._ac_comp_clipped = 0
         self._buf_lock = threading.Lock()
         self._running = False
         self._sample_count = 0
@@ -271,7 +274,7 @@ class SignalEngine:
         """Ring-buffer health, for the UI and for bring-up measurements."""
         return {
             "record_dropped": self._record_dropped,
-            "clipped_samples": self.ppg_model.clipped_samples,
+            "clipped_samples": self.ppg_model.clipped_samples + self._ac_comp_clipped,
             "overruns": self._overrun_count,
             "underruns": self._underrun_count,
             "dropped_samples": self._dropped_samples,
@@ -283,6 +286,7 @@ class SignalEngine:
         self._overrun_count = 0
         self._underrun_count = 0
         self._dropped_samples = 0
+        self._ac_comp_clipped = 0
 
     # ─── Generation Loop (background thread) ───
     def _generate_one_tick(self) -> None:
@@ -305,6 +309,7 @@ class SignalEngine:
             elif self._calibration is None:
                 ir_v, red_v, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
                 stamp = self.ppg_model.simulated_time_s
+                ir_v, red_v = self._compensate(ir_v, red_v, disp_ir, disp_red)
             else:
                 frequency, ir_level_mv, red_level_mv, swing_mv = self._calibration
                 self._cal_time += MODEL_DT_PPG
@@ -519,6 +524,33 @@ class SignalEngine:
                 raise ValueError(f"Calibration level ± swing must stay within 0–{DAC_FULLSCALE_MV:g} mV")
         self.start_simulation(self.ppg_params.condition,
                               calibration=(frequency_hz, ir_level_mv, red_level_mv, swing_mv))
+
+    def set_ac_compensation(self, ir_factor, red_factor):
+        """Scale the AC part of the Classic output written to the DACs (core/ac_balance.py); 1.0, 1.0 is off.
+
+        The display history keeps the set waveform, so the TX plot shows what the receiver should get."""
+        factors = (float(ir_factor), float(red_factor))
+        if not all(math.isfinite(f) and 0.1 <= f <= 4.0 for f in factors):
+            raise ValueError(f"AC compensation out of range: {factors}")
+        self._ac_comp = factors
+
+    @property
+    def ac_compensation(self):
+        return self._ac_comp
+
+    @property
+    def ac_balance_active(self):
+        return self._ac_comp != (1.0, 1.0)
+
+    def _compensate(self, ir_v, red_v, disp_ir, disp_red):
+        """ir_v = DC + offset + disp: scale only disp. The model clamped the uncompensated value; clamp again."""
+        k_ir, k_red = self._ac_comp
+        if k_ir == 1.0 and k_red == 1.0:
+            return ir_v, red_v
+        ir_v, red_v = ir_v + (k_ir - 1.0) * disp_ir, red_v + (k_red - 1.0) * disp_red
+        if not (0.0 <= ir_v <= DAC_FULLSCALE_V and 0.0 <= red_v <= DAC_FULLSCALE_V):
+            self._ac_comp_clipped += 1
+        return min(max(ir_v, 0.0), DAC_FULLSCALE_V), min(max(red_v, 0.0), DAC_FULLSCALE_V)
 
     @property
     def is_calibrating(self):

@@ -7,6 +7,7 @@ LED current or the optical path unless it says so.
 
 | Folder | Contents |
 |---|---|
+| [2026-11-21-dc-sweep-ac/](2026-11-21-dc-sweep-ac/README.md) | DC sweep 300-1500 mV at 45 mV AC: received vs sent AC per step, before and after AC balance (`core/ac_balance.py`) |
 | [2026-09-30/](2026-09-30/) | DAC writer timing counters (headless and with the UI), the LSM-GAN strip on the Pi's PyTorch 2.5.1 compared with the laptop, an A0 capture during playback |
 
 ## Generators on the Pi
