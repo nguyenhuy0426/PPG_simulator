@@ -61,7 +61,7 @@ _PANEL = {
         "error": ("Lỗi", "Lỗi đọc ADC", "Kiểm tra Grove Base Hat 0x08 và cáp"),
         "invalid": ("Lỗi", "Mẫu ADC không hợp lệ", ""),
         "disconnected": ("Mất kết nối", "Mất kết nối ADC", "Kiểm tra Grove Base Hat 0x08 và cáp"),
-        "opt101_sat": "OPT101 bão hòa (~2.5 V)", "filtered": "đã lọc",
+        "opt101_sat": "OPT101 bão hòa (~2.5 V)", "filtered": "đã lọc", "ac": "AC {v:.0f} mV đỉnh-đỉnh",
         "ok": ("Trực tiếp", "", ""), "saturated": ("Chạm trần ADC", "", ""),
     },
     "en": {
@@ -72,7 +72,7 @@ _PANEL = {
         "error": ("Error", "ADC read error", "Check the Grove Base Hat 0x08 and cable"),
         "invalid": ("Error", "Invalid ADC sample", ""),
         "disconnected": ("Disconnected", "ADC disconnected", "Check the Grove Base Hat 0x08 and cable"),
-        "opt101_sat": "OPT101 saturated (~2.5 V)", "filtered": "filtered",
+        "opt101_sat": "OPT101 saturated (~2.5 V)", "filtered": "filtered", "ac": "AC {v:.0f} mV p-p",
         "ok": ("Live", "", ""), "saturated": ("ADC full scale", "", ""),
     },
 }
@@ -101,15 +101,32 @@ def calibration_coefficients():
     return coefficients_for(SignalEngine.get_instance().get_ppg_params())
 
 
-class RXPanel(LaneView):
-    """IR/RED lanes shown next to TX on every page; reads, never starts, the receiver."""
+def remove_dc(points):
+    """The plotted AC part of a lane: each value minus the mean of the lane over the window.
 
-    def __init__(self, master, language="en", receiver=None, channels=RX_CHANNELS, vitals=True, **kwargs):
+    The mean is the DC level as core.rx_spo2 defines it (mean of the stretch). One mean for the whole window,
+    not per segment, so an LED that goes dark for a while still shows as a step. Only the plot changes."""
+    if not points:
+        return points
+    dc = sum(v for _t, v in points) / len(points)
+    return [(t, v - dc) for t, v in points]
+
+
+class RXPanel(LaneView):
+    """IR/RED lanes shown next to TX on every page; reads, never starts, the receiver.
+
+    ac_only: plot the AC part only (the DC level is subtracted and not shown). The Calibration page turns it
+    off, because there the received DC level is what is being checked against the sent level."""
+    ac_only = True
+
+    def __init__(self, master, language="en", receiver=None, channels=RX_CHANNELS, vitals=True, ac_only=True,
+                 **kwargs):
         super().__init__(master, **kwargs)
         self.receiver = receiver or OPT101Receiver.get_instance()
         self.language = language
         self.channels = tuple(channels)
         self.vitals = vitals   # HR / SpO2 / RR badges; off where the output is a test signal (Calibration)
+        self.ac_only = ac_only
         self.end_s = 0.0
         self._last_update = 0.0
         self._rates = {}       # channel -> (computed_at, RxRate)
@@ -141,10 +158,17 @@ class RXPanel(LaneView):
             # The plot shows the despiked, lightly smoothed trace; estimates below read the raw samples.
             points = [(t - now, v) for t, v in self._filters[channel].update(
                 [(s.timestamp, s.raw * MV_PER_CODE) for s in samples], max_gap)]
+            if self.ac_only:
+                points = remove_dc(points)
             if samples and status in ("ok", "saturated"):
                 live[name] = samples
                 latest_mv = raw_to_millivolts(samples[-1].raw)
-                detail = f"{state}   {points[-1][1]:.0f} mV   {copy['filtered']}"
+                if self.ac_only:
+                    values = [v for _t, v in points]
+                    level = copy["ac"].format(v=max(values) - min(values))
+                else:
+                    level = f"{points[-1][1]:.0f} mV"
+                detail = f"{state}   {level}   {copy['filtered']}"
                 if latest_mv >= OPT101_SATURATION_MV:
                     detail += f"   {copy['opt101_sat']}"
             title = f"A{channel}  {name}"

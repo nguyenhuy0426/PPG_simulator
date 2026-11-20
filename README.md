@@ -40,7 +40,7 @@ The [earlier morphology comparison](docs/ppg_morphology_selection_2026-09-28.md)
 remains a historical exploratory result; test has already been viewed.
 
 **RX beside TX & Bench Diagnostics (October 2026):**
-- **Live A0/A4 RX card on every page:** Classic, Calibration, Recordings and PPG morphology each show a read-only RX card next to the TX plot (the earlier bottom dock, and the RX strip inside the Signal setup window, are removed). It displays the rolling 8-second window of raw ADC mV at up to 10 Hz refresh, with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
+- **Live A0/A4 RX card on every page:** Classic, Calibration, Recordings and PPG morphology each show a read-only RX card next to the TX plot (the earlier bottom dock, and the RX strip inside the Signal setup window, are removed). It displays the rolling 8-second window at up to 10 Hz refresh, as the AC part only (DC removed; raw mV on the Calibration page), with explicit status states (disabled, dry-run, stale, error, full-scale) and touch-optimized scrolling on 1024×600 screens ([docs/rx-monitor-2026-10-01.md](docs/rx-monitor-2026-10-01.md)).
 - **Physical Sensor Diagnostic Protocol:** A bench test and signal conditioning plan is established for OPT101 / CJMCU-101 modules, covering internal 1 MΩ feedback verification, 3.3 V Grove Hat input limits, dark readings, stepped sine wave tests (1–10 Hz), and RC low-pass filtering at $f_c \approx 33.9\text{ Hz}$ ([docs/opt101-a0-diagnostic-2026-10-01.md](docs/opt101-a0-diagnostic-2026-10-01.md)).
 
 **RX analysis and APFT on the Pi (November 2026):** measured on the Pi 4 with the real DAC/OPT101 loop; details,
@@ -428,8 +428,12 @@ optical gain or range differs, to be fixed in the optics or the levels.
 
 **Live RX card:** every page shows an RX card to the right of its TX plot
 (the Signal setup window has none). The receiver samples the Grove Base Hat ADC at 100 Hz and refreshes the UI at up to 10 Hz,
-plotting an 8-second rolling window for A4 (IR) and A0 (Red). Sensor readings display raw
-millivolts alongside real-time connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
+plotting an 8-second rolling window for A4 (IR) and A0 (Red). Each lane plots the AC part only: the mean of
+the lane over the window (its DC level) is subtracted, the axis is centred on 0 mV and the header gives the
+peak-to-peak swing (`AC 60 mV p-p`) instead of the received level. The Calibration page is the exception: it
+plots the received millivolts, because there the received level is checked against the sent one. Only the plot
+changes; the RX rate, SpO₂ and respiratory-rate estimates, the TX/RX log and the stream to the phone keep the raw
+samples. Each lane also shows its connection status (`LIVE`, `STALE`, `DRY RUN`, `DISABLED`, or `FULL SCALE`).
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
 
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
