@@ -18,7 +18,7 @@ time; the newest result in each group is listed first.
 |---|---|
 | [hardware/](hardware/) | Prototype BOM, schematic, wiring/test points, transistor identification |
 | [hardware/design-audit/](hardware/design-audit/) | LED-driver design audit: base context, system audit, datasheet evidence, driver architecture, stage-1 recalculation |
-| [architecture/](architecture/) | Phase 1 reference audit and master design; Phase 4 dual-DAC TX and LED driver; ISO 5807 flowchart of the Pi, phone, MQTT and database threads and two UML sequence diagrams (MQTT control, recording upload), as `ppg_luu_do_v2.drawio` (3 pages) with PNG exports |
+| [architecture/](architecture/) | Phase 1 reference audit and master design; Phase 4 dual-DAC TX and LED driver; ISO 5807 flowchart of the Pi, phone, MQTT and database threads and two UML sequence diagrams (MQTT control, recording upload), as `luu_do_giai_thuat_va_so_do_tuan_tu.drawio` (3 pages) with PNG exports |
 | [system_3d/](system_3d/README.md) | Printable optical enclosure: generator scripts, STL files, viewer |
 | [opt101-a0-diagnostic-2026-10-01.md](opt101-a0-diagnostic-2026-10-01.md) | OPT101/A0 bench diagnostic protocol |
 | [hardware-validation/](hardware-validation/README.md) | Raspberry Pi timing, ARM inference and TX/RX capture evidence; how to check the generators on the Pi |
