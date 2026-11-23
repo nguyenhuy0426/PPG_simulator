@@ -7,10 +7,12 @@
 //   console (prio 2) parses serial commands and forwards configuration to the sensor task.
 //
 // Serial output (115200 8N1, UART0 via the board's USB-UART bridge):
-//   S,<seq>,<red>,<ir>            one line per sample when streaming is on (raw 18-bit counts)
+//   S,<seq>,<red>,<ir>,<ppg>,<beat>  one line per sample when streaming is on: raw 18-bit counts, the
+//                                 band-passed waveform of the channel in use (pulse up) and a beat mark
 //   R,<json>                      once per second
 // Commands (one per line): led <red_mA> <ir_mA> | range <0-3> | stream <0|1> | ch <auto|red|ir> | info
 //                           rd  (capture the module's RD/IRD pins, see rd_probe.c)
+//                           sr <0-3> | avg <0-5>  (bench only; HR estimator assumes 100 Hz output)
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -55,8 +57,10 @@ static const char *TAG = "app";
 #define MA_TO_PA(ma)       ((uint8_t)fminf(255.0f, fmaxf(0.0f, (ma) / 0.2f + 0.5f)))
 
 // Defaults: SpO2 mode, 200 sps averaged by 2 -> 100 Hz, 411 us (18-bit), 16384 nA full scale.
+// LEDs off: this bench firmware receives the simulator's red flicker (bench/pi_red_flicker.py), the
+// configuration measured on 23 Nov 2026. For a finger, set the LEDs with `led 7.2 7.2`.
 static const max30102_cfg_t DEFAULT_CFG = {
-    .led_red_pa = 0x24, .led_ir_pa = 0x24,   // 7.2 mA each
+    .led_red_pa = 0x00, .led_ir_pa = 0x00,
     .adc_range = 3, .sample_rate = 2, .sample_avg = 1, .pulse_width = 3,
 };
 
@@ -216,8 +220,10 @@ static void sensor_task(void *arg)
                 cfg = nc;
                 ppg_hr_init(&hr_red);
                 ppg_hr_init(&hr_ir);
-                printf("R,{\"cfg\":{\"red_ma\":%.1f,\"ir_ma\":%.1f,\"range\":%u}}\n",
-                       cfg.led_red_pa * 0.2f, cfg.led_ir_pa * 0.2f, cfg.adc_range);
+                printf("R,{\"cfg\":{\"red_ma\":%.1f,\"ir_ma\":%.1f,\"range\":%u,\"fs\":%.0f}}\n",
+                       cfg.led_red_pa * 0.2f, cfg.led_ir_pa * 0.2f, cfg.adc_range, max30102_output_rate(&cfg));
+                if (max30102_output_rate(&cfg) != PPG_FS_HZ)
+                    printf("R,{\"warn\":\"output rate is not %d Hz: HR/state lines are not valid\"}\n", PPG_FS_HZ);
             } else {
                 ESP_LOGE(TAG, "config write failed");
             }
@@ -247,15 +253,16 @@ static void sensor_task(void *arg)
             const bool sat_i = alc || buf[i].ir >= MAX30102_FULL_SCALE - SAT_MARGIN;
             const float yr = ppg_hr_push(&hr_red, (float)buf[i].red, sat_r);
             const float yi = ppg_hr_push(&hr_ir, (float)buf[i].ir, sat_i);
-            if (s_stream) printf("S,%" PRIu32 ",%" PRIu32 ",%" PRIu32 "\n", seq, buf[i].red, buf[i].ir);
-
             // channel shown/used: the one in a better state, IR on a tie
             const ppg_hr_t *use;
             if (s_ch_sel == CH_RED) use = &hr_red;
             else if (s_ch_sel == CH_IR) use = &hr_ir;
             else use = (hr_red.state > hr_ir.state ||
                         (hr_red.state == hr_ir.state && hr_red.acf_peak > hr_ir.acf_peak)) ? &hr_red : &hr_ir;
-            disp_acc += (use == &hr_red) ? yr : yi;
+            const float y_use = (use == &hr_red) ? yr : yi;
+            if (s_stream)
+                printf("S,%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%.1f,%d\n", seq, buf[i].red, buf[i].ir, y_use, use->beat);
+            disp_acc += y_use;
             disp_beat |= use->beat;
             if (++decim >= DISP_DECIM) {
                 const disp_point_t pt = {disp_acc / DISP_DECIM, disp_beat};
@@ -430,6 +437,13 @@ static void console_task(void *arg)
             xQueueSend(s_cfg_q, &cfg, portMAX_DELAY);
         } else if (sscanf(line, "range %d", &i) == 1 && i >= 0 && i <= 3) {
             cfg.adc_range = (uint8_t)i;
+            xQueueSend(s_cfg_q, &cfg, portMAX_DELAY);
+        } else if (sscanf(line, "sr %d", &i) == 1 && i >= 0 && i <= 3) {
+            // Bench use: the HR estimator assumes 100 Hz output; other rates only make raw data sense.
+            cfg.sample_rate = (uint8_t)i;
+            xQueueSend(s_cfg_q, &cfg, portMAX_DELAY);
+        } else if (sscanf(line, "avg %d", &i) == 1 && i >= 0 && i <= 5) {
+            cfg.sample_avg = (uint8_t)i;
             xQueueSend(s_cfg_q, &cfg, portMAX_DELAY);
         } else if (sscanf(line, "stream %d", &i) == 1) {
             s_stream = i != 0;

@@ -1,5 +1,10 @@
 # Thiết kế đồng bộ LED mô phỏng với xung LED của MAX30102
 
+> **Cập nhật 23/11/2026:** để đo nhịp tim, không cần mạch này. LED đỏ của Pi nhấp nháy nhanh
+> (`firmware/esp32s3_max30102/bench/pi_red_flicker.py`) đã cho MAX30102 đọc đúng 60/80/90/120 bpm mà không
+> thêm phần cứng (`bench/results/20261123-flicker/`). Mạch đồng bộ chỉ còn cần khi muốn dạng sóng sạch,
+> tách kênh đỏ/IR hoặc SpO₂.
+
 **Trạng thái: THIẾT KẾ TÍNH TOÁN, CHƯA LẮP, CHƯA ĐO.** Nhánh thử: `test/max30102-led-sync`
 (không chạy trên `main`). Các giá trị dưới đây là tính toán từ datasheet và mạch hiện có;
 mọi kết luận về thời gian, độ rò và độ tuyến tính phải được đo trên phần cứng.

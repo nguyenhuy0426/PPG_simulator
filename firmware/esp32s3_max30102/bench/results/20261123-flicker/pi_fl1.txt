@@ -1,0 +1,20 @@
+1795426304.171 dark 10 s
+1795426314.172 flicker on: HR 75 bpm, red L = 600 + 300*pulse mV, 40 s
+1795426319.173 t=  5.0 s  writes/s    2573  i2c errors 0
+1795426324.173 t= 10.0 s  writes/s    2573  i2c errors 0
+1795426329.172 t= 15.0 s  writes/s    2594  i2c errors 0
+1795426334.173 t= 20.0 s  writes/s    2587  i2c errors 0
+1795426339.172 t= 25.0 s  writes/s    2596  i2c errors 0
+1795426344.172 t= 30.0 s  writes/s    2591  i2c errors 0
+1795426349.172 t= 35.0 s  writes/s    2597  i2c errors 0
+1795426354.172 flicker off: 103741 writes in 40 s (2594/s), 0 errors
+1795426354.173 DACs parked
+1795426356.366 dark 5 s
+1795426361.366 steady on: HR 75 bpm, red L = 600 + 300*pulse mV, 30 s
+1795426366.370 t=  5.0 s  writes/s     474  i2c errors 0
+1795426371.369 t= 10.0 s  writes/s     475  i2c errors 0
+1795426376.370 t= 15.0 s  writes/s     474  i2c errors 0
+1795426381.369 t= 20.0 s  writes/s     474  i2c errors 0
+1795426386.370 t= 25.0 s  writes/s     474  i2c errors 0
+1795426391.367 steady off: 14227 writes in 30 s (474/s), 0 errors
+1795426391.368 DACs parked

@@ -11,6 +11,7 @@
 #define DC_TAU_S         1.0f
 // Peak detector
 #define REFRACTORY_S     0.27f     // ~220 bpm
+#define REFRACTORY_FRAC  0.6f      // with a confident ACF period, ignore peaks earlier than 60 % of it
 #define ENV_DECAY_PER_S  0.5f      // envelope falls to 50 % in 1 s without a new peak
 #define PEAK_FRACTION    0.45f     // a peak must reach this fraction of the envelope
 // Decision thresholds
@@ -94,7 +95,12 @@ float ppg_hr_push(ppg_hr_t *p, float raw, bool saturated)
     if (p->prev1 > p->prev2 && p->prev1 >= yp && p->prev1 > PEAK_FRACTION * p->env && p->prev1 > 0.0f) {
         const uint32_t peak_n = p->n - 2;
         const float dt = (float)(peak_n - p->last_peak_n) / PPG_FS_HZ;
-        if (p->last_peak_n == 0 || dt >= REFRACTORY_S) {
+        // A noisy waveform (e.g. the flicker-demodulated signal) has extra local maxima inside a beat.
+        // Once the autocorrelation has a confident period, use 60 % of it as the refractory time.
+        float refractory = REFRACTORY_S;
+        if (p->hr_acf > 0.0f && p->acf_peak >= ACF_MIN && REFRACTORY_FRAC * 60.0f / p->hr_acf > refractory)
+            refractory = REFRACTORY_FRAC * 60.0f / p->hr_acf;
+        if (p->last_peak_n == 0 || dt >= refractory) {
             if (p->last_peak_n != 0 && dt <= 60.0f / PPG_HR_MIN_BPM) push_rr(p, dt);
             else if (p->last_peak_n != 0) p->rr_count = 0;   // gap too long: restart RR history
             p->last_peak_n = peak_n;
