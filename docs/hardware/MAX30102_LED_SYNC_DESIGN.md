@@ -5,8 +5,8 @@
 > thêm phần cứng (`bench/results/20261123-flicker/`). Mạch đồng bộ chỉ còn cần khi muốn dạng sóng sạch,
 > tách kênh đỏ/IR hoặc SpO₂.
 
-**Trạng thái: THIẾT KẾ TÍNH TOÁN, CHƯA LẮP, CHƯA ĐO.** Nhánh thử: `test/max30102-led-sync`
-(không chạy trên `main`). Các giá trị dưới đây là tính toán từ datasheet và mạch hiện có;
+**Trạng thái: THIẾT KẾ TÍNH TOÁN, CHƯA LẮP, CHƯA ĐO.** Mạch này chưa có trên phần cứng; app dùng chế độ
+MAX30102 (nhấp nháy LED đỏ, `docs/hardware-validation/2026-11-23-max30102/`) thay cho nó. Các giá trị dưới đây là tính toán từ datasheet và mạch hiện có;
 mọi kết luận về thời gian, độ rò và độ tuyến tính phải được đo trên phần cứng.
 
 ## 1. Vì sao cần
