@@ -10,6 +10,7 @@
 //   S,<seq>,<red>,<ir>            one line per sample when streaming is on (raw 18-bit counts)
 //   R,<json>                      once per second
 // Commands (one per line): led <red_mA> <ir_mA> | range <0-3> | stream <0|1> | ch <auto|red|ir> | info
+//                           rd  (capture the module's RD/IRD pins, see rd_probe.c)
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -30,6 +31,7 @@
 #include "lcd.h"
 #include "max30102.h"
 #include "ppg_hr.h"
+#include "rd_probe.h"
 
 static const char *TAG = "app";
 
@@ -433,6 +435,13 @@ static void console_task(void *arg)
             s_stream = i != 0;
         } else if (sscanf(line, "ch %7s", w) == 1) {
             s_ch_sel = !strcmp(w, "red") ? CH_RED : !strcmp(w, "ir") ? CH_IR : CH_AUTO;
+        } else if (!strcmp(line, "rd")) {
+            const bool was = s_stream;
+            s_stream = false;                 // keep the dump readable; the sensor keeps running
+            vTaskDelay(pdMS_TO_TICKS(50));
+            const esp_err_t e = rd_probe_capture();
+            printf("R,{\"rd\":\"%s\"}\n", esp_err_to_name(e));
+            s_stream = was;
         } else if (!strcmp(line, "info")) {
             printf("R,{\"info\":{\"red_ma\":%.1f,\"ir_ma\":%.1f,\"range\":%u,\"fs\":%.0f,\"stream\":%d,\"ch\":%d}}\n",
                    cfg.led_red_pa * 0.2f, cfg.led_ir_pa * 0.2f, cfg.adc_range, max30102_output_rate(&cfg),
@@ -463,5 +472,5 @@ void app_main(void)
 #if APP_USE_LCD
     xTaskCreatePinnedToCore(display_task, "display", 4096, NULL, 3, NULL, 0);
 #endif
-    xTaskCreatePinnedToCore(console_task, "console", 3072, NULL, 2, NULL, 0);
+    xTaskCreatePinnedToCore(console_task, "console", 4096, NULL, 2, NULL, 0);
 }
