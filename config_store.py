@@ -52,6 +52,9 @@ _DEFAULTS = {
     "dc_ir_mv": _DEFAULT_DC_MV,
     "dc_red_mv": _DEFAULT_DC_MV,
     "ac_polarity": POLARITY_ABOVE_DC,
+    # Settings → MAX30102: RED-only on/off output with the preset amplitude (config.MAX30102_*).
+    # The DC/AC fields above stay the user's own; the preset is applied at start.
+    "max30102_mode": False,
 }
 
 

@@ -65,6 +65,7 @@ class FakeEngine:
     def __init__(self, dac=True):
         self.dac, self.running, self.paused, self.current_clip, self.started = dac, True, False, None, []
         self.waveform_position_s = 0.0
+        self.max30102_mode = False
 
     @property
     def is_running(self):
@@ -240,3 +241,16 @@ def test_pi_is_not_shown_but_the_phone_still_finds_condition_at_index_4(tmp_path
     frame.metric_values = {k: (Mock(cget=Mock(return_value=f"<{k}>")), u) for k, u in METRICS}
     rec = dict(frame.remote_parts())["rec"]
     assert rec["m"] == ["<hr>", "<spo2>", "<rr>", "", "<condition>"]
+
+
+
+def test_playback_status_names_the_max30102_mode(tmp_path):
+    """In MAX30102 mode the recording goes out at the preset RED DC/AC (SignalEngine); the page says so."""
+    from config import MAX30102_AC_MV, MAX30102_DC_MV
+    engine = FakeEngine()
+    engine.max30102_mode = True
+    frame = loaded(tmp_path, engine)
+    frame.play()
+    t = COPY["en"]
+    assert last_status(frame) == (t["leds"].format(name="data_1.csv")
+                                  + t["max30102"].format(dc=MAX30102_DC_MV, ac=MAX30102_AC_MV))

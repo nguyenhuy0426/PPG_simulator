@@ -94,6 +94,15 @@ class DACManager:
             self._write_ir(value_ir)
             self._write_red(value_red)
 
+    def set_red(self, value_red: int):
+        """Write the Red DAC only (MAX30102 mode toggles it at the bus rate; IR stays as last written)."""
+        value_red = max(0, min(DAC_MAX_VALUE, int(value_red)))
+        self._last_red = value_red
+        if not self._ready or DRY_RUN:
+            return
+        with self._write_lock:
+            self._write_red(value_red)
+
     def _write_ir(self, value: int):
         try:
             self._dac_ir.raw_value = value

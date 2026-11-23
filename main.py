@@ -101,9 +101,10 @@ def stop_internet_links(mqtt, sync):
 
 def save_current_config(engine, language="en", theme="light"):
     try:
-        p = engine.get_ppg_params()
+        p = engine.params_for_save()   # MAX30102 mode: the user's amplitude, not the preset
         cfg = config_from_ppg_params(p)
         cfg["condition"] = p.condition
+        cfg["max30102_mode"] = engine.max30102_mode
         # Settings written directly by the pages (BLE switch, Calibration tolerance).
         saved = load_config()
         cfg["ble_enabled"] = saved.get("ble_enabled", True)
@@ -140,6 +141,7 @@ def main():
     p = engine.get_ppg_params()
     apply_config_to_params(config, p)
     engine.load_parameters(p)
+    engine.set_max30102_mode(config.get("max30102_mode") is True)
 
     # BLE remote control starts with every normal Pi app launch.  --no-ble is
     # retained only as a recovery/diagnostic escape hatch; --ble remains a

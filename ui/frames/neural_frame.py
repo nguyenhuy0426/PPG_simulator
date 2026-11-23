@@ -17,6 +17,7 @@ from core.apft_preview import DEFAULT_APFT_BUNDLE
 from core.apft_range import DEFAULT_RANGE, HR_LIMITS, MIN_WIDTH
 from core.psf_preview import DEFAULT_PSF_BUNDLE
 from core.sequence_worker import HR_MODELS, timeout_s
+from config import MAX30102_AC_MV, MAX30102_DC_MV
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from hw.opt101_rx import OPT101Receiver
@@ -46,6 +47,7 @@ COPY = {
                range_miss='APFT: đã sinh {n} đoạn, không đoạn nào có HR trong {lo:g}–{hi:g} bpm (HR đo được {measured}). Nới rộng khoảng hoặc nhấn Sinh đoạn mới.',
                reference='Real: nhịp train đã xử lý, đổi thời gian và lặp; không phải cặp IR/RED đo thật.',
                running='Đang phát {name} · {elapsed:.1f} / 30 s · A0: {rx}',
+               max30102=' · Chế độ MAX30102: chỉ LED RED, DC {dc:.0f} / AC {ac:.0f} mV (bỏ qua thanh DC/AC); OPT101 tạm dừng',
                saved='Đã lưu: {path}', stopped='Đầu ra đã dừng · DAC về 0 V.',
                save_rec='Lưu vào Recordings', saved_rec='Đã lưu vào Recordings: {name} (chỉ trên Pi, chưa lên DB)',
                sending='Đang gửi {name} về điện thoại ({n} gói)…', sent='Đã chuyển xong CSV cho điện thoại.'),
@@ -67,6 +69,7 @@ COPY = {
                range_miss='APFT: {n} windows generated, none with HR in {lo:g}–{hi:g} bpm (measured HR {measured}). Widen the range or press New sequence.',
                reference='Real: processed train pulse, retimed and repeated; not a measured IR/RED pair.',
                running='Playing {name} · {elapsed:.1f} / 30 s · A0: {rx}',
+               max30102=' · MAX30102 mode: RED LED only, DC {dc:.0f} / AC {ac:.0f} mV (DC/AC sliders not used); OPT101 paused',
                saved='Saved: {path}', stopped='Output stopped · DAC parked at 0 V.',
                save_rec='Save to Recordings', saved_rec='Saved to Recordings: {name} (on the Pi only, not in the DB)',
                sending='Sending {name} to the phone ({n} parts)…', sent='CSV handed to the phone.'),
@@ -553,8 +556,11 @@ class NeuralFrame(ctk.CTkFrame):
             rx_status=self.rx.channel_status(0)
             if self.rx.is_simulated: rx_status='dry-run'
             elif rx_status in ('ok','saturated') and self.rx.is_stale(0): rx_status+=' / stale'
-            self.status.configure(text=COPY[self.language]['running'].format(
-                name=self.engine._waveform_clip.name,elapsed=self.engine._clip_tick/100,rx=rx_status),text_color=T.ACCENT)
+            t=COPY[self.language]
+            text=t['running'].format(name=self.engine._waveform_clip.name,elapsed=self.engine._clip_tick/100,rx=rx_status)
+            if self.engine.max30102_mode:
+                text+=t['max30102'].format(dc=MAX30102_DC_MV,ac=MAX30102_AC_MV)
+            self.status.configure(text=text,text_color=T.ACCENT)
         elif self._was_playing:
             self.render()
             self.status.configure(text=COPY[self.language]['stopped'],text_color=T.MUTED)

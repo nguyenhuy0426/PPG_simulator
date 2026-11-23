@@ -4,6 +4,20 @@ import math
 from config import DAC_FULLSCALE_V
 
 MAX_SAMPLES = 100*60*30     # 30 min at 100 Hz (~25 MB of row tuples): a recording played to the LEDs may be this long
+SPAN_PERCENTILE = 0.02      # pulse_span: low/high taken at 2 % / 98 %, so a few spikes do not set the scale
+
+
+def pulse_span(clip):
+    """(lane, low V, high V) of the clip's pulse: the lane (1 = IR, 2 = RED) whose 2nd-98th percentile span is
+    the larger, and that span. The MAX30102 mode maps it onto its preset DC/AC (SignalEngine)."""
+    best = None
+    for lane in (1, 2):
+        values = sorted(row[lane] for row in clip.samples)
+        k = int(SPAN_PERCENTILE*(len(values)-1))
+        low, high = values[k], values[len(values)-1-k]
+        if best is None or high-low > best[2]-best[1]:
+            best = (lane, low, high)
+    return best
 
 
 @dataclass(frozen=True)

@@ -10,6 +10,7 @@ from ui import focus_is_inside
 from ui.i18n import normalise_language, text
 from ui.touch_slider import TouchSlider
 from models import limits
+from config import MAX30102_AC_MV, MAX30102_DC_MV, MAX30102_PEAK_MAX_MV, MAX30102_WRITE_HZ
 
 TOAST_MS = 3000
 DRAG_START_PX = 8
@@ -90,6 +91,18 @@ COPY = {
         coeff_a="Coefficient A", coeff_b="Coefficient B", coeff_b_hint="Must be > 0",
         apply_coefficients="Apply coefficients", not_number="{key}: enter a number",
         ie_integer="Inhale : exhale requires an integer from 1 to 5", seed_integer="Seed must be an integer",
+        tab_max30102="MAX30102",
+        max30102_note="Output for a MAX30102 sensor (e.g. ESP32 + MAX30102 reading HR). The sensor cancels steady "
+                      "light, so only the RED LED is driven, switched on and off {rate} times a second; "
+                      "its on-level follows the PPG. IR is off.",
+        max30102_preset="Preset while on: RED DC {dc:g} mV · AC {ac:g} mV · on-level capped at {peak:g} mV",
+        max30102_user="Heart rate, SpO₂, respiration and noise stay under your control (main screen and the "
+                      "other tabs). DC/AC on the Amplitude tab are held at the preset and come back when the "
+                      "mode is switched off.",
+        max30102_limits="One RED channel carries no SpO₂ for the sensor: it measures the pulse rate only. "
+                        "The OPT101 reading pauses while this output runs. Bench check, not a clinical "
+                        "measurement.",
+        max30102_enable="MAX30102 mode", apply_max30102="Apply MAX30102 mode",
         waveforms={}, noises={}),
     "vi": dict(
         tab_amplitude="Biên độ & hình dạng", tab_respiration="Hô hấp", tab_noise="Nhiễu & hiệu chuẩn",
@@ -126,6 +139,18 @@ COPY = {
         coeff_a="Hệ số A", coeff_b="Hệ số B", coeff_b_hint="Phải > 0",
         apply_coefficients="Áp dụng hệ số", not_number="{key}: hãy nhập một số",
         ie_integer="Hít vào : thở ra cần số nguyên từ 1 đến 5", seed_integer="Seed phải là số nguyên",
+        tab_max30102="MAX30102",
+        max30102_note="Đầu ra cho cảm biến MAX30102 (ví dụ ESP32 + MAX30102 đo nhịp tim). Cảm biến tự trừ ánh "
+                      "sáng ổn định, nên chỉ LED RED được phát, bật/tắt {rate} lần mỗi giây; "
+                      "mức sáng lúc bật đi theo dạng sóng PPG. LED IR tắt.",
+        max30102_preset="Thông số đặt sẵn khi bật: RED DC {dc:g} mV · AC {ac:g} mV · mức bật tối đa {peak:g} mV",
+        max30102_user="Nhịp tim, SpO₂, nhịp thở và nhiễu vẫn do bạn điều khiển (màn hình chính và các tab "
+                      "khác). DC/AC ở tab Biên độ được giữ theo thông số đặt sẵn và trở lại giá trị cũ khi tắt "
+                      "chế độ này.",
+        max30102_limits="Chỉ một kênh RED nên cảm biến không đo được SpO₂: chỉ đo nhịp tim. Việc đọc OPT101 "
+                        "tạm dừng trong lúc phát chế độ này. Đây là kiểm tra trên bàn thử, không phải phép đo "
+                        "lâm sàng.",
+        max30102_enable="Chế độ MAX30102", apply_max30102="Áp dụng chế độ MAX30102",
         # Option-menu labels for the model identifiers (English shows the identifiers themselves).
         waveforms=dict(ppg="PPG", sine="Hình sin", triangle="Tam giác", square="Vuông"),
         noises=dict(none="Không", proportional="Tỉ lệ", white="Nhiễu trắng", sine="Hình sin",
@@ -150,8 +175,9 @@ class AdvancedFrame(ctk.CTkFrame):
         # the window the slowest UI operation. Every Apply reads only its own tab.
         self._unbuilt = {}
         t = self.t
+        self.max30102_var = None
         for name, build in ((t["tab_amplitude"], self._amplitude), (t["tab_respiration"], self._respiration),
-                            (t["tab_noise"], self._noise)):
+                            (t["tab_noise"], self._noise), (t["tab_max30102"], self._max30102)):
             tab = self.tabs.add(name)
             tab.grid_columnconfigure(0, weight=1)
             tab.grid_rowconfigure(0, weight=1)
@@ -279,6 +305,20 @@ class AdvancedFrame(ctk.CTkFrame):
         self._entry(b, 6, 0, "spo2_coeff_a", t["coeff_a"])
         self._entry(b, 6, 1, "spo2_coeff_b", t["coeff_b"], t["coeff_b_hint"])
         self._apply_button("apply_coefficients", self.on_apply_coefficients)
+
+    def _max30102(self, b):
+        t = self.t
+        self._note(b, 0, t["max30102_note"].format(rate=MAX30102_WRITE_HZ))
+        self._note(b, 1, t["max30102_preset"].format(dc=MAX30102_DC_MV, ac=MAX30102_AC_MV, peak=MAX30102_PEAK_MAX_MV))
+        self.max30102_var = ctk.BooleanVar(value=self.engine.max30102_mode)
+        ctk.CTkCheckBox(b, text=t["max30102_enable"], variable=self.max30102_var).grid(
+            row=2, column=0, sticky="w", padx=12, pady=10)
+        self._note(b, 3, t["max30102_user"])
+        self._note(b, 4, t["max30102_limits"])
+        self._apply_button("apply_max30102", self.on_apply_max30102)
+
+    def on_apply_max30102(self):
+        self._apply(lambda: self.engine.set_max30102_mode(self.max30102_var.get()))
 
     def _number(self, key, optional=False):
         text = self.entries[key].get().strip()
@@ -442,3 +482,5 @@ class AdvancedFrame(ctk.CTkFrame):
     def on_show(self):
         self._user_hold.clear()
         self._load(set(self.entries), set(self.vars), set(self._menus()))
+        if self.max30102_var is not None:
+            self.max30102_var.set(self.engine.max30102_mode)

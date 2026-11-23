@@ -17,10 +17,13 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import (
     MODEL_DT_PPG, MODEL_TICK_US_PPG, UPSAMPLE_RATIO_PPG,
-    SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ, DAC_FULLSCALE_V,
+    SIGNAL_BUFFER_SIZE, DAC_IDLE_VALUE, FS_TIMER_HZ, DAC_FULLSCALE_V, DRY_RUN, I2C_BUS, DAC_ADDR_RED,
+    MAX30102_DC_MV, MAX30102_AC_MV, MAX30102_PEAK_MAX_MV, MAX30102_WRITE_HZ,
 )
-from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES
+from models.ppg_model import PPGModel, PPGParameters, COND_NORMAL, CONDITION_NAMES, POLARITY_ABOVE_DC
 from hw.dac_manager import DACManager
+from hw.max30102_flicker import FlickerProcess, ThreadFlicker
+from core.waveform_clip import pulse_span
 from calibration import dac_voltage_to_code
 from core.rate_scheduler import FixedRateTicker
 from comm.logger import log
@@ -47,6 +50,16 @@ PB_PAUSED   = 2
 # How often the recording pump drains the sample buffer to the CSV sink.
 # 6000 queued samples at 100 Hz is 60 s, so a slow pump can never lose rows.
 RECORD_PUMP_INTERVAL_S = 0.25
+
+# MAX30102 mode (config.MAX30102_*): amplitude settings the mode replaces with its preset and puts back on exit.
+MAX30102_PRESET = {
+    "dc_ir_mv": MAX30102_DC_MV, "dc_red_mv": MAX30102_DC_MV,
+    "ac_ir_mv": MAX30102_AC_MV, "ac_red_mv": MAX30102_AC_MV,
+    "output_dc_offset_mv": 0.0, "amplification": 1.0, "ac_polarity": POLARITY_ABOVE_DC,
+    "lock_ac": False, "lock_dc": False,
+}
+MAX30102_SAVED_FIELDS = tuple(MAX30102_PRESET) + ("perfusion_index",)
+MAX30102_MIN_CLIP_SPAN_V = 0.001   # a clip lane flatter than this carries no pulse: the LED holds the preset DC
 
 
 class SignalEngine:
@@ -128,6 +141,15 @@ class SignalEngine:
         # amplitude parameter is held when PI changes.
         self.ac_dc_locked = False
 
+        # MAX30102 mode: RED-only on/off output with the preset amplitude (set_max30102_mode).
+        self._max30102 = False
+        self._max30102_saved = None
+        self._max30102_writes = 0
+        self._max30102_clipped = 0
+        self._clip_span = None   # (clip, lane, low V, high V) of the clip playing in MAX30102 mode
+        self._rx_paused = False        # the MAX30102 output paused the OPT101 acquisition
+        self._flick_ticker = None      # schedule of the in-thread writer (dry run)
+
         # Ring-buffer health counters (see get_stats())
         self._overrun_count = 0
         self._underrun_count = 0
@@ -183,12 +205,17 @@ class SignalEngine:
                 self._waveform_clip = waveform_clip
                 self._clip_tick = 0
                 self._cal_time = 0.0
+                if waveform_clip is not None and self._max30102:   # sorts the clip once, before the 100 Hz ticks
+                    self._clip_span = (waveform_clip, *pulse_span(waveform_clip))
                 self.ppg_params.condition = condition
                 self.ppg_model.set_parameters(self.ppg_params)
                 self.ppg_model.reset()
 
             if waveform_clip is not None:
                 ir, red = waveform_clip.at(0)
+                if self._max30102:
+                    with self._model_lock:
+                        red = self._max30102_clip_level(ir, red)
                 self._prev_ir = self._curr_ir = dac_voltage_to_code(ir)
                 self._prev_red = self._curr_red = dac_voltage_to_code(red)
 
@@ -280,6 +307,8 @@ class SignalEngine:
             "dropped_samples": self._dropped_samples,
             "samples_generated": self._sample_count,
             "buffer_fill": (self._write_idx - self._read_idx) % SIGNAL_BUFFER_SIZE,
+            "max30102_writes": self._max30102_writes,
+            "max30102_clipped": self._max30102_clipped,
         }
 
     def reset_stats(self) -> None:
@@ -287,6 +316,8 @@ class SignalEngine:
         self._underrun_count = 0
         self._dropped_samples = 0
         self._ac_comp_clipped = 0
+        self._max30102_writes = 0
+        self._max30102_clipped = 0
 
     # ─── Generation Loop (background thread) ───
     def _generate_one_tick(self) -> None:
@@ -305,11 +336,14 @@ class SignalEngine:
                     return
                 ir_v, red_v = self._waveform_clip.at(stamp)
                 disp_ir, disp_red = ir_v, red_v
+                if self._max30102:   # the clip's pulse at the preset DC/AC on the RED on-level
+                    red_v = disp_red = self._max30102_clip_level(ir_v, red_v)
                 self._clip_tick += 1
             elif self._calibration is None:
                 ir_v, red_v, disp_ir, disp_red = self.ppg_model.generate_both_samples(MODEL_DT_PPG)
                 stamp = self.ppg_model.simulated_time_s
-                ir_v, red_v = self._compensate(ir_v, red_v, disp_ir, disp_red)
+                if not self._max30102:   # AC balance trims the OPT101 receive path, not the sensor's
+                    ir_v, red_v = self._compensate(ir_v, red_v, disp_ir, disp_red)
             else:
                 frequency, ir_level_mv, red_level_mv, swing_mv = self._calibration
                 self._cal_time += MODEL_DT_PPG
@@ -374,27 +408,88 @@ class SignalEngine:
             time.sleep(ticker.wait_seconds(time.perf_counter(), GENERATION_MAX_WAIT_S))
 
     def _dac_loop(self):
-        """DAC thread — drains the ring to the MCP4725 pair at FS_TIMER_HZ."""
+        """DAC thread — drains the ring to the MCP4725 pair at FS_TIMER_HZ.
+
+        In MAX30102 mode (Classic, Model and Recording clips; not the calibration output) the ring sets the RED on-level at FS_TIMER_HZ and a flicker
+        writer (hw/max30102_flicker.py) writes RED at MAX30102_WRITE_HZ alternating 0 and that level; IR is
+        held at 0 and the OPT101 acquisition is paused, its I2C reads would make the write times irregular."""
         ticker = FixedRateTicker(1.0 / FS_TIMER_HZ, time.perf_counter())
+        peak = dac_voltage_to_code(MAX30102_PEAK_MAX_MV / 1000.0)
+        writer = None
+        try:
+            while self._running:
+                flicker = self.state == SIG_RUNNING and self._max30102 and self._calibration is None
+                if flicker and writer is None:
+                    writer = self._flicker_start(peak)
+                elif not flicker and writer is not None:
+                    writer = self._flicker_stop(writer)
 
-        while self._running:
-            if self.state != SIG_RUNNING:
-                time.sleep(0.01)
-                ticker.reset(time.perf_counter())
-                continue
+                if self.state != SIG_RUNNING:
+                    time.sleep(0.01)
+                    ticker.reset(time.perf_counter())
+                    continue
 
-            for _ in range(ticker.due(time.perf_counter())):
-                with self._buf_lock:
-                    sample = self._pop_dac_sample()
-                if sample is None:
-                    break
-                self.dac_manager.set_values(sample[0], sample[1])
+                for _ in range(ticker.due(time.perf_counter())):
+                    with self._buf_lock:
+                        sample = self._pop_dac_sample()
+                    if sample is None:
+                        break
+                    if writer is not None:
+                        if sample[1] > peak:
+                            self._max30102_clipped += 1
+                        writer.set_level(min(sample[1], peak))
+                    else:
+                        self.dac_manager.set_values(sample[0], sample[1])
 
-            # Two I2C writes already consume much of a 1 ms tick on Pi 4.
-            # A fixed extra 0.5 ms sleep here caused sustained buffer growth.
-            time.sleep(ticker.wait_seconds(time.perf_counter(), LOOP_YIELD_S))
+                if isinstance(writer, ThreadFlicker):
+                    writer.service()
+                    now = time.perf_counter()
+                    time.sleep(min(self._flick_ticker.wait_seconds(now, LOOP_YIELD_S),
+                                   ticker.wait_seconds(now, LOOP_YIELD_S)))
+                    continue
 
+                # Two I2C writes already consume much of a 1 ms tick on Pi 4.
+                # A fixed extra 0.5 ms sleep here caused sustained buffer growth.
+                time.sleep(ticker.wait_seconds(time.perf_counter(), LOOP_YIELD_S))
+        finally:
+            self._flicker_stop(writer)
+            self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+
+    def _flicker_start(self, peak):
+        """Begin the MAX30102 output: IR to 0, OPT101 reads paused, RED writer started."""
         self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+        self._rx_paused = False
+        try:
+            from hw.opt101_rx import OPT101Receiver
+            rx = OPT101Receiver.get_instance()
+            if rx.is_running:
+                rx.stop()
+                self._rx_paused = True
+        except Exception:
+            log.exception("[SignalEngine] Could not pause the OPT101 acquisition")
+        if DRY_RUN or not self.dac_manager.is_ready:
+            self._flick_ticker = FixedRateTicker(1.0 / MAX30102_WRITE_HZ, time.perf_counter())
+            return ThreadFlicker(self.dac_manager, MAX30102_WRITE_HZ, peak, self._flick_ticker)
+        log.info(f"[SignalEngine] MAX30102 output: RED at {MAX30102_WRITE_HZ} writes/s in its own process")
+        return FlickerProcess(I2C_BUS, DAC_ADDR_RED, MAX30102_WRITE_HZ, peak)
+
+    def _flicker_stop(self, writer):
+        """End the MAX30102 output: writer stopped, RED parked, OPT101 reads resumed. Returns None."""
+        if writer is None:
+            return None
+        writes, errors, status = writer.stop()
+        self._max30102_writes += writes
+        if errors or status:
+            log.error(f"[SignalEngine] MAX30102 writer: {errors} I2C errors, exit status {status}")
+        self.dac_manager.set_values(DAC_IDLE_VALUE, DAC_IDLE_VALUE)
+        if self._rx_paused:
+            self._rx_paused = False
+            try:
+                from hw.opt101_rx import OPT101Receiver
+                OPT101Receiver.get_instance().start()
+            except Exception:
+                log.exception("[SignalEngine] Could not resume the OPT101 acquisition")
+        return None
 
     def start_waveform(self, clip):
         """Play one finite clip through the same single DAC writer as Classic."""
@@ -419,17 +514,85 @@ class SignalEngine:
         with self._model_lock:
             return self._clip_tick * MODEL_DT_PPG
 
+    def _max30102_clip_level(self, ir_v, red_v):
+        """With the model lock held: RED on-level (V) for a clip sample in MAX30102 mode.
+
+        A Model or Recording clip carries its own DC/AC (the Model page sliders, or whatever was recorded). Its
+        pulse lane (pulse_span) is mapped linearly so its 2nd-98th percentile span runs from the preset DC to
+        DC + AC; the shape, beat timing and respiration of the clip are kept."""
+        clip = self._waveform_clip
+        if self._clip_span is None or self._clip_span[0] is not clip:
+            self._clip_span = (clip, *pulse_span(clip))
+        _, lane, low, high = self._clip_span
+        if high - low < MAX30102_MIN_CLIP_SPAN_V:
+            return MAX30102_DC_MV / 1000.0
+        value = ir_v if lane == 1 else red_v
+        level = (MAX30102_DC_MV + (value - low) / (high - low) * MAX30102_AC_MV) / 1000.0
+        return max(0.0, min(DAC_FULLSCALE_V, level))
+
     # Model mutations and generation share one lock, so a tick sees complete settings.
     def _update_model(self, method, *args, **kwargs):
         with self._model_lock:
             getattr(self.ppg_model, method)(*args, **kwargs)
             self.ppg_params = self.ppg_model.params.copy()
+            self._enforce_max30102_preset()
 
     def load_parameters(self, params):
         with self._model_lock:
             self.ppg_model.set_parameters(params)
             self.ppg_params = self.ppg_model.params.copy()
             self.ac_dc_locked = self.ppg_params.lock_ac and self.ppg_params.lock_dc
+            self._enforce_max30102_preset()
+
+    # ─── MAX30102 sensor mode (config.MAX30102_*) ───
+    @property
+    def max30102_mode(self) -> bool:
+        return self._max30102
+
+    def set_max30102_mode(self, enabled) -> None:
+        """RED-only on/off output with the preset DC/AC for a MAX30102; HR, SpO2, RR and noise stay the user's.
+
+        The amplitude settings in force before are kept and put back when the mode is switched off. While the
+        mode is on, every parameter change (panel, phone) is followed by the preset again."""
+        enabled = bool(enabled)
+        with self._model_lock:
+            if enabled == self._max30102:
+                return
+            params = self.ppg_model.params.copy()
+            if enabled:
+                self._max30102_saved = {k: getattr(params, k) for k in MAX30102_SAVED_FIELDS}
+                self._max30102 = True
+                self._enforce_max30102_preset()
+            else:
+                for key, value in (self._max30102_saved or {}).items():
+                    setattr(params, key, value)
+                self._max30102, self._max30102_saved = False, None
+                self.ppg_model.set_parameters(params)
+                self.ppg_params = self.ppg_model.params.copy()
+                self.ac_dc_locked = params.lock_ac and params.lock_dc
+        log.info(f"[SignalEngine] MAX30102 mode {'on' if enabled else 'off'}")
+
+    def _enforce_max30102_preset(self):
+        """With the model lock held: put the preset amplitude back if a change moved it."""
+        if not self._max30102:
+            return
+        params = self.ppg_model.params
+        if all(getattr(params, key) == value for key, value in MAX30102_PRESET.items()):
+            return
+        params = params.copy()
+        for key, value in MAX30102_PRESET.items():
+            setattr(params, key, value)
+        self.ppg_model.set_parameters(params)
+        self.ppg_params = self.ppg_model.params.copy()
+        self.ac_dc_locked = False
+
+    def params_for_save(self):
+        """Parameters to persist: in MAX30102 mode, the amplitude settings from before the mode, not the preset."""
+        with self._model_lock:
+            params = self.ppg_params.copy()
+            for key, value in (self._max30102_saved or {}).items():
+                setattr(params, key, value)
+            return params
 
     def update_noise_level(self, noise):
         self._update_model("set_noise_level", noise)
@@ -713,6 +876,7 @@ class SignalEngine:
             self.ppg_model = candidate
             self.ppg_params = candidate.params.copy()
             self.ac_dc_locked = values["lock_ac"] and values["lock_dc"]
+            self._enforce_max30102_preset()
 
     def update_noise_settings(self, kind, amplitude, frequency, seed, level):
         from models.limits import NOISE_LEVEL
