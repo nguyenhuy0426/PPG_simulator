@@ -1,0 +1,8 @@
+1795426903.806 dark 8 s
+1795426911.806 flicker on: HR 80 bpm, red L = 600 + 300*pulse mV, 30 s
+1795426941.806 flicker off: 77489 writes in 30 s (2583/s), 0 errors
+1795426941.807 DACs parked
+Running as unit: ppg-simulator.service; invocation ID: abcbea95e4394f03b586836e81c09d0b
+active
+0x60:0xc0 0x00 0x00
+0x61:0xc0 0x00 0x00

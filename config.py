@@ -114,6 +114,28 @@ DAC_FULLSCALE_V = 3.28                         # Volts (MCP4725 full-scale = VDD
 DAC_FULLSCALE_MV = DAC_FULLSCALE_V * 1000.0    # 3280.0 mV (user-facing convenience)
 
 # ============================================================================
+# MAX30102 SENSOR MODE (Settings → MAX30102)
+# ============================================================================
+# A MAX30102 subtracts an ambient sample (its own LED off) from every LED sample,
+# so the steady or slowly varying simulator light cancels. In this mode only the
+# RED LED is driven, switched between 0 and the PPG level on every DAC write, and
+# the sensor's residual follows that level. IR is held at 0 V. Bench result
+# 23 Nov 2026 (ESP32-S3 + MAX30102, LEDs of the sensor off): HR 60/72/80/90/100/
+# 120 bpm read back within ~1 bpm at DC 600 / AC 300 mV
+# (firmware/esp32s3_max30102/bench/results/20261123-flicker). One red channel
+# carries no SpO2: the sensor's red and IR samples see the same light.
+MAX30102_DC_MV = 600.0          # preset DC of the RED channel in this mode
+MAX30102_AC_MV = 300.0          # preset AC (pulse height above DC)
+MAX30102_PEAK_MAX_MV = 1000.0   # cap on the on-level (noise / respiration peaks)
+# Paced RED writes per second (toggle = half of it). The toggle must stay away from
+# multiples of the sensor sample rate, or the beat between them lands in the HR band.
+# Measured 23 Nov 2026 at 75 bpm, sensor 200 sps: 2000 writes/s (1000 Hz = 5 x 200)
+# read 144 bpm; free-running ~2040/s inside the app read NO SIGNAL; 1500/s (750 Hz,
+# 3.75 x 200, also 7.5 x 100 and 1.875 x 400) read 73.7-74.4 bpm. The app's I2C bus
+# (DACs + OPT101 ADC at 100 kHz) sustains ~2000 writes/s, so 1500 leaves headroom.
+MAX30102_WRITE_HZ = 1500
+
+# ============================================================================
 # BUFFER CONFIGURATION
 # ============================================================================
 SIGNAL_BUFFER_SIZE = 1024       # TX ring samples (~2 s at the 500 Hz Pi DAC rate)

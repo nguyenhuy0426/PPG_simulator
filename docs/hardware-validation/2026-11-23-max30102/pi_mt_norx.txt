@@ -1,0 +1,6 @@
+rx False; preset: RED DC 600.0 AC 300.0; user: SpO2 99.0 RR 16.0 noise proportional/0.0
+1795447332.632 dark 8 s
+1795447340.639 flicker on: HR 75
+interval us mean 667 sd 101 p1 501 p99 890 max 12279
+1795447375.905 flicker off: writes/s 1488 clipped 0 underruns 2 overruns 0 red_err 0
+DACs parked

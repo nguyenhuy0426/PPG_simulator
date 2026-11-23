@@ -69,7 +69,7 @@ class TestSettingsLanguage(unittest.TestCase):
                                or any(line in self.english_only() for line in s.split("\n")))
             self.assertEqual(leftovers, [])
             tabs = list(self.app.signal_setup_panel.tabs._tab_dict)    # tab names are not widget text
-            self.assertEqual(tabs, [COPY["vi"][k] for k in ("tab_amplitude", "tab_respiration", "tab_noise")])
+            self.assertEqual(tabs, [COPY["vi"][k] for k in ("tab_amplitude", "tab_respiration", "tab_noise", "tab_max30102")])
             self.assertIn(COPY["vi"]["apply_signal"], shown)
         finally:
             self.app.close_signal_setup()

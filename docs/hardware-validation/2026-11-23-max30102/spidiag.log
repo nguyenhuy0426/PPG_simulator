@@ -1,0 +1,67 @@
+1795442779.504 ESP-ROM:esp32s3-20210327
+1795442779.518 Build:Mar 27 2021
+1795442779.519 rst:0x1 (POWERON),boot:0xe (SPI_FAST_FLASH_BOOT)
+1795442779.519 SPIWP:0xee
+1795442779.519 mode:DIO, clock div:1
+1795442779.527 load:0x3fce2810,len:0x1870
+1795442779.527 load:0x403c8700,len:0x4
+1795442779.527 load:0x403c8704,len:0xce8
+1795442779.528 load:0x403cb700,len:0x2ed8
+1795442779.528 entry 0x403c8910
+1795442779.539 [0;32mI (27) boot: ESP-IDF 5.3.2.241224 2nd stage bootloader[0m
+1795442779.539 [0;32mI (27) boot: compile time Nov 23 2026 20:18:52[0m
+1795442779.550 [0;32mI (27) boot: Multicore bootloader[0m
+1795442779.550 [0;32mI (30) boot: chip revision: v0.2[0m
+1795442779.561 [0;32mI (34) boot: efuse block revision: v1.4[0m
+1795442779.561 [0;32mI (39) boot.esp32s3: Boot SPI Speed : 80MHz[0m
+1795442779.562 [0;32mI (44) boot.esp32s3: SPI Mode       : DIO[0m
+1795442779.572 [0;32mI (48) boot.esp32s3: SPI Flash Size : 16MB[0m
+1795442779.572 [0;32mI (53) boot: Enabling RNG early entropy source...[0m
+1795442779.583 [0;32mI (58) boot: Partition Table:[0m
+1795442779.584 [0;32mI (62) boot: ## Label            Usage          Type ST Offset   Length[0m
+1795442779.595 [0;32mI (69) boot:  0 nvs              WiFi data        01 02 00009000 00006000[0m
+1795442779.605 [0;32mI (77) boot:  1 phy_init         RF data          01 01 0000f000 00001000[0m
+1795442779.606 [0;32mI (84) boot:  2 factory          factory app      00 00 00010000 00100000[0m
+1795442779.617 [0;32mI (92) boot: End of partition table[0m
+1795442779.617 [0;32mI (96) esp_image: segment 0: paddr=00010020 vaddr=3c030020 size=0dabch ( 55996) map[0m
+1795442779.628 [0;32mI (114) esp_image: segment 1: paddr=0001dae4 vaddr=3fc94700 size=02534h (  9524) load[0m
+1795442779.634 [0;32mI (117) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=2193ch (137532) map[0m
+1795442779.659 [0;32mI (145) esp_image: segment 3: paddr=00041964 vaddr=3fc96c34 size=006b8h (  1720) load[0m
+1795442779.664 [0;32mI (146) esp_image: segment 4: paddr=00042024 vaddr=40374000 size=106b8h ( 67256) load[0m
+1795442779.679 [0;32mI (166) esp_image: segment 5: paddr=000526e4 vaddr=600fe100 size=00004h (     4) load[0m
+1795442779.687 [0;32mI (173) boot: Loaded app from partition at offset 0x10000[0m
+1795442779.688 [0;32mI (173) boot: Disabling RNG early entropy source...[0m
+1795442779.692 [0;32mI (186) cpu_start: Multicore app[0m
+1795442779.708 [0;32mI (196) cpu_start: Pro cpu start user code[0m
+1795442779.708 [0;32mI (196) cpu_start: cpu freq: 240000000 Hz[0m
+1795442779.719 [0;32mI (196) app_init: Application information:[0m
+1795442779.719 [0;32mI (199) app_init: Project name:     esp32s3_max30102[0m
+1795442779.730 [0;32mI (204) app_init: App version:      1[0m
+1795442779.731 [0;32mI (209) app_init: Compile time:     Nov 23 2026 20:18:40[0m
+1795442779.741 [0;32mI (215) app_init: ELF file SHA256:  a800c7d32...[0m
+1795442779.742 [0;32mI (220) app_init: ESP-IDF:          5.3.2.241224[0m
+1795442779.753 [0;32mI (225) efuse_init: Min chip rev:     v0.0[0m
+1795442779.753 [0;32mI (230) efuse_init: Max chip rev:     v0.99 [0m
+1795442779.753 [0;32mI (235) efuse_init: Chip rev:         v0.2[0m
+1795442779.765 [0;32mI (240) heap_init: Initializing. RAM available for dynamic allocation:[0m
+1795442779.775 [0;32mI (247) heap_init: At 3FC98C10 len 00050B00 (322 KiB): RAM[0m
+1795442779.775 [0;32mI (253) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM[0m
+1795442779.786 [0;32mI (259) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM[0m
+1795442779.786 [0;32mI (265) heap_init: At 600FE104 len 00001EE4 (7 KiB): RTCRAM[0m
+1795442779.797 [0;32mI (272) spi_flash: detected chip: boya[0m
+1795442779.797 [0;32mI (276) spi_flash: flash io: dio[0m
+1795442779.808 [0;32mI (280) sleep: Configure to isolate all GPIO pins in sleep state[0m
+1795442779.808 [0;32mI (287) sleep: Enable automatic switching of GPIO sleep configuration[0m
+1795442779.810 [0;32mI (294) main_task: Started on CPU0[0m
+1795442779.835 [0;32mI (322) main_task: Calling app_main()[0m
+1795442779.837 [0;32mI (323) gpio: GPIO[9]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 [0m
+1795442782.332 P,boot_idle,g9_low_frac=0.00,g10_mv=3024..3035,g8_min_mv=3189
+1795442783.334 P,bus_init_idle,g9_low_frac=0.05,g10_mv=1372..2705,g8_min_mv=3189
+1795442784.583 P,tx_20MHz,g9_low_frac=0.15,g10_mv=1908..2718,g8_min_mv=3169
+1795442785.783 P,after_stop,g9_low_frac=1.00,g10_mv=1075..1191,g8_min_mv=3189
+1795442787.033 P,tx_1MHz,g9_low_frac=0.49,g10_mv=1297..2918,g8_min_mv=3097
+1795442788.232 P,after_stop,g9_low_frac=1.00,g10_mv=730..785,g8_min_mv=3189
+1795442789.483 P,tx_20MHz,g9_low_frac=0.40,g10_mv=1221..2572,g8_min_mv=3133
+1795442790.688 P,after_stop,g9_low_frac=1.00,g10_mv=697..744,g8_min_mv=3189
+1795442790.689 P,done
+1795442790.689 [0;32mI (11176) main_task: Returned from app_main()[0m

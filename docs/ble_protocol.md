@@ -185,7 +185,7 @@ applies**.
 | `hr` | heart rate setpoint | 10–300 BPM |
 | `spo2` | SpO₂ target | 0–100 % |
 | `rr` | respiration rate | 1–150 BrPM |
-| `pi` | perfusion index | 0.01–30 % (see PI/lock note) |
+| `pi` | perfusion index; neither app shows PI since 2026-11-18, the key stays for older clients | 0.01–30 % (see PI/lock note) |
 | `noise` | artefact level | 0–1 |
 | `condition` | condition mode index | 0–5 (Normal … Vasodilation) |
 | `ac_ir_mv` / `ac_red_mv` | explicit AC amplitude | 0–1500 mV (`ac_red_mv` explicit uncouples RED from SpO₂) |
@@ -193,7 +193,7 @@ applies**.
 | `run` | **v2** start/stop the simulation (current condition) | `true` / `false`; also accepts `1`/`0`/`"true"`/`"false"`. Idempotent. |
 | `record` | **v2** start/stop CSV recording (engine-owned sink → `dataset/`) | `true` / `false`. Requires `run:true` first; needs no GUI. Idempotent. |
 | `record_file` | **v2** shared recording basename | Short bare `.csv` name. Both sides use it for the synchronized recording session. |
-| `pb` | **v2** drive the Pi's recordings playback | `"start"` \| `"stop"` \| `"pause"` \| `"resume"` |
+| `pb` | **v2** drive the Pi's recordings playback; since 2026-11-18 the recording's DAC commands go to the LEDs in place of Classic (screen only when there are no DACs) | `"start"` \| `"stop"` \| `"pause"` \| `"resume"` |
 | `pb_file` | **v2** recording to play (with `pb:"start"`) | bare file name in `dataset/`; `.csv` appended if omitted; directory components are stripped; missing file → logged, no crash |
 | `origin` | informational | ignored by the Pi |
 | `seq` | informational | ignored by the Pi |
@@ -338,10 +338,12 @@ characteristic returns the `page` part.
 | `page` | `v` page (`monitor`, `calibration`, `recordings`, `neural`), `lang`, `hw` (`hardware`/`dry_run`/`no_dac`), `st` [buffer, lost, clipped], `hz` [model, DAC], `ver` |
 | `tx` | `l` [[title, detail] per TX lane], `p` [placeholder, sub] |
 | `rxi`, `rxr` | IR / RED receiver lane: `t` title, `d` detail, `b`, `b2` badges (received rate, SpO₂, RR), `m`, `s` message when the lane has no samples |
-| `mon` | Monitor status line `dot`, `h`, `d`, `dk`; `beep`; `rm` (RED AC manual) |
+| `mon` | Monitor status line `dot`, `h`, `d`, `dk`; `beep`; `rm` (RED AC manual); `nb` Noise card badge: empty while the noise kind is proportional (the level acts), else the kind chosen in Settings, and the phone greys the Noise card out |
 | `cal`, `calst` | sliders `f`, `ir`, `red`, `sw`, `tol`; `run`, `sweep`; `dots` [[state, text] IR, RED]; `tr` sent range; status `s`, `c` |
-| `nn`, `nnst`, `nni`, `pv` | `mode`, `prof`, `hr`, `lo`, `hi`, `dc`, `ac`, `seek`, `busy`, `play`, `can`; status; page info; preview chunks `pv` (`id`, lane `l` of `n`, chunk `c` of `m`, `lo`/`hi` mV, `t` s, `v` 0–999) |
-| `ls`, `rec` | recording names in chunks (`c` of `m`, `f`); `sel`, `play`, `pos`, `dur`, `m` recorded setpoints, `i` file info |
+| `nn`, `nnst`, `nni`, `pv` | `mode`, `ml` mode label, `prof`, `hr`, `lo`, `hi`, `dc`, `ac`, `seek`, `busy`, `play`, `can`; status; page info; preview chunks `pv` (`id`, lane `l` of `n`, chunk `c` of `m`, `lo`/`hi` mV, `t` s, `v` 0–999) |
+| `nnx` | a Model window's CSV (`time_s,ir_v,red_v`) for the phone's Export CSV: `id` from the request, chunk `c` of `m`, text `d` (whole lines), file name `n` on chunk 0 only; each part ≤ 240 bytes; re-sent in the rotation until the phone sends `exp_ok` or 120 s pass |
+| `ls`, `rec` | recording names in chunks (`c` of `m`, `f`); `sel`, `play`, `pos`, `dur`, `m` recorded setpoints [hr, spo2, rr, pi, condition] (index 3 is sent empty: PI is no longer shown), `i` file info, `db` true when a database is configured |
+| `sy` | `s`: one letter per listed recording, in list order: `l` local, `s` in the database, `p` uploading, `e` upload error (docs/remote_mqtt.md) |
 
 **Commands** (on the Command characteristic, queued for the Tk thread, applied with
 the same methods as the Pi's own buttons and sliders; the addressed page is shown
@@ -352,8 +354,16 @@ first, since Calibration and Neural playback stop when their page is left):
 {"beep":false}   {"gauss":true}
 {"cal":{"f":1,"ir":500,"red":500,"sw":100,"tol":20,"run":true}}   {"cal":{"spo2":true}}
 {"nn":{"mode":"APFT-GAN","lo":70,"hi":80,"dc":500,"ac":45,"gen":true}}   {"nn":{"play":true}}
+{"nn":{"save":true}}                     save the window to Recordings (dataset/, stays local)
+{"nn":{"exp":12345}}   {"nn":{"exp_ok":12345}}   send the window as "nnx" parts / the phone saved it
 {"rec":{"sel":"data_1.csv"}}   (play/pause/resume/stop stay on v2 "pb")
+{"rec":{"up":"data_1.csv"}}              Upload to DB, after the phone asked twice
 ```
+
+`exp` is an integer id from 1 to 2³¹−1 chosen by the phone; it sends the window the page holds for the
+current mode, and nothing when there is none. `save` is ignored while a window is being generated. A window saved to Recordings holds its DAC codes at its native rate and its HR when it has
+one; SpO₂, RR and PI are blank (`core/model_export.py`). Deleting a recording is a Pi-only button (two taps);
+there is no remote command for it.
 
 Shapes the pages cannot use are dropped before queueing (`remote_request`); values
 are clamped by the page widgets. A headless `--ble-only` run has no pages: v3 page
@@ -363,6 +373,13 @@ morphology models run in the Pi's worker process; the phone never runs them.
 Verified 2026-11-17 on the Pi 4 with a Samsung SM-G960F (Android 10) running the
 app: every command above was applied (`[BLE] Command applied` lines), the Pi screen
 and the phone showed the same values, and Lost stayed 0 while streaming.
+
+2026-11-18, Pi 4 + the same phone over MQTT (same payloads as here): `exp`/`exp_ok` sent 412 `nnx`
+parts in 1.0 s and the phone saved 3001 lines; `rec.up` uploaded a saved Model window after two taps.
+`nb` is covered by a host test only (`tests/test_classic_ui.py`); the Noise card's read-only badge
+was not checked on the phone. `save` writes through `core/model_export.py`, whose recording round trip
+`tests/test_model_export.py` checks; there is no test record of the `save` command itself sent from the phone. Over Bluetooth the `nnx` transfer was not
+timed (about 20 s expected for a 30 s window at 100 Hz).
 
 ## Running
 

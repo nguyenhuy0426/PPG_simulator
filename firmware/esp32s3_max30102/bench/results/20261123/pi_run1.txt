@@ -1,0 +1,16 @@
+1795422876.237 LEDs dark for 15 s
+1795422876.238 dark: IR n=1500 med      0 mV pp  1378  RED n=1500 med      0 mV pp   812
+1795422876.239 PPG on: HR 75 bpm  IR DC 500/AC 45.0 mV  RED DC 500/AC 45.0 mV  for 60 s
+1795422876.240 t=    5 s  IR n=500 med      0 mV pp  1366  RED n=500 med      0 mV pp   779
+1795422876.241 t=   10 s  IR n=500 med      0 mV pp  1382  RED n=500 med      0 mV pp   771
+1795422876.242 t=   15 s  IR n=501 med      0 mV pp  1365  RED n=500 med      0 mV pp   783
+1795422876.243 t=   20 s  IR n=500 med      2 mV pp  1360  RED n=501 med      0 mV pp   789
+1795422876.245 t=   25 s  IR n=500 med      0 mV pp  1375  RED n=500 med      0 mV pp   731
+1795422876.246 t=   30 s  IR n=500 med      0 mV pp  1360  RED n=500 med      0 mV pp   747
+1795422876.247 t=   35 s  IR n=501 med      0 mV pp  1366  RED n=501 med      0 mV pp   754
+1795422876.249 t=   40 s  IR n=500 med      0 mV pp  1350  RED n=500 med      0 mV pp   768
+1795422876.250 t=   45 s  IR n=500 med     24 mV pp  2123  RED n=500 med     12 mV pp  1145
+1795422876.251 t=   50 s  IR n=501 med      0 mV pp  1365  RED n=501 med      0 mV pp  1132
+1795422876.253 t=   55 s  IR n=500 med      0 mV pp  1375  RED n=500 med      0 mV pp   791
+1795422876.255 t=   60 s  IR n=501 med      0 mV pp  1362  RED n=500 med      0 mV pp   775
+1795422876.256 DACs parked

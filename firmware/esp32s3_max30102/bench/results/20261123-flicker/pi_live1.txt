@@ -1,0 +1,12 @@
+1795426512.910 dark 8 s
+1795426520.911 flicker on: HR 60 bpm, red L = 600 + 300*pulse mV, 35 s
+1795426555.911 flicker off: 90721 writes in 35 s (2592/s), 0 errors
+1795426555.912 DACs parked
+1795426556.088 dark 8 s
+1795426564.088 flicker on: HR 90 bpm, red L = 600 + 300*pulse mV, 35 s
+1795426599.089 flicker off: 90575 writes in 35 s (2588/s), 0 errors
+1795426599.090 DACs parked
+1795426599.268 dark 8 s
+1795426607.268 flicker on: HR 120 bpm, red L = 600 + 300*pulse mV, 35 s
+1795426642.268 flicker off: 90620 writes in 35 s (2589/s), 0 errors
+1795426642.269 DACs parked

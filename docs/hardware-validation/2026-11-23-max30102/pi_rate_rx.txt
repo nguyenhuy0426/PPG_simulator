@@ -1,0 +1,4 @@
+1795447514.856 dark 6 s
+1795447520.856 flicker on: HR 75 rate 1500
+1795447550.856 flicker off: 1500 writes/s
+DACs parked

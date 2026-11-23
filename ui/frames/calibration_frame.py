@@ -143,7 +143,8 @@ class CalibrationFrame(ctk.CTkFrame):
             dot = T.label(rx_tools, "●", u(18), text_color=T.FAINT)
             dot.pack(side="right", padx=(u(4), u(2)))
             self.dots[name], self.dot_text[name] = dot, text
-        self.rx_panel = RXPanel(K.plot_holder(rx), language=self.language, height=240, vitals=False)
+        self.rx_panel = RXPanel(K.plot_holder(rx), language=self.language, height=240, vitals=False,
+                                ac_only=False)
         self.rx_panel.pack(fill="both", expand=True, padx=u(3), pady=u(3))
 
         self.status = T.label(self, "", u(12), text_color=T.MUTED, anchor="w")

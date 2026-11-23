@@ -77,6 +77,13 @@ class CTkApp(ctk.CTk):
         self.page_host.grid_rowconfigure(0, weight=1)
         self.page_host.layout = self.layout
         self.page_host.language = self.language
+        # AC balance (core/ac_balance.py): the Classic page shows and toggles it, the loop is ticked below.
+        from core.ac_balance import from_config as ac_balance_from_config
+        from hw.opt101_rx import OPT101Receiver
+        self.ac_balance = ac_balance_from_config(
+            self.engine, OPT101Receiver.get_instance(),
+            hold=lambda: getattr(getattr(self, "frames", {}).get("Calibration"), "_spo2_run", None) is not None)
+        self.page_host.ac_balance = self.ac_balance
         self.frames = {
             "Pathology": PathologyFrame(self.page_host, fg_color="transparent"),
             "Calibration": CalibrationFrame(self.page_host, fg_color="transparent"),
@@ -401,6 +408,10 @@ class CTkApp(ctk.CTk):
             self.frames["Playback"].handle_playback_request(*request)
         # Protocol v3: phone page requests in, page state and TX/RX samples out (ui/remote.py).
         self.remote.tick()
+        try:
+            self.ac_balance.tick()
+        except Exception:
+            log.exception("[ACBalance] tick failed")
         # BLE can mutate engine state while any tab is visible. Refresh every
         # frame, not only the active one, so returning to a tab never appears
         # to be the moment the command was received. This also advances a

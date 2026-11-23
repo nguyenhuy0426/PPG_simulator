@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 import customtkinter as ctk
 from comm.logger import log
+from config import MAX30102_AC_MV, MAX30102_DC_MV
 from core.signal_engine import SignalEngine
 from core.waveform_clip import WaveformClip
 from ui.recordings import load_recording
@@ -23,6 +24,7 @@ COPY = {
                delete="Xoá", confirm="Xoá thật?", deleted="Đã xoá {name}",
                delete_failed="Không xoá được {name}: {why}",
                leds="Đang phát {name} ra LED (output Classic đã dừng).",
+               max30102=" Chế độ MAX30102: chỉ LED RED, DC {dc:.0f} / AC {ac:.0f} mV; OPT101 tạm dừng.",
                finished="Đã phát xong {name}; LED tắt. Bấm Phát ở Classic để chạy lại Classic.",
                screen_only="Chỉ phát trên màn hình, không ra LED: {why}",
                taken="Output đã chuyển sang trang khác; phát lại dừng.",
@@ -40,6 +42,7 @@ COPY = {
                delete="Delete", confirm="Delete it?", deleted="Deleted {name}",
                delete_failed="Could not delete {name}: {why}",
                leds="Playing {name} on the LEDs (Classic output stopped).",
+               max30102=" MAX30102 mode: RED LED only, DC {dc:.0f} / AC {ac:.0f} mV; OPT101 paused.",
                finished="Finished {name}; LEDs off. Start Classic to run Classic again.",
                screen_only="On screen only, not on the LEDs: {why}",
                taken="Another page took the output; playback stopped.",
@@ -275,7 +278,10 @@ class PlaybackFrame(ctk.CTkFrame):
             self.status.configure(text=t["screen_only"].format(why=exc), text_color=T.WARN)
             return
         self._clip, self._clip_offset = clip, position
-        self.status.configure(text=t["leds"].format(name=self.current_name), text_color=T.OK)
+        text = t["leds"].format(name=self.current_name)
+        if self.engine.max30102_mode:
+            text += t["max30102"].format(dc=MAX30102_DC_MV, ac=MAX30102_AC_MV)
+        self.status.configure(text=text, text_color=T.OK)
 
     def play(self):
         if self.is_playing or not self.samples:

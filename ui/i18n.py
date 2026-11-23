@@ -38,6 +38,7 @@ _TEXT = {
         "clipped": "Clipped",
         # Classic page
         "tx_card": "TX output signal", "rx_card": "RX received signal", "beep_on": "Beep: on", "beep_off": "Beep: off",
+        "acbal_on": "AC balance: on", "acbal_off": "AC balance: off",
         "record": "Record CSV", "save_record": "Save CSV", "start": "Start output", "stop": "Stop output",
         "hr": "Heart rate", "spo2": "SpO₂ target", "rr": "Respiration", "noise": "Noise", "badge_noise_kind": "{kind} in Settings",
         "red_manual": "manual", "red_follows": "from SpO₂", "red_negative": "R < 0, clamped",
@@ -91,6 +92,7 @@ _TEXT = {
         "tx_model": "Mô hình TX", "dac_target": "DAC đích", "buffer": "Bộ đệm", "lost": "Mất mẫu",
         "clipped": "Cắt đỉnh",
         "tx_card": "Tín hiệu phát TX", "rx_card": "Tín hiệu thu RX", "beep_on": "Tiếng bíp: bật", "beep_off": "Tiếng bíp: tắt",
+        "acbal_on": "Cân bằng AC: bật", "acbal_off": "Cân bằng AC: tắt",
         "record": "Ghi CSV", "save_record": "Lưu CSV", "start": "Phát", "stop": "Dừng phát",
         "hr": "Nhịp tim", "spo2": "SpO₂ mục tiêu", "rr": "Nhịp thở", "noise": "Nhiễu", "badge_noise_kind": "{kind} trong Settings",
         "red_manual": "đặt tay", "red_follows": "theo SpO₂", "red_negative": "R < 0, đã kẹp",
