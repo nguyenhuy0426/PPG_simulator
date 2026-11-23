@@ -1,0 +1,9 @@
+rx True; preset: RED DC 600.0 AC 300.0; user: SpO2 99.0 RR 16.0 noise proportional/0.0
+1795446990.902 dark 8 s
+1795446998.908 flicker on: HR 75
+1795447038.908 flicker off: writes/s 1495 clipped 0 underruns 3 overruns 0 red_err 0
+1795447038.909 flicker on: HR 110
+1795447078.909 flicker off: writes/s 1495 clipped 0 underruns 0 overruns 0 red_err 0
+DACs parked
+0x60:0xc0 0x00 0x00
+0x61:0xc0 0x00 0x00

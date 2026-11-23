@@ -1,0 +1,8 @@
+1795446805.408 dark 6 s
+1795446811.408 flicker on: HR 75 rate 0
+1795446841.409 flicker off: 2600 writes/s
+1795446844.410 flicker on: HR 75 rate 2000
+1795446874.410 flicker off: 2000 writes/s
+1795446877.410 flicker on: HR 75 rate 1500
+1795446907.410 flicker off: 1500 writes/s
+DACs parked

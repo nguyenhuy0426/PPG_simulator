@@ -1,0 +1,16 @@
+2026-11-23 22:34:07 [INFO   ] ppg_simulator: [OPT101Rx] Grove ADC ready (addr 0x08, enabled=(4, 0), 100 Hz/ch, probe raw=0)
+2026-11-23 22:34:07 [INFO   ] ppg_simulator: [OPT101Rx] Acquisition thread started
+2026-11-23 22:34:07 [INFO   ] ppg_simulator: [SignalEngine] MAX30102 mode on
+rx True; preset: RED DC 600.0 AC 300.0; user: SpO2 99.0 RR 16.0 noise proportional/0.0
+1795448047.590 dark 8 s
+1795448055.595 flicker on: HR 75
+2026-11-23 22:34:15 [INFO   ] ppg_simulator: [SignalEngine] MAX30102 output: RED at 1500 writes/s in its own process
+1795448095.596 flicker off: writes/s 0 clipped 0 underruns 4 overruns 0 red_err 0
+1795448095.596 flicker on: HR 110
+1795448135.596 flicker off: writes/s 0 clipped 0 underruns 0 overruns 0 red_err 0
+2026-11-23 22:35:35 [INFO   ] ppg_simulator: [OPT101Rx] Acquisition thread started
+2026-11-23 22:35:35 [INFO   ] ppg_simulator: [OPT101Rx] Shutdown — acquisition stopped
+2026-11-23 22:35:35 [INFO   ] ppg_simulator: [DACManager] Shutdown — outputs parked at safe idle (0 V)
+DACs parked
+0x60:0xc0 0x00 0x00
+0x61:0xc0 0x00 0x00

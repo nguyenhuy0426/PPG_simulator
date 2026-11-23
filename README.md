@@ -73,6 +73,23 @@ scripts and raw captures in [docs/hardware-validation/2026-11-14-ir-overload](do
   `server/pi_broker/` installs and configures the broker on the Pi. The Android controller is
   [MedicalSimulator](https://github.com/halovie123/MedicalSimulator).
 
+**MAX30102 mode (23 November 2026):** a MAX30102 cancels the steady simulator light as ambient light. With
+**Settings → MAX30102** on, the red LED flickers between 0 and the PPG level 1500 times a second (preset DC 600 /
+AC 300 mV, IR off), and a MAX30102 reads the pulse. HR, SpO₂ target, respiration and noise stay the user's;
+Classic, PPG morphology (Model) and Recordings output all go out this way.
+- Bench test with an ESP32-S3 + MAX30102 ([firmware/esp32s3_max30102](firmware/esp32s3_max30102/README.md)): 114 of
+  115 one-second reports OK, darkness NO SIGNAL, 0 I2C errors
+  ([docs/hardware-validation/2026-11-23-max30102](docs/hardware-validation/2026-11-23-max30102/README.md)).
+
+  | Source | Set | MAX30102 read |
+  |---|---|---|
+  | Classic | 75 bpm | 72.6–73.9 bpm |
+  | Classic | 110 bpm | 106.6–109.1 bpm |
+  | Model (Gaussian clip) | 80 bpm | 79.2–80.1 bpm |
+  | Recordings (`data_1.csv`) | 79 bpm | 76.4–78.9 bpm |
+
+- No SpO₂ in this mode: both sensor channels see the same red light. The OPT101 RX pauses while the mode runs.
+
 | Live monitor | Waveform setup | 30-second sequence |
 |---|---|---|
 | ![PPG monitor in dry-run mode](docs/ui/monitor-1280.png) | ![Signal setup controls](docs/ui/setup-1280.png) | ![LSM-GAN sequence screen](docs/ui/touch-output/lsm-vi-1280.png) |
@@ -262,7 +279,8 @@ PPG_simulator_raspi/
 │   └── rate_scheduler.py        # Drift-free fixed-rate execution ticker
 ├── hw/
 │   ├── opt101_rx.py             # Grove Base Hat ADC reader (A0/A4 channels)
-│   └── dac_manager.py           # Dual MCP4725 I2C DAC controllers
+│   ├── dac_manager.py           # Dual MCP4725 I2C DAC controllers
+│   └── max30102_flicker.py      # MAX30102 mode: paced red-LED on/off writer (its own process)
 ├── models/
 │   ├── ppg_model.py             # PPG physiological synthesis model
 │   ├── noise.py                 # Artefact generators (absolute-mV, band-limited)
@@ -284,6 +302,7 @@ PPG_simulator_raspi/
 │       ├── advanced_frame.py    # Signal setup (AC/DC ownership, SpO2, artefacts)
 │       ├── neural_frame.py      # LSM-GAN 30s sequence & morphology evaluation
 │       └── playback_frame.py    # CSV recording browser & playback viewer
+├── firmware/esp32s3_max30102/   # ESP32-S3 + MAX30102 + ST7789 test receiver (ESP-IDF, PlatformIO)
 ├── hardware/                    # KiCad 10 projects, V-cut panel & release ZIPs
 ├── docs/                        # Design documents, reports, and 3D STL models
 │   ├── opt101-a0-diagnostic-2026-10-01.md # Bench test plan for physical sensor
@@ -448,6 +467,26 @@ gives the factor (`DAC AC ×0.53`). Only the Classic AC is scaled: DC, Calibrati
 are not. Receive SpO₂ fits record whether AC balance was on and apply only in that state. This balances the AC at
 this simulator's own receiver; it is not a calibration of another receiver.
 Dry-run mode and unplugged sensors explicitly show disconnected states without fabricating data.
+
+**MAX30102 mode (Settings → MAX30102):** tick *MAX30102 mode* and press *Apply MAX30102 mode*; the choice is saved
+in `config.json` (`max30102_mode`).
+
+- **What the mode does:**
+  - DC/AC of both channels are set to the preset DC 600 / AC 300 mV and held there; the amplitude tab cannot move
+    them while the mode is on.
+  - Only the red LED is driven, as an on/off flicker at 1500 writes/s whose on-level follows the PPG, capped at
+    1000 mV. IR stays at 0 V.
+  - Heart rate, SpO₂ target, respiration and noise remain yours, on the page or from the phone.
+  - Switching the mode off puts your own DC/AC back. A saved configuration keeps your values, not the preset.
+- **Model and Recordings in this mode:** clips are rescaled so their pulse spans DC 600 → 900 mV; the shape, beat
+  timing and respiration of the clip are kept. The DC/AC sliders of the PPG morphology page do not apply, and both
+  pages say so in their status line.
+- **Rates:** the writes come from a separate paced process (`hw/max30102_flicker.py`). The rate is chosen to stay
+  away from multiples of the sensor's sample rate: 2000 writes/s at 200 sps read 144 bpm for 75 bpm.
+- **OPT101:** acquisition is paused while the output runs, because its I2C reads disturbed the write timing. AC
+  balance does not apply in this mode.
+- **Not covered:** the mode gives a heart rate to a MAX30102, not SpO₂ or a calibrated waveform. A Calibration-page
+  test signal is never flickered.
 
 **Neural Sequence & Morphology Evaluation:** the **04 PPG morphology** page allows selecting
 between the standard three-Gaussian pulse synthesis and an experimental 30-second LSM-GAN

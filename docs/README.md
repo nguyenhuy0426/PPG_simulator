@@ -22,7 +22,9 @@ time; the newest result in each group is listed first.
 | [architecture/](architecture/) | Phase 1 reference audit and master design; Phase 4 dual-DAC TX and LED driver; ISO 5807 flowchart of the Pi, phone, MQTT and database threads and two UML sequence diagrams (MQTT control, recording upload), as `luu_do_giai_thuat_va_so_do_tuan_tu.drawio` (3 pages) with PNG exports |
 | [system_3d/](system_3d/README.md) | Printable optical enclosure: generator scripts, STL files, viewer |
 | [opt101-a0-diagnostic-2026-10-01.md](opt101-a0-diagnostic-2026-10-01.md) | OPT101/A0 bench diagnostic protocol |
-| [hardware-validation/](hardware-validation/README.md) | Raspberry Pi timing, ARM inference and TX/RX capture evidence; the 2026-11-14 IR-overload investigation; what is left of the generator check |
+| [hardware-validation/](hardware-validation/README.md) | Raspberry Pi timing, ARM inference and TX/RX capture evidence; the 2026-11-14 IR-overload investigation; the 2026-11-23 MAX30102 bench (app MAX30102 mode); what is left of the generator check |
+| [hardware/MAX30102_LED_SYNC_DESIGN.md](hardware/MAX30102_LED_SYNC_DESIGN.md) | LED gating design for a MAX30102 (not built; needed only for SpO₂ or red/IR separation) |
+| [../firmware/esp32s3_max30102/README.md](../firmware/esp32s3_max30102/README.md) | ESP32-S3 + MAX30102 + ST7789 test receiver: build, serial protocol, bench results |
 | [ds_linhkien/](ds_linhkien/), [whale_device/](whale_device/) | Component datasheets and the WhaleTeq AECG100 reference manual (see [REFERENCES.md](REFERENCES.md)) |
 
 ## Waveform models

@@ -3,6 +3,8 @@
 Files: `run1.log.gz`, `run2.log.gz` (serial, host time + line), `pi_run*.txt` (Pi script output).
 
 Setup: ESP32-S3-DevKitC-1, MAX30102 on I2C (GPIO8/9), LCD disabled (its MOSI line was shorted to SDA).
+*Correction (23 Nov, later): there is no short. SPI2 on GPIO11/12 holds SCL (GPIO9) low on this board; the firmware
+now time-shares the pins, see `docs/hardware-validation/2026-11-23-max30102/`.*
 Firmware `firmware/esp32s3_max30102` streams raw 18-bit FIFO counts at 100 Hz (`S,seq,red,ir`).
 Pi 4 app stopped; `bench/pi_led_ppg.py` drove both simulator LEDs (Classic PPG, HR 75 bpm).
 Host timestamps on every line. The Pi lines of run 1 arrived buffered at the end, so run-1 segments are
