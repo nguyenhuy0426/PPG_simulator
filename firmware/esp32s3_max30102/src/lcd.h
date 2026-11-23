@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #define LCD_W 240
 #define LCD_H 240
@@ -20,6 +22,11 @@
 #define C_AMBER RGB(255, 170, 0)
 #define C_CYAN  RGB(0, 200, 255)
 
+// On the bench board the MAX30102's I2C SCL (GPIO9) was held low while SPI2 owned GPIO11/12, also with
+// the LCD unplugged; it read high again within ~20 us of releasing the pins (measured 23 Nov 2026). The panel's MOSI/SCLK are therefore driven only for the
+// length of each transfer, holding `lock`; between transfers they are inputs with pull-up and the
+// holder of the same lock (the I2C sensor task) has the pins quiet. Call before lcd_init(); NULL = no lock.
+void lcd_set_pin_lock(SemaphoreHandle_t lock);
 esp_err_t lcd_init(void);
 void lcd_fill_rect(int x, int y, int w, int h, uint16_t color);
 // Copy a w*h pixel block (byte-swapped RGB565) to the panel; returns when the DMA has finished.

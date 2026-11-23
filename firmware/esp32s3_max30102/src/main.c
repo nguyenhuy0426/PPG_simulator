@@ -5,6 +5,8 @@
 //                    on both channels, streams samples/reports on the serial console.
 //   display (prio 3) owns the panel: sweeps the waveform and shows HR / state.
 //   console (prio 2) parses serial commands and forwards configuration to the sensor task.
+//   sensor and display never use their pins at the same time: each I2C transfer and each LCD
+//   transfer holds s_pin_mtx (see APP_USE_LCD below).
 //
 // Serial output (115200 8N1, UART0 via the board's USB-UART bridge):
 //   S,<seq>,<red>,<ir>,<ppg>,<beat>  one line per sample when streaming is on: raw 18-bit counts, the
@@ -37,11 +39,11 @@
 
 static const char *TAG = "app";
 
-// The ST7789 is optional. Set to 1 only when the LCD's MOSI ("SDA") line is wired to GPIO11 alone:
-// on the bench (23 Nov 2026) it was also connected to the MAX30102 SDA (GPIO9), and driving MOSI
-// held the I2C bus low. Without the LCD, HR and the waveform are read on the serial port.
+// The ST7789 is optional (0 = serial output only). On the bench PCB, SPI2 driving GPIO11/12 holds the
+// I2C SCL (GPIO9) low, so the LCD and the sensor take turns on s_pin_mtx: the LCD drives its pins only
+// during a transfer (lcd.c), the sensor task does its I2C transfers while they are released.
 #ifndef APP_USE_LCD
-#define APP_USE_LCD        0
+#define APP_USE_LCD        1
 #endif
 
 #define I2C_PIN_A          8     // tried as SDA first, then swapped if nothing answers
@@ -85,11 +87,15 @@ typedef struct {
 static QueueHandle_t s_disp_q;
 static QueueHandle_t s_cfg_q;
 static SemaphoreHandle_t s_status_mtx;
+static SemaphoreHandle_t s_pin_mtx;   // GPIO11/12 driven by SPI xor I2C transfer in progress
 static status_t s_status;
 static volatile bool s_stream = true;
 static volatile ch_sel_t s_ch_sel = CH_AUTO;
 
 // ---------------------------------------------------------------- sensor
+
+static void i2c_lock(void) { xSemaphoreTake(s_pin_mtx, portMAX_DELAY); }
+static void i2c_unlock(void) { xSemaphoreGive(s_pin_mtx); }
 
 static esp_err_t open_bus(int sda, int scl, i2c_master_bus_handle_t *bus)
 {
@@ -188,6 +194,7 @@ static void sensor_task(void *arg)
         if (!dev.dev) {
             esp_err_t e = ESP_ERR_NOT_FOUND;
             const int pins[2][2] = {{I2C_PIN_A, I2C_PIN_B}, {I2C_PIN_B, I2C_PIN_A}};
+            i2c_lock();
             for (int i = 0; i < 2 && e == ESP_ERR_NOT_FOUND; i++) {
                 if (bus) { i2c_del_master_bus(bus); bus = NULL; }
                 if (open_bus(pins[i][0], pins[i][1], &bus) != ESP_OK) continue;
@@ -199,6 +206,7 @@ static void sensor_task(void *arg)
                 if (dev.dev) { i2c_master_bus_rm_device(dev.dev); dev.dev = NULL; }
                 if (bus) { i2c_del_master_bus(bus); bus = NULL; }
                 line_test();
+                i2c_unlock();
                 xSemaphoreTake(s_status_mtx, portMAX_DELAY);
                 s_status.sensor_ok = false;
                 s_status.part_id = dev.part_id;
@@ -207,6 +215,7 @@ static void sensor_task(void *arg)
                 vTaskDelay(pdMS_TO_TICKS(SENSOR_RETRY_MS));
                 continue;
             }
+            i2c_unlock();
             set_status(st_sensor, (void *)1);
             ppg_hr_init(&hr_red);
             ppg_hr_init(&hr_ir);
@@ -216,7 +225,10 @@ static void sensor_task(void *arg)
         // --- configuration change from the console
         max30102_cfg_t nc;
         if (xQueueReceive(s_cfg_q, &nc, 0) == pdTRUE) {
-            if (max30102_apply_cfg(&dev, &nc) == ESP_OK) {
+            i2c_lock();
+            const esp_err_t ce = max30102_apply_cfg(&dev, &nc);
+            i2c_unlock();
+            if (ce == ESP_OK) {
                 cfg = nc;
                 ppg_hr_init(&hr_red);
                 ppg_hr_init(&hr_ir);
@@ -232,7 +244,9 @@ static void sensor_task(void *arg)
         // --- read the FIFO
         int n = 0, lost = 0;
         bool alc = false;
+        i2c_lock();
         esp_err_t e = max30102_read_fifo(&dev, buf, 32, &n, &lost, &alc);
+        i2c_unlock();
         if (e != ESP_OK) {
             i2c_err_total++;
             if (++consecutive_err >= MAX_READ_ERRORS) {
@@ -474,6 +488,11 @@ void app_main(void)
     setvbuf(stdout, NULL, _IOLBF, 256);
 
     s_status_mtx = xSemaphoreCreateMutex();
+    s_pin_mtx = xSemaphoreCreateMutex();
+    configASSERT(s_pin_mtx);
+#if APP_USE_LCD
+    lcd_set_pin_lock(s_pin_mtx);
+#endif
 #if APP_USE_LCD
     s_disp_q = xQueueCreate(DISP_QUEUE_LEN, sizeof(disp_point_t));
     configASSERT(s_disp_q);

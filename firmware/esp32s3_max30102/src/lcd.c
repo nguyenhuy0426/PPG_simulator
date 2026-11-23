@@ -9,8 +9,10 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
+#include "esp_rom_gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "soc/spi_periph.h"
 #include "font5x7.h"
 
 static const char *TAG = "lcd";
@@ -33,6 +35,31 @@ static const char *TAG = "lcd";
 static esp_lcd_panel_handle_t s_panel;
 static uint16_t *s_buf;
 static SemaphoreHandle_t s_done;
+static SemaphoreHandle_t s_pin_lock;
+
+void lcd_set_pin_lock(SemaphoreHandle_t lock) { s_pin_lock = lock; }
+
+// Take the shared lock and route MOSI/SCLK back to SPI2 through the IO_MUX, as spi_bus_initialize()
+// does for these native pins. SCLK idles high in mode 3, so attaching makes no clock edge.
+static void pins_attach(void)
+{
+    if (s_pin_lock) xSemaphoreTake(s_pin_lock, portMAX_DELAY);
+    gpio_iomux_out(PIN_MOSI, spi_periph_signal[LCD_HOST].func, false);
+    gpio_iomux_out(PIN_SCLK, spi_periph_signal[LCD_HOST].func, false);
+}
+
+// Hand MOSI/SCLK back as inputs with pull-up and give the lock. Output is disabled before the pad
+// leaves the SPI function so SCLK never drops low: with CS tied low the panel would count the edge.
+static void pins_release(void)
+{
+    const int pins[2] = {PIN_MOSI, PIN_SCLK};
+    for (int i = 0; i < 2; i++) {
+        gpio_set_pull_mode(pins[i], GPIO_PULLUP_ONLY);
+        gpio_set_direction(pins[i], GPIO_MODE_INPUT);
+        esp_rom_gpio_pad_select_gpio(pins[i]);
+    }
+    if (s_pin_lock) xSemaphoreGive(s_pin_lock);
+}
 
 static bool on_done(esp_lcd_panel_io_handle_t io, esp_lcd_panel_io_event_data_t *ev, void *ctx)
 {
@@ -51,13 +78,14 @@ esp_err_t lcd_init(void)
     ESP_ERROR_CHECK(gpio_config(&bl));
     gpio_set_level(PIN_BLK, 0);
 
+    // The SPI pins are driven from spi_bus_initialize() on, so hold the lock through the panel setup.
+    if (s_pin_lock) xSemaphoreTake(s_pin_lock, portMAX_DELAY);
     const spi_bus_config_t bus = {
         .mosi_io_num = PIN_MOSI, .miso_io_num = -1, .sclk_io_num = PIN_SCLK,
         .quadwp_io_num = -1, .quadhd_io_num = -1,
         .max_transfer_sz = BUF_PIXELS * sizeof(uint16_t),
     };
     esp_err_t e = spi_bus_initialize(LCD_HOST, &bus, SPI_DMA_CH_AUTO);
-    if (e != ESP_OK) return e;
 
     esp_lcd_panel_io_handle_t io;
     const esp_lcd_panel_io_spi_config_t io_cfg = {
@@ -65,17 +93,22 @@ esp_err_t lcd_init(void)
         .pclk_hz = LCD_PCLK_HZ, .trans_queue_depth = 4,
         .on_color_trans_done = on_done, .lcd_cmd_bits = 8, .lcd_param_bits = 8,
     };
-    if ((e = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_cfg, &io)) != ESP_OK) return e;
+    if (e == ESP_OK) e = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_cfg, &io);
 
     const esp_lcd_panel_dev_config_t pcfg = {
         .reset_gpio_num = PIN_RST, .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB, .bits_per_pixel = 16,
     };
-    if ((e = esp_lcd_new_panel_st7789(io, &pcfg, &s_panel)) != ESP_OK) return e;
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(s_panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_init(s_panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_panel, LCD_INVERT));
+    if (e == ESP_OK) e = esp_lcd_new_panel_st7789(io, &pcfg, &s_panel);
+    if (e == ESP_OK) e = esp_lcd_panel_reset(s_panel);
+    if (e == ESP_OK) e = esp_lcd_panel_init(s_panel);
+    if (e == ESP_OK) e = esp_lcd_panel_invert_color(s_panel, LCD_INVERT);
+    pins_release();
+    if (e != ESP_OK) return e;
     lcd_fill_rect(0, 0, LCD_W, LCD_H, C_BLACK);
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel, true));
+    pins_attach();
+    e = esp_lcd_panel_disp_on_off(s_panel, true);
+    pins_release();
+    if (e != ESP_OK) return e;
     gpio_set_level(PIN_BLK, 1);
     ESP_LOGI(TAG, "ST7789 %dx%d ready (SPI mode %d, %d MHz, no CS)", LCD_W, LCD_H, LCD_SPI_MODE, LCD_PCLK_HZ / 1000000);
     return ESP_OK;
@@ -83,9 +116,12 @@ esp_err_t lcd_init(void)
 
 static void push(int x, int y, int w, int h)
 {
-    // The color transfer is queued (DMA); wait for it before the buffer is reused.
-    esp_lcd_panel_draw_bitmap(s_panel, x, y, x + w, y + h, s_buf);
-    if (xSemaphoreTake(s_done, pdMS_TO_TICKS(DMA_WAIT_MS)) != pdTRUE) ESP_LOGW(TAG, "DMA done timeout");
+    // The color transfer is queued (DMA); wait for it before the buffer is reused and the pins released.
+    pins_attach();
+    if (esp_lcd_panel_draw_bitmap(s_panel, x, y, x + w, y + h, s_buf) == ESP_OK &&
+        xSemaphoreTake(s_done, pdMS_TO_TICKS(DMA_WAIT_MS)) != pdTRUE)
+        ESP_LOGW(TAG, "DMA done timeout");
+    pins_release();
 }
 
 void lcd_fill_rect(int x, int y, int w, int h, uint16_t color)
