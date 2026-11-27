@@ -11,6 +11,18 @@
 **Institution:** Industrial University of Ho Chi Minh City (IUH) — Faculty of Electronic Technology
 **Version:** 5.0.0 — waveform controls and timestamped recording
 
+## 🔎 At a glance (for reviewers)
+
+| | |
+|---|---|
+| **What** | Bench instrument that generates dual-channel (IR/RED) PPG waveforms as analog voltages for testing pulse-oximetry front-ends without a human subject. Graduation thesis, IUH, 2026. |
+| **My role (HuyNN)** | Hardware design (KiCad boards) and embedded Raspberry Pi software. Teammate VyPT: software design and UI/UX. |
+| **Hardware** | Raspberry Pi 4; 2× MCP4725 12-bit I²C DAC (IR and RED); OPT101 photodiode receiver read back through a Grove ADC (I²C 0x08); KiCad 10 boards: LED/IR driver, OPT101 receiver, BPW34 receiver (alternative). |
+| **Real-time path** | Signal model at 100 Hz, interpolated to a nominal 500 Hz DAC stream by a dedicated writer thread, separate from the GUI thread. On the Pi, GUI + BLE + ADC read-back at 500 Hz ran 30 s with no buffer overrun or dropped sample. |
+| **Interfaces** | I²C (DACs, ADC), BLE remote control from an Android app, timestamped 100 Hz CSV recording and playback. |
+| **Tests** | `pytest` suite in `tests/` (about 600 test functions). |
+| **Not yet verified** | Optical waveform fidelity and SpO₂ accuracy against a commercial oximeter. The neural waveform models are described by measured metrics only; they are not clinically validated. |
+
 ---
 
 ## 📋 Overview
